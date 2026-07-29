@@ -1105,7 +1105,7 @@ const profileFollowingCommand = defineCommand({
 });
 
 const profileSubscriptionCommand = defineCommand({
-  meta: { name: "subscription", description: "Read your premium subscription — entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false)." },
+  meta: { name: "subscription", description: "Read your premium subscription: entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false)." },
   args: { ...READ_SINGLE_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileSubscription);
@@ -1121,7 +1121,7 @@ const profileAnalyticsCommand = defineCommand({
 });
 
 const profileVisitorsCommand = defineCommand({
-  meta: { name: "visitors", description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate — Premium sees more identified viewers)." },
+  meta: { name: "visitors", description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate; Premium sees more identified viewers)." },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileVisitors);

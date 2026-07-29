@@ -60,6 +60,9 @@ import { webhookCommand } from "../src/commands/webhook.js";
 import { salesNavCommand } from "../src/commands/sales-nav.js";
 import { recruiterCommand } from "../src/commands/recruiter.js";
 import { companyCommand } from "../src/commands/company.js";
+import { groupCommand } from "../src/commands/group.js";
+import { feedCommand } from "../src/commands/feed.js";
+import { notificationCommand } from "../src/commands/notification.js";
 
 const asCmd = (c: unknown): CommandDef => c as CommandDef;
 
@@ -108,6 +111,9 @@ describe("bare group invocation — Class B: pure groups (no bare positional dec
     ["webhook", asCmd(webhookCommand)],
     ["sales-nav", asCmd(salesNavCommand)],
     ["recruiter", asCmd(recruiterCommand)],
+    ["group", asCmd(groupCommand)],
+    ["feed", asCmd(feedCommand)],
+    ["notification", asCmd(notificationCommand)],
   ];
 
   it.each(cases)("bare `%s` (pure group) does NOT call process.exit, prints its subcommand menu to stderr", async (_name, cmd) => {

@@ -91,9 +91,9 @@ const REMOVED_COMMANDS: Record<string, Record<string, string>> = {
 
 // `company followers` was removed in the 0.15.0 v2 migration (the v1 endpoint
 // it wrapped no longer existed) and re-added as a real subcommand once the SDK
-// shipped a new v2 `companies.followers` method (#521, SDK-parity gap closure)
-// — so it is no longer in the map above. See CHANGELOG.md 0.15.0 "Removed" and
-// the current entry under "Added" for both halves of this history.
+// shipped a new v2 `companies.followers` method, so it is no longer in the map
+// above. See CHANGELOG.md 0.15.0 "Removed" and the current entry under
+// "Added" for both halves of this history.
 
 /**
  * The successor hint for a removed/renamed `<group> <token>`, or null when the

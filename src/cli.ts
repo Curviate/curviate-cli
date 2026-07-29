@@ -65,6 +65,12 @@ const main = defineCommand({
       import("./commands/sales-nav.js").then((m) => m.salesNavCommand),
     recruiter: () =>
       import("./commands/recruiter.js").then((m) => m.recruiterCommand),
+    group: () =>
+      import("./commands/group.js").then((m) => m.groupCommand),
+    feed: () =>
+      import("./commands/feed.js").then((m) => m.feedCommand),
+    notification: () =>
+      import("./commands/notification.js").then((m) => m.notificationCommand),
   },
 
   async run() {

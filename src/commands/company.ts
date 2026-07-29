@@ -663,12 +663,12 @@ export async function runCompanyMessages(
  * Retrieve one message from a company-inbox conversation. Read command —
  * rejects --preview and --all.
  *
- * NOTE (SDK-signature-wins deviation from cli/009's proposed grammar):
+ * NOTE (SDK-signature-wins deviation from the original spec grammar):
  * `companies.message` is a single-message READ (GET one message by id), not
  * a write. The company-inbox SEND op is `companies.sendMessage`, already
- * covered by `company reply` (a pre-existing command) — this command is a
- * distinct, additional method the spec's proposed table mis-described as a
- * write named the same as the read.
+ * covered by `company reply` (a pre-existing command); this command is a
+ * distinct, additional method the original proposed grammar mis-described
+ * as a write named the same as the read.
  */
 export async function runCompanyMessage(
   client: Curviate,
@@ -831,7 +831,7 @@ const companyEmployeesCommand = defineCommand({
   meta: { name: "employees", description: "List people who currently work at the company." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across employee profile fields." },
     location: { type: "string", description: "Opaque location id from `search parameters --type LOCATION`." },
   },
@@ -858,7 +858,7 @@ const companyPostsCommand = defineCommand({
   meta: { name: "posts", description: "List the company's posts." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -883,7 +883,7 @@ const companyJobsCommand = defineCommand({
   meta: { name: "jobs", description: "List the company's open job postings." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across job postings." },
   },
   async run({ args }) {
@@ -975,7 +975,7 @@ const companyFollowInviteCommand = defineCommand({
 });
 
 const companyManagedCommand = defineCommand({
-  meta: { name: "managed", description: "List the company pages the connected account administers. An empty result is valid — the account administers no pages." },
+  meta: { name: "managed", description: "List the company pages the connected account administers. An empty result is valid, the account administers no pages." },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1000,7 +1000,7 @@ const companyFollowersCommand = defineCommand({
   meta: { name: "followers", description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`)." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1029,7 +1029,7 @@ const companyChatsCommand = defineCommand({
   },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1057,7 +1057,7 @@ const companyChatCommand = defineCommand({
   },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
   },
   async run({ args }) {
@@ -1086,7 +1086,7 @@ const companyMessagesCommand = defineCommand({
   },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
   },
   async run({ args }) {
@@ -1115,7 +1115,7 @@ const companyMessageCommand = defineCommand({
   },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
   },
@@ -1147,10 +1147,10 @@ const companySearchChatsCommand = defineCommand({
   },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
-    query: { type: "positional", required: false, description: "Free-text term — matches participant names and message content." },
-    topic: { type: "string", description: "Filter mode — one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other)." },
-    unread: { type: "boolean", description: "Filter mode — unread conversations only." },
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
+    query: { type: "positional", required: false, description: "Free-text term, matches participant names and message content." },
+    topic: { type: "string", description: "Filter mode, one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other)." },
+    unread: { type: "boolean", description: "Filter mode, unread conversations only." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;

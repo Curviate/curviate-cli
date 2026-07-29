@@ -220,10 +220,23 @@ const PARITY_MANIFEST: Record<string, string> = {
   "comment reactions": "comments.listReactions",
   "comment unreact":   "comments.removeReaction",
   "comment user":      "comments.listUserComments",
+
+  // groups (3) — new account-scoped namespace
+  "group list":    "groups.list",
+  "group get":     "groups.get",
+  "group members": "groups.members",
+
+  // feed (1) — new account-scoped namespace
+  "feed home": "feed.home",
+
+  // notifications (3) — new account-scoped namespace
+  "notification list":      "notifications.list",
+  "notification delete":    "notifications.delete",
+  "notification show-less": "notifications.showLess",
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 138;
+const EXPECTED_MANIFEST_COUNT = 145;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -233,18 +246,7 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * doc comment. Each entry here must be a real, currently-uncovered SDK
  * method (checked below) — this is a documented backlog, not a loophole.
  */
-const KNOWN_GAP_METHODS: readonly string[] = [
-  // groups — new account-scoped namespace (no CLI command yet)
-  "groups.list",
-  "groups.get",
-  "groups.members",
-  // feed — new account-scoped namespace (no CLI command yet)
-  "feed.home",
-  // notifications — new account-scoped namespace (no CLI command yet)
-  "notifications.list",
-  "notifications.delete",
-  "notifications.showLess",
-];
+const KNOWN_GAP_METHODS: readonly string[] = [];
 
 // ---------------------------------------------------------------------------
 // SDK method enumeration via client instance prototype inspection
