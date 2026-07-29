@@ -8,6 +8,9 @@
  *   search posts [filters...]                 — search posts (POST body)
  *   search jobs [filters...]                  — search jobs (POST body)
  *   search parameters --type <t> --keywords <k> — resolve filter IDs (GET)
+ *   search groups <query>                     — keyword search LinkedIn groups (GET)
+ *   search services [--keywords] [--service-category] [--location] [--connections] [--language] — search Services Marketplace providers (POST body)
+ *   search service-parameters --keywords <k> [--type <t>] — resolve service-filter IDs (GET)
  *
  * SDK reality: people/companies/posts/jobs are HTTP POST; cursor+limit go on
  * the query, not the body (the SDK splits them out). The CLI passes cursor+limit
@@ -110,6 +113,12 @@ type SearchFlags = {
   "author-industry"?: string;
   "author-company"?: string;
   "author-keywords"?: string;
+  // search groups
+  query?: string;
+  // search services
+  "service-category"?: string;
+  connections?: string;
+  language?: string;
 };
 
 /**
@@ -618,6 +627,166 @@ export async function runSearchParameters(
   }
 }
 
+// Query/body types derived from the real SDK signatures — a shape drift is a
+// compile error, not a latent runtime break.
+type SearchGroupsQuery = Parameters<ReturnType<Curviate["account"]>["search"]["groups"]>[0];
+type SearchServicesBody = Parameters<ReturnType<Curviate["account"]>["search"]["services"]>[0];
+type SearchServiceParametersQuery = Parameters<ReturnType<Curviate["account"]>["search"]["getServiceParameters"]>[0];
+
+/**
+ * Run `search groups <query> [--limit] [--cursor] [--all]` — search.groups.
+ * Read command — rejects --preview. Keyword-only search, no filter-id
+ * resolution step. A no-match search returns an empty list, not an error.
+ */
+export async function runSearchGroups(
+  client: Curviate,
+  flags: SearchFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const keywords = flags.query ?? "";
+  if (!keywords) {
+    out.stderr.write("error: <query> is required.\n");
+    process.exit(2);
+  }
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+
+  const query: SearchGroupsQuery = { keywords };
+  if (flags.limit) query.limit = parseInt(flags.limit, 10);
+  if (flags.cursor) query.cursor = flags.cursor;
+
+  try {
+    if (all) {
+      const fn = (p: SearchGroupsQuery) => ns.search.groups(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, query, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+    } else {
+      const result = await ns.search.groups(query);
+      renderSuccess(result, outOpts, out);
+    }
+  } catch (err: unknown) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const { getExitCode } = await import("../lib/exit-codes.js");
+      renderError(err as CurviateError, outOpts, out);
+      process.exit(getExitCode(err.code));
+    }
+    renderUnexpectedError(err, out);
+    process.exit(1);
+  }
+}
+
+/**
+ * Run `search services [--keywords] [--service-category] [--location]
+ * [--connections] [--language] [--limit] [--cursor] [--all]` — search.services.
+ * POST body search over the LinkedIn Services Marketplace. At least one of
+ * --keywords, --service-category, or --location is required (server-enforced).
+ * Read command — rejects --preview.
+ */
+export async function runSearchServices(
+  client: Curviate,
+  flags: SearchFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+
+  const body: Record<string, unknown> = {};
+  if (flags.keywords) body["keywords"] = flags.keywords;
+  if (flags["service-category"]) body["service_category"] = splitCsv(flags["service-category"]);
+  if (flags.location) body["location"] = splitCsv(flags.location);
+  if (flags.connections) {
+    body["connections"] = splitCsvNumbers(flags.connections);
+  }
+  if (flags.language) body["language"] = splitCsv(flags.language);
+  if (flags.limit) body["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) body["cursor"] = flags.cursor;
+
+  try {
+    if (all) {
+      const fn = (p: Record<string, unknown>) =>
+        ns.search.services(p as SearchServicesBody) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, body, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+    } else {
+      const result = await ns.search.services(body as SearchServicesBody);
+      renderSuccess(result, outOpts, out);
+    }
+  } catch (err: unknown) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const { getExitCode } = await import("../lib/exit-codes.js");
+      renderError(err as CurviateError, outOpts, out);
+      process.exit(getExitCode(err.code));
+    }
+    renderUnexpectedError(err, out);
+    process.exit(1);
+  }
+}
+
+/**
+ * Run `search service-parameters --keywords <k> [--type <t>]` — search.getServiceParameters.
+ * GET — not paginated in practice (a resolver lookup); rejects --all (exit 2).
+ * --keywords is required (the SDK's `keywords` query field is required);
+ * --type defaults server-side to service_category when omitted.
+ */
+export async function runSearchServiceParameters(
+  client: Curviate,
+  flags: SearchFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  rejectAllOnNonPaginated(flags.all, out);
+
+  if (!flags.keywords) {
+    out.stderr.write("error: --keywords is required.\n");
+    process.exit(2);
+  }
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  const query: SearchServiceParametersQuery = { keywords: flags.keywords };
+  if (flags.type) query.type = flags.type as SearchServiceParametersQuery["type"];
+  if (flags.limit) query.limit = parseInt(flags.limit, 10);
+
+  try {
+    const result = await ns.search.getServiceParameters(query);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const { getExitCode } = await import("../lib/exit-codes.js");
+      renderError(err as CurviateError, outOpts, out);
+      process.exit(getExitCode(err.code));
+    }
+    renderUnexpectedError(err, out);
+    process.exit(1);
+  }
+}
+
 // Body type derived from the real SDK signature (fromUrl merges the {url} body
 // with the top-level offset/limit/cursor query into one argument).
 type SearchFromUrlBody = Parameters<ReturnType<Curviate["account"]>["search"]["fromUrl"]>[0];
@@ -868,6 +1037,98 @@ const searchParametersCommand = defineCommand({
   },
 });
 
+const searchGroupsCommand = defineCommand({
+  meta: { name: "groups", description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error." },
+  args: {
+    ...GLOBAL_FLAGS,
+    query: { type: "positional", description: "Search terms (multi-word supported, e.g. 'gtm engineering')." },
+  },
+  async run({ args }) {
+    const flags = args as SearchFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runSearchGroups(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const searchServicesCommand = defineCommand({
+  meta: {
+    name: "services",
+    description:
+      "Search Services Marketplace providers with structured filters. At least one of --keywords, " +
+      "--service-category, or --location is required. Resolve --service-category/--location values with " +
+      "'search service-parameters' first, both take opaque ids, not free text.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    keywords: { type: "string", description: "Free-text keyword match." },
+    "service-category": { type: "string", description: "Opaque service-category ids (comma-separated; resolve via search service-parameters --type service_category)." },
+    location: { type: "string", description: "Opaque location ids (comma-separated; resolve via search service-parameters --type location)." },
+    connections: { type: "string", description: "Connection degree filter, comma-separated: 1 (1st), 2 (2nd), 3 (3rd+)." },
+    language: { type: "string", description: "Profile-language ISO 639-1 codes, comma-separated (e.g. en,de,es,fr)." },
+  },
+  async run({ args }) {
+    const flags = args as SearchFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runSearchServices(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const searchServiceParametersCommand = defineCommand({
+  meta: {
+    name: "service-parameters",
+    description: "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    type: {
+      type: "string",
+      description: "Filter type to resolve: service_category (default) or location.",
+    },
+    keywords: { type: "string", description: "The typed text to resolve (e.g. 'marke').", required: true },
+  },
+  async run({ args }) {
+    const flags = args as SearchFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runSearchServiceParameters(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
 export const searchCommand = defineCommand({
   meta: { name: "search", description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly." },
   args: {
@@ -884,6 +1145,9 @@ export const searchCommand = defineCommand({
     posts: searchPostsCommand,
     jobs: searchJobsCommand,
     parameters: searchParametersCommand,
+    groups: searchGroupsCommand,
+    services: searchServicesCommand,
+    "service-parameters": searchServiceParametersCommand,
   },
   async run({ args }) {
     const flags = args as SearchFlags;
@@ -896,7 +1160,10 @@ export const searchCommand = defineCommand({
         "       curviate search companies [--keywords <k>]\n" +
         "       curviate search posts [--keywords <k>]\n" +
         "       curviate search jobs [--keywords <k>]\n" +
-        "       curviate search parameters --type <t> --keywords <k>\n",
+        "       curviate search parameters --type <t> --keywords <k>\n" +
+        "       curviate search groups <query>\n" +
+        "       curviate search services [--keywords <k>]\n" +
+        "       curviate search service-parameters --keywords <k> [--type <t>]\n",
       );
       // <url> is functionally required for the bare form — a missing
       // required positional is a usage error (exit 2), not a silent success.

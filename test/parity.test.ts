@@ -108,13 +108,16 @@ const PARITY_MANIFEST: Record<string, string> = {
   "connect decline":  "invites.decline",
   "connect cancel":   "invites.cancel",
 
-  // search (6)
-  "search":            "search.fromUrl",
-  "search people":     "search.people",
-  "search companies":  "search.companies",
-  "search posts":      "search.posts",
-  "search jobs":       "search.jobs",
-  "search parameters": "search.getParameters",
+  // search (9)
+  "search":                    "search.fromUrl",
+  "search people":             "search.people",
+  "search companies":          "search.companies",
+  "search posts":               "search.posts",
+  "search jobs":                "search.jobs",
+  "search parameters":          "search.getParameters",
+  "search groups":               "search.groups",
+  "search services":             "search.services",
+  "search service-parameters":   "search.getServiceParameters",
 
   // posts (9) — `comment list` wraps posts.listComments (the comment group)
   "post get":            "posts.get",
@@ -204,7 +207,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 121;
+const EXPECTED_MANIFEST_COUNT = 124;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -215,10 +218,6 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * method (checked below) — this is a documented backlog, not a loophole.
  */
 const KNOWN_GAP_METHODS: readonly string[] = [
-  // search — groups/services extensions
-  "search.groups",
-  "search.services",
-  "search.getServiceParameters",
   // posts — saved-posts extension
   "posts.listSaved",
   "posts.save",
