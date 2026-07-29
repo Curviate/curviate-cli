@@ -6,6 +6,7 @@
  *   inbox get <chat_id>          — get a single chat (read, rejects --preview and --all)
  *   inbox messages <chat_id>     — list messages in a chat (paginated)
  *   inbox mark-read <chat_id>    — mark a chat as read (write)
+ *   inbox search <query>         — free-text search the account's own inbox (paginated, read)
  *
  * <chat_id> on inbox get, inbox messages, and inbox mark-read accepts a LinkedIn
  * messaging thread URL or bare provider ID. Thread URLs are normalized to the bare
@@ -46,6 +47,8 @@ type InboxFlags = {
   after?: string;
   // inbox sync-chat polling
   wait?: boolean;
+  // inbox search
+  query?: string;
 };
 
 type OutputStreams = {
@@ -296,6 +299,52 @@ export async function runInboxMessages(
   }
 }
 
+/**
+ * Run `inbox search <query> [--all] [--limit] [--cursor]` — messaging.searchChats.
+ * Read command — rejects --preview. Free-text search over the account's own
+ * inbox: matches participant names and message content. `<query>` is required
+ * (the SDK's `query` param is not optional).
+ */
+export async function runInboxSearch(
+  client: Curviate,
+  flags: InboxFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const query = flags.query ?? "";
+  if (!query) {
+    out.stderr.write("error: <query> is required.\n");
+    process.exit(2);
+  }
+
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const params: Record<string, unknown> = { query, ...buildPaginationParams(flags) };
+
+  try {
+    if (all) {
+      const fn = (p: Record<string, unknown>) =>
+        ns.messaging.searchChats(p as { query: string }) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+    } else {
+      const result = await ns.messaging.searchChats(params as { query: string });
+      renderSuccess(result, outOpts, out);
+    }
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Citty command definitions
 // ---------------------------------------------------------------------------
@@ -418,6 +467,32 @@ const inboxMessagesCommand = defineCommand({
   },
 });
 
+const inboxSearchCommand = defineCommand({
+  meta: { name: "search", description: "Free-text search the account's own inbox (matches participant names and message content)." },
+  args: {
+    ...GLOBAL_FLAGS,
+    limit: { type: "string" as const, description: "Number of items to return per page (1-100, default 20)." },
+    query: { type: "positional", description: "Search term (e.g. a name or a phrase from a message)." },
+  },
+  async run({ args }) {
+    const flags = args as InboxFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runInboxSearch(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
 export const inboxCommand = defineCommand({
   meta: { name: "inbox", description: "Read LinkedIn message inbox." },
   subCommands: {
@@ -425,6 +500,7 @@ export const inboxCommand = defineCommand({
     get: inboxGetCommand,
     "mark-read": inboxMarkReadCommand,
     messages: inboxMessagesCommand,
+    search: inboxSearchCommand,
   },
   async run() {
     process.stderr.write(
@@ -432,7 +508,8 @@ export const inboxCommand = defineCommand({
       "  list\n" +
       "  get <chat_id>\n" +
       "  mark-read <chat_id>\n" +
-      "  messages <chat_id>\n",
+      "  messages <chat_id>\n" +
+      "  search <query>\n",
     );
   },
 });

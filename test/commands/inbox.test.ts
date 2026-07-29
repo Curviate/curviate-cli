@@ -21,6 +21,7 @@ function makeMessagingNs() {
       listChats: vi.fn(),
       getChat: vi.fn(),
       listMessages: vi.fn(),
+      searchChats: vi.fn(),
     },
   };
 }
@@ -52,6 +53,8 @@ type InboxArgs = {
   after?: string;
   // Inbox sync-chat wait/polling
   wait?: boolean;
+  // inbox search
+  query?: string;
 };
 
 describe("inbox list", () => {
@@ -552,6 +555,130 @@ describe("inbox messages date filters", () => {
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
       expect(ns.messaging.listMessages).not.toHaveBeenCalled();
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// inbox search — messaging.searchChats
+// ---------------------------------------------------------------------------
+
+describe("inbox search", () => {
+  let ns: ReturnType<typeof makeMessagingNs>;
+  let client: ReturnType<typeof makeClient>;
+
+  beforeEach(() => {
+    ns = makeMessagingNs();
+    client = makeClient(ns);
+    (ns.messaging.searchChats as Mock).mockResolvedValue({
+      items: [{ id: "chat_1", name: "Sophie Keller" }],
+      cursor: null,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("inbox search <query> — calls messaging.searchChats with the query and account", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runInboxSearch(client as never, { account: "acc_1", query: "sophie keller", json: true } as InboxArgs, out);
+
+    expect(client.account).toHaveBeenCalledWith("acc_1");
+    expect(ns.messaging.searchChats).toHaveBeenCalledWith(expect.objectContaining({ query: "sophie keller" }));
+  });
+
+  it("inbox search --json prints the full result shape", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runInboxSearch(client as never, { account: "acc_1", query: "sophie", json: true } as InboxArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls[0]![0] as string;
+    expect(JSON.parse(written)).toEqual({ items: [{ id: "chat_1", name: "Sophie Keller" }], cursor: null });
+  });
+
+  it("inbox search — --limit/--cursor pass through to the SDK call", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runInboxSearch(
+      client as never,
+      { account: "acc_1", query: "sophie", limit: "10", cursor: "cur_1", json: true } as InboxArgs,
+      out,
+    );
+
+    expect(ns.messaging.searchChats).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "sophie", limit: 10, cursor: "cur_1" }),
+    );
+  });
+
+  it("inbox search --all — streams NDJSON across pages", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (ns.messaging.searchChats as Mock)
+      .mockResolvedValueOnce({ items: [{ id: "chat_1" }], cursor: "cur_1" })
+      .mockResolvedValueOnce({ items: [{ id: "chat_2" }], cursor: null });
+
+    await runInboxSearch(client as never, { account: "acc_1", query: "sophie", all: true } as InboxArgs, out);
+
+    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
+    const ndjson = lines.filter((l) => l.trim().startsWith("{"));
+    expect(ndjson).toHaveLength(2);
+  });
+
+  it("inbox search — missing <query> exits 2 before any SDK call", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runInboxSearch(client as never, { account: "acc_1" } as InboxArgs, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    expect(ns.messaging.searchChats).not.toHaveBeenCalled();
+  });
+
+  it("inbox search — missing account exits 2", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runInboxSearch(client as never, { query: "sophie", json: true } as InboxArgs, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it("inbox search --preview — usage error exit 2 (preview on read)", async () => {
+    const { runInboxSearch } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runInboxSearch(client as never, { account: "acc_1", query: "sophie", preview: true } as InboxArgs, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
     } finally {
       exitSpy.mockRestore();
     }

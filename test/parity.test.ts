@@ -74,11 +74,12 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account checkpoint poll":      "auth.pollCheckpoint",
   "account connect-session poll": "auth.getSession",
 
-  // messaging (12) — split across the `inbox` and `message` nouns
+  // messaging (13) — split across the `inbox` and `message` nouns
   "inbox list":             "messaging.listChats",
   "inbox get":              "messaging.getChat",
   "inbox messages":         "messaging.listMessages",
   "inbox mark-read":        "messaging.markChatRead",
+  "inbox search":           "messaging.searchChats",
   "message new":            "messaging.startChat",
   "message send":           "messaging.sendMessage",
   "message get":            "messaging.getMessage",
@@ -203,7 +204,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 120;
+const EXPECTED_MANIFEST_COUNT = 121;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -214,8 +215,6 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * method (checked below) — this is a documented backlog, not a loophole.
  */
 const KNOWN_GAP_METHODS: readonly string[] = [
-  // messaging — free-text inbox search (own-account surface)
-  "messaging.searchChats",
   // search — groups/services extensions
   "search.groups",
   "search.services",
