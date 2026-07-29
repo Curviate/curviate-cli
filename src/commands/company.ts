@@ -1143,7 +1143,7 @@ const companySearchChatsCommand = defineCommand({
     name: "search-chats",
     description:
       "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
-      "or --unread — mutually exclusive, enforced server-side. Admin-gated.",
+      "or --unread; mutually exclusive, enforced server-side. Admin-gated.",
   },
   args: {
     ...GLOBAL_FLAGS,
