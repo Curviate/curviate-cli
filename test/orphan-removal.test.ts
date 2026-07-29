@@ -32,7 +32,7 @@ describe("orphan commands are removed from their group", () => {
   });
 
   // `company followers` was removed in the v2 migration (see below) and
-  // re-added once the SDK shipped a new v2 companies.followers method (#521,
+  // re-added once the SDK shipped a new v2 companies.followers method (
   // SDK-parity gap closure) — see test/commands/company.test.ts for its
   // current coverage.
 

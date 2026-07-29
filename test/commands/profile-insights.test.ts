@@ -1,6 +1,6 @@
 /**
  * Tests for the new `profile` insight subcommands closing the SDK-parity gap
- * (#521): subscription / analytics / visitors / ssi — the account-scoped
+ * subscription / analytics / visitors / ssi — the account-scoped
  * `profile.*` namespace, distinct from the classic `users.*` namespace
  * `profile <id>`/`profile me`/`profile follow` etc. already wire.
  *

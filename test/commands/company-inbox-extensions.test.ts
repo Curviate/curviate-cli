@@ -1,6 +1,6 @@
 /**
  * Tests for the new `company` sub-resource commands closing the SDK-parity
- * gap (#521):
+ * gap:
  *
  *   company managed                              → companies.managed(params)               (list read, no <id>)
  *   company followers <id>                       → companies.followers(id, params)          (list read)

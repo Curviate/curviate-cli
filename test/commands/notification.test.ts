@@ -1,6 +1,6 @@
 /**
  * Tests for the new `notification` command group closing the SDK-parity gap
- * (#521).
+ *.
  *
  *   notification list [--filter <f>]     → notifications.list(params) (paginated read)
  *   notification delete <card_urn>        → notifications.delete(cardUrn) (write)

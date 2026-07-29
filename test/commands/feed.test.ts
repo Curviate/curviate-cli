@@ -1,5 +1,5 @@
 /**
- * Tests for the new `feed` command group closing the SDK-parity gap (#521).
+ * Tests for the new `feed` command group closing the SDK-parity gap.
  *
  *   feed home [--sort recent|relevant] [--limit] [--cursor] [--all] → feed.home(params)
  *

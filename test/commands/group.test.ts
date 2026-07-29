@@ -1,5 +1,5 @@
 /**
- * Tests for the new `group` command group closing the SDK-parity gap (#521).
+ * Tests for the new `group` command group closing the SDK-parity gap.
  *
  *   group list [--target <t>]        → groups.list(params)         (paginated read)
  *   group get <group_id>             → groups.get(group)           (single read)
