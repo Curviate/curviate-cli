@@ -8,6 +8,9 @@
  *   post reactions <post_id>                             — list reactions (paginated, read)
  *   post delete <post_id>                                — delete a post you own (write)
  *   post unreact <post_id> <reaction>                    — remove your reaction (write)
+ *   post saved                                            — list your saved posts (paginated, read)
+ *   post save <post_id>                                   — save a post to your bookmark list (write)
+ *   post unsave <post_id>                                 — remove a post from your bookmark list (write)
  *   post user-posts <user_id>                            — list a member's own posts (read)
  *   post user-reactions <user_id>                        — list a member's own reactions (read)
  *
@@ -328,6 +331,104 @@ export async function runPostReactions(
       const result = await ns.posts.listReactions(postId, params);
       renderSuccess(result, outOpts, out);
     }
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `post saved [--all] [--limit] [--cursor]` — posts.listSaved.
+ * Read command — rejects --preview. Lists the connected account's own saved
+ * posts (a private bookmark list, newest-saved-first). Each item is a
+ * PREVIEW — snippet capped at <=140 chars, never the full post body.
+ */
+export async function runPostSaved(
+  client: Curviate,
+  flags: PostFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const params = buildPaginationParams(flags);
+
+  try {
+    if (all) {
+      const fn = (p: Record<string, unknown>) =>
+        ns.posts.listSaved(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+    } else {
+      const result = await ns.posts.listSaved(params);
+      renderSuccess(result, outOpts, out);
+    }
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `post save <post_id>` — posts.save. Write command — supports --preview.
+ * Any post may be saved; saving an already-saved post re-asserts saved:true
+ * (idempotent). Accepts urn:li:activity:<id> or a bare numeric <id>.
+ */
+export async function runPostSave(
+  client: Curviate,
+  flags: PostFlags,
+  out: OutputStreams,
+): Promise<void> {
+  const accountId = requireAccount(flags.account, out);
+  const postId = flags.postId ?? "";
+
+  if (flags.preview) {
+    const preview = buildPreviewOutput({ method: "posts.save", args: { post_id: postId }, body: {}, account: accountId });
+    out.stdout.write(JSON.stringify(preview) + "\n");
+    return;
+  }
+
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  try {
+    const result = await ns.posts.save(postId);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `post unsave <post_id>` — posts.unsave. Write command — supports
+ * --preview. Unsaving a not-currently-saved post re-asserts saved:false
+ * (idempotent). Same accepted id shapes as `post save`.
+ */
+export async function runPostUnsave(
+  client: Curviate,
+  flags: PostFlags,
+  out: OutputStreams,
+): Promise<void> {
+  const accountId = requireAccount(flags.account, out);
+  const postId = flags.postId ?? "";
+
+  if (flags.preview) {
+    const preview = buildPreviewOutput({ method: "posts.unsave", args: { post_id: postId }, body: {}, account: accountId });
+    out.stdout.write(JSON.stringify(preview) + "\n");
+    return;
+  }
+
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  try {
+    const result = await ns.posts.unsave(postId);
+    renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
   }
@@ -689,6 +790,36 @@ const postUnreactCommand = defineCommand({
   },
 });
 
+const postSavedCommand = defineCommand({
+  meta: { name: "saved", description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars)." },
+  args: { ...GLOBAL_FLAGS },
+  async run({ args }) {
+    await withClient(args as PostFlags, runPostSaved);
+  },
+});
+
+const postSaveCommand = defineCommand({
+  meta: { name: "save", description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Idempotent." },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+  },
+  async run({ args }) {
+    await withClient(args as PostFlags, runPostSave);
+  },
+});
+
+const postUnsaveCommand = defineCommand({
+  meta: { name: "unsave", description: "Remove a post from your saved-posts bookmark list. Idempotent." },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+  },
+  async run({ args }) {
+    await withClient(args as PostFlags, runPostUnsave);
+  },
+});
+
 const postUserPostsCommand = defineCommand({
   meta: { name: "user-posts", description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately." },
   args: {
@@ -720,6 +851,9 @@ export const postCommand = defineCommand({
     reactions: postReactionsCommand,
     delete: postDeleteCommand,
     unreact: postUnreactCommand,
+    saved: postSavedCommand,
+    save: postSaveCommand,
+    unsave: postUnsaveCommand,
     "user-posts": postUserPostsCommand,
     "user-reactions": postUserReactionsCommand,
   },
@@ -732,6 +866,9 @@ export const postCommand = defineCommand({
       "  reactions <post_id>\n" +
       "  delete <post_id>\n" +
       "  unreact <post_id> <reaction>\n" +
+      "  saved\n" +
+      "  save <post_id>\n" +
+      "  unsave <post_id>\n" +
       "  user-posts <user_id>\n" +
       "  user-reactions <user_id>\n" +
       "\nComment operations moved to the `comment` command group.\n",

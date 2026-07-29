@@ -119,13 +119,16 @@ const PARITY_MANIFEST: Record<string, string> = {
   "search services":             "search.services",
   "search service-parameters":   "search.getServiceParameters",
 
-  // posts (9) — `comment list` wraps posts.listComments (the comment group)
+  // posts (12) — `comment list` wraps posts.listComments (the comment group)
   "post get":            "posts.get",
   "post create":         "posts.create",
   "post react":          "posts.react",
   "post reactions":      "posts.listReactions",
   "post delete":         "posts.delete",
   "post unreact":        "posts.unreact",
+  "post saved":          "posts.listSaved",
+  "post save":           "posts.save",
+  "post unsave":         "posts.unsave",
   "post user-posts":     "posts.listUserPosts",
   "post user-reactions": "posts.listUserReactions",
   "comment list":        "posts.listComments",
@@ -207,7 +210,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 124;
+const EXPECTED_MANIFEST_COUNT = 127;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -218,10 +221,6 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * method (checked below) — this is a documented backlog, not a loophole.
  */
 const KNOWN_GAP_METHODS: readonly string[] = [
-  // posts — saved-posts extension
-  "posts.listSaved",
-  "posts.save",
-  "posts.unsave",
   // companies — insights + Beta company-inbox extensions
   // (companies.invitableFollowers, companies.followInvite, and
   // companies.sendMessage are now covered by the manifest above and are NOT
