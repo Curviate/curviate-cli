@@ -10,6 +10,10 @@
  *   profile <id> --followers                     — list followers
  *   profile relations                            — list 1st-degree connections
  *   profile endorse <id> --endorsement-id <id>   — endorse a skill (write; slug/URL auto-resolved to provider id)
+ *   profile subscription                         — read your premium subscription (read)
+ *   profile analytics                            — read your performance headline metrics (read)
+ *   profile visitors                             — list who recently viewed your profile (paginated, read)
+ *   profile ssi                                  — read your Social Selling Index (read)
  *
  * All subcommands are account-scoped. `<id>` passes through resolveIdentifier.
  * Read commands reject --preview (exit 2). Write commands render --preview.
@@ -32,7 +36,7 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { parseSectionsFlag } from "../lib/sections.js";
@@ -581,6 +585,123 @@ async function handleSdkError(
 }
 
 /**
+ * Run `profile subscription` — profile.subscription. Read command — rejects
+ * --preview and --all (zero-arg call, no pagination). A free account is a
+ * valid, non-error result (has_premium:false, plan_title:null).
+ */
+export async function runProfileSubscription(
+  client: Curviate,
+  flags: SubFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  rejectAllOnNonPaginated(flags.all, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  try {
+    const result = await ns.profile.subscription();
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `profile analytics` — profile.analytics. Read command — rejects
+ * --preview and --all (zero-arg call, no pagination). A metric `count` of 0
+ * is a real zero; a per-metric null means that card was unavailable.
+ */
+export async function runProfileAnalytics(
+  client: Curviate,
+  flags: SubFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  rejectAllOnNonPaginated(flags.all, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  try {
+    const result = await ns.profile.analytics();
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `profile visitors [--all] [--limit] [--cursor]` — profile.visitors.
+ * Read command — rejects --preview. Cursor-paginated (unlike subscription/
+ * analytics/ssi, which are single zero-arg reads).
+ */
+export async function runProfileVisitors(
+  client: Curviate,
+  flags: SubFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
+  const cursor = (flags as ProfileFlags).cursor;
+  const params: ListQuery = {};
+  if (limit !== undefined) params.limit = limit;
+  if (cursor) params.cursor = cursor;
+
+  try {
+    if (all) {
+      const fn = (p: ListQuery) => ns.profile.visitors(p);
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+    } else {
+      const result = await ns.profile.visitors(params);
+      renderSuccess(result, outOpts, out);
+    }
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `profile ssi` — profile.ssi. Read command — rejects --preview and
+ * --all (zero-arg call, no pagination). A genuine zero-activity account
+ * returns all scalars null with active_seat:false — a valid 200, not an error.
+ */
+export async function runProfileSsi(
+  client: Curviate,
+  flags: SubFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  rejectAllOnNonPaginated(flags.all, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  try {
+    const result = await ns.profile.ssi();
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
  * Run `profile update` — users.update (own profile only).
  * Write command — supports --preview. Only the provided fields change. The v2
  * op has NO `description` key; `--description` is not defined or forwarded.
@@ -983,6 +1104,38 @@ const profileFollowingCommand = defineCommand({
   },
 });
 
+const profileSubscriptionCommand = defineCommand({
+  meta: { name: "subscription", description: "Read your premium subscription — entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false)." },
+  args: { ...READ_SINGLE_FLAGS },
+  async run({ args }) {
+    await withClient(args as SubFlags, runProfileSubscription);
+  },
+});
+
+const profileAnalyticsCommand = defineCommand({
+  meta: { name: "analytics", description: "Read your performance headline metrics: profile viewers, followers, post impressions, and search appearances (fixed LinkedIn reporting windows, no window selector)." },
+  args: { ...READ_SINGLE_FLAGS },
+  async run({ args }) {
+    await withClient(args as SubFlags, runProfileAnalytics);
+  },
+});
+
+const profileVisitorsCommand = defineCommand({
+  meta: { name: "visitors", description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate — Premium sees more identified viewers)." },
+  args: { ...GLOBAL_FLAGS },
+  async run({ args }) {
+    await withClient(args as SubFlags, runProfileVisitors);
+  },
+});
+
+const profileSsiCommand = defineCommand({
+  meta: { name: "ssi", description: "Read your Social Selling Index: the overall score, its four pillar breakdowns, and industry/network percentile ranks." },
+  args: { ...READ_SINGLE_FLAGS },
+  async run({ args }) {
+    await withClient(args as SubFlags, runProfileSsi);
+  },
+});
+
 export const profileCommand = defineCommand({
   meta: { name: "profile", description: "LinkedIn profile operations." },
   args: {
@@ -1011,6 +1164,10 @@ export const profileCommand = defineCommand({
     unfollow: profileUnfollowCommand,
     followers: profileFollowersCommand,
     following: profileFollowingCommand,
+    subscription: profileSubscriptionCommand,
+    analytics: profileAnalyticsCommand,
+    visitors: profileVisitorsCommand,
+    ssi: profileSsiCommand,
   },
   async run({ args }) {
     const flags = args as ProfileFlags;

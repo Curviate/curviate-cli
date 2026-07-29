@@ -100,6 +100,12 @@ const PARITY_MANIFEST: Record<string, string> = {
   "profile endorse":        "users.endorseSkill",
   "message inmail-balance": "users.getInMailCredits",
 
+  // profile (4) — new account-scoped insight namespace, distinct from `users` above
+  "profile subscription": "profile.subscription",
+  "profile analytics":    "profile.analytics",
+  "profile visitors":     "profile.visitors",
+  "profile ssi":          "profile.ssi",
+
   // invites (6) — mounted under the `connect` noun
   "connect send":     "invites.send",
   "connect sent":     "invites.listSent",
@@ -217,7 +223,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 134;
+const EXPECTED_MANIFEST_COUNT = 138;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -228,11 +234,6 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * method (checked below) — this is a documented backlog, not a loophole.
  */
 const KNOWN_GAP_METHODS: readonly string[] = [
-  // profile — new account-scoped insight namespace (no CLI command yet)
-  "profile.subscription",
-  "profile.analytics",
-  "profile.visitors",
-  "profile.ssi",
   // groups — new account-scoped namespace (no CLI command yet)
   "groups.list",
   "groups.get",
