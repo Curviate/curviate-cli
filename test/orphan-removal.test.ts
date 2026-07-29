@@ -31,11 +31,10 @@ describe("orphan commands are removed from their group", () => {
     expect(subs).toHaveProperty("connect-session");
   });
 
-  it("company no longer registers followers", async () => {
-    const subs = await subCommandsOf("../src/commands/company.js", "companyCommand");
-    expect(subs).not.toHaveProperty("followers");
-    expect(subs).toHaveProperty("employees");
-  });
+  // `company followers` was removed in the v2 migration (see below) and
+  // re-added once the SDK shipped a new v2 companies.followers method (#521,
+  // SDK-parity gap closure) — see test/commands/company.test.ts for its
+  // current coverage.
 
   it("inbox no longer registers sync / sync-chat (mark-read kept)", async () => {
     const subs = await subCommandsOf("../src/commands/inbox.js", "inboxCommand");

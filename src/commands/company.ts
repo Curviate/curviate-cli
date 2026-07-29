@@ -9,10 +9,21 @@
  *   company invitable-followers <id> [--limit] [--cursor]  — list invitable connections (facade)
  *   company follow-invite <id> --invitee <AC…> [...]       — invite connections to follow (write)
  *   company reply <id> <chat_id> "<text>" [--attach]        — reply as the page (write)
+ *   company managed                                         — list pages the account administers (read)
+ *   company followers <id>                                  — list a page's followers (read)
+ *   company chats <id>                                      — list a page's admin-inbox conversations (read, Beta)
+ *   company chat <id> <chat_id>                              — get one admin-inbox conversation (read, Beta)
+ *   company messages <id> <chat_id>                          — list a conversation's messages (read, Beta)
+ *   company message <id> <chat_id> <message_id>              — get one message (read, Beta)
+ *   company search-chats <id> [<query>] [--topic] [--unread] — search/filter the admin inbox (read, Beta)
  *
  * All but `follow-invite`/`reply` are read commands: --preview is a usage
  * error (exit 2). `follow-invite` and `reply` are writes: --preview renders
  * the resolved request without sending.
+ *
+ * `company message` (GET one message) is distinct from `company reply`
+ * (POST a reply, via companies.sendMessage) — the SDK has two separate
+ * company-inbox methods with adjacent names; do not confuse them.
  *
  * `reply` sends into an existing company-inbox conversation AS THE PAGE.
  * `<chat_id>` is the normal `2-…` conversation id from `company chats`. It
@@ -85,8 +96,13 @@ type CompanyFlags = {
   location?: string;
   invitee?: string | string[];
   chatId?: string;
+  messageId?: string;
   text?: string;
   attach?: string | string[];
+  // company search-chats
+  query?: string;
+  topic?: string;
+  unread?: boolean;
 };
 
 type OutputStreams = {
@@ -440,6 +456,293 @@ export async function runCompanyFollowInvite(
 }
 
 /**
+ * Run `company managed [--limit] [--cursor] [--all]`.
+ * A facade over the company pages the connected account administers — the
+ * seed read for `company followers`/`chats`/`follow-invite`/etc. Unlike the
+ * other company sub-resources this takes no `<id>` — there is no company
+ * identifier to resolve.
+ */
+export async function runCompanyManaged(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  const params: Record<string, unknown> = {};
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) params["cursor"] = flags.cursor;
+
+  try {
+    if (flags.all) {
+      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const fn = (p: Record<string, unknown>) =>
+        ns.companies.managed(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+      return;
+    }
+    const result = await ns.companies.managed(params);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company followers <id> [--limit] [--cursor] [--all]`.
+ * The account must administer the page (see `company managed`). `<id>`
+ * accepts a URL/slug/numeric id, resolved to the numeric provider_id the
+ * same way as the other company sub-resources.
+ */
+export async function runCompanyFollowers(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  const params: Record<string, unknown> = {};
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) params["cursor"] = flags.cursor;
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    if (flags.all) {
+      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const fn = (p: Record<string, unknown>) =>
+        ns.companies.followers(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+      return;
+    }
+    const result = await ns.companies.followers(identifier, params);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company chats <id> [--limit] [--cursor] [--all]`.
+ * List the conversations in a company page's admin message inbox,
+ * newest-activity-first. The account must administer the page. Beta —
+ * deep pagination against a busier inbox is still being validated.
+ */
+export async function runCompanyChats(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  const params: Record<string, unknown> = {};
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) params["cursor"] = flags.cursor;
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    if (flags.all) {
+      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const fn = (p: Record<string, unknown>) =>
+        ns.companies.chats(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+      return;
+    }
+    const result = await ns.companies.chats(identifier, params);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company chat <id> <chat_id>`.
+ * Retrieve one conversation from a company page's admin inbox. Read
+ * command — rejects --preview and --all. `<chat_id>` is the normal `2-…`
+ * conversation id from `company chats`, passed through verbatim.
+ */
+export async function runCompanyChat(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  if (flags.all) {
+    out.stderr.write("error: --all is not supported on non-paginated commands.\n");
+    process.exit(2);
+  }
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const chatId = flags.chatId ?? "";
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    const result = await ns.companies.chat(identifier, chatId);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company messages <id> <chat_id> [--limit] [--cursor] [--all]`.
+ * List a company-inbox conversation's messages, newest first. The account
+ * must administer the page. `<chat_id>` passes through verbatim.
+ */
+export async function runCompanyMessages(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const chatId = flags.chatId ?? "";
+
+  const params: Record<string, unknown> = {};
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) params["cursor"] = flags.cursor;
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    if (flags.all) {
+      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const fn = (p: Record<string, unknown>) =>
+        ns.companies.messages(identifier, chatId, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+      return;
+    }
+    const result = await ns.companies.messages(identifier, chatId, params);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company message <id> <chat_id> <message_id>`.
+ * Retrieve one message from a company-inbox conversation. Read command —
+ * rejects --preview and --all.
+ *
+ * NOTE (SDK-signature-wins deviation from cli/009's proposed grammar):
+ * `companies.message` is a single-message READ (GET one message by id), not
+ * a write. The company-inbox SEND op is `companies.sendMessage`, already
+ * covered by `company reply` (a pre-existing command) — this command is a
+ * distinct, additional method the spec's proposed table mis-described as a
+ * write named the same as the read.
+ */
+export async function runCompanyMessage(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+  if (flags.all) {
+    out.stderr.write("error: --all is not supported on non-paginated commands.\n");
+    process.exit(2);
+  }
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+  const chatId = flags.chatId ?? "";
+  const messageId = flags.messageId ?? "";
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    const result = await ns.companies.message(identifier, chatId, messageId);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
+ * Run `company search-chats <id> [<query>] [--topic <t>] [--unread] [--limit] [--cursor] [--all]`.
+ * Search or filter a company page's admin inbox. Exactly one mode per call:
+ * free-text `<query>`, a `--topic` card, or `--unread`-only — mutually
+ * exclusive, enforced server-side. The account must administer the page.
+ */
+export async function runCompanySearchChats(
+  client: Curviate,
+  flags: CompanyFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const accountId = requireAccount(flags.account, out);
+  const ns = client.account(accountId);
+  const outOpts = resolveOutputOpts(flags);
+
+  const params: Record<string, unknown> = {};
+  if (flags.query) params["query"] = flags.query;
+  if (flags.topic) params["topic"] = flags.topic;
+  if (flags.unread !== undefined) params["unread"] = flags.unread;
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  if (flags.cursor) params["cursor"] = flags.cursor;
+
+  try {
+    const identifier = await resolveCompanyId(ns, flags.id ?? "");
+    if (flags.all) {
+      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const fn = (p: Record<string, unknown>) =>
+        ns.companies.searchChats(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        out.stdout.write(JSON.stringify(item) + "\n");
+      }
+      return;
+    }
+    const result = await ns.companies.searchChats(identifier, params);
+    renderSuccess(result, outOpts, out);
+  } catch (err: unknown) {
+    await handleSdkError(err, outOpts, out);
+  }
+}
+
+/**
  * Run `company reply <id> <chat_id> "<text>" [--attach <file>…]`.
  * Write command, supports --preview. Replies to an existing company-inbox
  * conversation AS THE PAGE, via `companies.sendMessage`.
@@ -671,6 +974,203 @@ const companyFollowInviteCommand = defineCommand({
   },
 });
 
+const companyManagedCommand = defineCommand({
+  meta: { name: "managed", description: "List the company pages the connected account administers. An empty result is valid — the account administers no pages." },
+  args: { ...GLOBAL_FLAGS },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyManaged(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companyFollowersCommand = defineCommand({
+  meta: { name: "followers", description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`)." },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyFollowers(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companyChatsCommand = defineCommand({
+  meta: {
+    name: "chats",
+    description:
+      "List the conversations in a company page's admin message inbox, newest-activity-first. Admin-gated. Beta.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyChats(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companyChatCommand = defineCommand({
+  meta: {
+    name: "chat",
+    description: "Retrieve one conversation from a company page's admin inbox. Admin-gated. Beta.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyChat(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companyMessagesCommand = defineCommand({
+  meta: {
+    name: "messages",
+    description: "List a company-inbox conversation's messages, newest first. Admin-gated.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyMessages(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companyMessageCommand = defineCommand({
+  meta: {
+    name: "message",
+    description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+    messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanyMessage(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
+const companySearchChatsCommand = defineCommand({
+  meta: {
+    name: "search-chats",
+    description:
+      "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
+      "or --unread — mutually exclusive, enforced server-side. Admin-gated.",
+  },
+  args: {
+    ...GLOBAL_FLAGS,
+    id: { type: "positional", description: "Company identifier (URL, slug, or numeric id) — a slug/URL is resolved to the numeric id first." },
+    query: { type: "positional", required: false, description: "Free-text term — matches participant names and message content." },
+    topic: { type: "string", description: "Filter mode — one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other)." },
+    unread: { type: "boolean", description: "Filter mode — unread conversations only." },
+  },
+  async run({ args }) {
+    const flags = args as CompanyFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      account: flags.account,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runCompanySearchChats(client, { ...flags, account: flags.account ?? cfg.account }, out);
+  },
+});
+
 const companyReplyCommand = defineCommand({
   meta: {
     name: "reply",
@@ -723,6 +1223,13 @@ export const companyCommand = defineCommand({
     "invitable-followers": companyInvitableFollowersCommand,
     "follow-invite": companyFollowInviteCommand,
     reply: companyReplyCommand,
+    managed: companyManagedCommand,
+    followers: companyFollowersCommand,
+    chats: companyChatsCommand,
+    chat: companyChatCommand,
+    messages: companyMessagesCommand,
+    message: companyMessageCommand,
+    "search-chats": companySearchChatsCommand,
   },
   async run({ args }) {
     const flags = args as CompanyFlags;

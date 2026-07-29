@@ -27,7 +27,6 @@ import { inboxCommand } from "../src/commands/inbox.js";
 import { webhookCommand } from "../src/commands/webhook.js";
 import { recruiterCommand } from "../src/commands/recruiter.js";
 import { salesNavCommand } from "../src/commands/sales-nav.js";
-import { companyCommand } from "../src/commands/company.js";
 
 const asCmd = (c: unknown): CommandDef => c as CommandDef;
 
@@ -56,7 +55,6 @@ describe("successorHint — the removed/renamed map", () => {
     ["recruiter", "project-jobs", "recruiter project-job"],
     ["sales-nav", "sync", "sync"],
     ["webhook", "state-diff", "state-diff"],
-    ["company", "followers", "followers"],
   ];
 
   it.each(cases)("%s %s → hint mentions %s", (group, token, expected) => {
@@ -110,8 +108,6 @@ describe("resolveLeaf — removed command under a BARE-POSITIONAL group hints in
     ["connect respond", asCmd(connectCommand), ["respond"], "connect accept"],
     ["connect respond --decline x", asCmd(connectCommand), ["respond", "--decline", "x"], "connect decline"],
     ["profile connections", asCmd(profileCommand), ["connections"], "profile relations"],
-    ["company followers", asCmd(companyCommand), ["followers"], "followers"],
-    ["company followers 123", asCmd(companyCommand), ["followers", "123"], "followers"],
   ];
 
   it.each(cases)("%s → exit 2, stderr carries the hint (not a bare-id swallow)", async (_label, tree, rawArgs, expected) => {

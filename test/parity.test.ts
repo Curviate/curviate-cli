@@ -184,7 +184,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "job applicant get":    "jobs.getApplicant",
   "job applicant resume": "jobs.downloadResume",
 
-  // companies (7)
+  // companies (14)
   "company get":                 "companies.get",
   "company employees":           "companies.employees",
   "company posts":               "companies.posts",
@@ -192,6 +192,13 @@ const PARITY_MANIFEST: Record<string, string> = {
   "company invitable-followers": "companies.invitableFollowers",
   "company follow-invite":       "companies.followInvite",
   "company reply":               "companies.sendMessage",
+  "company managed":             "companies.managed",
+  "company followers":           "companies.followers",
+  "company chats":               "companies.chats",
+  "company chat":                "companies.chat",
+  "company messages":            "companies.messages",
+  "company message":             "companies.message",
+  "company search-chats":        "companies.searchChats",
 
   // inboxes (2) — Beta inbox-discovery namespace
   "inboxes list":  "inboxes.list",
@@ -210,7 +217,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 127;
+const EXPECTED_MANIFEST_COUNT = 134;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
 const EXPECTED_SDK_METHOD_COUNT = 145;
@@ -221,17 +228,6 @@ const EXPECTED_SDK_METHOD_COUNT = 145;
  * method (checked below) — this is a documented backlog, not a loophole.
  */
 const KNOWN_GAP_METHODS: readonly string[] = [
-  // companies — insights + Beta company-inbox extensions
-  // (companies.invitableFollowers, companies.followInvite, and
-  // companies.sendMessage are now covered by the manifest above and are NOT
-  // listed here.)
-  "companies.managed",
-  "companies.followers",
-  "companies.chats",
-  "companies.chat",
-  "companies.messages",
-  "companies.message",
-  "companies.searchChats",
   // profile — new account-scoped insight namespace (no CLI command yet)
   "profile.subscription",
   "profile.analytics",
