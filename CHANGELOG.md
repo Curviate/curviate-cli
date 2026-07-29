@@ -8,6 +8,34 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-07-29
+
+A minor release closing the remaining SDK-parity gap: 25 new commands across seven
+existing command groups plus three brand-new command groups. No breaking changes,
+built against `@curviate/sdk` 0.18.1 (unchanged; every new command was already
+covered by the published SDK, so no SDK bump was required).
+
+### Added
+
+- **`inbox search`** — search chats via `messaging.searchChats`.
+- **`search groups`, `search services`, `search service-parameters`** — new search
+  surfaces for groups, services, and service search parameters.
+- **`post saved`, `post save`, `post unsave`** — list, save, and unsave posts.
+- **`company managed`, `company followers`, `company chats`, `company chat`,
+  `company messages`, `company message`, `company search-chats`** — company-inbox
+  and managed-company read/write surface.
+- **`profile subscription`, `profile analytics`, `profile visitors`, `profile ssi`**
+  — account-scoped profile insight subcommands (subscription status, post/profile
+  analytics, visitor list, Social Selling Index).
+- **`group` command group** — new top-level group closing the LinkedIn Groups gap.
+- **`feed`, `feed home`** — new command group to read the connected account's
+  LinkedIn home feed as agent-actionable posts.
+- **`notification`, `notification list`, `notification delete`,
+  `notification show-less`** — new command group to read and act on LinkedIn
+  notification cards.
+
+Parity with the SDK surface is now 145/0 (no known gaps).
+
 ## [0.18.1] - 2026-07-18
 
 A patch aligning `company reply` with the company-inbox chat-id cutover. No breaking changes, built against `@curviate/sdk` 0.18.1.
