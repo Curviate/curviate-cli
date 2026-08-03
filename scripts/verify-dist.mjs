@@ -158,41 +158,118 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
 }
 
 // ---------------------------------------------------------------------------
-// 5. webhook verify — valid header: exits 0, prints event JSON
+// 5. webhook verify — every documented --body form verifies a REAL delivery.
 //
-// Body must be a valid CurviateEvent JSON with a "type" field.
-// Write to a temp file because readFileSync("/dev/stdin") does not interop
-// with spawnSync's `input` option on all platforms.
+// The payload is a capture, not a hand-written body: the exact POST bytes and
+// the exact signature header the platform's dispatch worker put on the wire.
+// The header is replayed verbatim and never re-signed, so the replay window is
+// widened instead — the same thing a customer does to verify a delivery they
+// captured earlier.
+//
+// All three forms are gated here because all three were broken at once while
+// only the file form was ever exercised: inline JSON and `-` were both handed
+// to readFileSync as filenames.
 // ---------------------------------------------------------------------------
 {
-  const secret = "curviate_verify_dist_gate_secret";
-  const eventBody = JSON.stringify({
-    type: "message.received",
-    data: { account_id: "acc_1", message_id: "msg_1" },
-    id: "evt_1",
-  });
-  const header = buildSignatureHeader(secret, eventBody);
+  const capture = JSON.parse(
+    readFileSync(resolve(pkgRoot, "test", "fixtures", "webhook-delivery.capture.json"), "utf8")
+  );
+  const WIDE_WINDOW = "999999999";
 
-  withTempFile(eventBody, (tmpFile) => {
-    const result = run([
-      "webhook", "verify",
-      "--secret", secret,
-      "--header", header,
-      "--body", tmpFile,
-    ]);
+  const assertVerified = (result, label) => {
     assert(
       result.status === 0,
-      `webhook verify (valid) exits 0 (got ${result.status}; stderr: ${result.stderr.slice(0, 200)})`
+      `webhook verify (${label}) exits 0 (got ${result.status}; stderr: ${result.stderr.slice(0, 200)})`
     );
-    const out = result.stdout + result.stderr;
-    assert(out.trim().length > 0, "webhook verify (valid) produces output");
-    // Parsed event should appear in stdout
     assert(
-      result.stdout.includes("message.received"),
-      `webhook verify (valid) stdout should contain the event type (got: ${result.stdout.slice(0, 200)})`
+      result.stdout.includes(capture.eventName),
+      `webhook verify (${label}) prints the parsed event (got: ${result.stdout.slice(0, 200)})`
     );
-    assertLeakFree(out, "webhook verify (valid)");
+    assert(
+      !(result.stdout + result.stderr).includes(capture.secret),
+      `webhook verify (${label}) never echoes the signing secret`
+    );
+    assertLeakFree(result.stdout + result.stderr, `webhook verify (${label})`);
+  };
+
+  // Form 1: inline JSON on the command line.
+  assertVerified(
+    run([
+      "webhook", "verify",
+      "--secret", capture.secret,
+      "--header", capture.signatureHeader,
+      "--body", capture.rawBody,
+      "--max-age-secs", WIDE_WINDOW,
+    ]),
+    "inline JSON"
+  );
+
+  // Form 2: a path to a file holding the raw body.
+  withTempFile(capture.rawBody, (tmpFile) => {
+    assertVerified(
+      run([
+        "webhook", "verify",
+        "--secret", capture.secret,
+        "--header", capture.signatureHeader,
+        "--body", tmpFile,
+        "--max-age-secs", WIDE_WINDOW,
+      ]),
+      "file path"
+    );
   });
+
+  // Form 3: the raw body piped on stdin.
+  assertVerified(
+    run(
+      [
+        "webhook", "verify",
+        "--secret", capture.secret,
+        "--header", capture.signatureHeader,
+        "--body", "-",
+        "--max-age-secs", WIDE_WINDOW,
+      ],
+      { input: capture.rawBody }
+    ),
+    "stdin"
+  );
+
+  // A tampered body must still be rejected: accepting more input forms must not
+  // soften what a passing verdict means.
+  {
+    const tampered = capture.rawBody.replace("acc_capture", "acc_attacker");
+    assert(tampered !== capture.rawBody, "tamper control actually modified the body");
+    const result = run([
+      "webhook", "verify",
+      "--secret", capture.secret,
+      "--header", capture.signatureHeader,
+      "--body", tampered,
+      "--max-age-secs", WIDE_WINDOW,
+    ]);
+    assert(
+      result.status === 2 && result.stdout.includes("invalid_signature"),
+      `webhook verify (tampered inline body) exits 2 with invalid_signature (got ${result.status}: ${result.stdout.slice(0, 200)})`
+    );
+  }
+
+  // Unusable input is a usage error (2), never an internal failure (1) and never
+  // a signature verdict — a bogus verdict is what sends someone off rotating a
+  // secret that was never wrong.
+  {
+    const result = run([
+      "webhook", "verify",
+      "--secret", capture.secret,
+      "--header", capture.signatureHeader,
+      "--body", join(tmpdir(), "curviate-verify-dist-no-such-file.json"),
+    ]);
+    assert(
+      result.status === 2,
+      `webhook verify (unreadable --body path) exits 2 (got ${result.status})`
+    );
+    assert(
+      !result.stdout.includes("WebhookSignatureError"),
+      "webhook verify (unreadable --body path) does not report a signature verdict"
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +354,54 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
     assert(result.status === 0, `${args.join(" ")} exits 0 (got ${result.status})`);
     assert(helpText.length > 0, `${args.join(" ")} produces output`);
     assertLeakFree(helpText, args.join(" "));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 10. Rendered help says what the platform actually does.
+//
+// Asserted here rather than in vitest: citty renders help through consola,
+// which writes nothing when the process is spawned from a vitest worker. This
+// script runs outside vitest, so it reads the real rendered help of the built
+// binary — the exact text a customer sees.
+// ---------------------------------------------------------------------------
+{
+  const result = run(["webhook", "verify", "--help"]);
+  const helpText = result.stdout + result.stderr;
+
+  assert(
+    helpText.includes("Curviate-Signature") && !/X-Curviate-Signature/i.test(helpText),
+    "webhook verify --help names the signature header the platform sends, unprefixed"
+  );
+  assert(
+    /inline JSON/i.test(helpText) && /stdin/i.test(helpText) && /file/i.test(helpText),
+    "webhook verify --help documents all three accepted --body forms"
+  );
+
+  // No em dash in customer-facing copy.
+  assert(
+    !helpText.includes("—"),
+    "webhook verify --help contains no em dash"
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 11. No em dash anywhere the binary prints.
+// ---------------------------------------------------------------------------
+{
+  const surfaces = [
+    ["--help"],
+    ["webhook", "--help"],
+    ["message", "--help"],
+    ["account", "--help"],
+    ["connect", "--help"],
+  ];
+  for (const args of surfaces) {
+    const result = run(args);
+    assert(
+      !(result.stdout + result.stderr).includes("—"),
+      `${args.join(" ")} output contains no em dash`
+    );
   }
 }
 

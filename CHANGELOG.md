@@ -45,6 +45,24 @@ mistyped command sent a message, and it is the first release in which
   0.19.0 dependency bump. A body that verifies but cannot be parsed now reports
   `malformed_payload`.
 
+- **`webhook verify --body` accepts the raw body inline, as a file path, or on
+  stdin.** Every documented invocation failed before this: the flag value was
+  handed straight to the filesystem, so inline JSON was opened as a filename
+  (`ENOENT`/`ENAMETOOLONG`), and `--body -` opened the internal placeholder the
+  argument parser substitutes for a bare dash. Only a file path ever worked, and
+  the failure surfaced as exit `1` with a raw filesystem error rather than a
+  usage error. A body is now recognised by its leading `{`, `-` reads stdin on
+  every platform, and anything unreadable exits `2` naming all three accepted
+  forms. A trailing newline added by a shell redirect, `curl -o`, or an editor
+  save is ignored; newlines inside the body are preserved.
+
+- **`webhook verify --help` named the wrong signature header.** It said
+  `X-Curviate-Signature`; the platform sends `Curviate-Signature`, so a reader
+  who copied the name read for a header that is never present. The same help
+  also claimed `--header` falls back to stdin, which it never did. Both flags
+  are now marked required, so omitting one is a usage error instead of a
+  signature failure that points at a secret which was never wrong.
+
 - **`group list` help said `--profile`; the flag is `--target`.** `--profile` is
   the global config-profile selector, so following the help text selected a
   config profile and silently returned your own groups instead of the target
@@ -74,6 +92,16 @@ mistyped command sent a message, and it is the first release in which
   - a help-vs-args check that fails when any command's help text names a flag
     that command does not declare (resolving cross-references, so a reference
     to another command's flag is checked against that command).
+
+- Two further mechanical guards, in the same spirit:
+  - an em-dash check that walks the TypeScript syntax tree, so it inspects
+    string and template literals only and leaves comments exempt structurally
+    rather than by a fragile line-based heuristic, and
+  - a pre-publish binary gate that runs every documented `webhook verify --body`
+    form against a recorded delivery: the exact body bytes and the exact
+    signature header the platform put on the wire, replayed verbatim and never
+    re-signed. Tampering with a single field is still rejected, so the gate
+    proves the verdict as well as the plumbing.
 
 ## [0.19.0] - 2026-07-29
 
