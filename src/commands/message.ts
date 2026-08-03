@@ -30,6 +30,7 @@
 
 import { defineCommand } from "citty";
 import { WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -936,6 +937,74 @@ const messageInMailBalanceCommand = defineCommand({
   },
 });
 
+/**
+ * The subcommands `message` registers. Kept as a literal so the bare-form guard
+ * and the usage block can both name them, and so a new subcommand cannot be
+ * added to the tree without appearing in the diagnostic.
+ */
+const MESSAGE_SUBCOMMANDS = [
+  "new",
+  "send",
+  "get",
+  "edit",
+  "delete",
+  "react",
+  "attachment",
+  "inmail",
+  "inmail-balance",
+] as const;
+
+const MESSAGE_USAGE =
+  "Usage: curviate message new --to <attendee> \"<text>\" [--attach <file>…]\n" +
+  "       curviate message send <chat_id> \"<text>\" [--attach <file>…]\n" +
+  "       curviate message <chat_id> \"<text>\" [--attach <file>…]\n" +
+  "       curviate message get <chat_id> <message_id>\n" +
+  "       curviate message edit <chat_id> <message_id> \"<text>\"\n" +
+  "       curviate message delete <chat_id> <message_id>\n" +
+  "       curviate message react <chat_id> <message_id> <emoji>\n" +
+  "       curviate message attachment <chat_id> <message_id> <attachment_id> [-o <file>]\n" +
+  "       curviate message inmail --to <id> --subject <s> \"<text>\"\n" +
+  "       curviate message inmail-balance\n";
+
+/**
+ * Refuse to treat a command-shaped first positional as a chat id.
+ *
+ * The bare form `message <chat_id> "<text>"` SENDS. Without this check, any
+ * unregistered subcommand fell through to it: `message search "sophie"` bound
+ * `chatId="search"`, `text="sophie"` and sent. A chat id is always `2-<base64>`,
+ * `COMPANY_<n>_<suffix>`, or a thread URL, never a lowercase word, so a
+ * command-shaped token here is a mistake every time.
+ *
+ * Runs BEFORE any config resolution or client construction, so a rejected
+ * invocation cannot make a network call at all.
+ *
+ * Exported for direct unit coverage.
+ */
+export function guardBareMessageForm(
+  chatId: string,
+  out: OutputStreams,
+): void {
+  if (!looksLikeCommandWord(chatId)) return;
+
+  const suggestion = nearestSubcommand(chatId, [...MESSAGE_SUBCOMMANDS]);
+  out.stderr.write(
+    `error: \`${chatId}\` is not a curviate message subcommand, and it is not a chat id ` +
+      `(a chat id looks like 2-… or COMPANY_…, or a linkedin.com/messaging/thread/… URL).\n`,
+  );
+  if (suggestion) {
+    out.stderr.write(`hint: did you mean \`curviate message ${suggestion}\`?\n`);
+  } else if (chatId === "search") {
+    out.stderr.write("hint: to search your messages, use `curviate inbox search`.\n");
+  }
+  out.stderr.write(
+    `hint: to send to a chat id this check does not recognise, name the action explicitly: ` +
+      `curviate message send <chat_id> "<text>".\n`,
+  );
+  out.stderr.write(MESSAGE_USAGE);
+  // Refusing is the point: nothing was sent.
+  process.exit(2);
+}
+
 export const messageCommand = defineCommand({
   meta: {
     name: "message",
@@ -967,25 +1036,21 @@ export const messageCommand = defineCommand({
   },
   async run({ args }) {
     const flags = args as MessageFlags;
+    const out = buildOutputStreams();
 
     if (!flags.chatId) {
-      process.stderr.write(
-        "Usage: curviate message new --to <attendee> \"<text>\" [--attach <file>…]\n" +
-        "       curviate message <chat_id> \"<text>\" [--attach <file>…]\n" +
-        "       curviate message get <chat_id> <message_id>\n" +
-        "       curviate message edit <chat_id> <message_id> \"<text>\"\n" +
-        "       curviate message delete <chat_id> <message_id>\n" +
-        "       curviate message react <chat_id> <message_id> <emoji>\n" +
-        "       curviate message attachment <chat_id> <message_id> <attachment_id> [-o <file>]\n" +
-        "       curviate message inmail --to <id> --subject <s> \"<text>\"\n" +
-        "       curviate message inmail-balance\n",
-      );
+      out.stderr.write(MESSAGE_USAGE);
       // <chat_id> is functionally required for the bare form — a missing
       // required positional is a usage error (exit 2), not a silent success.
       // `required: false` on the citty arg def exists only so this richer
       // usage block can run instead of citty's generic one-liner.
       process.exit(2);
     }
+
+    // An unknown subcommand must never become a send. Checked against the
+    // NORMALIZED id so a thread URL is judged on the chat id it carries, and
+    // before any client exists so a refusal cannot make a network call.
+    guardBareMessageForm(normalizeChatId(flags.chatId), out);
 
     const cfg = await resolveEffectiveConfig({
       apiKey: flags["api-key"],
@@ -995,11 +1060,10 @@ export const messageCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      out.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
-    const out = buildOutputStreams();
     await runMessageSend(client, { ...flags, account: flags.account ?? cfg.account }, out);
   },
 });

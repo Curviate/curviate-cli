@@ -22,6 +22,7 @@
 
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
+import { nearestSubcommand } from "../lib/bare-form-guard.js";
 import { slimInviteSent, slimInviteReceived, slimInviteSentItem, slimInviteReceivedItem } from "../lib/slim.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -514,6 +515,50 @@ const connectCancelCommand = defineCommand({
   },
 });
 
+/** The subcommands `connect` registers, named once for the guard and the usage block. */
+const CONNECT_SUBCOMMANDS = ["sent", "received", "accept", "decline", "cancel"] as const;
+
+const CONNECT_USAGE =
+  "Usage: curviate connect <id> [--note <text>]\n" +
+  "       curviate connect sent\n" +
+  "       curviate connect received\n" +
+  "       curviate connect accept <invitation_id>\n" +
+  "       curviate connect decline <invitation_id>\n" +
+  "       curviate connect cancel <invitation_id>\n";
+
+/**
+ * Refuse a bare `<id>` that is almost certainly a mistyped subcommand.
+ *
+ * The bare form `connect <id>` SENDS a connection invitation, so a token meant
+ * as `sent` but typed `snet` would invite whoever owns the slug `snet`. Unlike
+ * `message`, a shape test is not available here: a LinkedIn public slug is a
+ * lowercase word, indistinguishable from a command name, so the test is
+ * proximity to this group's own subcommand names instead.
+ *
+ * A URL, provider id, or URN is never a near-miss of a subcommand, so those
+ * always pass; and the full profile URL is the escape hatch if a real slug ever
+ * does land near one. Refusing costs a retype, sending costs an unwanted
+ * connection request to a stranger.
+ *
+ * Exported for direct unit coverage.
+ */
+export function guardBareConnectForm(id: string, out: OutputStreams): void {
+  const suggestion = nearestSubcommand(id, [...CONNECT_SUBCOMMANDS]);
+  if (suggestion === null) return;
+
+  out.stderr.write(
+    `error: \`${id}\` looks like a mistyped \`${suggestion}\` subcommand, and \`curviate connect <id>\` ` +
+      `SENDS a connection invitation, so this is refused rather than guessed.\n`,
+  );
+  out.stderr.write(`hint: did you mean \`curviate connect ${suggestion}\`?\n`);
+  out.stderr.write(
+    `hint: if \`${id}\` really is the profile you meant, pass the full profile URL ` +
+      `(https://www.linkedin.com/in/${id}) or the provider id instead.\n`,
+  );
+  out.stderr.write(CONNECT_USAGE);
+  process.exit(2);
+}
+
 export const connectCommand = defineCommand({
   meta: {
     name: "connect",
@@ -548,14 +593,7 @@ export const connectCommand = defineCommand({
     const flags = args as ConnectFlags;
 
     if (!flags.id) {
-      process.stderr.write(
-        "Usage: curviate connect <id> [--note <text>]\n" +
-        "       curviate connect sent\n" +
-        "       curviate connect received\n" +
-        "       curviate connect accept <invitation_id>\n" +
-        "       curviate connect decline <invitation_id>\n" +
-        "       curviate connect cancel <invitation_id>\n",
-      );
+      process.stderr.write(CONNECT_USAGE);
       // <id> is functionally required for the bare form (there is no valid
       // "connect to nothing" action) — a missing required positional is a
       // usage error, not a silent success. `required: false` on the citty
@@ -563,6 +601,10 @@ export const connectCommand = defineCommand({
       // of citty's generic one-liner; it does not make the id optional.
       process.exit(2);
     }
+
+    // A mistyped subcommand must never send an invitation. Runs before any
+    // client exists, so a refusal cannot make a network call.
+    guardBareConnectForm(flags.id, buildOutputStreams());
 
     const cfg = await resolveEffectiveConfig({
       apiKey: flags["api-key"],
