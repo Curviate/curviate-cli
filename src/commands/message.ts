@@ -467,7 +467,7 @@ export async function runMessageReact(
   // positional is optional to allow the flag alias) — a missing value is a
   // usage error, not a silent empty-body reaction.
   if (!reaction) {
-    out.stderr.write("error: a reaction is required — pass it as `message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
+    out.stderr.write("error: a reaction is required. Pass it as `message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
     process.exit(2);
     return;
   }
@@ -671,7 +671,7 @@ const messageNewCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -698,7 +698,7 @@ const messageGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -726,7 +726,7 @@ const messageEditCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -753,7 +753,7 @@ const messageDeleteCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -786,7 +786,7 @@ const messageReactCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -815,7 +815,7 @@ const messageAttachmentCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -853,7 +853,7 @@ const messageInMailCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -903,7 +903,7 @@ const messageSendCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -928,7 +928,7 @@ const messageInMailBalanceCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

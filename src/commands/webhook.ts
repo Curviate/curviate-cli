@@ -387,7 +387,7 @@ export async function runWebhookVerify(
         },
       };
       out.stdout.write(JSON.stringify(envelope) + "\n");
-      out.stderr.write(`error: webhook verification failed — ${err.reason}: ${err.message}\n`);
+      out.stderr.write(`error: webhook verification failed, ${err.reason}: ${err.message}\n`);
       process.exit(2);
     }
     // Unexpected error
@@ -422,7 +422,7 @@ const webhookCreateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -443,7 +443,7 @@ const webhookListCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -464,7 +464,7 @@ const webhookEventsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -488,7 +488,7 @@ const webhookGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -519,7 +519,7 @@ const webhookUpdateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -543,7 +543,7 @@ const webhookDeleteCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

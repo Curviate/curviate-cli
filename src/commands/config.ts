@@ -189,7 +189,7 @@ export const configCommand = defineCommand({
           );
           if (url === undefined || url === "") {
             process.stderr.write(
-              `Cleared baseUrl on profile "${profileName}" — using API default.\n`,
+              `Cleared baseUrl on profile "${profileName}", using the API default.\n`,
             );
           } else {
             process.stderr.write(

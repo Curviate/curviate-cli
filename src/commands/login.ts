@@ -117,7 +117,7 @@ export const loginCommand = defineCommand({
         apiKey = await promptMasked("Enter your API key: ");
       } else {
         process.stderr.write(
-          "error: no API key — pass --api-key or run interactively on a TTY.\n",
+          "error: no API key, pass --api-key or run interactively on a TTY.\n",
         );
         process.exit(2);
         return;

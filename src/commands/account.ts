@@ -336,7 +336,7 @@ async function buildAuthBody(
       // of --email — an email-less body still fails downstream validation,
       // as expected, rather than the flag being silently ignored.
       allowInteractiveStdinRead: !ctx.previewMode,
-      failMessage: "no password — pass --password, --password-stdin, or set CURVIATE_LINKEDIN_PASSWORD",
+      failMessage: "no password. Pass --password, --password-stdin, or set CURVIATE_LINKEDIN_PASSWORD",
       prompt: { isTTY: ctx.isTTY, readline: ctx.readline, promptText: "LinkedIn password: " },
       out: ctx.out,
     });
@@ -360,7 +360,7 @@ async function buildAuthBody(
       readSingleLine: ctx.readSingleLine,
       required: true,
       allowInteractive: !ctx.previewMode,
-      failMessage: "no li_at — pass --li-at, --li-at-stdin, or set CURVIATE_LINKEDIN_LI_AT",
+      failMessage: "no li_at. Pass --li-at, --li-at-stdin, or set CURVIATE_LINKEDIN_LI_AT",
       out: ctx.out,
     });
     const liA = await resolveSecret({
@@ -467,8 +467,8 @@ function printInvalidCodeRetryHint(err: unknown, out: OutputStreams): void {
   const attemptsRemaining = (err as { attempts_remaining?: unknown }).attempts_remaining;
   const message =
     typeof attemptsRemaining === "number"
-      ? `That code was not accepted — ${attemptsRemaining} attempt(s) remaining.`
-      : "That code was not accepted — please try again.";
+      ? `That code was not accepted. ${attemptsRemaining} attempt(s) remaining.`
+      : "That code was not accepted. Please try again.";
   out.stderr.write(`${message}\n`);
 }
 
@@ -880,7 +880,7 @@ export async function runAccountConnectSessionPoll(
   // outcome.kind === "timeout"
   renderSuccess(outcome.result, outOpts, out);
   out.stderr.write(
-    `Still waiting for the account to connect — the wait window elapsed. Check again: curviate account connect-session poll --session ${flags.session} --wait\n`,
+    `Still waiting for the account to connect. The wait window elapsed. Check again: curviate account connect-session poll --session ${flags.session} --wait\n`,
   );
   process.exit(AUTH_NEEDED);
 }
@@ -1250,7 +1250,7 @@ export async function runAccountCheckpointPoll(
   // outcome.kind === "timeout"
   renderSuccess(outcome.result, outOpts, out);
   out.stderr.write(
-    `Still waiting for approval — the wait window elapsed. Check again: curviate account checkpoint poll ${accountId} --wait\n`,
+    `Still waiting for approval. The wait window elapsed. Check again: curviate account checkpoint poll ${accountId} --wait\n`,
   );
   process.exit(AUTH_NEEDED);
 }
@@ -1271,7 +1271,7 @@ const accountListCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1296,7 +1296,7 @@ const accountGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1331,10 +1331,10 @@ const accountLinkCommand = defineCommand({
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
     "user-agent": { type: "string", description: "Browser User-Agent to pin for this account." },
     "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to (Recruiter tier only)." },
-    "account-id": { type: "string", description: "Existing account id (acc_…) to re-authenticate IN PLACE — passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
+    "account-id": { type: "string", description: "Existing account id (acc_…) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",
-      description: "Never prompt for a checkpoint code — on a checkpoint, always render the envelope and exit 12, even on a TTY.",
+      description: "Never prompt for a checkpoint code. On a checkpoint, always render the envelope and exit 12, even on a TTY.",
       default: false,
     },
   },
@@ -1347,7 +1347,7 @@ const accountLinkCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1361,7 +1361,7 @@ const accountConnectSessionPollCommand = defineCommand({
     name: "poll",
     description:
       "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single " +
-      "poll — the JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
+      "poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
       "With --wait: block on the same adaptive cadence as `account link` until a terminal state.",
   },
   args: {
@@ -1396,7 +1396,7 @@ const accountConnectSessionPollCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1420,7 +1420,7 @@ const accountUpdateCommand = defineCommand({
   args: {
     ...WRITE_SINGLE_FLAGS,
     "account-id": { type: "positional", description: "Account id (acc_…)." },
-    metadata: { type: "string", description: `Custom metadata as a JSON object (flat string→string map) — replaces the store wholesale. Example: '{"team":"growth"}'.` },
+    metadata: { type: "string", description: `Custom metadata as a JSON object (flat string→string map). Replaces the store wholesale. Example: '{"team":"growth"}'.` },
     "clear-proxy": { type: "boolean", description: "Clear the custom proxy (revert to automatic proxy protection). Mutually exclusive with --proxy-host.", default: false },
     "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5." },
     "proxy-host": { type: "string", description: "Proxy host or IP." },
@@ -1437,7 +1437,7 @@ const accountUpdateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1461,7 +1461,7 @@ const accountDisconnectCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1493,7 +1493,7 @@ const accountCheckpointSolveCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1526,7 +1526,7 @@ const accountCheckpointPollCommand = defineCommand({
     // --timeout`. Default: the time remaining to the checkpoint's own expiry.
     timeout: {
       type: "string",
-      description: "Wait-loop timeout in milliseconds (requires --wait; default: time remaining to the checkpoint's expiry). Note the unit: this is milliseconds — `inbox sync-chat --timeout` is seconds.",
+      description: "Wait-loop timeout in milliseconds (requires --wait; default: time remaining to the checkpoint's expiry). Note the unit: this is milliseconds; `inbox sync-chat --timeout` is seconds.",
     },
   },
   async run({ args }) {
@@ -1541,7 +1541,7 @@ const accountCheckpointPollCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1555,7 +1555,7 @@ const accountCheckpointRequestCommand = defineCommand({
     name: "request",
     description:
       "Re-request the challenge notification for a pending checkpoint (e.g. re-send an OTP email, SMS " +
-      "code, or mobile-app approval push). Not every challenge type supports it — an authenticator- " +
+      "code, or mobile-app approval push). Not every challenge type supports it; an authenticator- " +
       "app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new " +
       "notification actually went out; the command still exits 0 either way.",
   },
@@ -1575,7 +1575,7 @@ const accountCheckpointRequestCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

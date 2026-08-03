@@ -1453,7 +1453,7 @@ const recruiterMessageNewCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient's LinkedIn provider ID (AE… format, e.g. from a Recruiter search result or profile). Not resolved from a URL/slug — pass the provider ID directly.",
+        "Recipient's LinkedIn provider ID (AE… format, e.g. from a Recruiter search result or profile). Not resolved from a URL/slug. Pass the provider ID directly.",
       required: true,
     },
     subject: { type: "string", description: "Message subject line (required for Recruiter InMail).", required: true },
@@ -1473,7 +1473,7 @@ const recruiterMessageNewCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1510,7 +1510,7 @@ const recruiterProfileCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1541,7 +1541,7 @@ const recruiterSearchPeopleCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1551,7 +1551,7 @@ const recruiterSearchPeopleCommand = defineCommand({
 });
 
 const recruiterSearchParametersCommand = defineCommand({
-  meta: { name: "parameters", description: "Resolve Recruiter filter parameter IDs (POST — source-scoped)." },
+  meta: { name: "parameters", description: "Resolve Recruiter filter parameter IDs (POST, source-scoped)." },
   args: {
     ...GLOBAL_FLAGS,
     source: {
@@ -1580,7 +1580,7 @@ const recruiterSearchParametersCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1624,7 +1624,7 @@ const recruiterSearchCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1646,7 +1646,7 @@ const recruiterProjectsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1656,7 +1656,7 @@ const recruiterProjectsCommand = defineCommand({
 });
 
 const recruiterProjectUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Edit a Recruiter project's config. All fields optional — omitted fields are left unchanged." },
+  meta: { name: "update", description: "Edit a Recruiter project's config. All fields optional; omitted fields are left unchanged." },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -1681,7 +1681,7 @@ const recruiterProjectUpdateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1717,7 +1717,7 @@ const recruiterProjectCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1746,7 +1746,7 @@ const recruiterPipelineCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1774,7 +1774,7 @@ const recruiterSaveCandidateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1796,7 +1796,7 @@ const recruiterJobsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1845,7 +1845,7 @@ const recruiterJobCreateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1855,7 +1855,7 @@ const recruiterJobCreateCommand = defineCommand({
 });
 
 const recruiterJobPublishCommand = defineCommand({
-  meta: { name: "publish", description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-*." },
+  meta: { name: "publish", description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope." },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -1876,7 +1876,7 @@ const recruiterJobPublishCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1902,7 +1902,7 @@ const recruiterApplicantsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1927,7 +1927,7 @@ const recruiterJobGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1954,7 +1954,7 @@ const recruiterJobCloseCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1999,7 +1999,7 @@ const recruiterProjectJobGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2026,7 +2026,7 @@ const recruiterProjectJobCreateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2053,7 +2053,7 @@ const recruiterProjectJobBudgetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2081,7 +2081,7 @@ const recruiterProjectJobUpdateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2121,7 +2121,7 @@ const recruiterProjectJobCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2150,7 +2150,7 @@ const recruiterTalentSearchCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2178,7 +2178,7 @@ const recruiterApplicantResumeCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -2220,7 +2220,7 @@ const recruiterApplicantCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

@@ -344,7 +344,7 @@ function pace(ms: number): Promise<void> {
 const JOB_LIST_UNION_CAVEAT =
   "note: --state ALL is a best-effort client-side union over DRAFT/OPEN/CLOSED/REVIEW/SUSPENDED. " +
   "LinkedIn's per-state filter is best-effort, so each state is queried, its items are re-filtered against their own state, " +
-  "and the results are merged and de-duplicated by id. There is no unified pagination cursor — each state is walked " +
+  "and the results are merged and de-duplicated by id. There is no unified pagination cursor; each state is walked " +
   "independently and --max-pages applies per state.\n";
 
 /** The stable id of a job-list item (for cross-state de-duplication), if present. */
@@ -701,7 +701,7 @@ async function withClient(
     profile: flags.profile,
   });
   if (!cfg.apiKey) {
-    process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+    process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
     process.exit(3);
   }
   const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -718,7 +718,7 @@ const JOB_BODY_FLAGS = {
   "workplace-type": { type: "string" as const, description: "Workplace arrangement: ON_SITE|HYBRID|REMOTE." },
   location: { type: "string" as const, description: "A LOCATION parameter id (from search parameters)." },
   "employment-status": { type: "string" as const, description: "Employment type: FULL_TIME|PART_TIME|CONTRACT|TEMPORARY|OTHER|VOLUNTEER|INTERNSHIP." },
-  description: { type: "string" as const, description: "Full job description (required; minimum 200 characters — enforced server-side)." },
+  description: { type: "string" as const, description: "Full job description (required; minimum 200 characters, enforced server-side)." },
   "apply-method": { type: "string" as const, description: "How candidates apply: linkedin|external." },
   "notification-email": { type: "string" as const, description: "Email notified of new applicants (required when --apply-method is linkedin)." },
   "website-url": { type: "string" as const, description: "External apply URL (required when --apply-method is external)." },
@@ -782,13 +782,13 @@ const jobBudgetCommand = defineCommand({
 });
 
 const jobPublishCommand = defineCommand({
-  meta: { name: "publish", description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-*." },
+  meta: { name: "publish", description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope." },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to publish." },
     mode: { type: "string", description: "Publish mode (required): FREE|PROMOTED|PROMOTED_PLUS.", required: true },
     "budget-currency": { type: "string", description: "ISO-4217 currency (required for a paid publish), e.g. EUR." },
-    "budget-amount": { type: "string", description: "Budget amount — a non-negative number (required for a paid publish)." },
+    "budget-amount": { type: "string", description: "Budget amount, a non-negative number (required for a paid publish)." },
     "budget-scope": { type: "string", description: "Budget scope (required for a paid publish): DAILY|TOTAL." },
   },
   async run({ args }) {

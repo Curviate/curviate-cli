@@ -8,6 +8,73 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-03
+
+A safety and correctness release. Upgrade promptly: it closes a path by which a
+mistyped command sent a message, and it is the first release in which
+`curviate webhook verify` works at all.
+
+### Fixed
+
+- **An unknown subcommand under `message` no longer becomes a send.**
+  `curviate message search "sophie"` did not error. `message` accepts both
+  subcommands and a bare `message <chat_id> "<text>"` form, and an unregistered
+  first token fell through to the bare form, so it bound `chatId="search"`,
+  `text="sophie"` and **sent a message**. That applied to any unknown or
+  mistyped subcommand: with `search` it 404s, but with a real chat id in that
+  position, or a paste that lands one there, it messaged a real person.
+
+  An unknown subcommand now exits 2 with usage and issues **no request at all**.
+  The legitimate `curviate message <chat_id> "<text>"` form is unchanged, and
+  `curviate message send <chat_id> "<text>"` is always available for a chat id
+  the check does not recognise.
+
+  To search your messages, the command is `curviate inbox search`.
+
+- **A mistyped `connect` subcommand no longer sends a connection invitation.**
+  Same shape: `curviate connect <id>` sends an invitation, so `connect snet`
+  (for `sent`) invited whoever owns the slug `snet`. A first argument that is a
+  near-miss of a `connect` subcommand is now refused with a suggestion. If the
+  slug really was intended, pass the full profile URL or the provider id.
+
+- **`curviate webhook verify` now verifies real deliveries.** It inherited a
+  defect from `@curviate/sdk`: the platform sends the event name in `event` and
+  the SDK required a `type` field no delivery has ever carried, so verification
+  failed on 100% of genuine webhooks and reported `malformed_header`, pointing
+  at the header and the secret when both were correct. Fixed by the `@curviate/sdk`
+  0.19.0 dependency bump. A body that verifies but cannot be parsed now reports
+  `malformed_payload`.
+
+- **`group list` help said `--profile`; the flag is `--target`.** `--profile` is
+  the global config-profile selector, so following the help text selected a
+  config profile and silently returned your own groups instead of the target
+  member's.
+
+- **`job publish` and `recruiter job publish` help said `--budget-*`.** The glob
+  is not a flag anyone can type; the help now names `--budget-amount`,
+  `--budget-currency`, and `--budget-scope`.
+
+- **Em dashes removed from all CLI output** (error messages, help text, usage
+  blocks), including the `no API key` error.
+
+### Changed
+
+- `@curviate/sdk` dependency bumped to `^0.19.0`. If you also call the SDK
+  directly, note that its webhook event discriminant moved from `event.type` to
+  `event.event`; see the SDK's 0.19.0 changelog.
+
+### Added
+
+- Two mechanical guards in the test suite, both derived from the live command
+  tree rather than a hand-maintained list, so this class of defect cannot
+  quietly return:
+  - a fall-through audit that forces an explicit safe/read-only/write-bearing
+    verdict on every command group that mixes subcommands with a positional
+    fallback, and
+  - a help-vs-args check that fails when any command's help text names a flag
+    that command does not declare (resolving cross-references, so a reference
+    to another command's flag is checked against that command).
+
 ## [0.19.0] - 2026-07-29
 
 A minor release closing the remaining SDK-parity gap: 25 new commands across seven

@@ -241,15 +241,15 @@ export function checkCredentialConflicts(flags: CredentialConflictFlags, out: Ou
   const liAtStdin = flags["li-at-stdin"] ?? false;
 
   if (flags.password !== undefined && passwordStdin) {
-    failConflict(out, "--password and --password-stdin cannot both be set — choose one source.");
+    failConflict(out, "--password and --password-stdin cannot both be set. Choose one source.");
   }
   if (flags["li-at"] !== undefined && liAtStdin) {
-    failConflict(out, "--li-at and --li-at-stdin cannot both be set — choose one source.");
+    failConflict(out, "--li-at and --li-at-stdin cannot both be set. Choose one source.");
   }
   if (passwordStdin && liAtStdin) {
     failConflict(
       out,
-      "--password-stdin and --li-at-stdin cannot both be set — stdin can feed only one secret per invocation.",
+      "--password-stdin and --li-at-stdin cannot both be set. stdin can feed only one secret per invocation.",
     );
   }
   if (liAtStdin && flags["auth-method"] === "credentials") {

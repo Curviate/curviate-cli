@@ -743,7 +743,7 @@ export async function runProfileUpdate(
   }
 
   if (Object.keys(body).length === 0) {
-    out.stderr.write("error: nothing to update — pass at least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture.\n");
+    out.stderr.write("error: nothing to update. Pass at least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture.\n");
     process.exit(2);
   }
 
@@ -925,7 +925,7 @@ const profileMeCommand = defineCommand({
     sections: {
       type: "string",
       description:
-        "Comma-separated LinkedIn sections to fetch — linkedin_experience, linkedin_education, linkedin_languages, " +
+        "Comma-separated LinkedIn sections to fetch: linkedin_experience, linkedin_education, linkedin_languages, " +
         "linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, " +
         "linkedin_interests, or linkedin_* for all (each also has a _preview variant). A bare value (e.g. skills) is " +
         "auto-prefixed to linkedin_skills. Only applies to the base getMe call (no activity flag).",
@@ -961,7 +961,7 @@ const profileMeCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -983,7 +983,7 @@ const profileRelationsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -999,7 +999,7 @@ const profileEndorseCommand = defineCommand({
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
     "endorsement-id": {
       type: "string",
-      description: "Endorsement ID to endorse — get it from the target's skills section via `profile <id> --sections linkedin_skills`.",
+      description: "Endorsement ID to endorse. Get it from the target's skills section via `profile <id> --sections linkedin_skills`.",
       required: true,
     },
   },
@@ -1013,7 +1013,7 @@ const profileEndorseCommand = defineCommand({
       profile: (args as ProfileFlags).profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1035,7 +1035,7 @@ async function withClient(
     profile: flags.profile,
   });
   if (!cfg.apiKey) {
-    process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+    process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
     process.exit(3);
   }
   const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -1052,8 +1052,8 @@ const profileUpdateCommand = defineCommand({
     "first-name": { type: "string", description: "New first name." },
     "last-name": { type: "string", description: "New last name." },
     skills: { type: "string", description: "Comma-separated skill names to add (add-only)." },
-    picture: { type: "string", description: "New profile photo — path to an image file." },
-    "background-picture": { type: "string", description: "New cover/banner photo — path to an image file." },
+    picture: { type: "string", description: "New profile photo: path to an image file." },
+    "background-picture": { type: "string", description: "New cover/banner photo: path to an image file." },
   },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileUpdate);
@@ -1149,7 +1149,7 @@ export const profileCommand = defineCommand({
     sections: {
       type: "string",
       description:
-        "Comma-separated LinkedIn sections to fetch — linkedin_experience, linkedin_education, linkedin_languages, " +
+        "Comma-separated LinkedIn sections to fetch: linkedin_experience, linkedin_education, linkedin_languages, " +
         "linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, " +
         "linkedin_interests, or linkedin_* for all (each also has a _preview variant). A bare value (e.g. skills) is " +
         "auto-prefixed to linkedin_skills.",
@@ -1198,7 +1198,7 @@ export const profileCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

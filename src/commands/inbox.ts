@@ -370,7 +370,7 @@ const inboxListCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -396,7 +396,7 @@ const inboxGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -422,7 +422,7 @@ const inboxMarkReadCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -440,12 +440,12 @@ const inboxMessagesCommand = defineCommand({
     before: {
       type: "string" as const,
       description:
-        "Return messages before this timestamp (ISO-8601, UTC — Z suffix required, e.g. 2025-01-01T00:00:00Z).",
+        "Return messages before this timestamp (ISO-8601, UTC; Z suffix required, e.g. 2025-01-01T00:00:00Z).",
     },
     after: {
       type: "string" as const,
       description:
-        "Return messages after this timestamp (ISO-8601, UTC — Z suffix required, e.g. 2025-01-01T00:00:00Z).",
+        "Return messages after this timestamp (ISO-8601, UTC; Z suffix required, e.g. 2025-01-01T00:00:00Z).",
     },
   },
   async run({ args }) {
@@ -458,7 +458,7 @@ const inboxMessagesCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -484,7 +484,7 @@ const inboxSearchCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

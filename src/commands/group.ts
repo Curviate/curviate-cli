@@ -2,12 +2,12 @@
  * `curviate group` — LinkedIn group operations (new namespace).
  *
  * Subcommands:
- *   group list [--profile <target>] [--limit] [--cursor] [--all]  — list groups (own by default)
+ *   group list [--target <slug>] [--limit] [--cursor] [--all]  — list groups (own by default)
  *   group get <group_id>                                          — get one group's full detail
  *   group members <group_id> [--name] [--limit] [--cursor] [--all] — list (or search) a group's members
  *
  * `group list` enumerates the connected account's own groups by default (a
- * complete read, real total_count); pass `--profile <target>` to read another
+ * complete read, real total_count); pass `--target <slug>` to read another
  * LinkedIn user's groups instead (a documented partial read of that target's
  * interests-groups section only, total_count always null).
  *
@@ -113,9 +113,9 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `group list [--profile <target>] [--limit] [--cursor] [--all]`.
+ * Run `group list [--target <slug>] [--limit] [--cursor] [--all]`.
  * Read command — rejects --preview. Own groups by default (complete
- * enumeration); `--profile <target>` reads another member's groups instead
+ * enumeration); `--target <slug>` reads another member's groups instead
  * (a documented partial read — total_count always null there).
  */
 export async function runGroupList(
@@ -231,7 +231,7 @@ export async function runGroupMembers(
 // ---------------------------------------------------------------------------
 
 const groupListCommand = defineCommand({
-  meta: { name: "list", description: "List the groups the connected account belongs to. Pass --profile to enumerate another member's groups instead (a partial, interests-only read)." },
+  meta: { name: "list", description: "List the groups the connected account belongs to. Pass --target to enumerate another member's groups instead (a partial, interests-only read)." },
   args: {
     ...GLOBAL_FLAGS,
     target: {
@@ -249,7 +249,7 @@ const groupListCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -274,7 +274,7 @@ const groupGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -306,7 +306,7 @@ const groupMembersCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -325,7 +325,7 @@ export const groupCommand = defineCommand({
   async run() {
     process.stderr.write(
       "Usage: curviate group <subcommand>\n" +
-      "  list [--profile <target>]\n" +
+      "  list [--target <slug>]\n" +
       "  get <group_id>\n" +
       "  members <group_id> [--name <filter>]\n",
     );

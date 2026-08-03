@@ -45,7 +45,7 @@ export function challengeDescription(type: ChallengeType): string {
     case "two_factor_app":
       return "Enter the current code from your authenticator app.";
     case "mobile_app_approval":
-      return "Open your LinkedIn mobile app and approve this sign-in — this will continue automatically once you tap approve.";
+      return "Open your LinkedIn mobile app and approve this sign-in. This will continue automatically once you tap approve.";
   }
 }
 

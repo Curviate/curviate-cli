@@ -55,34 +55,34 @@ type AnyCommand = CommandDef;
  */
 const REMOVED_COMMANDS: Record<string, Record<string, string>> = {
   post: {
-    list: "`post list` was removed — use `post user-posts <user_id>` (accepts `me`).",
-    comment: "post comments are their own group now — use `comment add <post_id> <text>`.",
-    comments: "post comments are their own group now — use `comment list <post_id>`.",
+    list: "`post list` was removed. Use `post user-posts <user_id>` (accepts `me`).",
+    comment: "post comments are their own group now. Use `comment add <post_id> <text>`.",
+    comments: "post comments are their own group now. Use `comment list <post_id>`.",
   },
   connect: {
-    respond: "`connect respond` was split — use `connect accept <id>` or `connect decline <id>`.",
+    respond: "`connect respond` was split. Use `connect accept <id>` or `connect decline <id>`.",
   },
   profile: {
-    connections: "`profile connections` was renamed — use `profile relations`.",
+    connections: "`profile connections` was renamed. Use `profile relations`.",
   },
   account: {
-    "connect-link": "`account connect-link` was removed — use `account link [--account-id <id>]`.",
-    "reconnect-link": "`account reconnect-link` was removed — use `account link [--account-id <id>]`.",
-    reconnect: "`account reconnect` was removed — use `account link [--account-id <id>]`.",
+    "connect-link": "`account connect-link` was removed. Use `account link [--account-id <id>]`.",
+    "reconnect-link": "`account reconnect-link` was removed. Use `account link [--account-id <id>]`.",
+    reconnect: "`account reconnect` was removed. Use `account link [--account-id <id>]`.",
   },
   inbox: {
-    sync: "`inbox sync` was removed — history syncs automatically; just read `inbox messages <chat_id>`.",
-    "sync-chat": "`inbox sync-chat` was removed — history syncs automatically; just read `inbox messages <chat_id>`.",
+    sync: "`inbox sync` was removed. History syncs automatically; just read `inbox messages <chat_id>`.",
+    "sync-chat": "`inbox sync-chat` was removed. History syncs automatically; just read `inbox messages <chat_id>`.",
   },
   recruiter: {
-    "add-candidate": "`recruiter add-candidate` was renamed — use `recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`.",
-    "project-jobs": "`recruiter project-jobs` was renamed — use `recruiter project-job get <project_id>`.",
-    sync: "`recruiter sync` was removed — Recruiter data syncs automatically now.",
+    "add-candidate": "`recruiter add-candidate` was renamed. Use `recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`.",
+    "project-jobs": "`recruiter project-jobs` was renamed. Use `recruiter project-job get <project_id>`.",
+    sync: "`recruiter sync` was removed. Recruiter data syncs automatically now.",
     "add-applicant": "`recruiter add-applicant` was removed with no replacement.",
     "reject-applicant": "`recruiter reject-applicant` was removed with no replacement.",
   },
   "sales-nav": {
-    sync: "`sales-nav sync` was removed — Sales Navigator data syncs automatically now.",
+    sync: "`sales-nav sync` was removed. Sales Navigator data syncs automatically now.",
   },
   webhook: {
     "state-diff": "`webhook state-diff` was removed with no replacement.",

@@ -626,7 +626,7 @@ const postGetCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -658,7 +658,7 @@ const postCreateCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -694,7 +694,7 @@ const postReactCommand = defineCommand({
     },
     "as-organization": {
       type: "string",
-      description: "React on behalf of an organization/company page you administer — pass that page's numeric id or URN.",
+      description: "React on behalf of an organization/company page you administer. Pass that page's numeric id or URN.",
     },
   },
   async run({ args }) {
@@ -707,7 +707,7 @@ const postReactCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -737,7 +737,7 @@ const postReactionsCommand = defineCommand({
       profile: flags.profile,
     });
     if (!cfg.apiKey) {
-      process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
       process.exit(3);
     }
     const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
@@ -759,7 +759,7 @@ async function withClient(
     profile: flags.profile,
   });
   if (!cfg.apiKey) {
-    process.stderr.write("error: no API key — run `curviate login` or pass --api-key.\n");
+    process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
     process.exit(3);
   }
   const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });

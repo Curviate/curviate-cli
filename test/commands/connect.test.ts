@@ -743,8 +743,10 @@ describe("connect help strings — Tier-1", () => {
       { meta?: { description?: string } }
     >;
     const desc = subCmds["received"]?.meta?.description ?? "";
-    expect(desc).toContain("pending");
-    expect(desc).toContain("already-handled");
+    // Case-insensitive: the assertion is about the copy saying these two
+    // things, not about where a sentence happens to break.
+    expect(desc.toLowerCase()).toContain("pending");
+    expect(desc.toLowerCase()).toContain("already-handled");
   });
 
   it("connect accept / decline positional id description references connect received as source", async () => {

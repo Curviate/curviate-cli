@@ -163,7 +163,7 @@ export async function renameProfile(
   }
   if (cfg.profiles[newName]) {
     throw new Error(
-      `Profile "${newName}" already exists — remove it first or choose another name.`,
+      `Profile "${newName}" already exists. Remove it first or choose another name.`,
     );
   }
   cfg.profiles[newName] = cfg.profiles[oldName];
