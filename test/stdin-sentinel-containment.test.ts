@@ -407,9 +407,47 @@ afterAll(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-/** The four arguments observed sending the placeholder to the wire. */
-const OBSERVED_LEAKS: Array<{ label: string; argv: string[] }> = [
+/**
+ * The argument shapes `restoreLiteralDashes` can be handed, each proven on the
+ * built binary against a recording server.
+ *
+ * This set used to be exactly the four arguments observed sending the
+ * placeholder to the wire before the fix (a named-flag value ×3, one
+ * positional). That was a real defect and the fix for it is real, but the
+ * subset it left behind was leak-shaped rather than shape-complete: every case
+ * exercised the `value === STDIN_SENTINEL` scalar branch of
+ * `restoreLiteralDashes`, and none exercised its `Array.isArray` branch — the
+ * shape mri produces when a flag is typed twice, regardless of the argument's
+ * own declared type (`search people --keywords x --keywords -` sends
+ * `{"keywords":["x","-"]}`, not a placeholder). A guard that only ever
+ * recorded the arguments it once saw leaking would stay silent forever about a
+ * shape none of those four happened to hit, so this is a shape census now: at
+ * least one case per shape `restoreLiteralDashes` can receive, whether or not
+ * that particular instance was ever seen leaking. The self-check below fails
+ * if a shape's last case is ever removed.
+ */
+type WireShape = "flag" | "positional" | "array";
+
+interface WireCase {
+  shape: WireShape;
+  label: string;
+  argv: string[];
+  /**
+   * Shape-specific proof beyond "no placeholder anywhere on the wire". Needed
+   * for the array case in particular: "the wire contains a dash somewhere"
+   * would pass even if array-element restoration were entirely unwired,
+   * because the sibling element ("x") or a URL segment could satisfy a bare
+   * substring check on its own. Receives the parsed JSON body of the (single)
+   * recorded request, not the doubly-JSON-encoded `wire` string used for the
+   * placeholder scan below (double-encoding escapes every inner quote, so a
+   * regex written against the plain body would never match it).
+   */
+  assertBody?: (body: Record<string, unknown>) => void;
+}
+
+const WIRE_SHAPE_CASES: WireCase[] = [
   {
+    shape: "flag",
     label: "account link --password -",
     argv: [
       "account",
@@ -424,13 +462,41 @@ const OBSERVED_LEAKS: Array<{ label: string; argv: string[] }> = [
       "-",
     ],
   },
-  { label: "search people --keywords -", argv: ["search", "people", "--keywords", "-"] },
-  { label: "message send - hello", argv: ["message", "send", "-", "hello"] },
-  { label: "connect <id> --note -", argv: ["connect", "probe-person", "--note", "-"] },
+  { shape: "flag", label: "search people --keywords -", argv: ["search", "people", "--keywords", "-"] },
+  { shape: "positional", label: "message send - hello", argv: ["message", "send", "-", "hello"] },
+  { shape: "flag", label: "connect <id> --note -", argv: ["connect", "probe-person", "--note", "-"] },
+  {
+    // A named-flag-value instance that was never one of the four leakers
+    // above, proving the fix is general over the shape rather than
+    // special-cased to the sites that happened to be caught misbehaving.
+    shape: "flag",
+    label: "search people --location - (non-leaker instance of an already-covered shape)",
+    argv: ["search", "people", "--location", "-"],
+    assertBody: (body) => {
+      expect(body["location"], `expected a literal dash in --location's value: ${JSON.stringify(body)}`).toEqual([
+        "-",
+      ]);
+    },
+  },
+  {
+    // mri accumulates a REPEATED flag into an array regardless of the citty
+    // argument's declared type, so `--keywords` typed twice reaches
+    // restoreLiteralDashes as an array and hits its Array.isArray branch,
+    // which no other case here exercises.
+    shape: "array",
+    label: "search people --keywords x --keywords - (array element)",
+    argv: ["search", "people", "--keywords", "x", "--keywords", "-"],
+    assertBody: (body) => {
+      expect(
+        body["keywords"],
+        `expected the array element to come back as a literal dash, not the placeholder: ${JSON.stringify(body)}`,
+      ).toEqual(["x", "-"]);
+    },
+  },
 ];
 
-describe("the built binary sends no placeholder at the arguments observed leaking", () => {
-  for (const { label, argv } of OBSERVED_LEAKS) {
+describe("the built binary sends no placeholder for any argument shape", () => {
+  for (const { label, argv, assertBody } of WIRE_SHAPE_CASES) {
     it(
       `${label} reaches the wire with a literal dash, never the placeholder`,
       async () => {
@@ -445,10 +511,25 @@ describe("the built binary sends no placeholder at the arguments observed leakin
         // is true only because nothing was sent.
         expect(run.requests.length, `no request was made: ${run.stderr.slice(0, 300)}`).toBeGreaterThan(0);
         expect(wire).toContain("-");
+        if (assertBody) {
+          const body = JSON.parse(run.requests[0]?.body ?? "{}") as Record<string, unknown>;
+          assertBody(body);
+        }
       },
       60_000,
     );
   }
+
+  it("covers every argument shape restoreLiteralDashes can receive: flag value, positional, array element", () => {
+    const covered = new Set(WIRE_SHAPE_CASES.map((c) => c.shape));
+    const required: WireShape[] = ["flag", "positional", "array"];
+    const missing = required.filter((shape) => !covered.has(shape));
+    expect(
+      missing,
+      `wire-recording subset is missing shape coverage for: ${missing.join(", ")} ` +
+        `(the point of this suite is that it is shape-driven, not a log of the arguments once seen leaking)`,
+    ).toEqual([]);
+  });
 });
 
 describe("the egress backstop refuses a placeholder the dispatcher never saw", () => {
