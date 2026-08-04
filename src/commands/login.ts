@@ -19,6 +19,7 @@ import { writeProfile } from "../lib/config.js";
 import type { ProfileEntry } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { readlineSync } from "../lib/readline.js";
+import { defaultReadStdin, resolveTextOrStdin } from "../lib/stdin.js";
 
 type LoginArgs = {
   "api-key"?: string;
@@ -89,6 +90,7 @@ export const loginCommand = defineCommand({
     ...GLOBAL_FLAGS,
     "api-key": {
       type: "string",
+      stdinArg: true,
       description:
         'API key to save. Pass "-" to read from stdin (keeps the key off argv).',
     },
@@ -105,10 +107,18 @@ export const loginCommand = defineCommand({
   async run({ args }) {
     const profileName = (args.profile as string | undefined) ?? "default";
     let apiKey = (args["api-key"] as string | undefined);
+    const out: LoginOut = { stderr: { write: (s: string) => process.stderr.write(s) } };
 
-    // --api-key - means: read from stdin.
-    if (apiKey === "-") {
-      apiKey = await readStdin();
+    // `--api-key -` means: read the key from stdin. Routed through the shared
+    // resolver, which recognises both the literal dash and the sentinel the
+    // dispatcher substitutes for it. Testing for the dash here instead is what
+    // let the raw sentinel be persisted as the user's API key.
+    if (apiKey !== undefined) {
+      // Trimming both ends, not just trailing newlines: a key is a single
+      // token, and a leading space survives a copy-paste more often than not.
+      apiKey = await resolveTextOrStdin(apiKey, out, async () =>
+        (await defaultReadStdin()).trim(),
+      );
     }
 
     // If no --api-key and we have a TTY, prompt interactively.
@@ -124,7 +134,6 @@ export const loginCommand = defineCommand({
       }
     }
 
-    const out: LoginOut = { stderr: { write: (s: string) => process.stderr.write(s) } };
     await runLogin(
       {
         "api-key": apiKey,
@@ -136,18 +145,6 @@ export const loginCommand = defineCommand({
     );
   },
 });
-
-/** Read a line from stdin (used for --api-key -). */
-async function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
-    process.stdin.on("end", () => {
-      resolve(Buffer.concat(chunks).toString("utf8").trim());
-    });
-    process.stdin.on("error", reject);
-  });
-}
 
 /**
  * Prompt for masked (not echoed) input.

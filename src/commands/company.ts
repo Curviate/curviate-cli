@@ -1187,7 +1187,7 @@ const companyReplyCommand = defineCommand({
       type: "positional",
       description: "The 2-… chat id from `company chats`, passed through verbatim (no client-side check).",
     },
-    text: { type: "positional", description: "Reply text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
+    text: { type: "positional", stdinArg: true, description: "Reply text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },
   },
   async run({ args }) {

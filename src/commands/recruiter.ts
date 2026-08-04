@@ -42,6 +42,7 @@ import {
   DEFAULT_FILTER_READERS,
   type FilterReaders,
 } from "../lib/search-filters.js";
+import { isStdinToken } from "../lib/stdin.js";
 import { readFile } from "node:fs/promises";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
@@ -278,7 +279,7 @@ async function assembleRecruiterJobBody(
     } catch {
       return { error: `cannot read ${source}` };
     }
-  } else if (flags.body === "-") {
+  } else if (isStdinToken(flags.body)) {
     source = "--body - (stdin)";
     raw = await readers.readStdin();
   } else if (flags.body !== undefined) {
@@ -1524,7 +1525,7 @@ const recruiterSearchPeopleCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
-    filters: { type: "string", description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
+    filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
     locale: { type: "string", description: "Result locale, e.g. en." },
     "employment-type": { type: "string", description: "Employment type ids (comma-separated)." },
@@ -1810,7 +1811,7 @@ const recruiterJobsCommand = defineCommand({
 // are also reachable via --body-file/--body - JSON.
 const RECRUITER_JOB_BODY_FLAGS = {
   "body-file": { type: "string" as const, description: "Path to a JSON file with the full job body." },
-  body: { type: "string" as const, description: "Read the JSON job body from stdin (pass '-')." },
+  body: { type: "string" as const, stdinArg: true, description: "Read the JSON job body from stdin (pass '-')." },
   "job-title-id": { type: "string" as const, description: "Resolved job-title parameter id (merged with --job-title into job_title:{id,name})." },
   "job-title": { type: "string" as const, description: "Job title display name (merged with --job-title-id into job_title:{id,name})." },
   "company-id": { type: "string" as const, description: "Resolved company id (or use --company-name for free text)." },
@@ -2137,7 +2138,7 @@ const recruiterTalentSearchCommand = defineCommand({
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's RECRUITER_SEARCH talent-pool channel ID (required).", required: true },
     keywords: { type: "string", description: "Free-text keyword search." },
-    filters: { type: "string", description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
+    filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
   },
   async run({ args }) {

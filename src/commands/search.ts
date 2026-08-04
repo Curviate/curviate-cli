@@ -149,6 +149,7 @@ const PEOPLE_INVALID_FLAGS = ["seniority", "function", "employment-type", "sort-
 const FILTER_FLAGS = {
   filters: {
     type: "string" as const,
+    stdinArg: true,
     description: "Filter body as a JSON object (named flags win on conflict; server validates and strips unknown fields); '-' reads JSON from stdin.",
   },
   "filters-file": {

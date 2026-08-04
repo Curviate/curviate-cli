@@ -20,6 +20,7 @@ import {
 import { join, dirname } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
+import { assertNoStdinPlaceholder } from "./stdin.js";
 
 /** A single named profile's fields. */
 export interface ProfileEntry {
@@ -80,6 +81,10 @@ async function writeConfig(cfg: CliConfig): Promise<void> {
   }
 
   const content = JSON.stringify(cfg, null, 2) + "\n";
+  // The persistence half of the stdin-placeholder backstop. A config file is
+  // the worst place for the placeholder to land: it survives the process, and
+  // every later command then fails blaming the credential it was stored as.
+  assertNoStdinPlaceholder("the configuration about to be written", [content]);
   const tmpPath = join(
     tmpdir(),
     `curviate-cfg-${randomBytes(6).toString("hex")}.tmp`,

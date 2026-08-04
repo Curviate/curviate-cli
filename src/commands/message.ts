@@ -658,7 +658,7 @@ const messageNewCommand = defineCommand({
         "Recipient: LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA…). URL and slug inputs resolve the provider ID automatically.",
       required: true,
     },
-    text: { type: "positional", description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
+    text: { type: "positional", stdinArg: true, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },
   },
   async run({ args }) {
@@ -714,7 +714,7 @@ const messageEditCommand = defineCommand({
     ...WRITE_FLAGS,
     chatId: { type: "positional", description: "Chat ID or LinkedIn messaging thread URL." },
     messageId: { type: "positional", description: "Message ID." },
-    text: { type: "positional", description: "Replacement text. Pass - to read from stdin." },
+    text: { type: "positional", stdinArg: true, description: "Replacement text. Pass - to read from stdin." },
   },
   async run({ args }) {
     const flags = args as MessageFlags;
@@ -841,7 +841,7 @@ const messageInMailCommand = defineCommand({
       required: true,
     },
     subject: { type: "string", description: "InMail subject line.", required: true },
-    text: { type: "positional", description: "InMail body text. Pass - to read from stdin." },
+    text: { type: "positional", stdinArg: true, description: "InMail body text. Pass - to read from stdin." },
   },
   async run({ args }) {
     const flags = args as MessageFlags;
@@ -890,7 +890,7 @@ const messageSendCommand = defineCommand({
         "Chat ID or LinkedIn messaging thread URL. A COMPANY_ chat id sends as the company page; any other " +
         "chat id sends as the connected member.",
     },
-    text: { type: "positional", description: "Message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
+    text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },
   },
   async run({ args }) {
@@ -1020,7 +1020,7 @@ export const messageCommand = defineCommand({
       description: "Chat ID to send a message to. A COMPANY_ chat id sends as the company page.",
       required: false,
     },
-    text: { type: "positional", description: "Message text. Pass - to read from stdin.", required: false },
+    text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin.", required: false },
     attach: { type: "string", description: "File to attach (repeatable)." },
   },
   subCommands: {

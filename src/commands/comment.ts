@@ -612,7 +612,7 @@ const commentAddCommand = defineCommand({
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id to comment on." },
-    text: { type: "positional", description: "Comment text. Pass - to read from stdin." },
+    text: { type: "positional", stdinArg: true, description: "Comment text. Pass - to read from stdin." },
     attach: { type: "string", description: "Image file to attach (at most one)." },
   },
   async run({ args }) {
@@ -626,7 +626,7 @@ const commentReplyCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to reply to." },
-    text: { type: "positional", description: "Reply text. Pass - to read from stdin." },
+    text: { type: "positional", stdinArg: true, description: "Reply text. Pass - to read from stdin." },
     attach: { type: "string", description: "Image file to attach (at most one)." },
   },
   async run({ args }) {
@@ -640,7 +640,7 @@ const commentEditCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to edit." },
-    text: { type: "positional", description: "Updated comment text. Pass - to read from stdin." },
+    text: { type: "positional", stdinArg: true, description: "Updated comment text. Pass - to read from stdin." },
   },
   async run({ args }) {
     await withClient(args as CommentFlags, (c, f, o) => runCommentEdit(c, f, o, undefined));
