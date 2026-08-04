@@ -641,6 +641,7 @@ const webhookVerifyCommand = defineCommand({
     },
     body: {
       type: "string",
+      stdinArg: true,
       description: "The raw webhook body: inline JSON, a path to a file containing it, or - to read it from stdin.",
       required: true,
     },

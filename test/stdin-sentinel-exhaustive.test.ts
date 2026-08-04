@@ -365,8 +365,13 @@ describe("discovery — the enumeration comes from the command tree", () => {
  * else, an equality test against `"-"` alone is unreachable in the shipped
  * binary, because the sentinel arrives instead.
  */
-const DASH_COMPARISON = /(?:[!=]==\s*["'`]-["'`])|(?:["'`]-["'`]\s*[!=]==)/;
-const SENTINEL_REFERENCE = /STDIN_SENTINEL/;
+const DASH_COMPARISON = /(?:[!=]=+\s*["'`]-["'`])|(?:["'`]-["'`]\s*[!=]=+)/;
+/**
+ * Any way of naming the sentinel, not only the exported constant. A literal
+ * fragment of it in a string is how a comparison evades an identifier-only
+ * check while behaving identically, so the fragment is caught too.
+ */
+const SENTINEL_REFERENCE = /STDIN_SENTINEL|curviate_stdin|_stdin__/;
 const RESOLVER_MODULES = new Set(["src/lib/stdin.ts", "src/dispatch.ts"]);
 
 function sourceFiles(dir: string, acc: string[] = []): string[] {

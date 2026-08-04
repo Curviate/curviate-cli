@@ -34,7 +34,11 @@
  */
 
 import { runCommand, type CommandDef } from "citty";
-import { STDIN_SENTINEL } from "./lib/stdin.js";
+import {
+  STDIN_SENTINEL,
+  restoreLiteralDashes,
+  type RestorableArgDef,
+} from "./lib/stdin.js";
 
 type AnyCommand = CommandDef;
 
@@ -422,9 +426,35 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // resolveTextOrStdin then recognises both "-" and the sentinel.
     const processedLeafArgs = leafArgs.map((a) => (a === "-" ? STDIN_SENTINEL : a));
 
+    // Post-process, symmetrically: the substitution above is indiscriminate, so
+    // undo it for every argument that did not opt into the stdin contract. The
+    // sentinel then exists only where a handler is going to resolve it, and a
+    // bare "-" keeps its ordinary literal meaning everywhere else. Done here,
+    // between citty's parser and the handler, because that is the one point
+    // where the parsed values and their declarations are both in hand.
+    const leafArgsDef = (await resolveValue(leaf.args ?? {})) as Record<
+      string,
+      RestorableArgDef
+    >;
+    const originalRun = leaf.run;
+
     // Execute the resolved leaf with subCommands stripped so citty does not
     // re-trigger its buggy descent (misroute / double-run).
-    const leafToRun: AnyCommand = { ...leaf, subCommands: undefined };
+    const leafToRun: AnyCommand = {
+      ...leaf,
+      subCommands: undefined,
+      ...(originalRun
+        ? {
+            run: (ctx: Parameters<NonNullable<AnyCommand["run"]>>[0]) => {
+              restoreLiteralDashes(
+                ctx.args as unknown as Record<string, unknown>,
+                leafArgsDef,
+              );
+              return originalRun(ctx);
+            },
+          }
+        : {}),
+    };
     await runCommand(leafToRun, { rawArgs: processedLeafArgs });
   } catch (err: unknown) {
     // citty raises a CLIError with code "EARG" for a missing required argument

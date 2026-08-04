@@ -805,7 +805,7 @@ const salesNavSearchPeopleCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
-    filters: { type: "string", description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
+    filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
     "first-name": { type: "string", description: "First name to match." },
     "last-name": { type: "string", description: "Last name to match." },
@@ -836,7 +836,7 @@ const salesNavSearchCompaniesCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
-    filters: { type: "string", description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
+    filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
     technologies: { type: "string", description: "Technology tags (comma-separated)." },
     "recent-activities": { type: "string", description: "Recent activity ids (comma-separated)." },

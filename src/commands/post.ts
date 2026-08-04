@@ -640,7 +640,7 @@ const postCreateCommand = defineCommand({
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
-    text: { type: "positional", description: "Post body text. Pass - to read from stdin (enables multiline via heredoc or pipe)." },
+    text: { type: "positional", stdinArg: true, description: "Post body text. Pass - to read from stdin (enables multiline via heredoc or pipe)." },
     attach: {
       type: "string",
       description:

@@ -90,6 +90,7 @@ export const loginCommand = defineCommand({
     ...GLOBAL_FLAGS,
     "api-key": {
       type: "string",
+      stdinArg: true,
       description:
         'API key to save. Pass "-" to read from stdin (keeps the key off argv).',
     },
