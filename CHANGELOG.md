@@ -8,6 +8,44 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-04
+
+A correctness release for every argument that reads from stdin. Upgrade
+immediately if you are on 0.20.0: on that version the documented quick-start
+login silently stored a placeholder instead of your API key, so the very first
+command after it failed and blamed your key.
+
+### Fixed
+
+- **`curviate login --api-key -` now stores the piped key.** It previously
+  reported success and exited 0 while writing the literal string
+  `__curviate_stdin__` into your config, so every later command answered 401 and
+  attributed the failure to your API key. That is the first command in the
+  quick-start, so a new install failed on first contact with a misleading cause.
+
+- **Eleven further arguments documented as accepting `-` now read stdin.** Each
+  compared its raw value against `-`, but the dispatcher had already substituted
+  an internal placeholder by that point, so the branch was unreachable and the
+  placeholder was consumed as your data. Affected: `--filters` on the eight
+  search and list commands, and `--body` on the three recruiter and webhook
+  commands, which answered `--filters is not valid JSON` or
+  `--body only accepts '-'` to a caller who had passed exactly that.
+
+### Changed
+
+- **A bare `-` is only special on an argument that declares a stdin contract.**
+  Every other argument now receives a literal `-`, restored between the parser
+  and the handler. Previously the substitution was indiscriminate, so a bare `-`
+  became the internal placeholder at any argument, including places where it
+  then travelled to the wire as a value. If you were relying on `-` being read
+  from stdin on an argument whose help text does not describe that behaviour, it
+  no longer is; the arguments that document the contract are unchanged.
+
+- **The internal placeholder can no longer leave the process.** The request
+  transport and the config writer both refuse it as a defence in depth backstop,
+  and report what to do instead, so no future argument can leak it into a
+  request or a config file.
+
 ## [0.20.0] - 2026-08-03
 
 A safety and correctness release. Upgrade promptly: it closes a path by which a
