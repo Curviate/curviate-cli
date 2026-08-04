@@ -20,6 +20,7 @@
  * in tests without real process.stdin / fs I/O.
  */
 
+import { isStdinToken } from "./stdin.js";
 import { readFile } from "node:fs/promises";
 
 /** Reader injection point — file + stdin sources for --filters. */
@@ -71,7 +72,7 @@ export async function assembleFilters(
     } catch {
       return { error: `cannot read ${source}` };
     }
-  } else if (flags.filters === "-") {
+  } else if (isStdinToken(flags.filters)) {
     source = "--filters - (stdin)";
     raw = await readers.readStdin();
   } else if (flags.filters !== undefined) {

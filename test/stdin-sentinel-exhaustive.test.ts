@@ -37,7 +37,7 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { CommandDef } from "citty";
-import { ensureFreshBuild, pkgRoot } from "./helpers/built-cli.js";
+import { cliPath, pkgRoot } from "./helpers/built-cli.js";
 import { STDIN_SENTINEL } from "../src/lib/stdin.js";
 
 // ---------------------------------------------------------------------------
@@ -77,7 +77,18 @@ function declaresDashStdin(def: ArgDef): boolean {
   return /stdin/i.test(d) && BARE_DASH.test(d);
 }
 
-const commandModules = import.meta.glob("../src/commands/*.ts");
+/**
+ * Every command module, resolved by Vite at transform time. A glob, not a list
+ * of imports: a new command file joins the guard by existing (AC-011).
+ *
+ * `import.meta.glob` is a Vite feature, so it is absent from the Node typings
+ * the package compiles against; the cast is the narrowest way to name it.
+ */
+const commandModules = (
+  import.meta as unknown as {
+    glob: (pattern: string) => Record<string, () => Promise<unknown>>;
+  }
+).glob("../src/commands/*.ts");
 
 async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>)): Promise<T> {
   return typeof input === "function" ? (input as () => T | Promise<T>)() : input;
@@ -216,7 +227,6 @@ interface Observation {
   stderr: string;
 }
 
-let cliPath: string;
 let server: Server;
 let baseUrl: string;
 let recorded: Recorded[] = [];
@@ -279,10 +289,26 @@ async function runSite(argv: string[], input: string): Promise<Observation> {
   return { status, requests: [...recorded], config, stdout, stderr };
 }
 
+/**
+ * Fallback proof that a site really consumed stdin, for the commands whose
+ * domain validation rejects the probe payload before it can reach a sink
+ * (`recruiter job create` wants a `job_title` in the body, and the probe is a
+ * generic object).
+ *
+ * Re-run the same argv with empty stdin. A command that reads stdin reacts to
+ * the change; a command that ignores it produces exactly the same run, which is
+ * precisely the defect under test. No knowledge of the command is needed, so
+ * this stays a rule rather than an exemption list.
+ */
+async function consumedStdin(site: Site, payload: string, withPayload: Observation): Promise<boolean> {
+  const withEmpty = await runSite(argvFor(site, "-", payload), "");
+  const shape = (o: Observation) => `${o.status}\n${o.stdout}\n${o.stderr}\n${o.requests.length}`;
+  return shape(withEmpty) !== shape(withPayload);
+}
+
 let sites: Site[] = [];
 
 beforeAll(async () => {
-  cliPath = ensureFreshBuild();
   sites = await discoverSites();
 
   server = createServer((req, res) => {
@@ -404,10 +430,11 @@ describe("TS-012 behaviour — every dash-accepting argument reads stdin", () =>
         // sink. This is the assertion that catches a site which never reads
         // stdin at all -- `--filters` failed here while leaking nothing, so a
         // sentinel-absence check on its own would have called it clean.
-        if (!sinks(run).includes(probeId)) {
+        if (!sinks(run).includes(probeId) && !(await consumedStdin(site, payload, run))) {
           problems.push(
             `${label}: NOT RESOLVED - the piped value never reached a request, ` +
-              `the config file, or stdout` +
+              `the config file, or stdout, and the command behaved identically ` +
+              `on empty stdin` +
               `\n    exit ${run.status}, ${run.requests.length} request(s)` +
               `\n    stderr: ${run.stderr.trim().slice(0, 200) || "(none)"}`,
           );

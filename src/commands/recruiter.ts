@@ -42,6 +42,7 @@ import {
   DEFAULT_FILTER_READERS,
   type FilterReaders,
 } from "../lib/search-filters.js";
+import { isStdinToken } from "../lib/stdin.js";
 import { readFile } from "node:fs/promises";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
@@ -278,7 +279,7 @@ async function assembleRecruiterJobBody(
     } catch {
       return { error: `cannot read ${source}` };
     }
-  } else if (flags.body === "-") {
+  } else if (isStdinToken(flags.body)) {
     source = "--body - (stdin)";
     raw = await readers.readStdin();
   } else if (flags.body !== undefined) {

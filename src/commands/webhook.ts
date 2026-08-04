@@ -22,7 +22,7 @@ import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
-import { STDIN_SENTINEL, defaultReadStdin } from "../lib/stdin.js";
+import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
 import { readFileSync } from "node:fs";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
@@ -402,7 +402,7 @@ export async function resolveWebhookBody(
     process.exit(2);
   }
 
-  if (raw === "-" || raw === STDIN_SENTINEL) {
+  if (isStdinToken(raw)) {
     const piped = stripTrailingNewlines(await readStdin());
     if (!piped) {
       out.stderr.write("error: --body -: stdin: empty input\n");

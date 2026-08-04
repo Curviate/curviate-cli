@@ -48,13 +48,32 @@ export async function defaultReadStdin(): Promise<string> {
 }
 
 /**
- * Resolve the TEXT positional: if exactly "-", call the injected stdin reader
- * (or `defaultReadStdin`). Exits 2 with "stdin: empty input" when stdin is
- * empty after trimming.
+ * Does this argument value mean "read from stdin"?
  *
- * @param rawText   The raw value from the positional argument.
- * @param onError   Writes the error message (stderr.write equivalent).
- * @param onExit    Calls process.exit with the given code.
+ * The single place in the CLI that answers that question. Two spellings reach
+ * a consuming site: the literal "-" (unit tests that inject a value directly)
+ * and STDIN_SENTINEL (every real invocation, because dispatch.ts substitutes it
+ * before citty/mri can swallow the dash).
+ *
+ * Every argument documented as accepting "-" MUST route through this predicate,
+ * or through `resolveTextOrStdin` below. A site that tests `value === "-"`
+ * itself is dead code in the built binary: the sentinel arrives instead, the
+ * branch is never taken, and the sentinel is consumed as if the user had typed
+ * it. That is how `login --api-key -` came to write the sentinel into the
+ * config file as an API key, report success, and leave every later command
+ * blaming the user's credentials.
+ */
+export function isStdinToken(value: unknown): boolean {
+  return value === "-" || value === STDIN_SENTINEL;
+}
+
+/**
+ * Resolve an argument that may mean "read from stdin": if it does, call the
+ * injected stdin reader (or `defaultReadStdin`). Exits 2 with
+ * "stdin: empty input" when stdin is empty.
+ *
+ * @param rawText   The raw value from the argument.
+ * @param out       Receives the error message (stderr.write equivalent).
  * @param readStdin Optional injected stdin reader (for tests).
  */
 export async function resolveTextOrStdin(
@@ -62,9 +81,7 @@ export async function resolveTextOrStdin(
   out: { stderr: { write: (s: string) => void } },
   readStdin?: () => Promise<string>,
 ): Promise<string> {
-  // Accept both "-" (injected directly in unit tests) and STDIN_SENTINEL
-  // (substituted by dispatch.ts for the real bin, where "-" is swallowed by mri).
-  if (rawText !== "-" && rawText !== STDIN_SENTINEL) return rawText;
+  if (!isStdinToken(rawText)) return rawText;
   const reader = readStdin ?? defaultReadStdin;
   const text = await reader();
   if (!text) {

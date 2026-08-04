@@ -37,13 +37,12 @@ import { createServer, type Server } from "node:http";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ensureFreshBuild } from "../helpers/built-cli.js";
+import { cliPath } from "../helpers/built-cli.js";
 import { STDIN_SENTINEL } from "../../src/lib/stdin.js";
 
 /** The value piped on stdin. Distinctive so it cannot collide with a fixture. */
 const KEY = "cvt_live_REALVALUE";
 
-let cliPath: string;
 let xdgHome: string;
 let configPath: string;
 let server: Server;
@@ -86,7 +85,11 @@ function runCli(args: string[], input: string): Promise<CliRun> {
  * defect.
  */
 function cleanEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env, XDG_CONFIG_HOME: xdgHome, NODE_ENV: "production" };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    XDG_CONFIG_HOME: xdgHome,
+    NODE_ENV: "production",
+  };
   delete env["CURVIATE_API_KEY"];
   delete env["CURVIATE_ACCOUNT"];
   delete env["CURVIATE_BASE_URL"];
@@ -94,7 +97,6 @@ function cleanEnv(): NodeJS.ProcessEnv {
 }
 
 beforeAll(async () => {
-  cliPath = ensureFreshBuild();
   xdgHome = mkdtempSync(join(tmpdir(), "curviate-login-stdin-"));
   configPath = join(xdgHome, "curviate", "config.json");
 
