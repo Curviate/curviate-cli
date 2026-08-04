@@ -1,6 +1,6 @@
 /**
- * TS-012 — every `-`-accepting argument resolves stdin.
- * Covers AC-011 and FR-003a of docs/specs/cli/002-config-and-auth.md.
+ * Every `-`-accepting argument resolves stdin, and no argument anywhere in the
+ * command tree lets the internal stdin sentinel escape the parsing layer.
  *
  * ## What went wrong, and why this guard is shaped the way it is
  *
@@ -79,7 +79,7 @@ function declaresDashStdin(def: ArgDef): boolean {
 
 /**
  * Every command module, resolved by Vite at transform time. A glob, not a list
- * of imports: a new command file joins the guard by existing (AC-011).
+ * of imports: a new command file joins the guard by existing.
  *
  * `import.meta.glob` is a Vite feature, so it is absent from the Node typings
  * the package compiles against; the cast is the narrowest way to name it.
@@ -338,7 +338,7 @@ afterAll(async () => {
 // 1. Discovery
 // ---------------------------------------------------------------------------
 
-describe("TS-012 discovery — the enumeration comes from the command tree", () => {
+describe("discovery — the enumeration comes from the command tree", () => {
   it(`finds at least the ${KNOWN_SITE_COUNT} arguments known to accept a dash`, () => {
     expect(sites.length).toBeGreaterThanOrEqual(KNOWN_SITE_COUNT);
   });
@@ -363,7 +363,7 @@ describe("TS-012 discovery — the enumeration comes from the command tree", () 
  * Only two modules may mention a bare dash as a value: the dispatcher that
  * substitutes it, and the resolver that recognises both spellings. Anywhere
  * else, an equality test against `"-"` alone is unreachable in the shipped
- * binary (FR-003a §2).
+ * binary, because the sentinel arrives instead.
  */
 const DASH_COMPARISON = /(?:[!=]==\s*["'`]-["'`])|(?:["'`]-["'`]\s*[!=]==)/;
 const SENTINEL_REFERENCE = /STDIN_SENTINEL/;
@@ -378,7 +378,7 @@ function sourceFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-describe("TS-012 shape — no site hand-rolls the dash comparison", () => {
+describe("shape — no site hand-rolls the dash comparison", () => {
   it("only the dispatcher and the shared resolver compare an argument to a bare dash", () => {
     const offenders: string[] = [];
 
@@ -408,7 +408,7 @@ describe("TS-012 shape — no site hand-rolls the dash comparison", () => {
 // 3. Behaviour — drive every discovered argument through the built bin
 // ---------------------------------------------------------------------------
 
-describe("TS-012 behaviour — every dash-accepting argument reads stdin", () => {
+describe("behaviour — every dash-accepting argument reads stdin", () => {
   it(
     "each site receives its exact piped value, and no site leaks the sentinel",
     async () => {
@@ -426,7 +426,7 @@ describe("TS-012 behaviour — every dash-accepting argument reads stdin", () =>
         // consuming site sees it.
         const run = await runSite(argvFor(site, "-", payload), payload);
 
-        // AC-011, positively: the piped value must arrive at the consuming
+        // Positively: the piped value must arrive at the consuming
         // sink. This is the assertion that catches a site which never reads
         // stdin at all -- `--filters` failed here while leaking nothing, so a
         // sentinel-absence check on its own would have called it clean.
@@ -440,7 +440,7 @@ describe("TS-012 behaviour — every dash-accepting argument reads stdin", () =>
           );
         }
 
-        // AC-011, negatively: the sentinel must never reach a persisted file,
+        // Negatively: the sentinel must never reach a persisted file,
         // an outbound body, or an outbound header. Nor a stream: a diagnostic
         // quoting it back is how a user gets told their own key is at fault.
         if (surfaces(run).includes(STDIN_SENTINEL)) {

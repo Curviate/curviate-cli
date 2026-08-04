@@ -1,6 +1,5 @@
 /**
- * TS-011 — `curviate login --api-key -` end to end through the real bin.
- * Covers AC-012 and FR-003a of docs/specs/cli/002-config-and-auth.md.
+ * `curviate login --api-key -` end to end through the real bin.
  *
  * ## The defect this test exists for
  *
@@ -15,9 +14,10 @@
  *
  * ## Why this test spawns the built bin
  *
- * AC-003/TS-003 already required the correct behaviour, and the defect still
- * shipped, because the only way to reach it is through `dispatch.ts`'s argv
- * preprocessing. Calling `loginCommand.run({ args: { "api-key": "-" } })`
+ * The correct behaviour was already required and already believed covered, and
+ * the defect still shipped, because the only way to reach it is through
+ * `dispatch.ts`'s argv preprocessing. Calling
+ * `loginCommand.run({ args: { "api-key": "-" } })`
  * injects a literal dash the real binary never produces, so the handler takes a
  * branch that cannot execute in production and reports a pass. Asserting on the
  * built artifact as a child process is the only assertion that means anything
@@ -123,7 +123,7 @@ afterAll(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-describe("TS-011 — login --api-key - through the built bin", () => {
+describe("login --api-key - through the built bin", () => {
   it("persists the piped key verbatim, never the stdin sentinel", () => {
     expect(loginRun.status).toBe(0);
 
