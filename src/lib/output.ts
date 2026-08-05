@@ -198,14 +198,15 @@ export function renderSuccess(
 }
 
 /**
- * Format one response notice (`{code, message, field?, value?}`, api/008 §F/§G)
- * as a single readable line. Defensive against a malformed entry (missing
- * `code`/`message`) so a bad server payload degrades to a plain line rather
- * than throwing or printing "undefined".
+ * Format one response notice (`{code, message, field?, value?}`) as a single
+ * readable line. Defensive against a malformed entry (missing `code`/
+ * `message`) so a bad server payload degrades to a plain line rather than
+ * throwing or printing "undefined".
  *
- * `field`/`value` are optional detail: §F's filter notices carry both, §G's
- * page-scoped notices (e.g. an anonymised-results page) carry neither. Both
- * shapes render as one clean line either way.
+ * `field`/`value` are optional detail: some notices are about a specific
+ * request field (an unresolved filter value), others are page-scoped and
+ * name none (e.g. a page whose results are anonymised upstream). Both shapes
+ * render as one clean line either way.
  */
 function formatNotice(notice: unknown): string | null {
   if (typeof notice !== "object" || notice === null) return null;
@@ -223,14 +224,14 @@ function formatNotice(notice: unknown): string | null {
 }
 
 /**
- * Render a response's top-level `notices[]` (api/008 §F/§G) as readable lines,
- * or null when there is nothing to show. `null` (not `""`) lets callers skip
- * appending a blank line entirely, which is what keeps a notice-free response
+ * Render a response's top-level `notices[]` as readable lines, or null when
+ * there is nothing to show. `null` (not `""`) lets callers skip appending a
+ * blank line entirely, which is what keeps a notice-free response
  * byte-identical to its pre-notices rendering.
  *
  * Exported (not just used internally by `renderHuman`) so `lib/paginate.ts`'s
  * `--all` NDJSON stream can surface the identical per-page notices to stderr
- * without a second formatting implementation — one mechanism, two output
+ * without a second formatting implementation: one mechanism, two output
  * modes.
  */
 export function renderNotices(notices: unknown): string | null {
@@ -244,11 +245,11 @@ export function renderNotices(notices: unknown): string | null {
 /**
  * Render a human-readable representation of data (best-effort).
  *
- * `notices[]` (api/008 §F/§G) is surfaced first, above the results it
- * qualifies, so a degraded or partly-unactionable page is never mistaken for
- * a clean one. A response with no `notices` key renders byte-identically to
- * how it rendered before this array existed (F-AC-004 / the "absent when
- * empty" contract).
+ * The response envelope's top-level `notices[]` array, when present, is
+ * surfaced first, above the results it qualifies, so a degraded or
+ * partly-unactionable page is never mistaken for a clean one. A response
+ * with no `notices` key renders byte-identically to how it rendered before
+ * this array existed: absent means nothing to report, never an empty array.
  */
 function renderHuman(data: unknown): string {
   if (data === null || data === undefined) return "(empty)";

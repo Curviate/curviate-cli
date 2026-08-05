@@ -26,16 +26,16 @@
  * callers/tests that need to observe truncation beyond the standard output
  * contract.
  *
- * **Page-scoped `notices[]` (api/008 §F/§G, #749).** A page envelope may
- * carry a top-level `notices` array alongside `items`/`cursor` (e.g. an
- * anonymised-results page, or a filter value that took the id fast path).
- * `--all` streams items only — the envelope itself is never written to
- * stdout, which is exactly what would otherwise silently drop this per-page
- * signal a second time on the highest-volume read path. `streamAll` renders
- * any such notices to stderr (diagnostics channel; stdout stays
- * one-NDJSON-object-per-item, unchanged) using the SAME formatter `lib/
- * output.ts`'s human-mode renderer uses, so there is exactly one notice
- * rendering implementation for both output modes.
+ * **Page-scoped `notices[]`.** A page envelope may carry a top-level
+ * `notices` array alongside `items`/`cursor` (e.g. a page whose results are
+ * anonymised upstream, or a filter value that could not be verified).
+ * `--all` streams items only, so the envelope itself is never written to
+ * stdout; without this, that would silently drop the per-page signal on the
+ * highest-volume read path. `streamAll` renders any such notices to stderr
+ * (diagnostics channel; stdout stays one-NDJSON-object-per-item, unchanged)
+ * using the same formatter `lib/output.ts`'s human-mode renderer uses, so
+ * there is exactly one notice-rendering implementation for both output
+ * modes.
  */
 
 import { renderNotices } from "./output.js";
@@ -199,10 +199,10 @@ export async function* streamAll<P extends Record<string, unknown>>(
       firstPage = false;
     }
 
-    // Surface this page's notices[] (api/008 §F/§G) before its items, on the
-    // diagnostics channel — stdout stays pure NDJSON data. A page with no
-    // notices writes nothing (renderNotices returns null), so a stream with
-    // no notices anywhere is byte-identical to today's stderr output.
+    // Surface this page's notices[] before its items, on the diagnostics
+    // channel; stdout stays pure NDJSON data. A page with no notices writes
+    // nothing (renderNotices returns null), so a stream with no notices
+    // anywhere is byte-identical to today's stderr output.
     if (opts.out) {
       const pageNotices = renderNotices(page.notices);
       if (pageNotices) opts.out.stderr.write(pageNotices + "\n");

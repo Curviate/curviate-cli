@@ -381,8 +381,15 @@ export function slimInviteReceived(data: unknown): Record<string, unknown> {
  * Slim-default projection for a single `search people` item.
  *
  * Exact fields: id, public_identifier, full_name, headline, location,
- * network_distance. Verbose-only: avatar_url, linkedin_urn, is_premium,
- * is_open_profile.
+ * network_distance, visibility. Verbose-only: avatar_url, linkedin_urn,
+ * is_premium, is_open_profile.
+ *
+ * `visibility` (`"full" | "hidden"`) is included in the default (non-verbose)
+ * output on purpose: it is the discriminator for whether this item names a
+ * real, readable person or one the connected account's own subscription
+ * hides from it. Leaving it verbose-only would mean the default view shows
+ * a page of unmarked rows with no way to tell which are usable, which is the
+ * exact silent-degradation failure this field exists to prevent.
  */
 export function slimSearchPeopleItem(item: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -392,6 +399,7 @@ export function slimSearchPeopleItem(item: Record<string, unknown>): Record<stri
     headline: item["headline"] ?? null,
     location: item["location"] ?? null,
     network_distance: item["network_distance"] ?? null,
+    visibility: item["visibility"] ?? null,
   };
 }
 
