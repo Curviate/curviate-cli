@@ -192,7 +192,7 @@ describe("webhook create", () => {
     expect(parsed.method).toBe("webhooks.create");
   });
 
-  it("dead --format flag removed (#711): a stray format field is never forwarded to the body", async () => {
+  it("dead --format flag removed: a stray format field is never forwarded to the body", async () => {
     const { runWebhookCreate } = await import("../../src/commands/webhook.js");
     const out = makeOut();
     await runWebhookCreate(client as never, {
@@ -201,7 +201,7 @@ describe("webhook create", () => {
       "account-ids": "acc_1",
       // Simulates a caller still passing the removed flag through the typed
       // object (e.g. a stale script) — the server silently ignores `format`
-      // and always persists `json` (#711), so the CLI must not send it either.
+      // and always persists `json`, so the CLI must not send it either.
       format: "form",
       json: true,
     } as WebhookFlags, out);
@@ -423,7 +423,7 @@ describe("webhook update", () => {
     expect(parsed.args).toHaveProperty("id", "wh_1");
   });
 
-  it("dead --format flag removed (#711): a stray format field is never forwarded to the body", async () => {
+  it("dead --format flag removed: a stray format field is never forwarded to the body", async () => {
     const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
     const out = makeOut();
     await runWebhookUpdate(client as never, {
