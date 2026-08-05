@@ -110,10 +110,12 @@ function applyProjection(
  * a bare array → its first element; an `{ items: [...] }` envelope → the first
  * item; a single object → itself.
  */
-function firstProjectableItem(data: unknown): Record<string, unknown> | null {
-  const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-    typeof v === "object" && v !== null && !Array.isArray(v);
+/** A non-null, non-array object: the only shape a slim/verbose merge is valid on. */
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
 
+function firstProjectableItem(data: unknown): Record<string, unknown> | null {
   if (Array.isArray(data)) {
     return data.length > 0 && isPlainObject(data[0]) ? data[0] : null;
   }
@@ -172,8 +174,29 @@ export function renderSuccess(
     ? opts.fields.split(",").map((f) => f.trim()).filter(Boolean)
     : [];
 
-  // Apply slim projection first (before --fields), unless --verbose
-  const slimmed = (!opts.verbose && opts.slim) ? opts.slim(data) : data;
+  // Apply slim projection first (before --fields).
+  //
+  // --verbose is a SUPERSET of the default, not a different view. It used to
+  // swap the slim projection out for the raw response wholesale, which meant
+  // asking for more data returned LESS in places: the slim-only fields are
+  // renamed or synthesized (headline <- description, network_distance <-
+  // specifics.network_distance, provider_id <- id, current_position built from
+  // specifics.experience[0]), so none of them exist on the raw wire under those
+  // names and all of them vanished under --verbose. A flag named verbose that
+  // drops fields is a trap, so verbose now returns the raw response WITH the
+  // derived fields merged in. Raw keys win on any name collision, so --verbose
+  // never misrepresents a wire value.
+  let slimmed: unknown = data;
+  if (opts.slim) {
+    const projection = opts.slim(data);
+    if (!opts.verbose) {
+      slimmed = projection;
+    } else if (isPlainObject(projection) && isPlainObject(data)) {
+      // Raw spread LAST so a wire value always wins over a derived one.
+      slimmed = { ...projection, ...data };
+    }
+    // A non-object response under --verbose falls through as the raw data.
+  }
 
   // Warn (diagnostics channel) when a requested field matches nothing on the
   // response the projection actually runs over (the slim output, if any).

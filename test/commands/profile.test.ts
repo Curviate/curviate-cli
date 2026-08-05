@@ -161,15 +161,79 @@ describe("profile command — routing", () => {
     expect(cmd.subCommands?.me?.args ?? {}, "profile me must not declare --notify").not.toHaveProperty("notify");
   });
 
-  it("profile <id> --posts — calls listPosts", async () => {
+  it("profile <id> --posts — resolves the slug to a provider id, then calls listPosts", async () => {
     const { runProfileGet } = await import("../../src/commands/profile.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    // listUserPosts 400s a public slug, so the slug must be resolved first.
+    accountNs.users.get.mockResolvedValue({ id: "ACoAAjdoeprovider" });
 
     await runProfileGet(client as never, { id: "jdoe", posts: true, account: "acc_1", json: true } as ProfileCommandArgs, out);
 
-    expect(accountNs.posts.listUserPosts).toHaveBeenCalledWith("jdoe", expect.any(Object));
-    expect(accountNs.users.get).not.toHaveBeenCalled();
+    expect(accountNs.users.get).toHaveBeenCalledWith("jdoe", {});
+    expect(accountNs.posts.listUserPosts).toHaveBeenCalledWith("ACoAAjdoeprovider", expect.any(Object));
   });
+
+  it("profile <id> --posts — a provider id is used as-is, with no resolution lookup", async () => {
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileGet(
+      client as never,
+      { id: "ACoAAalreadyaproviderid", posts: true, account: "acc_1", json: true } as ProfileCommandArgs,
+      out,
+    );
+
+    expect(accountNs.users.get).not.toHaveBeenCalled();
+    expect(accountNs.posts.listUserPosts).toHaveBeenCalledWith("ACoAAalreadyaproviderid", expect.any(Object));
+  });
+
+  it("profile <URL> --posts — the URL form is accepted, exactly as plain profile accepts it", async () => {
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    accountNs.users.get.mockResolvedValue({ id: "ACoAAfromurl" });
+
+    await runProfileGet(
+      client as never,
+      {
+        id: "https://www.linkedin.com/in/jdoe/",
+        posts: true,
+        account: "acc_1",
+        json: true,
+      } as ProfileCommandArgs,
+      out,
+    );
+
+    // The URL is normalized to its slug, then resolved to the provider id.
+    expect(accountNs.users.get).toHaveBeenCalledWith("jdoe", {});
+    expect(accountNs.posts.listUserPosts).toHaveBeenCalledWith("ACoAAfromurl", expect.any(Object));
+  });
+
+  it.each([
+    ["comments", "comments", "listUserComments"],
+    ["reactions", "posts", "listUserReactions"],
+    ["followers", "users", "listFollowers"],
+  ] as const)(
+    "profile <URL> --%s — the URL form is accepted and resolved (not just --posts)",
+    async (flag, nsKey, method) => {
+      const { runProfileGet } = await import("../../src/commands/profile.js");
+      const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+      accountNs.users.get.mockResolvedValue({ id: "ACoAAfromurl" });
+
+      await runProfileGet(
+        client as never,
+        {
+          id: "https://www.linkedin.com/in/jdoe/",
+          [flag]: true,
+          account: "acc_1",
+          json: true,
+        } as ProfileCommandArgs,
+        out,
+      );
+
+      const ns = accountNs as unknown as Record<string, Record<string, Mock>>;
+      expect(ns[nsKey]![method]!).toHaveBeenCalledWith("ACoAAfromurl", expect.any(Object));
+    },
+  );
 
   it("profile <id> --posts --is-company (numeric id) — no slug resolution, lists directly", async () => {
     const { runProfileGet } = await import("../../src/commands/profile.js");
@@ -360,10 +424,52 @@ describe("profile endorse — write command", () => {
   });
 });
 
-describe("profile — no account error", () => {
-  it("profile me with no account → exit 2", async () => {
+// `curviate login` tells the user to run `curviate profile me` to verify. On a
+// fresh config that exited 2 with "--account is required", so the very first
+// instruction a new user follows dead-ended. With exactly one connected account
+// there is nothing to disambiguate, so it is resolved instead of demanded.
+describe("profile — account resolution when --account is omitted", () => {
+  /** Client stub whose accounts.list returns the given items. */
+  function clientWithAccounts(accountNs: ReturnType<typeof makeAccountNs>, items: unknown[]) {
+    return {
+      account: vi.fn().mockReturnValue(accountNs),
+      accounts: { list: vi.fn().mockResolvedValue({ items }) },
+    };
+  }
+
+  it("exactly one connected account → it is used, and the command succeeds", async () => {
     const accountNs = makeAccountNs();
-    const client = makeClient(accountNs);
+    (accountNs.users.get as Mock).mockResolvedValue({ id: "jdoe" });
+    const client = clientWithAccounts(accountNs, [
+      { account_id: "acc_sole", full_name: "Ralf Example", status: "active" },
+    ]);
+    const { runProfileMe } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileMe(client as never, { json: true } as ProfileCommandArgs, out);
+
+    expect(client.accounts.list).toHaveBeenCalled();
+    expect(client.account).toHaveBeenCalledWith("acc_sole");
+    expect(accountNs.users.get).toHaveBeenCalledWith("me", {});
+    expect(out.stderr.write).not.toHaveBeenCalled();
+  });
+
+  it("an explicit --account wins and costs no lookup", async () => {
+    const accountNs = makeAccountNs();
+    (accountNs.users.get as Mock).mockResolvedValue({ id: "jdoe" });
+    const client = clientWithAccounts(accountNs, [{ account_id: "acc_sole" }]);
+    const { runProfileMe } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileMe(client as never, { account: "acc_explicit", json: true } as ProfileCommandArgs, out);
+
+    expect(client.accounts.list).not.toHaveBeenCalled();
+    expect(client.account).toHaveBeenCalledWith("acc_explicit");
+  });
+
+  it("zero connected accounts → exit 2 naming what to do, not a bare flag complaint", async () => {
+    const accountNs = makeAccountNs();
+    const client = clientWithAccounts(accountNs, []);
     const { runProfileMe } = await import("../../src/commands/profile.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
@@ -376,6 +482,33 @@ describe("profile — no account error", () => {
     } finally {
       exitSpy.mockRestore();
     }
+    const msg = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(msg).toContain("no LinkedIn account is connected");
+  });
+
+  it("more than one connected account → exit 2 listing the choices", async () => {
+    const accountNs = makeAccountNs();
+    const client = clientWithAccounts(accountNs, [
+      { account_id: "acc_one", full_name: "Ralf Example", status: "active" },
+      { account_id: "acc_two", full_name: "Other Persona", status: "active" },
+    ]);
+    const { runProfileMe } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
+    try {
+      await runProfileMe(client as never, { json: true } as ProfileCommandArgs, out);
+      expect.fail("Should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    const msg = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    // Ambiguity must be actionable: name both candidates, not just the flag.
+    expect(msg).toContain("acc_one");
+    expect(msg).toContain("acc_two");
+    expect(msg).toContain("--account");
   });
 });
 
@@ -489,6 +622,88 @@ describe("profile me — --sections passthrough", () => {
       exitSpy.mockRestore();
     }
     expect(accountNs.users.get).not.toHaveBeenCalled();
+  });
+});
+
+// The recruiter-grade payload (--sections linkedin_experience etc.) used to be
+// fetched and then thrown away by the default slim projection, so `--sections`
+// looked like a no-op and a user had no way to tell it had worked.
+describe("profile — --sections output actually reaches the user", () => {
+  const ENRICHED = {
+    id: "ACoAAjdoe",
+    first_name: "Jane",
+    description: "Staff Engineer",
+    public_identifier: "jdoe",
+    specifics: {
+      network_distance: "DISTANCE_1",
+      experience: [{ position: "Staff Engineer", company: "Acme", end: null }],
+      education: [{ school: "State University", degree: "BSc" }],
+      skills: [{ name: "TypeScript" }],
+    },
+  };
+
+  it("requested sections are returned on the DEFAULT output, not only under --verbose", async () => {
+    const accountNs = makeAccountNs();
+    const client = makeClient(accountNs);
+    (accountNs.users.get as Mock).mockResolvedValue(ENRICHED);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileGet(
+      client as never,
+      { id: "jdoe", account: "acc_1", json: true, sections: "experience,education,skills" } as ProfileCommandArgs,
+      out,
+    );
+
+    const result = JSON.parse(
+      (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""),
+    ) as Record<string, unknown>;
+    const sections = result["sections"] as Record<string, unknown>;
+    expect(sections).toBeDefined();
+    expect(sections["experience"]).toEqual(ENRICHED.specifics.experience);
+    expect(sections["education"]).toEqual(ENRICHED.specifics.education);
+    expect(sections["skills"]).toEqual(ENRICHED.specifics.skills);
+  });
+
+  it("only the REQUESTED sections are included (asking for one does not dump the rest)", async () => {
+    const accountNs = makeAccountNs();
+    const client = makeClient(accountNs);
+    (accountNs.users.get as Mock).mockResolvedValue(ENRICHED);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileGet(
+      client as never,
+      { id: "jdoe", account: "acc_1", json: true, sections: "education" } as ProfileCommandArgs,
+      out,
+    );
+
+    const result = JSON.parse(
+      (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""),
+    ) as Record<string, unknown>;
+    const sections = result["sections"] as Record<string, unknown>;
+    expect(Object.keys(sections)).toEqual(["education"]);
+  });
+
+  it("with NO --sections the default output is unchanged (no sections key, no metadata leakage)", async () => {
+    const accountNs = makeAccountNs();
+    const client = makeClient(accountNs);
+    (accountNs.users.get as Mock).mockResolvedValue(ENRICHED);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runProfileGet(
+      client as never,
+      { id: "jdoe", account: "acc_1", json: true } as ProfileCommandArgs,
+      out,
+    );
+
+    const result = JSON.parse(
+      (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""),
+    ) as Record<string, unknown>;
+    expect(result).not.toHaveProperty("sections");
+    // network_distance stays a top-level slim field, never a "section".
+    expect(result["network_distance"]).toBe("DISTANCE_1");
   });
 });
 
@@ -794,10 +1009,40 @@ describe("profile me — --verbose mode", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const result = JSON.parse(written) as Record<string, unknown>;
     expect(result).toHaveProperty("entity_urn");
-    expect(result).not.toHaveProperty("current_position");
     const specifics = result["specifics"] as Record<string, unknown>;
     expect(specifics).toHaveProperty("experience");
     expect(specifics).toHaveProperty("education");
+    // --verbose is a SUPERSET: the derived slim-only fields survive alongside
+    // the raw wire object. It used to DROP them, which made a flag named
+    // verbose return less than the default.
+    expect(result).toHaveProperty("current_position");
+    expect(result).toHaveProperty("provider_id");
+    expect(result).toHaveProperty("headline");
+  });
+
+  it("--verbose is a strict superset of the default projection (every slim key survives)", async () => {
+    const { runProfileMe } = await import("../../src/commands/profile.js");
+
+    const slimOut = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    await runProfileMe(client as never, { account: "acc_1", json: true } as ProfileCommandArgs, slimOut);
+    const slimKeys = Object.keys(
+      JSON.parse((slimOut.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("")) as Record<string, unknown>,
+    );
+
+    const verboseOut = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    await runProfileMe(
+      client as never,
+      { account: "acc_1", json: true, verbose: true } as ProfileCommandArgs,
+      verboseOut,
+    );
+    const verboseKeys = new Set(
+      Object.keys(
+        JSON.parse((verboseOut.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("")) as Record<string, unknown>,
+      ),
+    );
+
+    const missing = slimKeys.filter((k) => !verboseKeys.has(k));
+    expect(missing, `--verbose dropped default fields: ${missing.join(", ")}`).toEqual([]);
   });
 });
 
@@ -899,7 +1144,7 @@ describe("profile <id> — slim mode (current_position synthesis)", () => {
     expect(result["current_position"]).toBeNull();
   });
 
-  it("--verbose mode: specifics.experience present, no current_position synthesis", async () => {
+  it("--verbose mode: raw specifics.experience present AND the derived current_position survives", async () => {
     const { runProfileGet } = await import("../../src/commands/profile.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
@@ -913,7 +1158,9 @@ describe("profile <id> — slim mode (current_position synthesis)", () => {
     const result = JSON.parse(written) as Record<string, unknown>;
     const specifics = result["specifics"] as Record<string, unknown>;
     expect(specifics).toHaveProperty("experience");
-    expect(result).not.toHaveProperty("current_position");
+    // --verbose is a superset: the synthesized field is kept, not swapped out.
+    expect(result).toHaveProperty("current_position");
+    expect(result).toHaveProperty("network_distance");
   });
 });
 
