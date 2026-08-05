@@ -47,6 +47,7 @@ import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile } from "../lib/slim.js";
+import { resolveAccountIdOrExit } from "../lib/account-resolve.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 // Body type derived from the real SDK signature — a shape drift is a compile
@@ -117,12 +118,19 @@ type ListQuery = { limit?: number; cursor?: string };
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
+/**
+ * Resolve the account for an account-scoped profile command.
+ *
+ * Delegates to the shared resolver, which falls back to the sole connected
+ * account when none was configured. This is what makes the post-login
+ * instruction (`curviate profile me`) actually work on a fresh config.
+ */
+async function requireAccount(
+  client: Curviate,
+  account: string | undefined,
+  out: OutputStreams,
+): Promise<string> {
+  return resolveAccountIdOrExit(client, account, out);
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -191,7 +199,7 @@ export async function runProfileMe(
     return;
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -292,7 +300,7 @@ export async function runProfileMe(
 
   try {
     const result = await ns.users.get("me", params);
-    const slimOutOpts = { ...outOpts, slim: slimProfileMe };
+    const slimOutOpts = { ...outOpts, slim: (d: unknown) => slimProfileMe(d, params.linkedin_sections) };
     renderSuccess(result, slimOutOpts, out);
   } catch (err: unknown) {
     const { CurviateError } = await import("@curviate/sdk");
@@ -340,7 +348,7 @@ export async function runProfileGet(
     parsedSections = result.sections;
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
   const ns = client.account(accountId);
@@ -352,24 +360,43 @@ export async function runProfileGet(
   const cursor = flags.cursor;
 
   try {
+    // -- Activity-target resolution --------------------------------------
+    // The activity reads (--posts / --comments / --reactions / --followers)
+    // hit endpoints that require the raw provider id: they 400 a public slug
+    // or a profile URL, and that 400 surfaces as a content-free "The request
+    // was rejected as invalid." So resolve the identifier to a provider id
+    // FIRST, exactly as the sibling `post user-posts` / `comment user`
+    // commands already do. Without this, `profile <url> --posts` failed while
+    // plain `profile <url>` succeeded, even though --posts is documented as
+    // an alias of `post user-posts`.
+    //
+    // resolveMemberOrMeProviderId is a no-op for "me" and for an id that is
+    // already a provider id, so this costs a lookup only for the slug/URL
+    // forms that would otherwise have failed outright.
+    const hasActivityFlag = !!(
+      flags.posts || flags.comments || flags.reactions || flags.followers
+    );
+    let activityId = resolvedId;
+    if (hasActivityFlag) {
+      if (flags["is-company"]) {
+        // Company page: listUserPosts needs the NUMERIC company id, so a slug
+        // (or a URL-derived slug) is resolved via companies.get.
+        if (!/^\d+$/.test(resolvedId)) {
+          const companyData = await ns.companies.get(resolvedId);
+          activityId = companyData.id;
+        }
+      } else {
+        activityId = await resolveMemberOrMeProviderId(ns, rawId);
+      }
+    }
+
     // Select list method by flag
     if (flags.posts) {
       const params: ListQuery = {};
       if (limit !== undefined) params.limit = limit;
       if (cursor) params.cursor = cursor;
 
-      // Company slug resolution: when --is-company and the id is non-numeric
-      // (a slug or URL-derived slug), resolve the numeric company id via
-      // companies.get before listing posts (the retained v2 retrieve method —
-      // the pre-v2 profiles.getCompany was removed upstream).
-      let postId = resolvedId;
-      if (flags["is-company"]) {
-        const isNumericId = /^\d+$/.test(resolvedId);
-        if (!isNumericId) {
-          const companyData = await ns.companies.get(resolvedId);
-          postId = companyData.id;
-        }
-      }
+      const postId = activityId;
 
       if (all) {
         const fn = (p: ListQuery) => ns.posts.listUserPosts(postId, p);
@@ -390,7 +417,7 @@ export async function runProfileGet(
       if (cursor) params.cursor = cursor;
 
       if (all) {
-        const fn = (p: ListQuery) => ns.comments.listUserComments(resolvedId, p);
+        const fn = (p: ListQuery) => ns.comments.listUserComments(activityId, p);
         for await (const item of streamAll(fn, params, {
           maxPages,
           out,
@@ -399,7 +426,7 @@ export async function runProfileGet(
           out.stdout.write(JSON.stringify(item) + "\n");
         }
       } else {
-        const result = await ns.comments.listUserComments(resolvedId, params);
+        const result = await ns.comments.listUserComments(activityId, params);
         renderSuccess(result, outOpts, out);
       }
     } else if (flags.reactions) {
@@ -408,7 +435,7 @@ export async function runProfileGet(
       if (cursor) params.cursor = cursor;
 
       if (all) {
-        const fn = (p: ListQuery) => ns.posts.listUserReactions(resolvedId, p);
+        const fn = (p: ListQuery) => ns.posts.listUserReactions(activityId, p);
         for await (const item of streamAll(fn, params, {
           maxPages,
           out,
@@ -417,7 +444,7 @@ export async function runProfileGet(
           out.stdout.write(JSON.stringify(item) + "\n");
         }
       } else {
-        const result = await ns.posts.listUserReactions(resolvedId, params);
+        const result = await ns.posts.listUserReactions(activityId, params);
         renderSuccess(result, outOpts, out);
       }
     } else if (flags.followers) {
@@ -426,7 +453,7 @@ export async function runProfileGet(
       if (cursor) params.cursor = cursor;
 
       if (all) {
-        const fn = (p: ListQuery) => ns.users.listFollowers(resolvedId, p);
+        const fn = (p: ListQuery) => ns.users.listFollowers(activityId, p);
         for await (const item of streamAll(fn, params, {
           maxPages,
           out,
@@ -435,7 +462,7 @@ export async function runProfileGet(
           out.stdout.write(JSON.stringify(item) + "\n");
         }
       } else {
-        const result = await ns.users.listFollowers(resolvedId, params);
+        const result = await ns.users.listFollowers(activityId, params);
         renderSuccess(result, outOpts, out);
       }
     } else {
@@ -458,7 +485,7 @@ export async function runProfileGet(
       const getId = flags.sections ? await resolveMemberOrMeProviderId(ns, rawId) : resolvedId;
 
       const result = await ns.users.get(getId, params);
-      const getOutOpts = { ...outOpts, slim: slimProfile };
+      const getOutOpts = { ...outOpts, slim: (d: unknown) => slimProfile(d, params.linkedin_sections) };
       renderSuccess(result, getOutOpts, out);
     }
   } catch (err: unknown) {
@@ -484,7 +511,7 @@ export async function runProfileRelations(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -531,7 +558,7 @@ export async function runProfileEndorse(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const skillId = flags["endorsement-id"] ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -597,7 +624,7 @@ export async function runProfileSubscription(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -622,7 +649,7 @@ export async function runProfileAnalytics(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -646,7 +673,7 @@ export async function runProfileVisitors(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -689,7 +716,7 @@ export async function runProfileSsi(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -713,7 +740,7 @@ export async function runProfileUpdate(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
 
   const body: Record<string, unknown> = {};
   if (flags["first-name"]) body.first_name = flags["first-name"];
@@ -781,7 +808,7 @@ export async function runProfileFollow(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -816,7 +843,7 @@ export async function runProfileUnfollow(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -849,8 +876,7 @@ export async function runProfileFollowers(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
-  const resolvedId = resolveIdentifier(flags.id ?? "");
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -860,8 +886,13 @@ export async function runProfileFollowers(
   if (flags.cursor) params.cursor = flags.cursor;
 
   try {
+    // listFollowers needs the raw provider id: a public slug or profile URL
+    // 400s. Resolve first, so this command accepts the same identifier forms
+    // as every other profile read (see runProfileGet's activity branches).
+    const activityId = await resolveMemberOrMeProviderId(ns, flags.id ?? "");
+
     if (all) {
-      const fn = (p: ListQuery) => ns.users.listFollowers(resolvedId, p);
+      const fn = (p: ListQuery) => ns.users.listFollowers(activityId, p);
       for await (const item of streamAll(fn, params, {
         maxPages,
         out,
@@ -870,7 +901,7 @@ export async function runProfileFollowers(
         out.stdout.write(JSON.stringify(item) + "\n");
       }
     } else {
-      const result = await ns.users.listFollowers(resolvedId, params);
+      const result = await ns.users.listFollowers(activityId, params);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -885,7 +916,7 @@ export async function runProfileFollowing(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);

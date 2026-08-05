@@ -125,6 +125,52 @@ function extractExperience(specifics: Record<string, unknown> | null): unknown[]
   return Array.isArray(specifics?.["experience"]) ? (specifics!["experience"] as unknown[]) : [];
 }
 
+/**
+ * Project the sections the caller actually asked for out of `specifics`.
+ *
+ * `--sections linkedin_experience,linkedin_skills` makes the server return the
+ * recruiter-grade arrays nested under `specifics.<base>`. The slim projection is
+ * a rebuild rather than a filter, so before this those arrays were fetched and
+ * then thrown away: `--sections` on the default output looked like a no-op, and
+ * a user had no way to tell it had worked. Now the requested sections ride the
+ * slim output under a `sections` key, so asking for data returns data.
+ *
+ * Only what was REQUESTED is included, so the default (no `--sections`) output
+ * is byte-for-byte unchanged. `linkedin_*` means "every section present".
+ * `linkedin_<base>_preview` reads from the same `<base>` key the server nests
+ * the preview payload under.
+ *
+ * Returns null when nothing was requested or nothing came back, so the caller
+ * can omit the key entirely rather than emit an empty object.
+ */
+function projectSections(
+  specifics: Record<string, unknown> | null,
+  requested: readonly string[] | undefined,
+): Record<string, unknown> | null {
+  if (!specifics || !requested || requested.length === 0) return null;
+
+  // Keys that are profile metadata, not `--sections` payload; never emitted
+  // as a "section" even under the wildcard.
+  const NON_SECTION_KEYS = new Set(["network_distance", "is_premium"]);
+
+  const out: Record<string, unknown> = {};
+
+  if (requested.includes("linkedin_*")) {
+    for (const [key, value] of Object.entries(specifics)) {
+      if (!NON_SECTION_KEYS.has(key) && value !== undefined) out[key] = value;
+    }
+  } else {
+    for (const section of requested) {
+      const base = section.replace(/^linkedin_/, "").replace(/_preview$/, "");
+      if (NON_SECTION_KEYS.has(base)) continue;
+      const value = specifics[base];
+      if (value !== undefined) out[base] = value;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 // ---------------------------------------------------------------------------
 // profile me
 // ---------------------------------------------------------------------------
@@ -159,7 +205,10 @@ function extractExperience(specifics: Record<string, unknown> | null): unknown[]
  *     user-profile response has no occupation-summary field and no
  *     administered-organizations field of any kind.
  */
-export function slimProfileMe(data: unknown): Record<string, unknown> {
+export function slimProfileMe(
+  data: unknown,
+  requestedSections?: readonly string[],
+): Record<string, unknown> {
   const d = (data !== null && data !== undefined && typeof data === "object"
     ? data
     : {}) as Record<string, unknown>;
@@ -171,7 +220,10 @@ export function slimProfileMe(data: unknown): Record<string, unknown> {
   // the enrichment (null otherwise). Same helper, same contract.
   const currentPosition = synthesizeCurrentPosition(extractExperience(specifics));
 
+  const sections = projectSections(specifics, requestedSections);
+
   return {
+    ...(sections ? { sections } : {}),
     provider_id: d["id"] ?? null,
     first_name: d["first_name"] ?? null,
     last_name: d["last_name"] ?? null,
@@ -213,7 +265,10 @@ export function slimProfileMe(data: unknown): Record<string, unknown> {
  * `synthesizeCurrentPosition`. See that function for field mapping details.
  * Returns `null` when `specifics.experience` is empty or absent.
  */
-export function slimProfile(data: unknown): Record<string, unknown> {
+export function slimProfile(
+  data: unknown,
+  requestedSections?: readonly string[],
+): Record<string, unknown> {
   const d = (data !== null && data !== undefined && typeof data === "object"
     ? data
     : {}) as Record<string, unknown>;
@@ -221,7 +276,10 @@ export function slimProfile(data: unknown): Record<string, unknown> {
   const specifics = getSpecifics(d);
   const currentPosition = synthesizeCurrentPosition(extractExperience(specifics));
 
+  const sections = projectSections(specifics, requestedSections);
+
   return {
+    ...(sections ? { sections } : {}),
     provider_id: d["id"] ?? null,
     first_name: d["first_name"] ?? null,
     last_name: d["last_name"] ?? null,
