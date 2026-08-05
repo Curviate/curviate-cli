@@ -47,7 +47,6 @@ type WebhookFlags = {
   "request-url"?: string;
   source?: string;
   name?: string;
-  format?: string;
   enabled?: boolean;
   events?: string;
   data?: string;
@@ -154,7 +153,6 @@ export async function runWebhookCreate(
   };
 
   if (flags.name) body["name"] = flags.name;
-  if (flags.format) body["format"] = flags.format;
   if (flags.enabled !== undefined) body["enabled"] = flags.enabled;
   if (flags.events) {
     body["events"] = flags.events.split(",").map((s) => s.trim()).filter(Boolean);
@@ -282,7 +280,6 @@ export async function runWebhookUpdate(
   if (flags.name !== undefined) body["name"] = flags.name;
   if (flags["request-url"]) body["request_url"] = flags["request-url"];
   if (flags.enabled !== undefined) body["enabled"] = flags.enabled;
-  if (flags.format) body["format"] = flags.format;
   if (flags.events) {
     body["events"] = flags.events.split(",").map((s) => s.trim()).filter(Boolean);
   }
@@ -481,7 +478,6 @@ const webhookCreateCommand = defineCommand({
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target (required).", required: true },
     name: { type: "string", description: "Human-readable name (1–100 chars)." },
-    format: { type: "string", description: "Delivery encoding: json | form (default: json)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
     data: { type: "string", description: "Comma-separated field-remapping keys." },
@@ -578,7 +574,6 @@ const webhookUpdateCommand = defineCommand({
     "request-url": { type: "string", description: "Replace the delivery URL." },
     name: { type: "string", description: "Replace the name (or clear with empty string)." },
     enabled: { type: "boolean", description: "Enable or disable the webhook." },
-    format: { type: "string", description: "Replace the delivery encoding: json | form." },
     events: { type: "string", description: "Replace subscribed events (comma-separated)." },
     data: { type: "string", description: "Replace field-remapping keys (comma-separated)." },
     "account-ids": { type: "string", description: "Replace targeted accounts (comma-separated)." },

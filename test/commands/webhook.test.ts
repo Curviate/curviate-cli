@@ -40,7 +40,6 @@ type WebhookFlags = {
   "request-url"?: string;
   source?: string;
   name?: string;
-  format?: string;
   enabled?: boolean;
   events?: string;
   data?: string;
@@ -191,6 +190,25 @@ describe("webhook create", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
     expect(parsed.method).toBe("webhooks.create");
+  });
+
+  it("dead --format flag removed (#711): a stray format field is never forwarded to the body", async () => {
+    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
+    const out = makeOut();
+    await runWebhookCreate(client as never, {
+      source: "messaging",
+      "request-url": "https://example.com/hook",
+      "account-ids": "acc_1",
+      // Simulates a caller still passing the removed flag through the typed
+      // object (e.g. a stale script) — the server silently ignores `format`
+      // and always persists `json` (#711), so the CLI must not send it either.
+      format: "form",
+      json: true,
+    } as WebhookFlags, out);
+
+    expect(client.webhooks.create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ format: expect.anything() }),
+    );
   });
 });
 
@@ -403,6 +421,22 @@ describe("webhook update", () => {
     const parsed = JSON.parse(written);
     expect(parsed.method).toBe("webhooks.update");
     expect(parsed.args).toHaveProperty("id", "wh_1");
+  });
+
+  it("dead --format flag removed (#711): a stray format field is never forwarded to the body", async () => {
+    const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
+    const out = makeOut();
+    await runWebhookUpdate(client as never, {
+      id: "wh_1",
+      name: "renamed",
+      format: "form",
+      json: true,
+    } as WebhookFlags, out);
+
+    expect(client.webhooks.update).toHaveBeenCalledWith(
+      "wh_1",
+      expect.not.objectContaining({ format: expect.anything() }),
+    );
   });
 });
 
