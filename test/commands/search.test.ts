@@ -967,6 +967,7 @@ describe("search people slim: correct field names, excluded fields, verbose rest
     headline: "AI Engineer",
     location: "Berlin, Germany",
     network_distance: "DISTANCE_2",
+    visibility: "full",
     avatar_url: "https://example.com/pic.jpg",
     linkedin_urn: "urn:li:member:123",
     is_premium: false,
@@ -994,7 +995,7 @@ describe("search people slim: correct field names, excluded fields, verbose rest
     vi.restoreAllMocks();
   });
 
-  it("slim mode: contains id/full_name/public_identifier/headline/location/network_distance ONLY", async () => {
+  it("slim mode: contains id/full_name/public_identifier/headline/location/network_distance/visibility ONLY", async () => {
     const { runSearchPeople } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
@@ -1011,6 +1012,9 @@ describe("search people slim: correct field names, excluded fields, verbose rest
     expect(item["headline"]).toBe("AI Engineer");
     expect(item["location"]).toBe("Berlin, Germany");
     expect(item["network_distance"]).toBe("DISTANCE_2");
+    // `visibility` ships in the DEFAULT (non-verbose) view, not verbose-only:
+    // it is what tells a default-mode user which rows are actually usable.
+    expect(item["visibility"]).toBe("full");
 
     // Excluded verbose-only fields
     expect(item["avatar_url"]).toBeUndefined();
@@ -1022,6 +1026,21 @@ describe("search people slim: correct field names, excluded fields, verbose rest
     expect(item["provider_id"]).toBeUndefined();
     expect(item["first_name"]).toBeUndefined();
     expect(item["last_name"]).toBeUndefined();
+  });
+
+  it("slim mode: a hidden item's visibility reaches the default view (not silently dropped)", async () => {
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      ...sdkResponse,
+      items: [{ ...peopleItem, id: "hidden1", full_name: "LinkedIn Member", public_identifier: undefined, visibility: "hidden" }],
+    });
+
+    await runSearchPeople(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
+    expect(result.items[0]!["visibility"]).toBe("hidden");
   });
 
   it("--verbose restores avatar_url, linkedin_urn, is_premium", async () => {
@@ -2204,5 +2223,220 @@ describe("search service-parameters — GET, not paginated", () => {
     } finally {
       exitSpy.mockRestore();
     }
+  });
+});
+
+/**
+ * #749 — the CLI renderer must not drop a response's top-level `notices[]`
+ * (api/008 §F/§G). These drive the actual shipped command handler
+ * (`runSearchPeople`) against a mocked SDK response, the same boundary the
+ * real CLI crosses when the server returns notices, and assert on the real
+ * bytes written to stdout, not on an intermediate formatter call.
+ */
+describe("search people: renders notices[] from the SDK response (#749)", () => {
+  let accountNs: ReturnType<typeof makeAccountNs>;
+  let client: ReturnType<typeof makeClient>;
+  const originalIsTTY = process.stdout.isTTY;
+
+  beforeEach(() => {
+    accountNs = makeAccountNs();
+    client = makeClient(accountNs);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.stdout.isTTY = originalIsTTY;
+  });
+
+  // §F shape: a filter value took the id fast path (field + value present).
+  const filterNotice = {
+    code: "FILTER_VALUE_UNCHECKED",
+    message: "The value was treated as an id and was not looked up.",
+    field: "industry",
+    value: "42",
+  };
+
+  // §G shape: page-scoped, no field/value (an anonymised-results page).
+  const pageNotice = {
+    code: "ALL_RESULTS_HIDDEN",
+    message: "Every result on this page is hidden from the connected account.",
+  };
+
+  it("--json: the response's notices[] array reaches stdout intact (§F shape: field + value)", async () => {
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [],
+      cursor: null,
+      notices: [filterNotice],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      industry: "42",
+      json: true,
+    } as SearchArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    const parsed = JSON.parse(written) as { notices?: unknown[] };
+    expect(parsed.notices).toEqual([filterNotice]);
+  });
+
+  it("--json: the response's notices[] array reaches stdout intact (§G shape: page-scoped, no field/value)", async () => {
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [{ id: "p_1", full_name: "LinkedIn Member", visibility: "hidden" }],
+      cursor: null,
+      notices: [pageNotice],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      json: true,
+    } as SearchArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    const parsed = JSON.parse(written) as { notices?: unknown[] };
+    expect(parsed.notices).toEqual([pageNotice]);
+  });
+
+  it("human mode (TTY, no --json): a notice renders as visible text on stdout, not silently dropped", async () => {
+    process.stdout.isTTY = true;
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [],
+      cursor: null,
+      notices: [filterNotice],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      industry: "42",
+      json: false,
+    } as SearchArgs, out);
+
+    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(rendered).toContain("FILTER_VALUE_UNCHECKED");
+    expect(rendered).toContain("The value was treated as an id and was not looked up.");
+    expect(rendered).toContain("field: industry");
+    expect(rendered).toContain("value: 42");
+  });
+
+  it("human mode (TTY, no --json): an all-hidden page (§G) still tells the user something was returned, not just an empty list", async () => {
+    process.stdout.isTTY = true;
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [],
+      cursor: null,
+      notices: [pageNotice],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      json: false,
+    } as SearchArgs, out);
+
+    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(rendered).toContain("ALL_RESULTS_HIDDEN");
+    expect(rendered).toContain("Every result on this page is hidden from the connected account.");
+  });
+
+  it("human mode (TTY, no --json): a partly-hidden page marks the hidden row AND surfaces the page notice, the full reported harm", async () => {
+    process.stdout.isTTY = true;
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [
+        { id: "p_1", full_name: "LinkedIn Member", public_identifier: null, headline: null, location: null, network_distance: "OUT_OF_NETWORK", visibility: "hidden" },
+      ],
+      cursor: null,
+      notices: [{
+        code: "SOME_RESULTS_HIDDEN",
+        message: "Some results on this page are hidden from the connected account.",
+      }],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      json: false,
+    } as SearchArgs, out);
+
+    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    // The page-level explanation is present...
+    expect(rendered).toContain("SOME_RESULTS_HIDDEN");
+    // ...AND the row itself carries the discriminator, not just an unmarked
+    // "LinkedIn Member" name with nothing telling the user it is unusable.
+    expect(rendered).toContain("visibility: hidden");
+  });
+
+  it("REGRESSION: a response with no notices renders byte-identically in --json mode", async () => {
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const { slimSearchPeople } = await import("../../src/lib/slim.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    const response = { items: [{ id: "p_1", full_name: "Alice", public_identifier: "alice", headline: null, location: null, network_distance: "FIRST_DEGREE" }], cursor: null };
+    (accountNs.search.people as Mock).mockResolvedValue(response);
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      json: true,
+    } as SearchArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    // Compared against the existing slim-projection output (unaffected by this
+    // fix), not a hand-typed literal, so key ordering from `slimSearchPeople`
+    // does not create a spurious mismatch unrelated to notices.
+    expect(written).toBe(JSON.stringify(slimSearchPeople(response)) + "\n");
+    expect(written).not.toContain("notice");
+  });
+
+  it("REGRESSION: a response with no notices renders byte-identically in human mode", async () => {
+    process.stdout.isTTY = true;
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.search.people as Mock).mockResolvedValue({
+      items: [{ id: "p_1", public_identifier: "alice", full_name: "Alice", headline: null, location: null, network_distance: "FIRST_DEGREE", visibility: "full" }],
+      cursor: null,
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      json: false,
+    } as SearchArgs, out);
+
+    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(rendered).not.toContain("notice");
+    expect(rendered).toBe(
+      "id: p_1\npublic_identifier: alice\nfull_name: Alice\nheadline: null\nlocation: null\nnetwork_distance: FIRST_DEGREE\nvisibility: full\n",
+    );
+  });
+
+  it("--all: a page's notices[] reach stderr (diagnostics), and stdout stays pure NDJSON data", async () => {
+    const { runSearchPeople } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.people as Mock).mockResolvedValueOnce({
+      items: [],
+      cursor: null,
+      notices: [pageNotice],
+    });
+
+    await runSearchPeople(client as never, {
+      account: "acc_1",
+      keywords: "ai",
+      all: true,
+    } as SearchArgs, out);
+
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText).toContain("ALL_RESULTS_HIDDEN");
+    const stdoutText = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stdoutText).not.toContain("ALL_RESULTS_HIDDEN");
   });
 });

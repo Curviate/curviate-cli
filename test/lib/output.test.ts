@@ -186,6 +186,118 @@ describe("lib/output — renderSuccess --fields unknown-field warning", () => {
   });
 });
 
+describe("lib/output — renderSuccess renders notices[] (api/008 §F/§G)", () => {
+  let stdoutLines: string[];
+  let stderrLines: string[];
+
+  beforeEach(() => {
+    stdoutLines = [];
+    stderrLines = [];
+  });
+
+  const mockOut = {
+    stdout: { write: (s: string) => { stdoutLines.push(s); } },
+    stderr: { write: (s: string) => { stderrLines.push(s); } },
+  };
+
+  // §F shape: field + value present (a filter value took the id fast path).
+  const filterNotice = {
+    code: "FILTER_VALUE_UNCHECKED",
+    message: "The value was treated as an id and was not looked up.",
+    field: "industry",
+    value: "42",
+  };
+
+  // §G shape: page-scoped, no field/value (an anonymised-results page).
+  const pageNotice = {
+    code: "ALL_RESULTS_HIDDEN",
+    message: "Every result on this page is hidden from the connected account.",
+  };
+
+  it("JSON mode: a §F-shaped notice (field + value) passes through the array intact", () => {
+    const data = { items: [], cursor: null, notices: [filterNotice] };
+    renderSuccess(data, { json: true, isTTY: false, fields: undefined }, mockOut as never);
+    expect(JSON.parse(stdoutLines.join(""))).toEqual(data);
+  });
+
+  it("JSON mode: a §G-shaped notice (no field/value) passes through the array intact", () => {
+    const data = { items: [{ id: "p_1" }], cursor: null, notices: [pageNotice] };
+    renderSuccess(data, { json: true, isTTY: false, fields: undefined }, mockOut as never);
+    expect(JSON.parse(stdoutLines.join(""))).toEqual(data);
+  });
+
+  it("JSON mode: notices survive a --fields projection on the items", () => {
+    const data = { items: [{ id: "p_1", extra: 1 }], cursor: null, notices: [pageNotice] };
+    renderSuccess(data, { json: true, isTTY: false, fields: "id" }, mockOut as never);
+    const parsed = JSON.parse(stdoutLines.join("")) as { items: unknown[]; notices: unknown[] };
+    expect(parsed.items).toEqual([{ id: "p_1" }]);
+    expect(parsed.notices).toEqual([pageNotice]);
+  });
+
+  it("human mode: a §F-shaped notice renders visibly, above an empty result list, not blank", () => {
+    const data = { items: [], cursor: null, notices: [filterNotice] };
+    renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    const rendered = stdoutLines.join("");
+    expect(rendered).toContain("FILTER_VALUE_UNCHECKED");
+    expect(rendered).toContain("The value was treated as an id and was not looked up.");
+    expect(rendered).toContain("field: industry");
+    expect(rendered).toContain("value: 42");
+    expect(rendered).toContain("(no items)");
+    // Notice line precedes the (empty) results, per "surfaced first".
+    expect(rendered.indexOf("FILTER_VALUE_UNCHECKED")).toBeLessThan(rendered.indexOf("(no items)"));
+  });
+
+  it("human mode: a §G-shaped notice (no field/value) renders visibly, no blank/malformed line", () => {
+    const data = { items: [{ id: "p_1", full_name: "Alice" }], cursor: null, notices: [pageNotice] };
+    renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    const rendered = stdoutLines.join("");
+    expect(rendered).toContain("ALL_RESULTS_HIDDEN");
+    expect(rendered).toContain("Every result on this page is hidden from the connected account.");
+    // No stray "(field: undefined)" / "(value: undefined)" artifact from the optional keys.
+    expect(rendered).not.toContain("undefined");
+    expect(rendered).not.toContain("(field:");
+    expect(rendered).not.toContain("(value:");
+  });
+
+  it("human mode: an all-hidden page (empty items + §G notice) still surfaces the notice, not just '(no items)'", () => {
+    const data = { items: [], cursor: null, notices: [pageNotice] };
+    renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    const rendered = stdoutLines.join("");
+    expect(rendered).toContain("ALL_RESULTS_HIDDEN");
+    expect(rendered).toContain("(no items)");
+  });
+
+  it("human mode: multiple notices each render as their own line", () => {
+    const data = { items: [], cursor: null, notices: [filterNotice, pageNotice] };
+    renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    const rendered = stdoutLines.join("");
+    expect(rendered).toContain("FILTER_VALUE_UNCHECKED");
+    expect(rendered).toContain("ALL_RESULTS_HIDDEN");
+  });
+
+  it("REGRESSION: JSON mode with no notices is byte-identical to the pre-notices response", () => {
+    const data = { items: [{ id: "p_1" }], cursor: null };
+    renderSuccess(data, { json: true, isTTY: false, fields: undefined }, mockOut as never);
+    expect(stdoutLines.join("")).toBe(JSON.stringify(data) + "\n");
+  });
+
+  it("REGRESSION: human mode with no notices key renders byte-identically to before notices existed", () => {
+    const withoutNotices = { items: [{ id: "p_1" }], cursor: null };
+    renderSuccess(withoutNotices, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    const rendered = stdoutLines.join("");
+    // Exactly what renderHuman produced pre-notices: the single item's key=value
+    // lines, nothing prepended, nothing about "notices" anywhere.
+    expect(rendered).toBe("id: p_1\n");
+    expect(rendered).not.toContain("notice");
+  });
+
+  it("REGRESSION: human mode with an empty items list and no notices still renders '(no items)' alone", () => {
+    const data = { items: [], cursor: null };
+    renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
+    expect(stdoutLines.join("")).toBe("(no items)\n");
+  });
+});
+
 describe("lib/output — renderError", () => {
   let stdoutLines: string[];
   let stderrLines: string[];
