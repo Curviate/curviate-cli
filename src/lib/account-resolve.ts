@@ -74,9 +74,11 @@ export async function resolveAccountIdOrExit(
     process.exit(2);
   }
 
+  // Deliberately not "N accounts are connected": `items` is the first page, so
+  // its length is not a verified total. State only what was observed.
   const listing = items.map((i) => `  ${describe(i)}`).join("\n");
   out.stderr.write(
-    `error: ${items.length} accounts are connected, so --account is required to pick one. Pass --account, set CURVIATE_ACCOUNT, or run \`curviate config set-account\`.\nConnected accounts:\n${listing}\n`,
+    `error: more than one account is connected, so --account is required to pick one. Pass --account, set CURVIATE_ACCOUNT, or run \`curviate config set-account\`.\nConnected accounts:\n${listing}\n`,
   );
   process.exit(2);
 }
