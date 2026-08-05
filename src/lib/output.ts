@@ -197,24 +197,80 @@ export function renderSuccess(
   }
 }
 
-/** Render a human-readable representation of data (best-effort). */
+/**
+ * Format one response notice (`{code, message, field?, value?}`, api/008 §F/§G)
+ * as a single readable line. Defensive against a malformed entry (missing
+ * `code`/`message`) so a bad server payload degrades to a plain line rather
+ * than throwing or printing "undefined".
+ *
+ * `field`/`value` are optional detail: §F's filter notices carry both, §G's
+ * page-scoped notices (e.g. an anonymised-results page) carry neither. Both
+ * shapes render as one clean line either way.
+ */
+function formatNotice(notice: unknown): string | null {
+  if (typeof notice !== "object" || notice === null) return null;
+  const n = notice as Record<string, unknown>;
+  const code = typeof n["code"] === "string" ? n["code"] : "NOTICE";
+  const message = typeof n["message"] === "string" ? n["message"] : "";
+  let line = `notice [${code}]${message ? ` ${message}` : ""}`;
+
+  const details: string[] = [];
+  if (typeof n["field"] === "string") details.push(`field: ${n["field"]}`);
+  if (typeof n["value"] === "string") details.push(`value: ${n["value"]}`);
+  if (details.length > 0) line += ` (${details.join(", ")})`;
+
+  return line;
+}
+
+/**
+ * Render a response's top-level `notices[]` (api/008 §F/§G) as readable lines,
+ * or null when there is nothing to show. `null` (not `""`) lets callers skip
+ * appending a blank line entirely, which is what keeps a notice-free response
+ * byte-identical to its pre-notices rendering.
+ *
+ * Exported (not just used internally by `renderHuman`) so `lib/paginate.ts`'s
+ * `--all` NDJSON stream can surface the identical per-page notices to stderr
+ * without a second formatting implementation — one mechanism, two output
+ * modes.
+ */
+export function renderNotices(notices: unknown): string | null {
+  if (!Array.isArray(notices) || notices.length === 0) return null;
+  const lines = notices
+    .map(formatNotice)
+    .filter((line): line is string => line !== null);
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
+/**
+ * Render a human-readable representation of data (best-effort).
+ *
+ * `notices[]` (api/008 §F/§G) is surfaced first, above the results it
+ * qualifies, so a degraded or partly-unactionable page is never mistaken for
+ * a clean one. A response with no `notices` key renders byte-identically to
+ * how it rendered before this array existed (F-AC-004 / the "absent when
+ * empty" contract).
+ */
 function renderHuman(data: unknown): string {
   if (data === null || data === undefined) return "(empty)";
 
   if (typeof data === "object" && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>;
+    const notices = renderNotices(obj["notices"]);
 
     // List response with items
     if (Array.isArray(obj["items"])) {
       const items = obj["items"] as unknown[];
-      if (items.length === 0) return "(no items)";
-      return items.map(renderHuman).join("\n");
+      const body = items.length === 0 ? "(no items)" : items.map(renderHuman).join("\n");
+      return notices ? `${notices}\n${body}` : body;
     }
 
-    // Single object: key=value pairs
-    return Object.entries(obj)
+    // Single object: key=value pairs (notices is rendered above, not as a raw key)
+    const kv = Object.entries(obj)
+      .filter(([k]) => k !== "notices")
       .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
       .join("\n");
+    if (!notices) return kv;
+    return kv ? `${notices}\n${kv}` : notices;
   }
 
   if (Array.isArray(data)) {

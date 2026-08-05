@@ -274,6 +274,105 @@ describe("lib/paginate — NDJSON-mode notice", () => {
 });
 
 // ---------------------------------------------------------------------------
+
+/**
+ * #749 — a page envelope's `notices[]` (api/008 §F/§G) must not be silently
+ * dropped on the `--all` NDJSON path. stdout carries data only (one item per
+ * line); notices go to stderr via the same formatter `lib/output.ts`'s
+ * human-mode renderer uses.
+ */
+describe("lib/paginate — streamAll surfaces page notices[] (#749)", () => {
+  const filterNotice = {
+    code: "FILTER_VALUE_UNCHECKED",
+    message: "The value was treated as an id and was not looked up.",
+    field: "industry",
+    value: "42",
+  };
+  const pageNotice = {
+    code: "ALL_RESULTS_HIDDEN",
+    message: "Every result on this page is hidden from the connected account.",
+  };
+
+  it("writes a §F-shaped page notice (field + value) to stderr, not stdout", async () => {
+    const method = makePaginatedMethod([
+      { items: [], cursor: null, notices: [filterNotice] } as never,
+    ]);
+    const out = makeOut();
+
+    const collected: unknown[] = [];
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, out, sleep: noSleep })) {
+      collected.push(item);
+    }
+
+    expect(collected).toEqual([]);
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText).toContain("FILTER_VALUE_UNCHECKED");
+    expect(stderrText).toContain("field: industry");
+    expect(stderrText).toContain("value: 42");
+    // stdout stays pure NDJSON data — no notice text leaks into the item stream.
+    const stdoutText = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stdoutText).not.toContain("FILTER_VALUE_UNCHECKED");
+  });
+
+  it("writes a §G-shaped page notice (no field/value) to stderr on an all-hidden page", async () => {
+    const method = makePaginatedMethod([
+      { items: [{ id: "p_1", visibility: "hidden" }], cursor: null, notices: [pageNotice] } as never,
+    ]);
+    const out = makeOut();
+
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, out, sleep: noSleep })) {
+      void item;
+    }
+
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText).toContain("ALL_RESULTS_HIDDEN");
+    expect(stderrText).toContain("Every result on this page is hidden from the connected account.");
+  });
+
+  it("emits per-page notices independently across multiple pages", async () => {
+    const method = makePaginatedMethod([
+      { items: ["a"], cursor: "next", notices: [filterNotice] } as never,
+      { items: ["b"], cursor: null, notices: [pageNotice] } as never,
+    ]);
+    const out = makeOut();
+
+    const collected: unknown[] = [];
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, out, sleep: noSleep })) {
+      collected.push(item);
+    }
+
+    expect(collected).toEqual(["a", "b"]);
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText).toContain("FILTER_VALUE_UNCHECKED");
+    expect(stderrText).toContain("ALL_RESULTS_HIDDEN");
+  });
+
+  it("REGRESSION: a page with no notices key writes nothing extra to stderr beyond the existing NDJSON-mode notice", async () => {
+    const method = makePaginatedMethod([{ items: ["a"], cursor: null }]);
+    const out = makeOut();
+
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, out, sleep: noSleep })) {
+      void item;
+    }
+
+    const stderrWrites = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
+    // Only the one existing NDJSON-mode announcement — nothing added by this fix.
+    expect(stderrWrites).toEqual([ndjsonModeNotice()]);
+  });
+
+  it("REGRESSION: does not throw when `out` is omitted, even when the page carries notices", async () => {
+    const method = makePaginatedMethod([
+      { items: ["a"], cursor: null, notices: [pageNotice] } as never,
+    ]);
+    const collected: unknown[] = [];
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, sleep: noSleep })) {
+      collected.push(item);
+    }
+    expect(collected).toEqual(["a"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // --all inter-page pacing.
 // ---------------------------------------------------------------------------
 
