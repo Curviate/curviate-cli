@@ -2227,13 +2227,15 @@ describe("search service-parameters — GET, not paginated", () => {
 });
 
 /**
- * #749 — the CLI renderer must not drop a response's top-level `notices[]`
- * (api/008 §F/§G). These drive the actual shipped command handler
+ * The CLI renderer must not drop a response's top-level `notices[]` —
+ * covering both a filter value that took the id fast path (field + value
+ * present) and a page whose results are anonymised upstream (page-scoped,
+ * no field/value). These drive the actual shipped command handler
  * (`runSearchPeople`) against a mocked SDK response, the same boundary the
  * real CLI crosses when the server returns notices, and assert on the real
  * bytes written to stdout, not on an intermediate formatter call.
  */
-describe("search people: renders notices[] from the SDK response (#749)", () => {
+describe("search people: renders notices[] from the SDK response", () => {
   let accountNs: ReturnType<typeof makeAccountNs>;
   let client: ReturnType<typeof makeClient>;
   const originalIsTTY = process.stdout.isTTY;
