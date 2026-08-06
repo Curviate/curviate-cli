@@ -276,12 +276,14 @@ describe("lib/paginate — NDJSON-mode notice", () => {
 // ---------------------------------------------------------------------------
 
 /**
- * #749 — a page envelope's `notices[]` (api/008 §F/§G) must not be silently
- * dropped on the `--all` NDJSON path. stdout carries data only (one item per
- * line); notices go to stderr via the same formatter `lib/output.ts`'s
- * human-mode renderer uses.
+ * A page envelope's `notices[]` — whether a filter value took the id fast
+ * path (field + value present) or the page's results are anonymised
+ * upstream (page-scoped, no field/value) — must not be silently dropped on
+ * the `--all` NDJSON path. stdout carries data only (one item per line);
+ * notices go to stderr via the same formatter `lib/output.ts`'s human-mode
+ * renderer uses.
  */
-describe("lib/paginate — streamAll surfaces page notices[] (#749)", () => {
+describe("lib/paginate — streamAll surfaces page notices[]", () => {
   const filterNotice = {
     code: "FILTER_VALUE_UNCHECKED",
     message: "The value was treated as an id and was not looked up.",

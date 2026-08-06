@@ -186,7 +186,7 @@ describe("lib/output — renderSuccess --fields unknown-field warning", () => {
   });
 });
 
-describe("lib/output — renderSuccess renders notices[] (api/008 §F/§G)", () => {
+describe("lib/output — renderSuccess renders notices[] (filter fast-path and anonymised-page shapes)", () => {
   let stdoutLines: string[];
   let stderrLines: string[];
 

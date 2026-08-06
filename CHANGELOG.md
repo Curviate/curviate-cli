@@ -8,6 +8,25 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-08-06
+
+### Fixed
+
+- **A response's `notices[]` array is no longer silently dropped.** Both
+  render paths now surface it: JSON mode already passed it through, and human
+  mode now prints it above the results it qualifies, covering a filter value
+  that took the id fast path (field + value) and a page whose results are
+  anonymised upstream (no field/value). Previously a caller got an empty or
+  unexplained result set with nothing telling them why.
+- **`--all` (NDJSON streaming) now surfaces per-page notices too.** stdout
+  stays pure one-object-per-line data; a page's notices are written to
+  stderr through the same renderer the human-mode path uses, so a long-running
+  `--all` consumer sees the same explanation a single-page call would.
+- **`visibility` is back in the default (non-verbose) `search people` fields.**
+  It was missing from the default field allowlist even though the server
+  always sends it, so a row for a hidden or unresolved profile looked
+  identical to a normal one unless you passed `--verbose`.
+
 ## [0.21.0] - 2026-08-04
 
 A correctness release for every argument that reads from stdin. Upgrade
