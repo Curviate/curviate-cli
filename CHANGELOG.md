@@ -8,6 +8,29 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Changed
+
+- **Punctuation swept out of the published copy and the printed help.** The
+  README, this changelog, and the help and error strings in `src/` used
+  typographic characters with no plain-ASCII equivalent on the keyboard: em and
+  en dashes, the single-glyph ellipsis, arrows. An id placeholder now elides
+  with `acc_...`, a range reads `1-100`, and a mapping reads
+  `write->read`. No release note changed what it claims; the changelog's word
+  stream is byte-identical to before. Two non-ASCII characters stay on purpose:
+  the redaction mask `config list` prints, and the literal emoji that documents
+  `message react`'s own argument.
+
+### Added
+
+- **`pnpm check:copy`**, a pre-publish copy-quality gate over the npm-page copy
+  (README, changelog, package description), chained into `prepack` next to the
+  existing internal-reference scan. It fails the pack on any non-ASCII
+  typographic character and reports, without failing, wording from the generic
+  marketing register. The printed help and error strings keep their own gate,
+  `test/copy-tells.test.ts`, which walks the TypeScript AST so it judges string
+  literals and never comments; that test now covers the full character set
+  rather than the em dash alone.
+
 ## [0.21.1] - 2026-08-06
 
 ### Fixed
