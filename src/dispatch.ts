@@ -165,6 +165,27 @@ async function nodeName(cmd: AnyCommand): Promise<string> {
 }
 
 /**
+ * Render a resolved command path as the invocation a caller would type.
+ *
+ * The walk seeds the path with the root node's own name, which is "curviate"
+ * for the real tree and the group's name when a test drives `resolveLeaf`
+ * from a subtree directly. Normalising here means one message shape works for
+ * both, and the printed form is always something that can be pasted back into
+ * a shell.
+ */
+function renderPath(path: string[]): string {
+  const parts = path[0] === "curviate" ? path.slice(1) : path;
+  return ["curviate", ...parts].join(" ");
+}
+
+/** "no positional arguments" / "1 positional argument" / "N positional arguments". */
+function arityPhrase(count: number): string {
+  if (count === 0) return "no positional arguments";
+  if (count === 1) return "1 positional argument";
+  return `${count} positional arguments`;
+}
+
+/**
  * The positional tokens citty/mri would leave after parsing `rawArgs` against a
  * node's declared flags, matching mri's rule that a `--flag` consumes the
  * FOLLOWING token as its value UNLESS the flag is declared boolean (or the value
@@ -212,6 +233,67 @@ function positionalTokens(
     out.push({ token: arg, index: i });
   }
   return out;
+}
+
+/**
+ * The positional tokens `cmd` would NOT bind: everything beyond its declared
+ * positional arity. citty swallows these into `args._`, which no handler
+ * reads, so an unchecked extra is silently discarded and the command returns
+ * something other than what was asked for.
+ */
+async function extraPositionals(
+  cmd: AnyCommand,
+  rawArgs: string[],
+): Promise<Array<{ token: string; index: number }>> {
+  const booleanFlags = await booleanFlagNames(cmd);
+  const positionals = positionalTokens(rawArgs, booleanFlags);
+  const declaredCount = await nodePositionalCount(cmd);
+  return positionals.slice(declaredCount);
+}
+
+/**
+ * Reject any positional the RESOLVED LEAF will not consume.
+ *
+ * This is the class-wide guard. The group-with-bare-positional branch below
+ * has its own richer check because it can still reroute an id-first form; this
+ * one runs on the node that is actually about to execute, so it holds no
+ * matter how that node was reached: root-level leaf, subcommand descent at any
+ * depth, or an id-first reroute that landed on a leaf of lower arity than the
+ * group it came from. Placing it at the single point where every path
+ * converges is deliberate: the two previous fixes for this class each guarded
+ * one route, and the class came back through another.
+ *
+ * When the unconsumed token names a sibling of the resolved leaf, the caller
+ * almost certainly meant that sibling (`profile me relations` for `profile
+ * relations`), so the diagnostic names it. The token is never rerouted there
+ * automatically: `endorse`, `follow`, and `save-candidate` are siblings too,
+ * and reinterpreting a stray token as one of those would turn a typo into a
+ * write. Naming the correct form costs the caller one edit and can do no harm.
+ */
+async function assertLeafConsumesPositionals(
+  leaf: AnyCommand,
+  leafArgs: string[],
+  path: string[],
+  siblings: Record<string, unknown> | undefined,
+): Promise<void> {
+  const extras = await extraPositionals(leaf, leafArgs);
+  if (extras.length === 0) return;
+
+  const token = extras[0]!.token;
+  const form = renderPath(path);
+  const arity = arityPhrase(await nodePositionalCount(leaf));
+
+  const hint =
+    siblings && Object.prototype.hasOwnProperty.call(siblings, token)
+      ? `Did you mean \`${renderPath([...path.slice(0, -1), token])}\`?`
+      : undefined;
+
+  usageError(
+    `unexpected argument \`${token}\` after \`${form}\`. ` +
+      `\`${form}\` takes ${arity}. ` +
+      `Run \`${form} --help\` for its usage.`,
+    hint,
+  );
 }
 
 /** Collect the declared argument names for a node (for unknown-flag detection). */
@@ -293,15 +375,31 @@ function usageError(message: string, hint?: string): never {
 }
 
 /**
+ * Where a descent currently is: the command path resolved so far (for the
+ * diagnostic) and the registry the current node was looked up in (so an
+ * unconsumed token that names a sibling can be pointed at).
+ */
+interface Descent {
+  path: string[];
+  siblings?: Record<string, unknown>;
+}
+
+/**
  * Resolve a node + remaining args down to the single command to execute,
  * descending through matching subcommand keywords. Returns the leaf to run and
  * the rawArgs that belong to it. On an unrecognized token under a pure group
  * (no bare `run`), emits a usage error and exits 2.
+ *
+ * Every path that ends at an executable node runs
+ * `assertLeafConsumesPositionals` first, so a token the resolved command
+ * cannot bind is a usage error rather than a silent discard.
  */
 export async function resolveLeaf(
   cmd: AnyCommand,
   rawArgs: string[],
+  descent?: Descent,
 ): Promise<{ leaf: AnyCommand; leafArgs: string[] }> {
+  const here: Descent = descent ?? { path: [await nodeName(cmd)] };
   const subCommands = (await resolveValue(cmd.subCommands)) as
     | Record<string, unknown>
     | undefined;
@@ -314,7 +412,10 @@ export async function resolveLeaf(
     if (token !== undefined && subCommands[token]) {
       // Token is a known subcommand keyword -> descend into it ONLY.
       const sub = (await resolveValue(subCommands[token])) as AnyCommand;
-      return resolveLeaf(sub, rawArgs.slice(idx + 1));
+      return resolveLeaf(sub, rawArgs.slice(idx + 1), {
+        path: [...here.path, token],
+        siblings: subCommands,
+      });
     }
 
     // Removed/renamed command -> point at the successor BEFORE the token is
@@ -335,10 +436,7 @@ export async function resolveLeaf(
       // `args._`, the D4a silent-wrong-data class (e.g. `company <id> employees`
       // returning the base company profile, ignoring `employees`). Reroute an
       // id-first ergonomic form, or fail loudly, never silently ignore.
-      const booleanFlags = await booleanFlagNames(cmd);
-      const positionals = positionalTokens(rawArgs, booleanFlags);
-      const declaredCount = await nodePositionalCount(cmd);
-      const extras = positionals.slice(declaredCount);
+      const extras = await extraPositionals(cmd, rawArgs);
       if (extras.length > 0) {
         const first = extras[0]!;
         // Exactly one extra positional that names a subcommand -> the id-first
@@ -351,7 +449,10 @@ export async function resolveLeaf(
         ) {
           const sub = (await resolveValue(subCommands[first.token])) as AnyCommand;
           const remaining = rawArgs.filter((_, i) => i !== first.index);
-          return resolveLeaf(sub, remaining);
+          return resolveLeaf(sub, remaining, {
+            path: [...here.path, first.token],
+            siblings: subCommands,
+          });
         }
         // Otherwise it cannot be a valid reroute -> actionable usage error, never
         // a silent swallow of the extra token.
@@ -372,10 +473,13 @@ export async function resolveLeaf(
     }
     // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
+    // There is no positional here by definition, so nothing to reject.
     return { leaf: cmd, leafArgs: rawArgs };
   }
 
-  // Leaf node (no subcommands).
+  // Leaf node (no subcommands) — the convergence point of every reach path
+  // that is not the bare form guarded above.
+  await assertLeafConsumesPositionals(cmd, rawArgs, here.path, here.siblings);
   return { leaf: cmd, leafArgs: rawArgs };
 }
 
