@@ -13,9 +13,9 @@
  * revealing it.
  *
  * Examples:
- *   "rdc_live_ABCDEFGHIJ1234" → "rdc_live_••••1234"
- *   short key                 → "••••••••"
- *   undefined                 → "<unset>"
+ *   "rdc_live_ABCDEFGHIJ1234" -> "rdc_live_••••1234"
+ *   short key                 -> "••••••••"
+ *   undefined                 -> "<unset>"
  */
 export function redactKeyForDisplay(key: string | undefined): string {
   if (key === undefined || key === null) return "<unset>";

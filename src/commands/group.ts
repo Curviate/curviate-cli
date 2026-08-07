@@ -1,10 +1,10 @@
 /**
- * `curviate group` — LinkedIn group operations (new namespace).
+ * `curviate group`, LinkedIn group operations (new namespace).
  *
  * Subcommands:
- *   group list [--target <slug>] [--limit] [--cursor] [--all]  — list groups (own by default)
- *   group get <group_id>                                          — get one group's full detail
- *   group members <group_id> [--name] [--limit] [--cursor] [--all] — list (or search) a group's members
+ *   group list [--target <slug>] [--limit] [--cursor] [--all]: list groups (own by default)
+ *   group get <group_id>: get one group's full detail
+ *   group members <group_id> [--name] [--limit] [--cursor] [--all]: list (or search) a group's members
  *
  * `group list` enumerates the connected account's own groups by default (a
  * complete read, real total_count); pass `--target <slug>` to read another
@@ -12,14 +12,14 @@
  * interests-groups section only, total_count always null).
  *
  * `<group_id>` on `group get`/`group members` accepts a numeric group id or a
- * full LinkedIn group URL (e.g. https://www.linkedin.com/groups/9123014/) —
+ * full LinkedIn group URL (e.g. https://www.linkedin.com/groups/9123014/),
  * passed through verbatim; the server extracts the numeric id from either
  * form. This is NOT the same normalization as `resolveIdentifier` (which
- * targets member/company slugs, not group URLs) — no client-side extraction
+ * targets member/company slugs, not group URLs), no client-side extraction
  * is performed.
  *
  * `group members --name <filter>` folds member search into the same
- * endpoint — not a separate operation.
+ * endpoint, not a separate operation.
  *
  * All subcommands are account-scoped, read-only (no --preview support).
  */
@@ -114,9 +114,9 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 
 /**
  * Run `group list [--target <slug>] [--limit] [--cursor] [--all]`.
- * Read command — rejects --preview. Own groups by default (complete
+ * Read command, rejects --preview. Own groups by default (complete
  * enumeration); `--target <slug>` reads another member's groups instead
- * (a documented partial read — total_count always null there).
+ * (a documented partial read, total_count always null there).
  */
 export async function runGroupList(
   client: Curviate,
@@ -158,7 +158,7 @@ export async function runGroupList(
 
 /**
  * Run `group get <group_id>`.
- * Read command — rejects --preview and --all. `<group_id>` accepts a
+ * Read command, rejects --preview and --all. `<group_id>` accepts a
  * numeric id or a full LinkedIn group URL, passed through verbatim.
  */
 export async function runGroupGet(
@@ -184,7 +184,7 @@ export async function runGroupGet(
 
 /**
  * Run `group members <group_id> [--name] [--limit] [--cursor] [--all]`.
- * Read command — rejects --preview. Requires the connected account be a
+ * Read command, rejects --preview. Requires the connected account be a
  * member of the group. `--name` folds in member search as the SAME endpoint.
  */
 export async function runGroupMembers(

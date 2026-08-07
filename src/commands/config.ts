@@ -1,14 +1,14 @@
 /**
- * `curviate config` — manage named profiles in the config file.
+ * `curviate config`, manage named profiles in the config file.
  *
  * Subcommands:
- *   config list          — list profiles with redacted keys; mark active.
- *   config path          — print absolute config file path (even if absent).
- *   config use <name>    — set active profile.
- *   config rename <o> <n>— rename a profile.
- *   config set-account   — set default account on active (or --profile) profile.
- *   config set-base-url  — set base URL on active profile; --reset clears it.
- *   config reset         — remove config file (or --profile to remove one profile).
+ *   config list: list profiles with redacted keys; mark active.
+ *   config path: print absolute config file path (even if absent).
+ *   config use <name>: set active profile.
+ *   config rename <o> <n>: rename a profile.
+ *   config set-account: set default account on active (or --profile) profile.
+ *   config set-base-url: set base URL on active profile; --reset clears it.
+ *   config reset: remove config file (or --profile to remove one profile).
  */
 
 import { defineCommand } from "citty";
@@ -49,7 +49,7 @@ export const configCommand = defineCommand({
         const json = (args.json as boolean | undefined) ?? !process.stdout.isTTY;
 
         if (json) {
-          // Emit redacted profiles — key is never the raw value.
+          // Emit redacted profiles, key is never the raw value.
           const redacted: Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }> = {};
           for (const [name, profile] of Object.entries(cfg.profiles)) {
             if (!profile) continue;
@@ -256,7 +256,7 @@ export const configCommand = defineCommand({
               process.stderr.write(`error: could not remove config file: ${e.message}\n`);
               process.exit(1);
             }
-            // File already gone — that's fine.
+            // File already gone, that's fine.
             process.stderr.write("No config file to remove.\n");
           }
         }

@@ -23,7 +23,7 @@
 import { isStdinToken } from "./stdin.js";
 import { readFile } from "node:fs/promises";
 
-/** Reader injection point — file + stdin sources for --filters. */
+/** Reader injection point, file + stdin sources for --filters. */
 export type FilterReaders = {
   readFile: (path: string) => Promise<string>;
   readStdin: () => Promise<string>;

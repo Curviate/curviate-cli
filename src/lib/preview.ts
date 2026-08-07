@@ -34,7 +34,7 @@ export interface PreviewRequest {
   body: Record<string, unknown>;
   /** The effective account id, if applicable. */
   account?: string;
-  /** Attachments — rendered as "name (N bytes)" in the output. */
+  /** Attachments, rendered as "name (N bytes)" in the output. */
   attachments?: AttachmentPreview[];
 }
 
@@ -43,7 +43,7 @@ export interface PreviewOutput {
   args: Record<string, unknown>;
   body: Record<string, unknown>;
   account?: string;
-  /** Attachment descriptions — "name (N bytes)" — never raw bytes. */
+  /** Attachment descriptions, "name (N bytes)", never raw bytes. */
   attachments?: string[];
 }
 

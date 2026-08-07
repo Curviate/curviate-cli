@@ -1,12 +1,12 @@
 /**
- * `curviate inbox` — messaging inbox operations.
+ * `curviate inbox`, messaging inbox operations.
  *
  * Subcommands:
- *   inbox list                   — list chats (paginated, --all/--limit/--cursor)
- *   inbox get <chat_id>          — get a single chat (read, rejects --preview and --all)
- *   inbox messages <chat_id>     — list messages in a chat (paginated)
- *   inbox mark-read <chat_id>    — mark a chat as read (write)
- *   inbox search <query>         — free-text search the account's own inbox (paginated, read)
+ *   inbox list: list chats (paginated, --all/--limit/--cursor)
+ *   inbox get <chat_id>: get a single chat (read, rejects --preview and --all)
+ *   inbox messages <chat_id>: list messages in a chat (paginated)
+ *   inbox mark-read <chat_id>: mark a chat as read (write)
+ *   inbox search <query>: free-text search the account's own inbox (paginated, read)
  *
  * <chat_id> on inbox get, inbox messages, and inbox mark-read accepts a LinkedIn
  * messaging thread URL or bare provider ID. Thread URLs are normalized to the bare
@@ -102,7 +102,7 @@ function buildPaginationParams(flags: InboxFlags): Record<string, unknown> {
 
 /**
  * Validate that a timestamp value is a UTC/Z-suffixed ISO-8601 string.
- * Writes an error and exits 2 on failure — call before any SDK call.
+ * Writes an error and exits 2 on failure, call before any SDK call.
  */
 function validateIsoZTimestamp(value: string, flagName: string, out: OutputStreams): void {
   if (Number.isNaN(new Date(value).getTime()) || !value.endsWith("Z")) {
@@ -115,7 +115,7 @@ function validateIsoZTimestamp(value: string, flagName: string, out: OutputStrea
 
 /**
  * Validate --limit against the server's accepted range (1-25 for this
- * endpoint) before any SDK call — a clear, specific message beats a
+ * endpoint) before any SDK call, a clear, specific message beats a
  * round-tripped generic 400. A non-numeric value is left to the server's own
  * validation (out of scope for this range-only guard); an unset value is a no-op.
  */
@@ -146,7 +146,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 
 /**
  * Run `inbox list [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runInboxList(
   client: Curviate,
@@ -163,7 +163,7 @@ export async function runInboxList(
   const params = buildPaginationParams(flags);
   validateLimitRange(flags.limit, out);
 
-  // Apply unread filter (three-way: true / false / omit — pass no key when undefined)
+  // Apply unread filter (three-way: true / false / omit, pass no key when undefined)
   if (flags.unread !== undefined) {
     params.unread = flags.unread;
   }
@@ -190,7 +190,7 @@ export async function runInboxList(
 
 /**
  * Run `inbox get <chat_id>`.
- * Read command — rejects --preview and --all.
+ * Read command, rejects --preview and --all.
  *
  * <chat_id> accepts a LinkedIn messaging thread URL or bare provider ID.
  * Thread URLs are normalized to the bare provider ID (zero network calls).
@@ -217,8 +217,8 @@ export async function runInboxGet(
 }
 
 /**
- * Run `inbox mark-read <chat_id>` — messaging.markChatRead(chatId, { read: true }).
- * Write command (mutation) — supports --preview. <chat_id> accepts a thread URL
+ * Run `inbox mark-read <chat_id>`, messaging.markChatRead(chatId, { read: true }).
+ * Write command (mutation), supports --preview. <chat_id> accepts a thread URL
  * or a bare provider id (normalized client-side, zero network calls).
  */
 export async function runInboxMarkRead(
@@ -248,7 +248,7 @@ export async function runInboxMarkRead(
 
 /**
  * Run `inbox messages <chat_id> [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  *
  * <chat_id> accepts a LinkedIn messaging thread URL or bare provider ID.
  * Thread URLs are normalized to the bare provider ID (zero network calls).
@@ -269,7 +269,7 @@ export async function runInboxMessages(
   const params = buildPaginationParams(flags);
   validateLimitRange(flags.limit, out);
 
-  // Validate and apply date filters — validation exits 2 before any SDK call
+  // Validate and apply date filters, validation exits 2 before any SDK call
   if (flags.before !== undefined) {
     validateIsoZTimestamp(flags.before, "before", out);
     params.before = flags.before;
@@ -300,8 +300,8 @@ export async function runInboxMessages(
 }
 
 /**
- * Run `inbox search <query> [--all] [--limit] [--cursor]` — messaging.searchChats.
- * Read command — rejects --preview. Free-text search over the account's own
+ * Run `inbox search <query> [--all] [--limit] [--cursor]`, messaging.searchChats.
+ * Read command, rejects --preview. Free-text search over the account's own
  * inbox: matches participant names and message content. `<query>` is required
  * (the SDK's `query` param is not optional).
  */
@@ -357,7 +357,7 @@ const inboxListCommand = defineCommand({
     unread: {
       type: "boolean" as const,
       description: "Show unread chats only (--no-unread for read-only; omit for all).",
-      // No default → three-way semantics: undefined when omitted, true for --unread, false for --no-unread
+      // No default -> three-way semantics: undefined when omitted, true for --unread, false for --no-unread
     },
   },
   async run({ args }) {

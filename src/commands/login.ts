@@ -1,5 +1,5 @@
 /**
- * `curviate login` — write or update an API key profile.
+ * `curviate login`, write or update an API key profile.
  *
  * Interactive mode (TTY, no --api-key): prompts for the key with masked
  * input (not echoed), then writes to the named profile.
@@ -10,7 +10,7 @@
  * A blank/empty key is rejected before any write (exit 2).
  * A --base-url of "" (explicitly empty) is rejected (exit 2).
  *
- * No network call is made — the key is saved as-is; the first real command
+ * No network call is made; the key is saved as-is; the first real command
  * verifies it against the API.
  */
 
@@ -35,7 +35,7 @@ type LoginOut = {
 /**
  * Run the login non-interactive path (exported for testing).
  *
- * Takes a pre-resolved `api-key` (no TTY/stdin prompting here — that's
+ * Takes a pre-resolved `api-key` (no TTY/stdin prompting here, that's
  * handled by the citty command handler before it calls this).
  *
  * Validates:

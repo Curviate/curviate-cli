@@ -2,14 +2,14 @@
  * Minimal TTY readline helper for masked input (API key prompts).
  *
  * When mask=true: writes the prompt to stderr and reads input from stdin
- * without echoing — the key never appears on screen. Falls back to a plain
+ * without echoing; the key never appears on screen. Falls back to a plain
  * readline if setRawMode is unavailable (e.g. in some CI environments).
  */
 
 import { createInterface } from "node:readline";
 
 /**
- * The subset of `NodeJS.ReadStream` this module actually touches — the
+ * The subset of `NodeJS.ReadStream` this module actually touches, the
  * injectable seam's shape. Tests drive a fake EventEmitter-ish stub here
  * instead of the real terminal (real stdin can't be scripted to emit
  * arbitrary chunk boundaries in-process).
@@ -22,7 +22,7 @@ export interface ReadlineStdin {
   setEncoding(encoding: string): void;
   // Narrowed to the single "data" listener shape this module actually
   // registers (a chunk string) rather than a fully generic EventEmitter
-  // signature — deliberately not `(...args: unknown[]) => void`, which
+  // signature, deliberately not `(...args: unknown[]) => void`, which
   // would reject passing a `(chunk: string) => void` listener.
   on(event: "data", listener: (chunk: string) => void): void;
   removeListener(event: "data", listener: (chunk: string) => void): void;
@@ -33,8 +33,8 @@ export interface ReadlineOptions {
   mask?: boolean;
   /**
    * Injectable stdin-like stream. Defaults to `process.stdin`. The
-   * sanctioned test seam — mirrors the injection style used everywhere else
-   * in this codebase (`readStdin`, `readSingleLine`, …) — since this
+   * sanctioned test seam: mirrors the injection style used everywhere else
+   * in this codebase (`readStdin`, `readSingleLine`, ...): since this
    * function is the one place that touches the real stream directly.
    */
   stdin?: ReadlineStdin;
@@ -56,10 +56,10 @@ export async function readlineSync(
 
     if (opts.mask && typeof stdin.setRawMode === "function") {
       // Raw mode: suppress echo and scan each incoming chunk for a
-      // terminator — NOT one character per `data` event. A live terminal
+      // terminator, NOT one character per `data` event. A live terminal
       // (especially over SSH, or a paste from a .env/password manager) can
-      // coalesce an entire line — or a paste plus the Enter that follows it
-      // — into a single multi-byte `data` chunk. A whole-chunk `===`
+      // coalesce an entire line, or a paste plus the Enter that follows it
+      //, into a single multi-byte `data` chunk. A whole-chunk `===`
       // equality check against "\r"/"\n" never matches such a chunk, so the
       // terminator silently lands inside `input` and the promise never
       // settles. Scanning char-by-char finds the terminator wherever it

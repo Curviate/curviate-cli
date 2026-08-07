@@ -5,10 +5,10 @@
  *
  * Keep in sync with the dashboard's ConnectAccountModal challengeTitle /
  * challengeDescription helpers (component name only, not a path or a spec
- * reference — neither is published in this package). Two deliberate
+ * reference, neither is published in this package). Two deliberate
  * deviations from that dashboard copy:
  *   1. the dashboard's otp / two_factor_sms descriptions end with a
- *      UI-deictic "Enter it below." clause — dropped here, since a CLI
+ *      UI-deictic "Enter it below." clause: dropped here, since a CLI
  *      prompt follows immediately and there is no "below" to point at.
  *   2. the dashboard has no mobile_app_approval description case yet, so
  *      this file supplies its own body for that type.
@@ -20,7 +20,7 @@ export interface CopyOut {
   stderr: { write: (s: string) => void };
 }
 
-/** Resendable challenge types — two_factor_app (an authenticator TOTP code) has nothing to resend. */
+/** Resendable challenge types, two_factor_app (an authenticator TOTP code) has nothing to resend. */
 const RESENDABLE_CHALLENGE_TYPES: ReadonlySet<string> = new Set([
   "otp",
   "two_factor_sms",
@@ -60,7 +60,7 @@ export function printChallengeCopy(type: ChallengeType, out: CopyOut): void {
  * between the link/reconnect guided loop and the checkpoint poll wait loop
  * so the copy and the resendable-type gating live in exactly one place.
  * The referenced resend command does not need to exist yet for this hint
- * text to be correct — it is only ever a printed string.
+ * text to be correct; it is only ever a printed string.
  */
 export function printResendHintIfApplicable(
   type: ChallengeType,

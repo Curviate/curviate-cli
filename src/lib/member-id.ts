@@ -6,7 +6,7 @@
  * endpoints does not: `users.follow` / `users.unfollow` (D6) and
  * `posts.listUserPosts` / `posts.listUserReactions` / `comments.listUserComments`
  * / `users.get`'s `linkedin_sections`-enriched form (D7) all 400/404 a public
- * slug and require the raw provider id (ACoAA… / ADoAA… / AEoAA…). This
+ * slug and require the raw provider id (ACoAA... / ADoAA... / AEoAA...). This
  * module gives those commands the same auto-resolution their siblings enjoy:
  * a provider-id-shaped input passes straight through; a URL/slug is
  * normalized then resolved to the provider id via a single `users.get` READ
@@ -15,18 +15,18 @@
  *
  * `users.get`'s own CurviateError (e.g. 404 for an unknown member) propagates
  * to the caller unchanged, so the command surfaces it through its normal
- * error → exit-code path.
+ * error -> exit-code path.
  *
  * Two entry points, because the served ops differ on whether they accept the
  * "me" sentinel:
- *   - `resolveMemberProviderId` — `users.follow`/`users.unfollow` (D6). No
+ *   - `resolveMemberProviderId`: `users.follow`/`users.unfollow` (D6). No
  *     "me" special-case: those write ops have no documented "me" meaning, so
  *     a literal `"me"` input is resolved like any other slug (one extra
- *     `users.get` call, same as before this D7 fix — unchanged behavior).
- *   - `resolveMemberOrMeProviderId` — the D7 read surface (`post user-posts`,
+ *     `users.get` call, same as before this D7 fix: unchanged behavior).
+ *   - `resolveMemberOrMeProviderId`: the D7 read surface (`post user-posts`,
  *     `post user-reactions`, `comment user`, `profile <id> --sections`).
  *     These endpoints DO accept the "me" sentinel directly, so `"me"` passes
- *     straight through with zero extra network calls — only an actual
+ *     straight through with zero extra network calls: only an actual
  *     slug/URL pays for the resolve.
  */
 
@@ -36,14 +36,14 @@ import { resolveIdentifier } from "./identifier.js";
 type AccountNamespaces = ReturnType<Curviate["account"]>;
 
 /**
- * A LinkedIn member provider id: `ACoAA…` / `ADoAA…` / `AEoAA…`. Endpoints that
+ * A LinkedIn member provider id: `ACoAA...` / `ADoAA...` / `AEoAA...`. Endpoints that
  * accept only the provider id need the raw value, not a public slug.
  */
 export const MEMBER_PROVIDER_ID_RE = /^A[CDE][A-Za-z0-9_-]{4,}$/;
 
 /**
  * Resolve a raw member identifier (URL, slug, or provider id) to the member's
- * provider id — the form `users.follow` / `users.unfollow` require. A
+ * provider id, the form `users.follow` / `users.unfollow` require. A
  * provider-id-shaped input is returned with no extra call; anything else is
  * normalized (`resolveIdentifier`) then resolved via `users.get`.
  */
@@ -59,7 +59,7 @@ export async function resolveMemberProviderId(
 
 /**
  * Resolve a raw member identifier for the D7 read surface (`post user-posts`,
- * `post user-reactions`, `comment user`, `profile <id> --sections`) — same
+ * `post user-reactions`, `comment user`, `profile <id> --sections`), same
  * provider-id passthrough as `resolveMemberProviderId`, plus a "me"
  * passthrough (these endpoints accept the "me" sentinel directly, unlike
  * `users.follow`/`users.unfollow`). Only a genuine slug/URL pays for the

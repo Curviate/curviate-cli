@@ -1,24 +1,24 @@
 /**
- * `curviate recruiter` — LinkedIn Recruiter operations (tier: recruiter).
+ * `curviate recruiter`, LinkedIn Recruiter operations (tier: recruiter).
  *
  * Subcommands:
- *   recruiter message new --to <id> "<text>" [--attach <f>…] [--voice <f>] [--video <f>] — start chat (write, multipart)
- *   recruiter profile <identifier>                                               — get profile (read, resolveIdentifier)
- *   recruiter search people [--keywords <k>] [--all] [--limit] [--cursor]       — search people (POST)
- *   recruiter search parameters --source <s> --type <t>                                       — get filter parameters (read)
- *   recruiter projects [--all] [--limit] [--cursor]                              — list projects (read)
- *   recruiter project <project_id>                                               — get project (read, verbatim id)
- *   recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>  — save candidate to pipeline (write)
- *   recruiter jobs [--all] [--limit] [--cursor]                                  — list jobs (read)
- *   recruiter job create [--body-file <path> | --body -] [--job-title <t>] [--description <d>] [--employment-type <e>] — create job draft (write; JSON body + scalar flags)
- *   recruiter job publish <project_id> <job_id> [--mode <m>]                                  — publish job (write)
- *   recruiter applicants <project_id> --channel-id <id>                                             — list applicants (read)
- *   recruiter job get <url|id>                                                    — get a job posting via the Recruiter lens (read, any public job)
- *   recruiter applicant <project_id> <applicant_id>                                            — get applicant (read, verbatim id)
- *   recruiter applicant resume <project_id> <applicant_id> -o <file>                          — download resume (binary)
+ *   recruiter message new --to <id> "<text>" [--attach <f>...] [--voice <f>] [--video <f>], start chat (write, multipart)
+ *   recruiter profile <identifier>: get profile (read, resolveIdentifier)
+ *   recruiter search people [--keywords <k>] [--all] [--limit] [--cursor]: search people (POST)
+ *   recruiter search parameters --source <s> --type <t>: get filter parameters (read)
+ *   recruiter projects [--all] [--limit] [--cursor]: list projects (read)
+ *   recruiter project <project_id>: get project (read, verbatim id)
+ *   recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>: save candidate to pipeline (write)
+ *   recruiter jobs [--all] [--limit] [--cursor]: list jobs (read)
+ *   recruiter job create [--body-file <path> | --body -] [--job-title <t>] [--description <d>] [--employment-type <e>], create job draft (write; JSON body + scalar flags)
+ *   recruiter job publish <project_id> <job_id> [--mode <m>]: publish job (write)
+ *   recruiter applicants <project_id> --channel-id <id>: list applicants (read)
+ *   recruiter job get <url|id>: get a job posting via the Recruiter lens (read, any public job)
+ *   recruiter applicant <project_id> <applicant_id>: get applicant (read, verbatim id)
+ *   recruiter applicant resume <project_id> <applicant_id> -o <file>: download resume (binary)
  *
  * All subcommands are account-scoped.
- * Tier-gate: CLI never pre-checks — SDK call goes out; TIER_NOT_ACTIVE / LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5.
+ * Tier-gate: CLI never pre-checks, SDK call goes out; TIER_NOT_ACTIVE / LINKEDIN_FEATURE_NOT_SUBSCRIBED -> exit 5.
  * Identifier resolution: applied to `profile <identifier>` only; `job get <url|id>`
  * resolves a job URL to its numeric id via resolveJobIdentifier (same helper
  * the top-level `job get` command uses).
@@ -49,7 +49,7 @@ import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 /**
  * Local type aliases for the recruiter bodies that are genuinely
  * impractical to build as fully-typed literals (deep discriminated unions,
- * or a body sourced from free-form user JSON) — used for a single narrow
+ * or a body sourced from free-form user JSON), used for a single narrow
  * cast at the call site instead.
  */
 type RecruiterStartChatBody = paths["/v1/{account_id}/recruiter/chats"]["post"]["requestBody"]["content"]["application/json"];
@@ -97,7 +97,7 @@ type RecruiterFlags = {
   keywords?: string;
   // search-people filter escape hatch + curated named flags
   // (note: "employment-type" is declared below in the job-create group and is
-  //  reused by `recruiter search people` — it maps to the same API field.)
+  //  reused by `recruiter search people`; it maps to the same API field.)
   filters?: string;
   "filters-file"?: string;
   locale?: string;
@@ -210,7 +210,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 
 /**
  * Build a { id? } | { name? } reference object from an id flag and a name
- * flag — id wins when both are given. Returns undefined when neither is set.
+ * flag, id wins when both are given. Returns undefined when neither is set.
  * Used for recruiter company/job_title references built from paired flags.
  */
 function buildRecruiterRef(idValue: string | undefined, nameValue: string | undefined): { id?: string; name?: string } | undefined {
@@ -260,7 +260,7 @@ const DEFAULT_JOB_CREATE_READERS: JobCreateReaders = {
  * error (exit 2). Deep shape validation (e.g. apply_method's companion
  * field) is left to the API; presence of each top-level required key is
  * validated separately by `requireRecruiterJobFields` where relevant
- * (create only — a PATCH-style update has no required fields).
+ * (create only, a PATCH-style update has no required fields).
  */
 async function assembleRecruiterJobBody(
   flags: RecruiterFlags,
@@ -348,7 +348,7 @@ const RECRUITER_JOB_REQUIRED_FIELDS: ReadonlyArray<readonly [string, string]> = 
 /**
  * Exit 2, naming the flag, when a required recruiter job-body field is
  * absent from the assembled body (from neither the JSON source nor a
- * scalar flag) — before any SDK call. `extra` appends command-specific
+ * scalar flag), before any SDK call. `extra` appends command-specific
  * required fields (e.g. `recruiter job create`'s --project-name).
  */
 function requireRecruiterJobFields(
@@ -371,12 +371,12 @@ function requireRecruiterJobFields(
 // ---------------------------------------------------------------------------
 
 /**
- * Run `recruiter message new --to <id> --subject <s> --signature <sig> "<text>" [--attach <f>…] [--voice <f>] [--video <f>]`.
- * Write command — supports --preview.
+ * Run `recruiter message new --to <id> --subject <s> --signature <sig> "<text>" [--attach <f>...] [--voice <f>] [--video <f>]`.
+ * Write command, supports --preview.
  *
- * v2: JSON-only (no multipart) — `subject` and `signature` are REQUIRED
+ * v2: JSON-only (no multipart), `subject` and `signature` are REQUIRED
  * (InMail-based Recruiter messaging). There is no separate voice_message/
- * video_message body field — every attachment (file, voice, or video) rides
+ * video_message body field, every attachment (file, voice, or video) rides
  * the single `attachments[]` array as a base64 object; voice/video use
  * `send_mode: "native"` for a platform-native bubble (`metadata.duration`
  * is not computed client-side and is left unset).
@@ -467,7 +467,7 @@ export async function runRecruiterMessageNew(
 
 /**
  * Run `recruiter profile <identifier>`.
- * Read command — rejects --preview. Identifier resolved via resolveIdentifier.
+ * Read command, rejects --preview. Identifier resolved via resolveIdentifier.
  */
 export async function runRecruiterProfile(
   client: Curviate,
@@ -491,8 +491,8 @@ export async function runRecruiterProfile(
 }
 
 /**
- * Run `recruiter search people [filters…]`.
- * POST search — read-classified, rejects --preview.
+ * Run `recruiter search people [filters...]`.
+ * POST search, read-classified, rejects --preview.
  * Supports --all / --limit / --cursor pagination.
  */
 export async function runRecruiterSearchPeople(
@@ -558,9 +558,9 @@ export async function runRecruiterSearchPeople(
 
 /**
  * Run `recruiter search parameters --source <s> --type <t> [--keywords <k>] [--project-id <id>] [--stage-id <id>]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  *
- * v2: getParameters (GET) is replaced by searchParameters (POST) — the body
+ * v2: getParameters (GET) is replaced by searchParameters (POST), the body
  * is a source-discriminated oneOf (APPLICANTS/PIPELINE require project_id;
  * PIPELINE additionally accepts stage_id). `--source` is a free-form CLI
  * flag, so a narrow cast stands in for full static discrimination of the
@@ -607,9 +607,9 @@ export async function runRecruiterSearchParameters(
 
 /**
  * Run `recruiter search <url> [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview. Paginated. Runs a pasted Recruiter
+ * Read command, rejects --preview. Paginated. Runs a pasted Recruiter
  * search/talent-pool/applicant URL directly; the response is a 3-way oneOf
- * keyed by the URL kind — rendered verbatim, no client-side branching.
+ * keyed by the URL kind, rendered verbatim, no client-side branching.
  */
 export async function runRecruiterSearchFromUrl(
   client: Curviate,
@@ -660,7 +660,7 @@ export async function runRecruiterSearchFromUrl(
 
 /**
  * Run `recruiter projects [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview. Paginated.
+ * Read command, rejects --preview. Paginated.
  */
 export async function runRecruiterListProjects(
   client: Curviate,
@@ -702,7 +702,7 @@ export async function runRecruiterListProjects(
 
 /**
  * Run `recruiter project <project_id>`.
- * Read command — rejects --preview. project_id passes verbatim.
+ * Read command, rejects --preview. project_id passes verbatim.
  */
 export async function runRecruiterGetProject(
   client: Curviate,
@@ -725,8 +725,8 @@ export async function runRecruiterGetProject(
 }
 
 /**
- * Run `recruiter project update <project_id> [flags…]`.
- * Write command — supports --preview. project_id passes verbatim.
+ * Run `recruiter project update <project_id> [flags...]`.
+ * Write command, supports --preview. project_id passes verbatim.
  * PATCH semantics: every field is optional; only supplied flags are sent.
  */
 export async function runRecruiterUpdateProject(
@@ -775,9 +775,9 @@ export async function runRecruiterUpdateProject(
 }
 
 /**
- * Run `recruiter pipeline <project_id> [filters…]`.
- * Read command (POST-as-list) — rejects --preview. Paginated. project_id
- * passes verbatim. No required flags — the filter body is all-optional.
+ * Run `recruiter pipeline <project_id> [filters...]`.
+ * Read command (POST-as-list), rejects --preview. Paginated. project_id
+ * passes verbatim. No required flags, the filter body is all-optional.
  */
 export async function runRecruiterListPipeline(
   client: Curviate,
@@ -837,9 +837,9 @@ export async function runRecruiterListPipeline(
 
 /**
  * Run `recruiter project-job get <project_id>`.
- * Read command — rejects --preview. Single object (the ONE job posting
+ * Read command, rejects --preview. Single object (the ONE job posting
  * attached to the project, not a list); 404 RESOURCE_NOT_FOUND when no job
- * is attached — surfaced via the standard exit-code map (exit 4), no special
+ * is attached, surfaced via the standard exit-code map (exit 4), no special
  * client-side handling required.
  */
 export async function runRecruiterGetProjectJob(
@@ -864,7 +864,7 @@ export async function runRecruiterGetProjectJob(
 
 /**
  * Run `recruiter project-job budget <project_id> <job_id>`.
- * Read command — rejects --preview. Single object. project_id/job_id pass verbatim.
+ * Read command, rejects --preview. Single object. project_id/job_id pass verbatim.
  */
 export async function runRecruiterGetProjectJobBudget(
   client: Curviate,
@@ -889,10 +889,10 @@ export async function runRecruiterGetProjectJobBudget(
 
 /**
  * Run `recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`.
- * Write command — supports --preview. project_id passes verbatim.
+ * Write command, supports --preview. project_id passes verbatim.
  *
  * v2: addCandidate(user_id, {hiring_project_id, stage}) is replaced by the
- * project-scoped saveCandidate(project_id, {stage_id, candidate_id}) — a
+ * project-scoped saveCandidate(project_id, {stage_id, candidate_id}), a
  * full body reshape, and the command is renamed to match.
  */
 export async function runRecruiterSaveCandidate(
@@ -932,7 +932,7 @@ export async function runRecruiterSaveCandidate(
 
 /**
  * Run `recruiter jobs [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview. Paginated.
+ * Read command, rejects --preview. Paginated.
  */
 export async function runRecruiterListJobs(
   client: Curviate,
@@ -973,17 +973,17 @@ export async function runRecruiterListJobs(
 }
 
 /**
- * Run `recruiter job create [--body-file <path> | --body -] [scalar flags…]`.
- * Write command — supports --preview. Opens a brand-new project — --project-name
+ * Run `recruiter job create [--body-file <path> | --body -] [scalar flags...]`.
+ * Write command, supports --preview. Opens a brand-new project, --project-name
  * is required in addition to the full recruiter-job-body required set.
  *
- * The job-create body is deeply nested (job_title, company, apply_method —
+ * The job-create body is deeply nested (job_title, company, apply_method,
  * several of which are objects). Rather than enumerate a flag per nested
  * field, the body is supplied as JSON via --body-file <path> or --body -
  * (stdin), with top-level scalar convenience flags (--job-title-id,
  * --job-title, --company-id, --workplace-type, --employment-status,
- * --seniority-level, --industry, --job-function, --apply-method, …) merging
- * OVER the JSON — see assembleRecruiterJobBody.
+ * --seniority-level, --industry, --job-function, --apply-method, ...) merging
+ * OVER the JSON, see assembleRecruiterJobBody.
  *
  * The CLI validates that the JSON parses AND that every required top-level
  * key is present in the assembled body (naming the flag, exit 2, before any
@@ -1007,7 +1007,7 @@ export async function runRecruiterCreateJob(
   const body = assembled.body;
 
   // project_name is a new v2 top-level requirement (createJob always opens a
-  // brand-new project) — folded into the shared required-fields check
+  // brand-new project), folded into the shared required-fields check
   // alongside the rest of the recruiter job body.
   requireRecruiterJobFields(body, [["project_name", "--project-name"]], out);
 
@@ -1037,9 +1037,9 @@ export async function runRecruiterCreateJob(
 }
 
 /**
- * Run `recruiter project-job create <project_id> [--body-file <path> | --body -] [scalar flags…]`.
- * Write command — supports --preview. project_id passes verbatim.
- * v2: createProjectJob attaches a job draft to an EXISTING project — same
+ * Run `recruiter project-job create <project_id> [--body-file <path> | --body -] [scalar flags...]`.
+ * Write command, supports --preview. project_id passes verbatim.
+ * v2: createProjectJob attaches a job draft to an EXISTING project, same
  * body shape as `recruiter job create` minus project_name (the project comes
  * from the path). Never publishes, never spends money.
  */
@@ -1083,9 +1083,9 @@ export async function runRecruiterCreateProjectJob(
 }
 
 /**
- * Run `recruiter project-job update <project_id> <job_id> [--body-file <path> | --body -] [scalar flags…]`.
- * Write command — supports --preview. project_id/job_id pass verbatim.
- * v2: PATCH semantics — every field is optional; only supplied fields
+ * Run `recruiter project-job update <project_id> <job_id> [--body-file <path> | --body -] [scalar flags...]`.
+ * Write command, supports --preview. project_id/job_id pass verbatim.
+ * v2: PATCH semantics, every field is optional; only supplied fields
  * change. MONEY WARNING (updateProjectJob): editing an already-published
  * posting mutates a live, money-spending listing.
  */
@@ -1133,9 +1133,9 @@ const RECRUITER_BUDGET_SCOPES = ["DAILY", "TOTAL"] as const;
 
 /**
  * Run `recruiter job publish <project_id> <job_id> --mode <m> [--budget-*]`.
- * Write command — supports --preview. project_id/job_id pass verbatim.
+ * Write command, supports --preview. project_id/job_id pass verbatim.
  * v2: publishJob is project-scoped (project_id leads job_id). --mode is
- * required; PROMOTED/PROMOTED_PLUS require a full --budget-* triple —
+ * required; PROMOTED/PROMOTED_PLUS require a full --budget-* triple,
  * supplying it is the explicit opt-in to spend real money.
  */
 export async function runRecruiterPublishJob(
@@ -1209,8 +1209,8 @@ export async function runRecruiterPublishJob(
 
 /**
  * Run `recruiter job close <project_id> <job_id>`.
- * Write command — supports --preview. Bodyless. project_id/job_id pass verbatim.
- * IMPACT WARNING: closing an already-published posting is irreversible — there
+ * Write command, supports --preview. Bodyless. project_id/job_id pass verbatim.
+ * IMPACT WARNING: closing an already-published posting is irreversible, there
  * is no re-open operation.
  */
 export async function runRecruiterCloseJob(
@@ -1245,8 +1245,8 @@ export async function runRecruiterCloseJob(
 }
 
 /**
- * Run `recruiter talent-search <project_id> --channel-id <id> [filters…]`.
- * Read command (POST-as-search) — rejects --preview. Paginated. project_id
+ * Run `recruiter talent-search <project_id> --channel-id <id> [filters...]`.
+ * Read command (POST-as-search), rejects --preview. Paginated. project_id
  * passes verbatim. `--channel-id` is required (the project's own
  * RECRUITER_SEARCH talent-pool channel).
  */
@@ -1313,10 +1313,10 @@ export async function runRecruiterSearchTalentPool(
 
 /**
  * Run `recruiter applicants <project_id> --channel-id <id>`.
- * Read command — rejects --preview. project_id passes verbatim.
+ * Read command, rejects --preview. project_id passes verbatim.
  *
  * v2: listApplicants is project-scoped, not job-scoped (a project id in the
- * positional — a job_id here would 404 against the real v2 op) and requires
+ * positional, a job_id here would 404 against the real v2 op) and requires
  * `channel_id` (the project's own JOB_POSTING talent-pool channel) in the body.
  * The command is top-level under `recruiter` (not nested under `job`) to match
  * that project scope.
@@ -1353,8 +1353,8 @@ export async function runRecruiterListApplicants(
 
 /**
  * Run `recruiter job get <url|id>`.
- * Read command — rejects --preview. Retrieves any public job posting via the
- * Recruiter lens (not only the operator's own postings) — the Recruiter
+ * Read command, rejects --preview. Retrieves any public job posting via the
+ * Recruiter lens (not only the operator's own postings), the Recruiter
  * sibling of the top-level `job get` command, same underlying job-posting
  * shape. The positional accepts a job URL or a bare numeric id, resolved via
  * `resolveJobIdentifier` (mirrors `job get`'s resolution).
@@ -1382,7 +1382,7 @@ export async function runRecruiterGetJob(
 
 /**
  * Run `recruiter applicant <project_id> <applicant_id>`.
- * Read command — rejects --preview. project_id/applicant_id pass verbatim.
+ * Read command, rejects --preview. project_id/applicant_id pass verbatim.
  * v2: getApplicant is project-scoped (project_id leads applicant_id).
  */
 export async function runRecruiterGetApplicant(
@@ -1408,9 +1408,9 @@ export async function runRecruiterGetApplicant(
 
 /**
  * Run `recruiter applicant resume <project_id> <applicant_id> -o <file>`.
- * Read command — binary response. Rejects --preview.
+ * Read command, binary response. Rejects --preview.
  * v2: downloadResume is project-scoped (project_id leads applicant_id).
- * @param isTTY — injectable for tests.
+ * @param isTTY - injectable for tests.
  */
 export async function runRecruiterDownloadResume(
   client: Curviate,
@@ -1454,7 +1454,7 @@ const recruiterMessageNewCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient's LinkedIn provider ID (AE… format, e.g. from a Recruiter search result or profile). Not resolved from a URL/slug. Pass the provider ID directly.",
+        "Recipient's LinkedIn provider ID (AE... format, e.g. from a Recruiter search result or profile). Not resolved from a URL/slug. Pass the provider ID directly.",
       required: true,
     },
     subject: { type: "string", description: "Message subject line (required for Recruiter InMail).", required: true },
@@ -1490,7 +1490,7 @@ const recruiterMessageCommand = defineCommand({
     new: recruiterMessageNewCommand,
   },
   async run() {
-    process.stderr.write("Usage: curviate recruiter message new --to <id> \"<text>\" [--attach <file>…]\n");
+    process.stderr.write("Usage: curviate recruiter message new --to <id> \"<text>\" [--attach <file>...]\n");
   },
 });
 
@@ -1607,7 +1607,7 @@ const recruiterSearchCommand = defineCommand({
   async run({ args }) {
     const flags = args as RecruiterFlags;
 
-    // Bare form: `recruiter search <url>` runs the URL directly. No url → print usage.
+    // Bare form: `recruiter search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
         "Usage: curviate recruiter search <url>\n" +
@@ -1706,7 +1706,7 @@ const recruiterProjectCommand = defineCommand({
     if (!flags.projectId) {
       process.stderr.write(
         "Usage: curviate recruiter project <project_id>\n" +
-        "       curviate recruiter project update <project_id> [flags…]\n",
+        "       curviate recruiter project update <project_id> [flags...]\n",
       );
       return;
     }
@@ -1807,7 +1807,7 @@ const recruiterJobsCommand = defineCommand({
 });
 
 // Shared body flags for recruiter job create / project-job create / update
-// (kebab → snake_case body keys via assembleRecruiterJobBody). All fields
+// (kebab -> snake_case body keys via assembleRecruiterJobBody). All fields
 // are also reachable via --body-file/--body - JSON.
 const RECRUITER_JOB_BODY_FLAGS = {
   "body-file": { type: "string" as const, description: "Path to a JSON file with the full job body." },
@@ -1975,7 +1975,7 @@ const recruiterJobCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate recruiter job create [flags…]\n" +
+      "Usage: curviate recruiter job create [flags...]\n" +
       "       curviate recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
       "       curviate recruiter job close <project_id> <job_id>\n" +
       "       curviate recruiter job get <url|id>\n",
@@ -2108,9 +2108,9 @@ const recruiterProjectJobCommand = defineCommand({
     if (!flags.projectId) {
       process.stderr.write(
         "Usage: curviate recruiter project-job get <project_id>\n" +
-        "       curviate recruiter project-job create <project_id> [flags…]\n" +
+        "       curviate recruiter project-job create <project_id> [flags...]\n" +
         "       curviate recruiter project-job budget <project_id> <job_id>\n" +
-        "       curviate recruiter project-job update <project_id> <job_id> [flags…]\n",
+        "       curviate recruiter project-job update <project_id> <job_id> [flags...]\n",
       );
       return;
     }
@@ -2257,17 +2257,17 @@ export const recruiterCommand = defineCommand({
       "       curviate recruiter search <url>\n" +
       "       curviate recruiter projects\n" +
       "       curviate recruiter project <project_id>\n" +
-      "       curviate recruiter project update <project_id> [flags…]\n" +
+      "       curviate recruiter project update <project_id> [flags...]\n" +
       "       curviate recruiter pipeline <project_id>\n" +
       "       curviate recruiter project-job get <project_id>\n" +
-      "       curviate recruiter project-job create <project_id> [flags…]\n" +
+      "       curviate recruiter project-job create <project_id> [flags...]\n" +
       "       curviate recruiter project-job budget <project_id> <job_id>\n" +
-      "       curviate recruiter project-job update <project_id> <job_id> [flags…]\n" +
+      "       curviate recruiter project-job update <project_id> <job_id> [flags...]\n" +
       "       curviate recruiter talent-search <project_id> --channel-id <id>\n" +
       "       curviate recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>\n" +
       "       curviate recruiter applicants <project_id> --channel-id <id>\n" +
       "       curviate recruiter jobs\n" +
-      "       curviate recruiter job create [flags…]\n" +
+      "       curviate recruiter job create [flags...]\n" +
       "       curviate recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
       "       curviate recruiter job close <project_id> <job_id>\n" +
       "       curviate recruiter job get <url|id>\n" +

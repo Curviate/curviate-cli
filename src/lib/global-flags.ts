@@ -6,10 +6,10 @@
  * of which command is running.
  *
  * Semantics of each flag are owned by the relevant sub-system:
- *   --account / --api-key / --profile  → lib/resolve.ts (auth & config)
- *   --json / --fields / --limit / --cursor / --all / --max-pages → lib/output.ts
- *   --preview                           → lib/preview.ts
- *   --base-url / --timeout              → lib/resolve.ts
+ *   --account / --api-key / --profile  -> lib/resolve.ts (auth & config)
+ *   --json / --fields / --limit / --cursor / --all / --max-pages -> lib/output.ts
+ *   --preview                           -> lib/preview.ts
+ *   --base-url / --timeout              -> lib/resolve.ts
  */
 
 export const GLOBAL_FLAGS = {
@@ -146,7 +146,7 @@ export type ReadSingleFlags = Omit<GlobalFlags, "limit" | "cursor" | "all" | "ma
  * (connect/reconnect/update/disconnect an account, submit or poll a
  * checkpoint) rather than a list. Pagination flags (`--limit`, `--cursor`,
  * `--all`, `--max-pages`) are meaningless on a one-row response, but
- * `--fields` is still useful to project it — unlike `WRITE_FLAGS`, which
+ * `--fields` is still useful to project it, unlike `WRITE_FLAGS`, which
  * drops `--fields` too because it targets commands with no response shape
  * worth projecting. Identical to `READ_SINGLE_FLAGS` today (same flag set
  * serves both single-object reads and single-object writes); kept as its

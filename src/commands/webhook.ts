@@ -1,17 +1,17 @@
 /**
- * `curviate webhook` — webhook registration and event verification (root-scoped).
+ * `curviate webhook`, webhook registration and event verification (root-scoped).
  *
  * Subcommands:
- *   webhook create <body…>             — register a webhook (write)
- *   webhook list                       — list webhooks
- *   webhook events                     — list the canonical event catalogue
- *   webhook get <id>                   — get a single webhook (read)
- *   webhook update <id> <body…>        — update a webhook (write; --source is usage error)
- *   webhook delete <id>                — delete a webhook (write)
- *   webhook verify                     — offline HMAC verification (no network)
+ *   webhook create <body...>: register a webhook (write)
+ *   webhook list: list webhooks
+ *   webhook events: list the canonical event catalogue
+ *   webhook get <id>: get a single webhook (read)
+ *   webhook update <id> <body...>: update a webhook (write; --source is usage error)
+ *   webhook delete <id>: delete a webhook (write)
+ *   webhook verify: offline HMAC verification (no network)
  *
  * Root-scoped: methods live on `curviate.webhooks.*`.
- * `webhook verify` is NOT an SDK API method — it calls the SDK's `constructEvent`
+ * `webhook verify` is NOT an SDK API method; it calls the SDK's `constructEvent`
  * offline; no Curviate client is constructed.
  */
 
@@ -27,10 +27,10 @@ import { readFileSync } from "node:fs";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
 /**
- * `POST /v1/webhooks` body — a `source`-discriminated union (messaging | user
+ * `POST /v1/webhooks` body, a `source`-discriminated union (messaging | user
  * | account_status), each with its own `events`/`data` enum arrays. `source`,
  * `events`, and `data` are free-form CLI flags (comma-split strings), so
- * proving the literal-union match statically isn't practical here — a single
+ * proving the literal-union match statically isn't practical here, a single
  * narrow cast at this body-argument call site stands in; the server
  * validates the enum values on any mismatch.
  */
@@ -124,7 +124,7 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `webhook create <body…>`.
+ * Run `webhook create <body...>`.
  * Required: --source, --request-url, --account-ids.
  * --account-ids is comma-separated and maps to account_ids[].
  */
@@ -142,7 +142,7 @@ export async function runWebhookCreate(
     process.exit(2);
   }
   if (!flags["account-ids"]) {
-    out.stderr.write("error: --account-ids is required (comma-separated list of acc_… ids).\n");
+    out.stderr.write("error: --account-ids is required (comma-separated list of acc_... ids).\n");
     process.exit(2);
   }
 
@@ -172,7 +172,7 @@ export async function runWebhookCreate(
   }
 
   try {
-    // Narrow cast — see the WebhookCreateBody comment above.
+    // Narrow cast, see the WebhookCreateBody comment above.
     const result = await client.webhooks.create(body as WebhookCreateBody);
     renderSuccess(result, outOpts, out);
   } catch (err) {
@@ -263,8 +263,8 @@ export async function runWebhookGet(
 }
 
 /**
- * Run `webhook update <id> <body…>`.
- * --source is immutable — reject with exit 2 if provided.
+ * Run `webhook update <id> <body...>`.
+ * --source is immutable, reject with exit 2 if provided.
  */
 export async function runWebhookUpdate(
   client: Curviate,
@@ -426,7 +426,7 @@ export async function resolveWebhookBody(
 }
 
 /**
- * Run `webhook verify` — offline HMAC verification.
+ * Run `webhook verify`, offline HMAC verification.
  *
  * Calls the SDK's `constructEvent` directly (no Curviate client constructed).
  * On success: prints parsed event JSON to stdout, returns (exit 0 semantics).
@@ -449,7 +449,7 @@ export async function runWebhookVerify(
       ...(input.replayWindowSecs !== undefined ? [{ replayWindowSecs: input.replayWindowSecs }] : []),
     );
     out.stdout.write(JSON.stringify(event) + "\n");
-    // exit 0 — just return
+    // exit 0, just return
   } catch (err) {
     if (err instanceof WebhookSignatureError) {
       const envelope = {
@@ -480,7 +480,7 @@ const webhookCreateCommand = defineCommand({
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target (required).", required: true },
-    name: { type: "string", description: "Human-readable name (1–100 chars)." },
+    name: { type: "string", description: "Human-readable name (1-100 chars)." },
     format: { type: "string", description: "Delivery encoding: json | form (default: json)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
@@ -550,7 +550,7 @@ const webhookGetCommand = defineCommand({
   meta: { name: "get", description: "Get a single webhook owned by the calling tenant." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Webhook id (wh_…)." },
+    id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -574,7 +574,7 @@ const webhookUpdateCommand = defineCommand({
   meta: { name: "update", description: "Update a webhook in place (source is immutable)." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Webhook id (wh_…)." },
+    id: { type: "positional", description: "Webhook id (wh_...)." },
     "request-url": { type: "string", description: "Replace the delivery URL." },
     name: { type: "string", description: "Replace the name (or clear with empty string)." },
     enabled: { type: "boolean", description: "Enable or disable the webhook." },
@@ -605,7 +605,7 @@ const webhookDeleteCommand = defineCommand({
   meta: { name: "delete", description: "Permanently remove a webhook subscription." },
   args: {
     ...GLOBAL_FLAGS,
-    id: { type: "positional", description: "Webhook id (wh_…)." },
+    id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -636,7 +636,7 @@ const webhookVerifyCommand = defineCommand({
     },
     header: {
       type: "string",
-      description: "The full Curviate-Signature header value from the delivery (t=…,v1=…).",
+      description: "The full Curviate-Signature header value from the delivery (t=...,v1=...).",
       required: true,
     },
     body: {

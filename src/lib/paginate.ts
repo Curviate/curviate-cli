@@ -18,7 +18,7 @@
  *
  * This is enforced HERE, not at each call site: pass `out` (the command's
  * stdout/stderr pair) via `StreamAllOptions` and `streamAll` writes both
- * lines itself on truncation. Call sites must not hand-roll either write —
+ * lines itself on truncation. Call sites must not hand-roll either write,
  * that per-call-site duplication is exactly what previously let most `--all`
  * commands drop the stdout sentinel while the search commands independently
  * dropped the stderr note. `onTruncated` remains as an optional additional
@@ -61,7 +61,7 @@ type PaginatableMethod<P extends Record<string, unknown>> = (
 ) => Promise<PageResponse>;
 
 /**
- * Minimal writable-stream pair — structurally compatible with every
+ * Minimal writable-stream pair, structurally compatible with every
  * command's local `OutputStreams` type (and `lib/output.ts`'s exported one).
  */
 export interface StreamWriters {
@@ -78,7 +78,7 @@ export function truncationProseNote(pagesFetched: number): string {
  * The once-per-invocation NDJSON-mode notice, written to stderr when `--all`
  * streaming engages. Agents pattern-match the plain-mode `{items,cursor}`
  * envelope and mis-parse the stream (observed twice in practice); this line
- * makes the format switch explicit. Diagnostic only — the data channel
+ * makes the format switch explicit. Diagnostic only, the data channel
  * (stdout) is unchanged.
  */
 export function ndjsonModeNotice(): string {
@@ -110,14 +110,14 @@ export function pageDelayFrom(raw: string | undefined): number | undefined {
  * Convenience over `pageDelayFrom` for the `--all` call sites: reads the
  * `--page-delay` flag straight off a command's parsed flags. The structural
  * param type means a call site passes its own `*Flags` object without that
- * type needing to declare `page-delay` — the flag is a GLOBAL_FLAGS entry so
+ * type needing to declare `page-delay`; the flag is a GLOBAL_FLAGS entry so
  * it is present on the runtime object for every paginated command.
  */
 export function pageDelayFromFlags(flags: { "page-delay"?: string }): number | undefined {
   return pageDelayFrom(flags["page-delay"]);
 }
 
-/** Real timer sleep — the default injected into `streamAll`. */
+/** Real timer sleep, the default injected into `streamAll`. */
 const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The canonical --all truncation JSON sentinel line, including the trailing newline. */
@@ -132,7 +132,7 @@ export interface StreamAllOptions {
    * The command's output streams. When provided, `streamAll` writes the
    * truncation contract itself on truncation: the JSON sentinel to
    * `out.stdout` followed by the prose note to `out.stderr`. This is the
-   * single source of truth — do not also write these at the call site.
+   * single source of truth: do not also write these at the call site.
    */
   out?: StreamWriters;
   /**
@@ -144,7 +144,7 @@ export interface StreamAllOptions {
   onTruncated?: (pagesFetched: number, hasMore: boolean) => void;
   /**
    * Inter-page delay in milliseconds. Defaults to DEFAULT_PAGE_DELAY_MS. Set 0
-   * to disable. Applied only BETWEEN page fetches — never before the first
+   * to disable. Applied only BETWEEN page fetches, never before the first
    * page nor after the last (or a truncated) page.
    */
   pageDelayMs?: number;
@@ -193,7 +193,7 @@ export async function* streamAll<P extends Record<string, unknown>>(
       );
     }
     if (firstPage) {
-      // Streaming has engaged and the shape is valid — announce the NDJSON
+      // Streaming has engaged and the shape is valid, announce the NDJSON
       // format switch once, before any item is emitted.
       if (opts.out) opts.out.stderr.write(ndjsonModeNotice());
       firstPage = false;
@@ -234,7 +234,7 @@ export async function* streamAll<P extends Record<string, unknown>>(
 
     // Pace the NEXT fetch: a modest pause between pages keeps a long stream
     // under the platform rate gate. Only reached when another page will be
-    // fetched (cursor present, not truncating) — never after the last page.
+    // fetched (cursor present, not truncating), never after the last page.
     if (pageDelayMs > 0) await sleep(pageDelayMs);
   }
 }

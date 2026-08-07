@@ -6,11 +6,11 @@
  * logged and never echoed; `--preview` renders attachments as
  * `<name> (N bytes)` via lib/preview.ts.
  *
- * v2 wire shape: every write with attachments is `application/json`
- * — there is NO multipart op on the served surface. Attachments travel as
+ * v2 wire shape: every write with attachments is `application/json`;
+ * there is NO multipart op on the served surface. Attachments travel as
  * base64-encoded objects (`{content, content_type, filename}`, sometimes with
  * `send_mode`/`metadata` for native voice/video bubbles). `toAttachmentPayload`
- * is the shared Buffer→wire-object converter for every command that attaches
+ * is the shared Buffer->wire-object converter for every command that attaches
  * files (message/post/recruiter/sales-nav).
  */
 
@@ -61,9 +61,9 @@ export interface AttachmentPayload {
 }
 
 /**
- * Minimal, dependency-free extension→MIME map covering the file types the
+ * Minimal, dependency-free extension->MIME map covering the file types the
  * CLI's own help text documents (images, common docs, and voice/video
- * attachments). Unknown extensions fall back to `application/octet-stream` —
+ * attachments). Unknown extensions fall back to `application/octet-stream`,
  * a generic but valid content_type; the served surface does not reject on it.
  */
 const MIME_BY_EXT: Readonly<Record<string, string>> = {

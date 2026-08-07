@@ -36,8 +36,8 @@
  * A token shaped like a command word: lowercase, hyphen-separated segments,
  * starting with a letter. Matches `search`, `list`, `inmail-balance`, `sned`.
  *
- * Deliberately does NOT match any chat-id form: `2-…` starts with a digit,
- * `COMPANY_…` has uppercase and an underscore, and a thread URL has `:` and `/`.
+ * Deliberately does NOT match any chat-id form: `2-...` starts with a digit,
+ * `COMPANY_...` has uppercase and an underscore, and a thread URL has `:` and `/`.
  */
 const COMMAND_WORD_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 

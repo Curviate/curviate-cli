@@ -2,7 +2,7 @@
  * Config file management for the CLI.
  *
  * Config lives at `${XDG_CONFIG_HOME:-$HOME/.config}/curviate/config.json`.
- * Writes are atomic (write-temp → chmod → rename) so a crash mid-write cannot
+ * Writes are atomic (write-temp -> chmod -> rename) so a crash mid-write cannot
  * corrupt the file. File mode is 0600 (owner-only); dir mode is 0700.
  *
  * API key values stored here are the raw key strings. The caller is responsible
@@ -100,7 +100,7 @@ async function writeConfig(cfg: CliConfig): Promise<void> {
     }
     await rename(tmpPath, cfgPath);
     // Re-assert mode on the renamed file (rename preserves the source inode mode,
-    // but on some platforms it may not — assert here for safety).
+    // but on some platforms it may not, assert here for safety).
     try {
       await chmod(cfgPath, 0o600);
     } catch {

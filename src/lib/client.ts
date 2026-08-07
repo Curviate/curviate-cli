@@ -1,7 +1,7 @@
 // SDK-client factory.
 //
 // Turns the resolved effective config (API key, base URL, timeout) into a
-// Curviate instance. This is the single construction point — every command
+// Curviate instance. This is the single construction point, every command
 // that calls the API goes through here; commands that do not call the API
 // (--help, --version, login, config, webhook verify) never invoke it.
 //
@@ -52,7 +52,7 @@ export interface ClientConfig {
 
 /**
  * Construct a Curviate client from the resolved effective config.
- * The apiKey is passed verbatim — no prefix validation, no trimming beyond
+ * The apiKey is passed verbatim, no prefix validation, no trimming beyond
  * surrounding whitespace. The SDK is the validator of last resort.
  */
 export function createClient(config: ClientConfig): Curviate {

@@ -1,28 +1,28 @@
 /**
- * Command dispatcher — a thin pre-router around citty 0.1.6.
+ * Command dispatcher, a thin pre-router around citty 0.1.6.
  *
  * WHY THIS EXISTS (citty 0.1.6 constraint):
  * citty's own `runCommand` mis-handles command nodes that declare BOTH a bare
  * positional argument AND `subCommands`:
  *
- *   1. MISROUTE — when the first non-flag token is not a registered subcommand
+ *   1. MISROUTE, when the first non-flag token is not a registered subcommand
  *      keyword, citty throws `Unknown command <token>` and the node's own
  *      `run()` (the bare-positional handler) is never reached. So an intent-
  *      shaped form like `connect <slug>` or `profile <url>` is rejected.
- *   2. DOUBLE-RUN — when the first token IS a subcommand keyword, citty runs
+ *   2. DOUBLE-RUN, when the first token IS a subcommand keyword, citty runs
  *      the subcommand AND THEN also runs the parent node's `run()` (the
  *      `if (cmd.run)` branch sits OUTSIDE the subcommand block). So
- *      `message new …` executes `new` (startChat) and then the parent send
+ *      `message new ...` executes `new` (startChat) and then the parent send
  *      handler with the positional captured as `"new"`.
- *   3. USAGE-ERROR EXIT CODE — citty's `runMain` exits `1` for routing errors
+ *   3. USAGE-ERROR EXIT CODE, citty's `runMain` exits `1` for routing errors
  *      and bleeds a usage block to stderr; the CLI contract wants exit `2`.
  *
  * This dispatcher walks the command tree itself and resolves exactly ONE node
  * to execute, so a node may safely mix a bare-positional `run()` with
  * `subCommands`:
- *   - first token matches a subcommand keyword → descend into it ONLY.
- *   - otherwise, if the node has a `run()` → execute the bare form ONLY.
- *   - otherwise (pure group, unknown token) → usage error, exit 2.
+ *   - first token matches a subcommand keyword -> descend into it ONLY.
+ *   - otherwise, if the node has a `run()` -> execute the bare form ONLY.
+ *   - otherwise (pure group, unknown token) -> usage error, exit 2.
  *
  * The resolved leaf is then executed via citty's `runCommand` on a clone with
  * `subCommands` removed, so citty's buggy descent never fires again. citty's
@@ -43,14 +43,14 @@ import {
 type AnyCommand = CommandDef;
 
 /**
- * Removed/renamed commands → a one-line "did you mean" successor hint.
+ * Removed/renamed commands -> a one-line "did you mean" successor hint.
  *
- * Keyed by `<group>` → `<removed subcommand token>` → hint text. Consulted at
+ * Keyed by `<group>` -> `<removed subcommand token>` -> hint text. Consulted at
  * the dispatcher's unknown-command path so an agent that reaches for the old
  * grammar is pointed at the replacement instead of getting a bare "unknown
  * command" (pure groups) or a confusing downstream error from the removed
  * keyword being swallowed as a bare id (the bare-positional groups: connect,
- * profile, company). Exit stays 2 — this only enriches the diagnostic.
+ * profile, company). Exit stays 2; this only enriches the diagnostic.
  *
  * The tokens here are the exact removed/renamed keywords from the 0.15.0
  * release; none is a current subcommand, and none is a plausible bare
@@ -119,9 +119,9 @@ function firstPositionalIndex(rawArgs: string[]): number {
 }
 
 /**
- * Whether a node declares at least one positional argument — i.e. it accepts a
+ * Whether a node declares at least one positional argument, i.e. it accepts a
  * bare intent-shaped form (e.g. `connect <slug>`, `profile <url>`,
- * `message <chat_id> "text"`). Pure groups (account, webhook, …) declare none,
+ * `message <chat_id> "text"`). Pure groups (account, webhook, ...) declare none,
  * so an unrecognized token under them is an unknown-subcommand usage error.
  */
 async function nodeHasPositional(cmd: AnyCommand): Promise<boolean> {
@@ -141,7 +141,7 @@ async function nodePositionalCount(cmd: AnyCommand): Promise<number> {
   return Object.values(argsDef).filter((def) => def?.type === "positional").length;
 }
 
-/** Names (and aliases) of a node's boolean flags — flags that take no value. */
+/** Names (and aliases) of a node's boolean flags, flags that take no value. */
 async function booleanFlagNames(cmd: AnyCommand): Promise<Set<string>> {
   const names = new Set<string>();
   const argsDef = (await resolveValue(cmd.args ?? {})) as Record<
@@ -166,14 +166,14 @@ async function nodeName(cmd: AnyCommand): Promise<string> {
 
 /**
  * The positional tokens citty/mri would leave after parsing `rawArgs` against a
- * node's declared flags — matching mri's rule that a `--flag` consumes the
+ * node's declared flags, matching mri's rule that a `--flag` consumes the
  * FOLLOWING token as its value UNLESS the flag is declared boolean (or the value
  * is inline `--flag=value`, or the following token is itself a flag). An unknown
  * `--flag` consumes its follower too (mri's default), so a subcommand's own flag
  * (e.g. `company <id> employees --keywords eng`) is classified correctly even at
  * the parent node that never declared it.
  *
- * Used to detect UNEXPECTED extra positionals — tokens beyond a node's declared
+ * Used to detect UNEXPECTED extra positionals, tokens beyond a node's declared
  * positional arity that citty would silently swallow into `args._` (the D4a
  * silent-wrong-data class). Each result carries its index in `rawArgs` so a
  * reroute can drop exactly the subcommand-naming token.
@@ -197,11 +197,11 @@ function positionalTokens(
     // A flag: starts with "-" but is not the bare "-" stdin sentinel.
     if (arg.startsWith("-") && arg !== "-") {
       const body = arg.replace(/^-+/, "");
-      if (body.includes("=")) continue; // inline value — self-contained
+      if (body.includes("=")) continue; // inline value, self-contained
       const isBoolean =
         booleanFlags.has(body) ||
         (body.startsWith("no-") && booleanFlags.has(body.slice(3)));
-      if (isBoolean) continue; // boolean flag — consumes no following token
+      if (isBoolean) continue; // boolean flag, consumes no following token
       // Value-flag (declared string or unknown): consume the next token as its
       // value when present and not itself a flag (mirrors mri).
       const next = rawArgs[i + 1];
@@ -252,7 +252,7 @@ function findUnknownFlag(rawArgs: string[], declared: Set<string>): string | nul
     const eq = name.indexOf("=");
     if (eq !== -1) name = name.slice(0, eq);
     if (name === "") continue; // bare "--" already handled
-    // Match the full declared name FIRST — a flag may be literally declared
+    // Match the full declared name FIRST, a flag may be literally declared
     // with a "no-" prefix (e.g. "no-interactive"), and that declaration must
     // win. Only fall back to stripping "no-" for citty's implicit negation
     // (e.g. "--no-json" negating a declared "json") when the full name isn't
@@ -264,7 +264,7 @@ function findUnknownFlag(rawArgs: string[], declared: Set<string>): string | nul
   return null;
 }
 
-/** Whether `--fields ""` (empty projection) was passed — a usage error. */
+/** Whether `--fields ""` (empty projection) was passed, a usage error. */
 function hasEmptyFields(rawArgs: string[]): boolean {
   for (let i = 0; i < rawArgs.length; i++) {
     const arg = rawArgs[i];
@@ -312,12 +312,12 @@ export async function resolveLeaf(
     const hasBarePositional = await nodeHasPositional(cmd);
 
     if (token !== undefined && subCommands[token]) {
-      // Token is a known subcommand keyword → descend into it ONLY.
+      // Token is a known subcommand keyword -> descend into it ONLY.
       const sub = (await resolveValue(subCommands[token])) as AnyCommand;
       return resolveLeaf(sub, rawArgs.slice(idx + 1));
     }
 
-    // Removed/renamed command → point at the successor BEFORE the token is
+    // Removed/renamed command -> point at the successor BEFORE the token is
     // either swallowed as a bare positional (connect/profile/company) or
     // reported as a generic unknown command (pure groups). A current
     // subcommand always won above, so this only ever fires on a stale token.
@@ -332,16 +332,16 @@ export async function resolveLeaf(
       // No keyword match but the node accepts a bare positional. Before running
       // the bare form, guard against UNEXPECTED extra positionals: citty binds
       // only the node's declared positionals and silently swallows the rest into
-      // `args._` — the D4a silent-wrong-data class (e.g. `company <id> employees`
+      // `args._`, the D4a silent-wrong-data class (e.g. `company <id> employees`
       // returning the base company profile, ignoring `employees`). Reroute an
-      // id-first ergonomic form, or fail loudly — never silently ignore.
+      // id-first ergonomic form, or fail loudly, never silently ignore.
       const booleanFlags = await booleanFlagNames(cmd);
       const positionals = positionalTokens(rawArgs, booleanFlags);
       const declaredCount = await nodePositionalCount(cmd);
       const extras = positionals.slice(declaredCount);
       if (extras.length > 0) {
         const first = extras[0]!;
-        // Exactly one extra positional that names a subcommand → the id-first
+        // Exactly one extra positional that names a subcommand -> the id-first
         // form `<group> <id> <sub>`, equivalent to `<group> <sub> <id>`. Drop
         // only that token and descend into the subcommand with the remaining
         // args (the id positional + any flags, which the subcommand re-parses).
@@ -353,7 +353,7 @@ export async function resolveLeaf(
           const remaining = rawArgs.filter((_, i) => i !== first.index);
           return resolveLeaf(sub, remaining);
         }
-        // Otherwise it cannot be a valid reroute → actionable usage error, never
+        // Otherwise it cannot be a valid reroute -> actionable usage error, never
         // a silent swallow of the extra token.
         const name = await nodeName(cmd);
         usageError(
@@ -362,7 +362,7 @@ export async function resolveLeaf(
             `Run \`curviate ${name} --help\` for the available subcommands.`,
         );
       }
-      // No keyword match but the node accepts a bare positional → run it.
+      // No keyword match but the node accepts a bare positional -> run it.
       return { leaf: cmd, leafArgs: rawArgs };
     }
 
@@ -370,7 +370,7 @@ export async function resolveLeaf(
     if (token !== undefined) {
       usageError(`unknown command \`${token}\``);
     }
-    // No token at all → no subcommand specified. Run the node's handler (group
+    // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
     return { leaf: cmd, leafArgs: rawArgs };
   }
@@ -420,8 +420,8 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
 
     // Pre-process: replace bare "-" with the stdin sentinel before handing to
     // citty/mri. mri's embedded parser (j-dash-count loop) silently swallows "-"
-    // — one leading dash gives j=1 → flag branch → empty name → 0-char iteration
-    // → never lands in `_[]` → citty cannot bind it to a positional. The sentinel
+    //, one leading dash gives j=1 -> flag branch -> empty name -> 0-char iteration
+    // -> never lands in `_[]` -> citty cannot bind it to a positional. The sentinel
     // starts with "_" (no leading dash) so mri treats it as a plain positional;
     // resolveTextOrStdin then recognises both "-" and the sentinel.
     const processedLeafArgs = leafArgs.map((a) => (a === "-" ? STDIN_SENTINEL : a));
@@ -458,8 +458,8 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     await runCommand(leafToRun, { rawArgs: processedLeafArgs });
   } catch (err: unknown) {
     // citty raises a CLIError with code "EARG" for a missing required argument
-    // or positional — that is a usage error → exit 2. Anything else thrown here
-    // is genuinely unexpected (handlers exit on their own error paths) → exit 1.
+    // or positional, that is a usage error -> exit 2. Anything else thrown here
+    // is genuinely unexpected (handlers exit on their own error paths) -> exit 1.
     // Either way, write a plain diagnostic without the framework's usage bleed;
     // routing errors already exited 2 above.
     const message = err instanceof Error ? err.message : String(err);

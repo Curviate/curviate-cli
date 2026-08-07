@@ -1,24 +1,24 @@
 /**
- * `curviate post` — LinkedIn post operations.
+ * `curviate post`, LinkedIn post operations.
  *
  * Subcommands:
- *   post get <post_id>                                    — get a single post (read)
- *   post create "<text>" [--attach <file>…]              — create post (write, JSON only in v2)
- *   post react <post_id> <reaction>                      — react to post (write, body field: reaction; --reaction alias)
- *   post reactions <post_id>                             — list reactions (paginated, read)
- *   post delete <post_id>                                — delete a post you own (write)
- *   post unreact <post_id> <reaction>                    — remove your reaction (write)
- *   post saved                                            — list your saved posts (paginated, read)
- *   post save <post_id>                                   — save a post to your bookmark list (write)
- *   post unsave <post_id>                                 — remove a post from your bookmark list (write)
- *   post user-posts <user_id>                            — list a member's own posts (read)
- *   post user-reactions <user_id>                        — list a member's own reactions (read)
+ *   post get <post_id>: get a single post (read)
+ *   post create "<text>" [--attach <file>...]: create post (write, JSON only in v2)
+ *   post react <post_id> <reaction>: react to post (write, body field: reaction; --reaction alias)
+ *   post reactions <post_id>: list reactions (paginated, read)
+ *   post delete <post_id>: delete a post you own (write)
+ *   post unreact <post_id> <reaction>: remove your reaction (write)
+ *   post saved: list your saved posts (paginated, read)
+ *   post save <post_id>: save a post to your bookmark list (write)
+ *   post unsave <post_id>: remove a post from your bookmark list (write)
+ *   post user-posts <user_id>: list a member's own posts (read)
+ *   post user-reactions <user_id>: list a member's own reactions (read)
  *
  * Comment operations moved to the dedicated `comment` command group.
- * post_id passes through verbatim — NOT resolved via resolveIdentifier.
+ * post_id passes through verbatim, NOT resolved via resolveIdentifier.
  * All subcommands are account-scoped.
  *
- * v2: posts.create/posts.react are re-pointed here — --video-thumbnail
+ * v2: posts.create/posts.react are re-pointed here, --video-thumbnail
  * has no v2 home (dropped, same class as profile's --notify) and attachments
  * are base64 JSON objects, not multipart. --comment-id on `post react` is
  * also dropped: comment-level reactions moved to the comments.* group
@@ -40,8 +40,8 @@ import type { Curviate, CurviateError } from "@curviate/sdk";
 
 // ---------------------------------------------------------------------------
 // Valid write-side reaction values.
-// Write values are ALWAYS lowercase. Uppercase read-side values (LIKE, PRAISE …)
-// surface in responses as `value` (reactions list items) and `user_reacted` (post get) —
+// Write values are ALWAYS lowercase. Uppercase read-side values (LIKE, PRAISE ...)
+// surface in responses as `value` (reactions list items) and `user_reacted` (post get),
 // they are NOT accepted as write values here.
 // ---------------------------------------------------------------------------
 const VALID_REACTIONS = new Set(["like", "celebrate", "support", "love", "insightful", "funny"]);
@@ -143,7 +143,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 
 /**
  * Run `post get <post_id>`.
- * Read command — rejects --preview and --all.
+ * Read command, rejects --preview and --all.
  */
 export async function runPostGet(
   client: Curviate,
@@ -167,10 +167,10 @@ export async function runPostGet(
 }
 
 /**
- * Run `post create "<text>" [--attach <file>…]`.
- * Write command — supports --preview.
+ * Run `post create "<text>" [--attach <file>...]`.
+ * Write command, supports --preview.
  *
- * v2: pure application/json — no multipart op on the served surface, and no
+ * v2: pure application/json, no multipart op on the served surface, and no
  * `video_thumbnail` field (--video-thumbnail has no v2 home and is dropped,
  * same class of removal as profile's --notify). Attachments (images, a
  * single PDF for a document post, etc.) travel as base64
@@ -237,14 +237,14 @@ export async function runPostCreate(
 
 /**
  * Run `post react <post_id> <reaction> [--as-organization <org>]`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  * <reaction>: the canonical positional (the deprecated `--reaction` flag still
  * works as an alias); validated against the write-side enum (lowercase only).
  * --as-organization: reacts on behalf of an organization page (v2 body
  * field: `react_as`).
  *
  * v2: `comment_id` has no home on posts.react's body (PostReactBody is just
- * {reaction, react_as?}) — comment-level reactions moved to the comments.*
+ * {reaction, react_as?}), comment-level reactions moved to the comments.*
  * group; --comment-id is dropped from this command.
  */
 export async function runPostReact(
@@ -299,7 +299,7 @@ export async function runPostReact(
 
 /**
  * Run `post reactions <post_id> [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runPostReactions(
   client: Curviate,
@@ -337,10 +337,10 @@ export async function runPostReactions(
 }
 
 /**
- * Run `post saved [--all] [--limit] [--cursor]` — posts.listSaved.
- * Read command — rejects --preview. Lists the connected account's own saved
+ * Run `post saved [--all] [--limit] [--cursor]`, posts.listSaved.
+ * Read command, rejects --preview. Lists the connected account's own saved
  * posts (a private bookmark list, newest-saved-first). Each item is a
- * PREVIEW — snippet capped at <=140 chars, never the full post body.
+ * PREVIEW, snippet capped at <=140 chars, never the full post body.
  */
 export async function runPostSaved(
   client: Curviate,
@@ -377,7 +377,7 @@ export async function runPostSaved(
 }
 
 /**
- * Run `post save <post_id>` — posts.save. Write command — supports --preview.
+ * Run `post save <post_id>`, posts.save. Write command, supports --preview.
  * Any post may be saved; saving an already-saved post re-asserts saved:true
  * (idempotent). Accepts urn:li:activity:<id> or a bare numeric <id>.
  */
@@ -406,7 +406,7 @@ export async function runPostSave(
 }
 
 /**
- * Run `post unsave <post_id>` — posts.unsave. Write command — supports
+ * Run `post unsave <post_id>`, posts.unsave. Write command, supports
  * --preview. Unsaving a not-currently-saved post re-asserts saved:false
  * (idempotent). Same accepted id shapes as `post save`.
  */
@@ -435,8 +435,8 @@ export async function runPostUnsave(
 }
 
 /**
- * Run `post delete <post_id>` — posts.delete (bodyless, 204).
- * Write command — supports --preview. post_id passes verbatim.
+ * Run `post delete <post_id>`, posts.delete (bodyless, 204).
+ * Write command, supports --preview. post_id passes verbatim.
  */
 export async function runPostDelete(
   client: Curviate,
@@ -463,8 +463,8 @@ export async function runPostDelete(
 }
 
 /**
- * Run `post unreact <post_id> <reaction>` — posts.unreact.
- * Write command — supports --preview. DELETE-with-body: the reaction value
+ * Run `post unreact <post_id> <reaction>`, posts.unreact.
+ * Write command, supports --preview. DELETE-with-body: the reaction value
  * travels in the JSON body, not the path. post_id passes verbatim.
  */
 export async function runPostUnreact(
@@ -505,11 +505,11 @@ export async function runPostUnreact(
 }
 
 /**
- * Run `post user-posts <user_id> [--all] [--limit] [--cursor]` — posts.listUserPosts.
- * Read command — rejects --preview. user_id is the "me" sentinel or a
+ * Run `post user-posts <user_id> [--all] [--limit] [--cursor]`, posts.listUserPosts.
+ * Read command, rejects --preview. user_id is the "me" sentinel or a
  * provider id, forwarded straight through with no extra call; a URL/slug
  * 400s this endpoint (D7) and is first resolved to the provider id via a
- * users.get READ (contact-safe — notifies no one).
+ * users.get READ (contact-safe, notifies no one).
  */
 export async function runPostUserPosts(
   client: Curviate,
@@ -554,8 +554,8 @@ export async function runPostUserPosts(
 }
 
 /**
- * Run `post user-reactions <user_id> [--all] [--limit] [--cursor]` — posts.listUserReactions.
- * Read command — rejects --preview. Same D7 provider-id resolution as
+ * Run `post user-reactions <user_id> [--all] [--limit] [--cursor]`, posts.listUserReactions.
+ * Read command, rejects --preview. Same D7 provider-id resolution as
  * `post user-posts` (see its docstring): "me" or a provider id pass
  * through unchanged; a URL/slug resolves via a users.get READ first.
  */
@@ -684,7 +684,7 @@ const postReactCommand = defineCommand({
       description:
         "Write-side reaction (lowercase). Write values: like, celebrate, support, love, insightful, funny. " +
         "Read-side vocabulary (in the value and user_reacted response fields): LIKE, PRAISE, APPRECIATION, EMPATHY, INTEREST, ENTERTAINMENT. " +
-        "Confirmed write→read mappings: like=LIKE, celebrate=PRAISE, insightful=INTEREST. " +
+        "Confirmed write->read mappings: like=LIKE, celebrate=PRAISE, insightful=INTEREST. " +
         "(support, love, and funny are valid write values; their read-side pairings are unconfirmed.)",
     },
     reactionAlias: {
@@ -861,7 +861,7 @@ export const postCommand = defineCommand({
     process.stderr.write(
       "Usage: curviate post <subcommand>\n" +
       "  get <post_id>\n" +
-      "  create \"<text>\" [--attach <file>…]\n" +
+      "  create \"<text>\" [--attach <file>...]\n" +
       "  react <post_id> <reaction> [--as-organization <org_id>]\n" +
       "  reactions <post_id>\n" +
       "  delete <post_id>\n" +

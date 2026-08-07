@@ -1,32 +1,32 @@
 /**
- * `curviate company` — company profile + sub-resource reads + follow-invite write.
+ * `curviate company`, company profile + sub-resource reads + follow-invite write.
  *
  * Subcommands:
- *   company <id>                                          — retrieve (routes to companies.get)
- *   company employees <id> [--keywords] [--location]      — list employees (facade)
- *   company posts <id>                                     — list posts (facade)
- *   company jobs <id> [--keywords]                         — list open jobs (facade)
- *   company invitable-followers <id> [--limit] [--cursor]  — list invitable connections (facade)
- *   company follow-invite <id> --invitee <AC…> [...]       — invite connections to follow (write)
- *   company reply <id> <chat_id> "<text>" [--attach]        — reply as the page (write)
- *   company managed                                         — list pages the account administers (read)
- *   company followers <id>                                  — list a page's followers (read)
- *   company chats <id>                                      — list a page's admin-inbox conversations (read, Beta)
- *   company chat <id> <chat_id>                              — get one admin-inbox conversation (read, Beta)
- *   company messages <id> <chat_id>                          — list a conversation's messages (read, Beta)
- *   company message <id> <chat_id> <message_id>              — get one message (read, Beta)
- *   company search-chats <id> [<query>] [--topic] [--unread] — search/filter the admin inbox (read, Beta)
+ *   company <id>: retrieve (routes to companies.get)
+ *   company employees <id> [--keywords] [--location]: list employees (facade)
+ *   company posts <id>: list posts (facade)
+ *   company jobs <id> [--keywords]: list open jobs (facade)
+ *   company invitable-followers <id> [--limit] [--cursor]: list invitable connections (facade)
+ *   company follow-invite <id> --invitee <AC...> [...]: invite connections to follow (write)
+ *   company reply <id> <chat_id> "<text>" [--attach]: reply as the page (write)
+ *   company managed: list pages the account administers (read)
+ *   company followers <id>: list a page's followers (read)
+ *   company chats <id>: list a page's admin-inbox conversations (read, Beta)
+ *   company chat <id> <chat_id>: get one admin-inbox conversation (read, Beta)
+ *   company messages <id> <chat_id>: list a conversation's messages (read, Beta)
+ *   company message <id> <chat_id> <message_id>: get one message (read, Beta)
+ *   company search-chats <id> [<query>] [--topic] [--unread]: search/filter the admin inbox (read, Beta)
  *
  * All but `follow-invite`/`reply` are read commands: --preview is a usage
  * error (exit 2). `follow-invite` and `reply` are writes: --preview renders
  * the resolved request without sending.
  *
  * `company message` (GET one message) is distinct from `company reply`
- * (POST a reply, via companies.sendMessage) — the SDK has two separate
+ * (POST a reply, via companies.sendMessage); the SDK has two separate
  * company-inbox methods with adjacent names; do not confuse them.
  *
  * `reply` sends into an existing company-inbox conversation AS THE PAGE.
- * `<chat_id>` is the normal `2-…` conversation id from `company chats`. It
+ * `<chat_id>` is the normal `2-...` conversation id from `company chats`. It
  * passes through verbatim (no client-side pre-check); the endpoint resolves
  * the page mailbox internally from the company identifier. Because a
  * `company reply` is always a page reply, --preview prints a "Will send as
@@ -34,7 +34,7 @@
  * send it prints the `sentAsNotice` acting-identity line (reused from
  * `message.ts`).
  *
- * Retrieve keeps its broader identifier contract (URL, slug, or numeric id —
+ * Retrieve keeps its broader identifier contract (URL, slug, or numeric id,
  * `resolveIdentifier` handles company URLs). The sub-resource endpoints
  * require the company's NUMERIC provider_id, but the CLI accepts the same
  * broad identifier as the bare retrieve: a URL/slug is normalized then resolved
@@ -43,13 +43,13 @@
  * `company <slug>`. A numeric id passes straight through with no extra call; a
  * genuinely unresolvable identifier surfaces `companies.get`'s CurviateError.
  * `follow-invite` resolves the identifier the same way, even under --preview
- * (the preview renders the request that would actually be sent — the resolved
+ * (the preview renders the request that would actually be sent, the resolved
  * numeric id, not the raw slug/URL).
  *
  * citty 0.1.6 cannot express a node that mixes a bare positional (`company
- * <id>`) with `subCommands` — see src/dispatch.ts for the pre-router that
- * makes this coexistence work (first-token-is-a-known-subcommand → descend;
- * otherwise → run the bare form). This command relies on that dispatcher;
+ * <id>`) with `subCommands`, see src/dispatch.ts for the pre-router that
+ * makes this coexistence work (first-token-is-a-known-subcommand -> descend;
+ * otherwise -> run the bare form). This command relies on that dispatcher;
  * DO NOT invoke citty's own `runCommand`/`runMain` directly on this tree.
  */
 
@@ -146,7 +146,7 @@ function resolveOutputOpts(flags: CompanyFlags) {
  * citty 0.1.6 has no native array arg type; a `type: "string"` arg that is
  * passed more than once (`--invitee A --invitee B`) accumulates into a
  * string[] at the parser level, while a single occurrence stays a bare
- * string — this collapses both shapes to a string[] (empty when omitted).
+ * string; this collapses both shapes to a string[] (empty when omitted).
  */
 function normalizeInviteeIds(invitee: string | string[] | undefined): string[] {
   if (!invitee) return [];
@@ -163,10 +163,10 @@ function normalizeAttachPaths(attach: string | string[] | undefined): string[] {
  * Resolve a company identifier to the numeric provider_id the sub-resource
  * endpoints (employees/posts/jobs/invitable-followers/follow-invite) require.
  * A bare numeric id passes through with no extra call; a URL/slug/URN is
- * normalized then resolved via `companies.get` — mirroring how the bare
+ * normalized then resolved via `companies.get`, mirroring how the bare
  * `company <slug>` retrieve auto-resolves, so `company employees acme` works
  * the same as `company acme`. A genuinely unresolvable identifier surfaces
- * `companies.get`'s own CurviateError (404 → exit 4, 400 → exit 2) to the
+ * `companies.get`'s own CurviateError (404 -> exit 4, 400 -> exit 2) to the
  * caller, which routes it through `handleSdkError`. Must be called inside
  * the handler's try block.
  */
@@ -198,8 +198,8 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 /**
  * Run `company <id>`.
  * Routes to `companies.get(identifier)` (hard-moved from the retired
- * `profiles.getCompany`). `identifier` accepts a public handle or numeric id
- * — `resolveIdentifier` normalizes a full company URL to its slug; a bare
+ * `profiles.getCompany`). `identifier` accepts a public handle or numeric id;
+ * `resolveIdentifier` normalizes a full company URL to its slug; a bare
  * slug or numeric id passes through unchanged.
  */
 export async function runCompanyGet(
@@ -234,7 +234,7 @@ export async function runCompanyGet(
 /**
  * Run `company employees <id> [--keywords] [--location] [--limit] [--cursor] [--all]`.
  * A facade over people search with the company filter applied.
- * `<id>` accepts a URL/slug/numeric id — a URL/slug is resolved to the
+ * `<id>` accepts a URL/slug/numeric id, a URL/slug is resolved to the
  * numeric provider_id via companies.get before the sub-resource call.
  */
 export async function runCompanyEmployees(
@@ -279,7 +279,7 @@ export async function runCompanyEmployees(
 /**
  * Run `company posts <id> [--limit] [--cursor] [--all]`.
  * A facade over posts search with the company filter applied. Post text
- * passes through verbatim (content pass-through — never stored).
+ * passes through verbatim (content pass-through, never stored).
  */
 export async function runCompanyPosts(
   client: Curviate,
@@ -363,11 +363,11 @@ export async function runCompanyJobs(
 
 /**
  * Run `company invitable-followers <id> [--limit] [--cursor] [--all]`.
- * A facade over the connections eligible to be invited to follow the page —
+ * A facade over the connections eligible to be invited to follow the page,
  * the read that seeds `company follow-invite`. `<id>` accepts a URL/slug/
  * numeric id, resolved to the numeric provider_id via companies.get before
  * the sub-resource call, same as employees/posts/jobs. `invite_token` is
- * always re-encoded as base64 (raw bytes are JSON/terminal-unsafe) — in
+ * always re-encoded as base64 (raw bytes are JSON/terminal-unsafe), in
  * every output mode, including --verbose and --all/NDJSON.
  */
 export async function runCompanyInvitableFollowers(
@@ -409,12 +409,12 @@ export async function runCompanyInvitableFollowers(
 }
 
 /**
- * Run `company follow-invite <id> --invitee <AC…> [--invitee <AC…> …]`.
- * Write command — supports --preview. Invites one or more of the connected
+ * Run `company follow-invite <id> --invitee <AC...> [--invitee <AC...> ...]`.
+ * Write command, supports --preview. Invites one or more of the connected
  * account's 1st-degree connections (the `id` field from
  * `company invitable-followers`) to follow the administered page.
  * `<id>` accepts a URL/slug/numeric id, resolved to the numeric provider_id
- * the same way as the other company sub-resources — even under --preview,
+ * the same way as the other company sub-resources, even under --preview,
  * so the preview renders the actual request that would be sent.
  */
 export async function runCompanyFollowInvite(
@@ -457,9 +457,9 @@ export async function runCompanyFollowInvite(
 
 /**
  * Run `company managed [--limit] [--cursor] [--all]`.
- * A facade over the company pages the connected account administers — the
+ * A facade over the company pages the connected account administers, the
  * seed read for `company followers`/`chats`/`follow-invite`/etc. Unlike the
- * other company sub-resources this takes no `<id>` — there is no company
+ * other company sub-resources this takes no `<id>`; there is no company
  * identifier to resolve.
  */
 export async function runCompanyManaged(
@@ -544,7 +544,7 @@ export async function runCompanyFollowers(
 /**
  * Run `company chats <id> [--limit] [--cursor] [--all]`.
  * List the conversations in a company page's admin message inbox,
- * newest-activity-first. The account must administer the page. Beta —
+ * newest-activity-first. The account must administer the page. Beta,
  * deep pagination against a busier inbox is still being validated.
  */
 export async function runCompanyChats(
@@ -587,7 +587,7 @@ export async function runCompanyChats(
 /**
  * Run `company chat <id> <chat_id>`.
  * Retrieve one conversation from a company page's admin inbox. Read
- * command — rejects --preview and --all. `<chat_id>` is the normal `2-…`
+ * command, rejects --preview and --all. `<chat_id>` is the normal `2-...`
  * conversation id from `company chats`, passed through verbatim.
  */
 export async function runCompanyChat(
@@ -660,7 +660,7 @@ export async function runCompanyMessages(
 
 /**
  * Run `company message <id> <chat_id> <message_id>`.
- * Retrieve one message from a company-inbox conversation. Read command —
+ * Retrieve one message from a company-inbox conversation. Read command,
  * rejects --preview and --all.
  *
  * NOTE (SDK-signature-wins deviation from the original spec grammar):
@@ -699,7 +699,7 @@ export async function runCompanyMessage(
 /**
  * Run `company search-chats <id> [<query>] [--topic <t>] [--unread] [--limit] [--cursor] [--all]`.
  * Search or filter a company page's admin inbox. Exactly one mode per call:
- * free-text `<query>`, a `--topic` card, or `--unread`-only — mutually
+ * free-text `<query>`, a `--topic` card, or `--unread`-only, mutually
  * exclusive, enforced server-side. The account must administer the page.
  */
 export async function runCompanySearchChats(
@@ -743,13 +743,13 @@ export async function runCompanySearchChats(
 }
 
 /**
- * Run `company reply <id> <chat_id> "<text>" [--attach <file>…]`.
+ * Run `company reply <id> <chat_id> "<text>" [--attach <file>...]`.
  * Write command, supports --preview. Replies to an existing company-inbox
  * conversation AS THE PAGE, via `companies.sendMessage`.
  *
  * `<id>` accepts a URL/slug/numeric id, resolved to the numeric provider_id
  * the same way as the other company sub-resources, even under --preview.
- * `<chat_id>` is the normal `2-…` conversation id from `company chats`; it
+ * `<chat_id>` is the normal `2-...` conversation id from `company chats`; it
  * passes through verbatim (no client-side pre-check), and the endpoint
  * resolves the page mailbox internally from the (resolved) identifier.
  * Because every `company reply` is a page reply, --preview prints a
@@ -803,7 +803,7 @@ export async function runCompanyReply(
       out.stdout.write(JSON.stringify(preview) + "\n");
       // A `company reply` is always a page reply, so the will-send-as notice is
       // derived from the (resolved) company identifier, not the chat-id prefix
-      // (the normal 2-… id carries no COMPANY_ marker). Never "personal", never silent.
+      // (the normal 2-... id carries no COMPANY_ marker). Never "personal", never silent.
       out.stderr.write(`Will send as company page ${identifier}\n`);
       return;
     }
@@ -943,7 +943,7 @@ const companyFollowInviteCommand = defineCommand({
     description:
       "Invite the account's 1st-degree connections to follow the administered company page. " +
       "Write, admin-gated (the account must administer the page with invite rights). " +
-      "Pass the AC… member ids from `company invitable-followers`, one --invitee per invitee. " +
+      "Pass the AC... member ids from `company invitable-followers`, one --invitee per invitee. " +
       "All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. " +
       "Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
   },
@@ -952,7 +952,7 @@ const companyFollowInviteCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     invitee: {
       type: "string",
-      description: "AC… member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      description: "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
     },
   },
   async run({ args }) {
@@ -1058,7 +1058,7 @@ const companyChatCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1087,7 +1087,7 @@ const companyMessagesCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1116,7 +1116,7 @@ const companyMessageCommand = defineCommand({
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-… chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
   },
   async run({ args }) {
@@ -1176,7 +1176,7 @@ const companyReplyCommand = defineCommand({
     name: "reply",
     description:
       "Reply to a company-inbox conversation, as the page (write, admin-gated: the account must administer " +
-      "the page). Takes the normal 2-… chat id from `company chats`; the endpoint resolves the page mailbox " +
+      "the page). Takes the normal 2-... chat id from `company chats`; the endpoint resolves the page mailbox " +
       "internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. " +
       "See also: `company chats` (the read that returns the chat id) and `message send` (the personal equivalent).",
   },
@@ -1185,7 +1185,7 @@ const companyReplyCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     chatId: {
       type: "positional",
-      description: "The 2-… chat id from `company chats`, passed through verbatim (no client-side check).",
+      description: "The 2-... chat id from `company chats`, passed through verbatim (no client-side check).",
     },
     text: { type: "positional", stdinArg: true, description: "Reply text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },
