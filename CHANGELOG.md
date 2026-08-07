@@ -8,7 +8,27 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-08-07
+
+Two correctness fixes for the same underlying failure: a command that answers
+a different question than the one you asked, without saying so.
+
 ### Changed
+
+- **A trailing argument a command cannot use is now an error (exit 2), not
+  something to ignore.** `curviate profile me relations` used to return your
+  own profile at exit 0 with nothing on stderr, so a caller reading `.items`
+  found nothing and concluded the account had no connections. Any unusable
+  trailing token behaved the same way, so a typo such as `profile me
+  reltaions` was swallowed just as quietly. The check now runs on the command
+  that is actually about to execute, whatever route reached it, and the
+  message names what you typed, how many positional arguments it takes, and
+  its own `--help`. When the stray token is a real sibling command, the
+  message names the form you meant, so `profile me relations` points you at
+  `profile relations`. **This can turn an invocation that used to exit 0 into
+  an exit 2.** It never turned into the answer you wanted, so a script
+  relying on it was already getting the wrong data; the fix makes that
+  visible.
 
 - **Punctuation swept out of the published copy and the printed help.** The
   README, this changelog, and the help and error strings in `src/` used
@@ -19,6 +39,18 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   stream is byte-identical to before. Two non-ASCII characters stay on purpose:
   the redaction mask `config list` prints, and the literal emoji that documents
   `message react`'s own argument.
+
+### Fixed
+
+- **`notices[]` now survives projection.** 0.21.1 taught the renderer to show
+  a response's notices, but the slim projection and `--fields` both run
+  before it, and several of them rebuilt the response from a fixed list of
+  keys that never included `notices`. So on `account list`, `connect sent`,
+  `connect received`, and on any single-object response under `--fields`, the
+  array was destroyed before it could be shown. The notice is now carried
+  across projection at the single point every command's output passes
+  through, so it reaches you regardless of the command or the flags. A
+  response without notices renders exactly as before.
 
 ### Added
 
