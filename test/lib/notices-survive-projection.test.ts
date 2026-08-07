@@ -209,10 +209,30 @@ describe("notices preservation does not invent an array", () => {
     ["notices null", { id: "a", notices: null }],
   ];
 
-  it.each(degenerate)("%s: no notice chrome is emitted", (_label, data) => {
+  it.each(degenerate)("%s: no notice chrome is emitted in human mode", (_label, data) => {
     const out = capture();
     renderSuccess(data, { json: false, isTTY: true, fields: "id" }, out);
     expect(out.captured.stdout).not.toContain("notice [");
+  });
+
+  // Human mode alone cannot see this: renderHuman filters `notices` out of its
+  // key/value body, so a reattached empty or malformed array is invisible
+  // there while it is plainly present in the JSON an agent parses. The
+  // response shape is a contract, and `notices` is documented as omitted
+  // entirely when there is nothing to report, so echoing `"notices":[]` is a
+  // shape change even though it renders as nothing.
+  it.each(degenerate)("%s: JSON output carries no notices key at all", (_label, data) => {
+    const out = capture();
+    renderSuccess(data, { json: true, isTTY: false, fields: "id" }, out);
+    const parsed = JSON.parse(out.captured.stdout) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(parsed, "notices")).toBe(false);
+    expect(out.captured.stdout).not.toContain("notices");
+  });
+
+  it.each(degenerate)("%s: JSON output carries no notices key without --fields", (_label, data) => {
+    const out = capture();
+    renderSuccess(data, { json: true, isTTY: false, slim: slimModule.slimAccountGet }, out);
+    expect(out.captured.stdout).not.toContain("notices");
   });
 
   it("a bare array response is passed through untouched", () => {
