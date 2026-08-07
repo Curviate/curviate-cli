@@ -1,17 +1,17 @@
 /**
  * `--sections` value normalization for `profile me` / `profile <id>`.
  *
- * The server's `linkedin_sections` query vocabulary is prefixed —
- * `linkedin_skills`, `linkedin_experience`, … — plus a `linkedin_*`
+ * The server's `linkedin_sections` query vocabulary is prefixed,
+ * `linkedin_skills`, `linkedin_experience`, ..., plus a `linkedin_*`
  * wildcard and each base value's `_preview` variant (per the served
  * OpenAPI snapshot's `linkedin_sections` parameter description). The
  * pre-D9 CLI forwarded a bare, unprefixed value verbatim (its own --help
  * example, `experience,education`, was one of the values that 400s).
  *
- * `parseSectionsFlag` auto-prefixes a bare value client-side (`skills` →
+ * `parseSectionsFlag` auto-prefixes a bare value client-side (`skills` ->
  * `linkedin_skills`) and validates the resulting value against the served
- * vocabulary. An unknown section — a genuine typo, or a base name that was
- * never in the vocabulary — fails fast as a usage error naming the bad
+ * vocabulary. An unknown section, a genuine typo, or a base name that was
+ * never in the vocabulary, fails fast as a usage error naming the bad
  * value, instead of being forwarded to the API where it 400s with a
  * generic, unhelpful message.
  */
@@ -57,7 +57,7 @@ export type SectionsParseResult = { ok: true; sections: string[] } | { ok: false
  * (all-or-nothing) with an actionable `error` string naming the bad value
  * and pointing at `--sections`.
  *
- * Does not handle the empty-string case (`--sections ""`) — that remains
+ * Does not handle the empty-string case (`--sections ""`), that remains
  * the caller's separate, pre-existing usage-error check, since an empty
  * string never reaches this function's split/filter logic meaningfully.
  */

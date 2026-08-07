@@ -5,7 +5,7 @@
  * strips trailing newlines, and returns the result. Empty input exits 2.
  *
  * WHY THE SENTINEL EXISTS:
- * mri (citty's embedded arg parser) silently swallows a bare "-" token — it
+ * mri (citty's embedded arg parser) silently swallows a bare "-" token, it
  * counts one leading dash (j=1), enters the flag-handling branch, derives an
  * empty flag name, and iterates 0 times, so "-" never lands in `_[]`. citty
  * therefore cannot bind it to a positional argument.
@@ -40,7 +40,7 @@ export async function defaultReadStdin(): Promise<string> {
     });
     process.stdin.on("end", () => {
       const full = Buffer.concat(chunks).toString("utf8");
-      // Strip trailing newlines only — internal newlines are preserved.
+      // Strip trailing newlines only, internal newlines are preserved.
       resolve(full.replace(/\n+$/, ""));
     });
     process.stdin.on("error", reject);

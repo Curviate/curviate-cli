@@ -1,19 +1,19 @@
 /**
- * `curviate notification` — LinkedIn notification operations (new namespace).
+ * `curviate notification`, LinkedIn notification operations (new namespace).
  *
  * Subcommands:
- *   notification list [--filter <f>] [--limit] [--cursor] [--all]  — list notification cards
- *   notification delete <card_urn>                                 — delete a notification card (write)
- *   notification show-less <card_urn>                               — "show less like this" (write)
+ *   notification list [--filter <f>] [--limit] [--cursor] [--all]: list notification cards
+ *   notification delete <card_urn>: delete a notification card (write)
+ *   notification show-less <card_urn>: "show less like this" (write)
  *
  * `<card_urn>` is the `card_urn` field of a `notification list` item (raw,
- * unencoded — the SDK percent-encodes it internally), NOT `object_urn`,
+ * unencoded, the SDK percent-encodes it internally), NOT `object_urn`,
  * which targets the wrong notification.
  *
  * Both writes are self-actions (no third party is notified), idempotent
  * (a repeat succeeds, not an error), and cannot be undone. For
  * network-activity cards, `show-less` has the same removing effect as
- * `delete` — LinkedIn exposes no separate softer signal for those cards.
+ * `delete`, LinkedIn exposes no separate softer signal for those cards.
  *
  * `notification list` is read-only (rejects --preview). The two writes
  * support --preview (local render, zero network calls, no server param sent).
@@ -100,8 +100,8 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `notification list [--filter <f>] [--limit] [--cursor] [--all]` —
- * notifications.list. Read command — rejects --preview. `unread_count` is
+ * Run `notification list [--filter <f>] [--limit] [--cursor] [--all]`,
+ * notifications.list. Read command, rejects --preview. `unread_count` is
  * the account-level unread badge, NOT a count of the returned `items`.
  */
 export async function runNotificationList(
@@ -143,8 +143,8 @@ export async function runNotificationList(
 }
 
 /**
- * Run `notification delete <card_urn>` — notifications.delete. Write
- * command — supports --preview. Idempotent, self-action, cannot be undone.
+ * Run `notification delete <card_urn>`, notifications.delete. Write
+ * command, supports --preview. Idempotent, self-action, cannot be undone.
  */
 export async function runNotificationDelete(
   client: Curviate,
@@ -171,8 +171,8 @@ export async function runNotificationDelete(
 }
 
 /**
- * Run `notification show-less <card_urn>` — notifications.showLess. Write
- * command — supports --preview. For network-activity cards this has the
+ * Run `notification show-less <card_urn>`, notifications.showLess. Write
+ * command, supports --preview. For network-activity cards this has the
  * same removing effect as `delete`. Idempotent, self-action, cannot be undone.
  */
 export async function runNotificationShowLess(

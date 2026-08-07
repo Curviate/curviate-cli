@@ -1,20 +1,20 @@
 /**
- * `curviate search` — LinkedIn search operations.
+ * `curviate search`, LinkedIn search operations.
  *
  * Subcommands:
- *   search <url>                              — run a pasted search URL (search.fromUrl)
- *   search people [filters...]                — search people (POST body)
- *   search companies [filters...]             — search companies (POST body)
- *   search posts [filters...]                 — search posts (POST body)
- *   search jobs [filters...]                  — search jobs (POST body)
- *   search parameters --type <t> --keywords <k> — resolve filter IDs (GET)
- *   search groups <query>                     — keyword search LinkedIn groups (GET)
- *   search services [--keywords] [--service-category] [--location] [--connections] [--language] — search Services Marketplace providers (POST body)
- *   search service-parameters --keywords <k> [--type <t>] — resolve service-filter IDs (GET)
+ *   search <url>: run a pasted search URL (search.fromUrl)
+ *   search people [filters...]: search people (POST body)
+ *   search companies [filters...]: search companies (POST body)
+ *   search posts [filters...]: search posts (POST body)
+ *   search jobs [filters...]: search jobs (POST body)
+ *   search parameters --type <t> --keywords <k>: resolve filter IDs (GET)
+ *   search groups <query>: keyword search LinkedIn groups (GET)
+ *   search services [--keywords] [--service-category] [--location] [--connections] [--language], search Services Marketplace providers (POST body)
+ *   search service-parameters --keywords <k> [--type <t>]: resolve service-filter IDs (GET)
  *
  * SDK reality: people/companies/posts/jobs are HTTP POST; cursor+limit go on
  * the query, not the body (the SDK splits them out). The CLI passes cursor+limit
- * merged into the method call — the SDK resource handles the split.
+ * merged into the method call, the SDK resource handles the split.
  *
  * All read commands reject --preview (exit 2).
  * search parameters rejects --all (non-paginated).
@@ -46,7 +46,7 @@ import {
 } from "../lib/slim.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
-/** `GET /v1/{account_id}/search/parameters` query — `type`+`keywords` both required in v2. */
+/** `GET /v1/{account_id}/search/parameters` query, `type`+`keywords` both required in v2. */
 type SearchParametersQuery = paths["/v1/{account_id}/search/parameters"]["get"]["parameters"]["query"];
 
 type SearchFlags = {
@@ -124,7 +124,7 @@ type SearchFlags = {
 /**
  * The 7 fully-specified company headcount buckets. The substrate's 8th
  * bucket (`10001+`) has no confirmed `{min,max}` pairing in the documented
- * enum for the unbounded top bucket — it is deliberately deferred rather
+ * enum for the unbounded top bucket; it is deliberately deferred rather
  * than guessed; passing it is an unrecognized bucket (exit 2), and `--help`
  * documents the gap.
  */
@@ -228,7 +228,7 @@ function mergeNested(body: Record<string, unknown>, key: string, patch: Record<s
  * exact API request-body field names, merging OVER the --filters base body.
  * String-array fields are comma-separated; network_distance is a number array.
  * A mapper may return an error string (usage error, exit 2 before any SDK call)
- * instead of mutating the body — e.g. an unrecognized --headcount bucket or a
+ * instead of mutating the body, e.g. an unrecognized --headcount bucket or a
  * non-numeric --location-within-area.
  */
 const NAMED_FLAG_MAPPERS: Record<
@@ -242,7 +242,7 @@ const NAMED_FLAG_MAPPERS: Record<
     if (flags["past-company"]) body["past_company"] = splitCsv(flags["past-company"]);
     if (flags.school) body["school"] = splitCsv(flags.school);
     if (flags["network-distance"]) body["network_distance"] = splitCsvNumbers(flags["network-distance"]);
-    // --connections-of / --followers-of: comma-separated → array
+    // --connections-of / --followers-of: comma-separated -> array
     if (flags["connections-of"]) body["connections_of"] = splitCsv(flags["connections-of"]);
     if (flags["followers-of"]) body["followers_of"] = splitCsv(flags["followers-of"]);
     // --title: merge into existing advanced_keywords object (not overwrite)
@@ -278,13 +278,13 @@ const NAMED_FLAG_MAPPERS: Record<
   },
   posts(body, flags) {
     if (flags["sort-by"]) body["sort_by"] = flags["sort-by"];
-    // normalize hyphen aliases (e.g. past-week → past_week) before sending
+    // normalize hyphen aliases (e.g. past-week -> past_week) before sending
     if (flags["date-posted"]) body["date_posted"] = flags["date-posted"].replace(/-/g, "_");
     if (flags["content-type"]) body["content_type"] = flags["content-type"];
 
     // Nested posted_by / mentioning / author filters. Each named flag
     // merges INTO the shared nested object rather than replacing it wholesale
-    // (same deep-merge discipline as --title → advanced_keywords above).
+    // (same deep-merge discipline as --title -> advanced_keywords above).
     if (flags["posted-by-member"]) mergeNested(body, "posted_by", { member: splitCsv(flags["posted-by-member"]) });
     if (flags["posted-by-company"]) mergeNested(body, "posted_by", { company: splitCsv(flags["posted-by-company"]) });
     if (flags["posted-by-me"]) mergeNested(body, "posted_by", { me: true });
@@ -311,7 +311,7 @@ const NAMED_FLAG_MAPPERS: Record<
     }
     // --region alias applied last so it wins over --location when both supplied
     if (flags.region) body["region"] = flags.region;
-    // --title: job_title_ids, comma-separated → body role
+    // --title: job_title_ids, comma-separated -> body role
     if (flags.title) body["role"] = splitCsv(flags.title);
     // Additional named flags, all already server-wired but previously flag-less
     if (flags.presence) body["presence"] = splitCsv(flags.presence);
@@ -360,7 +360,7 @@ async function buildSearchBody(
 
 /**
  * Run `search people [filters...]`.
- * POST body search — cursor+limit passed to SDK (which splits to query).
+ * POST body search, cursor+limit passed to SDK (which splits to query).
  */
 export async function runSearchPeople(
   client: Curviate,
@@ -578,9 +578,9 @@ export async function runSearchJobs(
 
 /**
  * Run `search parameters --type <t> --keywords <k>`.
- * GET — not paginated; rejects --all (exit 2).
+ * GET, not paginated; rejects --all (exit 2).
  * v2: keywords is required for every type, including EMPLOYMENT_TYPE
- * (the pre-v2 API allowed omitting it there) — now an actionable exit 2
+ * (the pre-v2 API allowed omitting it there), now an actionable exit 2
  * instead of a server-side 400.
  */
 export async function runSearchParameters(
@@ -605,7 +605,7 @@ export async function runSearchParameters(
   const outOpts = resolveOutputOpts(flags);
 
   // `type` is a free-form CLI string flag validated against the served enum
-  // server-side — a narrow cast here is the pragmatic alternative to
+  // server-side, a narrow cast here is the pragmatic alternative to
   // hand-duplicating the enum union client-side.
   const query: SearchParametersQuery = {
     type: flags.type as SearchParametersQuery["type"],
@@ -628,15 +628,15 @@ export async function runSearchParameters(
   }
 }
 
-// Query/body types derived from the real SDK signatures — a shape drift is a
+// Query/body types derived from the real SDK signatures, a shape drift is a
 // compile error, not a latent runtime break.
 type SearchGroupsQuery = Parameters<ReturnType<Curviate["account"]>["search"]["groups"]>[0];
 type SearchServicesBody = Parameters<ReturnType<Curviate["account"]>["search"]["services"]>[0];
 type SearchServiceParametersQuery = Parameters<ReturnType<Curviate["account"]>["search"]["getServiceParameters"]>[0];
 
 /**
- * Run `search groups <query> [--limit] [--cursor] [--all]` — search.groups.
- * Read command — rejects --preview. Keyword-only search, no filter-id
+ * Run `search groups <query> [--limit] [--cursor] [--all]`, search.groups.
+ * Read command, rejects --preview. Keyword-only search, no filter-id
  * resolution step. A no-match search returns an empty list, not an error.
  */
 export async function runSearchGroups(
@@ -690,10 +690,10 @@ export async function runSearchGroups(
 
 /**
  * Run `search services [--keywords] [--service-category] [--location]
- * [--connections] [--language] [--limit] [--cursor] [--all]` — search.services.
+ * [--connections] [--language] [--limit] [--cursor] [--all]`, search.services.
  * POST body search over the LinkedIn Services Marketplace. At least one of
  * --keywords, --service-category, or --location is required (server-enforced).
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runSearchServices(
   client: Curviate,
@@ -747,8 +747,8 @@ export async function runSearchServices(
 }
 
 /**
- * Run `search service-parameters --keywords <k> [--type <t>]` — search.getServiceParameters.
- * GET — not paginated in practice (a resolver lookup); rejects --all (exit 2).
+ * Run `search service-parameters --keywords <k> [--type <t>]`, search.getServiceParameters.
+ * GET, not paginated in practice (a resolver lookup); rejects --all (exit 2).
  * --keywords is required (the SDK's `keywords` query field is required);
  * --type defaults server-side to service_category when omitted.
  */
@@ -793,9 +793,9 @@ export async function runSearchServiceParameters(
 type SearchFromUrlBody = Parameters<ReturnType<Curviate["account"]>["search"]["fromUrl"]>[0];
 
 /**
- * Run `search <url>` — search.fromUrl.
+ * Run `search <url>`, search.fromUrl.
  * Runs a pasted LinkedIn search / saved-search / lead-list URL directly. Read
- * command — rejects --preview. The response is polymorphic; --all streams it.
+ * command, rejects --preview. The response is polymorphic; --all streams it.
  */
 export async function runSearchFromUrl(
   client: Curviate,
@@ -961,7 +961,7 @@ const searchJobsCommand = defineCommand({
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
-    // On jobs, --location maps to the geo region filter (not a location array — different API shape for jobs vs people)
+    // On jobs, --location maps to the geo region filter (not a location array, different API shape for jobs vs people)
     location: { type: "string", description: "geo region id (single id; resolve via search parameters --type LOCATION); maps to region filter" },
     industry: { type: "string", description: "Industry ids (comma-separated)." },
     seniority: { type: "string", description: "seniority level, closed enum: executive|director|mid_senior|associate|entry|intern (comma-separated)" },
@@ -1153,7 +1153,7 @@ export const searchCommand = defineCommand({
   async run({ args }) {
     const flags = args as SearchFlags;
 
-    // Bare form: `search <url>` runs the URL directly. No url → print usage.
+    // Bare form: `search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
         "Usage: curviate search <url>\n" +
@@ -1166,7 +1166,7 @@ export const searchCommand = defineCommand({
         "       curviate search services [--keywords <k>]\n" +
         "       curviate search service-parameters --keywords <k> [--type <t>]\n",
       );
-      // <url> is functionally required for the bare form — a missing
+      // <url> is functionally required for the bare form, a missing
       // required positional is a usage error (exit 2), not a silent success.
       // `required: false` on the citty arg def exists only so this richer
       // usage block can run instead of citty's generic one-liner.

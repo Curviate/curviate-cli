@@ -26,7 +26,7 @@ const main = defineCommand({
     description: "Official command-line interface for the Curviate API.",
   },
 
-  // Subcommand registry — names and descriptions are static for help rendering;
+  // Subcommand registry, names and descriptions are static for help rendering;
   // the handler implementation is loaded lazily on first invocation.
   subCommands: {
     login: () =>
@@ -35,7 +35,7 @@ const main = defineCommand({
       import("./commands/config.js").then((m) => m.configCommand),
 
     // ---------------------------------------------------------------------------
-    // Noun groups — lazy-loaded on first invocation.
+    // Noun groups, lazy-loaded on first invocation.
     // ---------------------------------------------------------------------------
     profile: () =>
       import("./commands/profile.js").then((m) => m.profileCommand),
@@ -81,7 +81,7 @@ const main = defineCommand({
   },
 });
 
-// Custom dispatcher (see src/dispatch.ts) — works around citty 0.1.6's
+// Custom dispatcher (see src/dispatch.ts), works around citty 0.1.6's
 // positional+subCommand routing collision so bare intent-shaped forms
 // (`connect <slug>`, `profile <url>`, `message <chat> "text"`) and subcommands
 // both route correctly. Do NOT replace with a plain `runMain(main)`.

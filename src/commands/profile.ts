@@ -1,19 +1,19 @@
 /**
- * `curviate profile` — member profile operations.
+ * `curviate profile`, member profile operations.
  *
  * Subcommands:
- *   profile me                                   — own profile
- *   profile <id>                                 — get member profile
- *   profile <id> --posts [--is-company]          — list posts
- *   profile <id> --comments                      — list comments
- *   profile <id> --reactions                     — list reactions
- *   profile <id> --followers                     — list followers
- *   profile relations                            — list 1st-degree connections
- *   profile endorse <id> --endorsement-id <id>   — endorse a skill (write; slug/URL auto-resolved to provider id)
- *   profile subscription                         — read your premium subscription (read)
- *   profile analytics                            — read your performance headline metrics (read)
- *   profile visitors                             — list who recently viewed your profile (paginated, read)
- *   profile ssi                                  — read your Social Selling Index (read)
+ *   profile me: own profile
+ *   profile <id>: get member profile
+ *   profile <id> --posts [--is-company]: list posts
+ *   profile <id> --comments: list comments
+ *   profile <id> --reactions: list reactions
+ *   profile <id> --followers: list followers
+ *   profile relations: list 1st-degree connections
+ *   profile endorse <id> --endorsement-id <id>: endorse a skill (write; slug/URL auto-resolved to provider id)
+ *   profile subscription: read your premium subscription (read)
+ *   profile analytics: read your performance headline metrics (read)
+ *   profile visitors: list who recently viewed your profile (paginated, read)
+ *   profile ssi: read your Social Selling Index (read)
  *
  * All subcommands are account-scoped. `<id>` passes through resolveIdentifier.
  * Read commands reject --preview (exit 2). Write commands render --preview.
@@ -24,9 +24,9 @@
  *
  * --sections: comma-separated LinkedIn sections to fetch (profile me and
  * profile <id> only). Empty string is a usage error (exit 2). A bare value
- * is auto-prefixed to the server's linkedin_-prefixed vocabulary (skills →
+ * is auto-prefixed to the server's linkedin_-prefixed vocabulary (skills ->
  * linkedin_skills, D9); an unknown section (after prefixing) is a usage
- * error (exit 2) naming the bad value — see lib/sections.ts. On profile
+ * error (exit 2) naming the bad value, see lib/sections.ts. On profile
  * <id>, a slug/URL is first resolved to the provider id (D7, lib/member-id.ts)
  * since the sections-enriched read 400s on a raw slug.
  *
@@ -49,12 +49,12 @@ import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.
 import { slimProfileMe, slimProfile } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
-// Body type derived from the real SDK signature — a shape drift is a compile
+// Body type derived from the real SDK signature, a shape drift is a compile
 // error, not a latent runtime break.
 type UserUpdateBody = Parameters<ReturnType<Curviate["account"]>["users"]["update"]>[1];
 
 // ---------------------------------------------------------------------------
-// Types (minimal — enough for the run functions to be testable standalone)
+// Types (minimal, enough for the run functions to be testable standalone)
 // ---------------------------------------------------------------------------
 
 type ProfileFlags = {
@@ -95,7 +95,7 @@ type SubFlags = {
   limit?: string;
   cursor?: string;
   verbose?: boolean;
-  // profile update body flags (no --description — the v2 op has no such key)
+  // profile update body flags (no --description, the v2 op has no such key)
   headline?: string;
   bio?: string;
   "first-name"?: string;
@@ -163,11 +163,11 @@ function resolveOutputOpts(flags: ProfileFlags | SubFlags) {
  * Run `profile me [--posts|--comments|--reactions|--followers]`.
  * Exported for unit-testing.
  *
- * No activity flag → users.get("me") with optional --sections (base behavior).
- * Activity flag set → the self-scoped list method for the "me" sentinel, via a
+ * No activity flag -> users.get("me") with optional --sections (base behavior).
+ * Activity flag set -> the self-scoped list method for the "me" sentinel, via a
  * precedence chain (posts > comments > reactions > followers). v2 accepts the
  * "me" sentinel directly, so there is no getMe pre-call to resolve a slug.
- * Multiple activity flags silently use the first in precedence — no exit 2.
+ * Multiple activity flags silently use the first in precedence, no exit 2.
  */
 export async function runProfileMe(
   client: Curviate,
@@ -196,7 +196,7 @@ export async function runProfileMe(
   const outOpts = resolveOutputOpts(flags);
 
   if (hasActivityFlag) {
-    // Self-scoped activity — "me" is passed straight through to the list method.
+    // Self-scoped activity, "me" is passed straight through to the list method.
     const all = flags.all ?? false;
     const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
     const params: ListQuery = {};
@@ -275,9 +275,9 @@ export async function runProfileMe(
     return;
   }
 
-  // Base behavior: no activity flag → users.get("me") with optional sections.
-  // D9: auto-prefix bare section values (skills → linkedin_skills) and
-  // validate against the served vocabulary — an unknown section is a usage
+  // Base behavior: no activity flag -> users.get("me") with optional sections.
+  // D9: auto-prefix bare section values (skills -> linkedin_skills) and
+  // validate against the served vocabulary, an unknown section is a usage
   // error (exit 2) here, before any network call, not a raw 400 from the API.
   const params: { linkedin_sections?: string[] } = {};
   if (flags.sections) {
@@ -318,7 +318,7 @@ export async function runProfileGet(
   rejectPreviewOnRead(flags.preview, out);
 
   // --sections is a usage error on the default (users.get) branch when
-  // empty, or when it contains an unknown section (D9 — validated/prefixed
+  // empty, or when it contains an unknown section (D9, validated/prefixed
   // by parseSectionsFlag). Validate early (before the try block) so the
   // mock-throw from process.exit(2) doesn't get swallowed by the catch-all
   // error handler below.
@@ -360,7 +360,7 @@ export async function runProfileGet(
 
       // Company slug resolution: when --is-company and the id is non-numeric
       // (a slug or URL-derived slug), resolve the numeric company id via
-      // companies.get before listing posts (the retained v2 retrieve method —
+      // companies.get before listing posts (the retained v2 retrieve method,
       // the pre-v2 profiles.getCompany was removed upstream).
       let postId = resolvedId;
       if (flags["is-company"]) {
@@ -451,7 +451,7 @@ export async function runProfileGet(
       }
 
       // D7: the sections-enriched users.get call 400s on a raw slug/URL,
-      // unlike the plain profile fetch — resolve to the provider id first
+      // unlike the plain profile fetch, resolve to the provider id first
       // when --sections is set. "me"/provider-id inputs pass straight
       // through with zero extra calls; the plain (no-sections) fetch is
       // untouched (resolvedId, as before) since that form already works.
@@ -523,7 +523,7 @@ export async function runProfileRelations(
 
 /**
  * Run `profile endorse <id> --endorsement-id <endorsement_id>`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  * Exported for unit-testing.
  */
 export async function runProfileEndorse(
@@ -536,9 +536,9 @@ export async function runProfileEndorse(
   const skillId = flags["endorsement-id"] ?? "";
   const outOpts = resolveOutputOpts(flags);
 
-  // The endorse write path accepts only a provider id — a slug/URL 404s
+  // The endorse write path accepts only a provider id, a slug/URL 404s
   // upstream (same class as follow/unfollow, D6). Resolve to the provider id
-  // via a users.get READ (contact-safe — notifies no one, so it runs even
+  // via a users.get READ (contact-safe, notifies no one, so it runs even
   // under --preview and the preview renders the resolved id). A provider-id
   // input passes straight through with no extra call.
   let providerId: string;
@@ -585,7 +585,7 @@ async function handleSdkError(
 }
 
 /**
- * Run `profile subscription` — profile.subscription. Read command — rejects
+ * Run `profile subscription`, profile.subscription. Read command, rejects
  * --preview and --all (zero-arg call, no pagination). A free account is a
  * valid, non-error result (has_premium:false, plan_title:null).
  */
@@ -610,7 +610,7 @@ export async function runProfileSubscription(
 }
 
 /**
- * Run `profile analytics` — profile.analytics. Read command — rejects
+ * Run `profile analytics`, profile.analytics. Read command, rejects
  * --preview and --all (zero-arg call, no pagination). A metric `count` of 0
  * is a real zero; a per-metric null means that card was unavailable.
  */
@@ -635,8 +635,8 @@ export async function runProfileAnalytics(
 }
 
 /**
- * Run `profile visitors [--all] [--limit] [--cursor]` — profile.visitors.
- * Read command — rejects --preview. Cursor-paginated (unlike subscription/
+ * Run `profile visitors [--all] [--limit] [--cursor]`, profile.visitors.
+ * Read command, rejects --preview. Cursor-paginated (unlike subscription/
  * analytics/ssi, which are single zero-arg reads).
  */
 export async function runProfileVisitors(
@@ -677,9 +677,9 @@ export async function runProfileVisitors(
 }
 
 /**
- * Run `profile ssi` — profile.ssi. Read command — rejects --preview and
+ * Run `profile ssi`, profile.ssi. Read command, rejects --preview and
  * --all (zero-arg call, no pagination). A genuine zero-activity account
- * returns all scalars null with active_seat:false — a valid 200, not an error.
+ * returns all scalars null with active_seat:false, a valid 200, not an error.
  */
 export async function runProfileSsi(
   client: Curviate,
@@ -702,8 +702,8 @@ export async function runProfileSsi(
 }
 
 /**
- * Run `profile update` — users.update (own profile only).
- * Write command — supports --preview. Only the provided fields change. The v2
+ * Run `profile update`, users.update (own profile only).
+ * Write command, supports --preview. Only the provided fields change. The v2
  * op has NO `description` key; `--description` is not defined or forwarded.
  * `--picture`/`--background-picture` take a file path and travel as base64.
  * `--skills` is a comma list of skill names (add-only).
@@ -770,9 +770,9 @@ export async function runProfileUpdate(
 }
 
 /**
- * Run `profile follow <id>` — users.follow (bodyless write, supports --preview).
+ * Run `profile follow <id>`, users.follow (bodyless write, supports --preview).
  * The follow endpoint accepts only a provider id (a slug 404s, D6), so the raw
- * identifier is resolved to a provider id via a users.get READ first — the same
+ * identifier is resolved to a provider id via a users.get READ first, the same
  * auto-resolution `profile`/`connect`/`message` give. The read runs even under
  * --preview (it notifies no one) so the preview renders the resolved id.
  */
@@ -808,7 +808,7 @@ export async function runProfileFollow(
 }
 
 /**
- * Run `profile unfollow <id>` — users.unfollow (bodyless write, supports
+ * Run `profile unfollow <id>`, users.unfollow (bodyless write, supports
  * --preview). Same provider-id resolution as `profile follow` (D6).
  */
 export async function runProfileUnfollow(
@@ -842,7 +842,7 @@ export async function runProfileUnfollow(
   }
 }
 
-/** Run `profile followers <id>` — users.listFollowers (paginated read). */
+/** Run `profile followers <id>`, users.listFollowers (paginated read). */
 export async function runProfileFollowers(
   client: Curviate,
   flags: SubFlags,
@@ -878,7 +878,7 @@ export async function runProfileFollowers(
   }
 }
 
-/** Run `profile following <id>` — users.listFollowing (paginated read). */
+/** Run `profile following <id>`, users.listFollowing (paginated read). */
 export async function runProfileFollowing(
   client: Curviate,
   flags: SubFlags,
@@ -1183,7 +1183,7 @@ export const profileCommand = defineCommand({
         "       curviate profile update [--headline|--bio|--first-name|--last-name|--skills|--picture]\n" +
         "       curviate profile endorse <id> --endorsement-id <id>\n",
       );
-      // <id> is functionally required for the bare form — a missing required
+      // <id> is functionally required for the bare form, a missing required
       // positional is a usage error (exit 2), not a silent success.
       // `required: false` on the citty arg def exists only so this richer
       // usage block can run instead of citty's generic one-liner.

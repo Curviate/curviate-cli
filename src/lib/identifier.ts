@@ -7,13 +7,13 @@
  * into the form the API expects.
  *
  * Resolution matrix (in precedence order):
- *   1. LinkedIn member URL   → public slug
- *   2. LinkedIn company URL  → public slug
- *   3. Bare `/in/<slug>`     → slug
- *   4. Bare `/company/<slug>`→ slug
- *   5. Bare slug (no scheme, no `/`) → unchanged
- *   6. Native id / URN       → unchanged (never fabricated)
- *   7. Anything ambiguous    → unchanged (404 → exit 4)
+ *   1. LinkedIn member URL   -> public slug
+ *   2. LinkedIn company URL  -> public slug
+ *   3. Bare `/in/<slug>`     -> slug
+ *   4. Bare `/company/<slug>`-> slug
+ *   5. Bare slug (no scheme, no `/`) -> unchanged
+ *   6. Native id / URN       -> unchanged (never fabricated)
+ *   7. Anything ambiguous    -> unchanged (404 -> exit 4)
  *
  * This function is pure and synchronous. It has zero side effects and no
  * network calls.
@@ -64,7 +64,7 @@ export function resolveIdentifier(raw: string): string {
     return companyPathMatch[1];
   }
 
-  // 5–7. Bare slug, native id, URN, or anything ambiguous → pass through.
+  // 5-7. Bare slug, native id, URN, or anything ambiguous -> pass through.
   return raw;
 }
 
@@ -82,10 +82,10 @@ const MESSAGING_THREAD_URL_RE = /messaging\/thread\/([^/?]+)/;
  * Normalize a chat ID positional to a bare chat provider ID.
  *
  * A full LinkedIn messaging thread URL is stripped to the bare provider ID:
- *   https://www.linkedin.com/messaging/thread/2-AbCdEf/ → 2-AbCdEf
+ *   https://www.linkedin.com/messaging/thread/2-AbCdEf/ -> 2-AbCdEf
  *
- * A bare provider ID (2-…) or an internal chat ID passes through verbatim.
- * Zero network calls — pure string normalization.
+ * A bare provider ID (2-...) or an internal chat ID passes through verbatim.
+ * Zero network calls, pure string normalization.
  */
 export function normalizeChatId(raw: string): string {
   const match = MESSAGING_THREAD_URL_RE.exec(raw);
@@ -105,11 +105,11 @@ const JOB_URL_RE = /\/jobs\/view\/(\d+)/;
  * `recruiter job get <url|id>`) to a bare numeric job id.
  *
  * A full LinkedIn job URL is reduced to its numeric id:
- *   https://www.linkedin.com/jobs/view/4428113858 → 4428113858
+ *   https://www.linkedin.com/jobs/view/4428113858 -> 4428113858
  *
  * A bare numeric id, or any value that does not match the job-URL pattern,
  * passes through unchanged. This function never fabricates or rejects a
- * value — the SDK's own job-id resolution (shared by `jobs.get()` and
+ * value, the SDK's own job-id resolution (shared by `jobs.get()` and
  * `recruiter.getJob()`) is the fallback validator: it throws a synchronous
  * `INVALID_REQUEST` error when neither a numeric id nor its own URL pattern
  * matches.

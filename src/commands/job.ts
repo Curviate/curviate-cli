@@ -1,25 +1,25 @@
 /**
- * `curviate job` — classic job-posting operations (own postings + public read).
+ * `curviate job`, classic job-posting operations (own postings + public read).
  *
  * Subcommands:
- *   job get <url|id>                             — retrieve one public job posting (read)
- *   job list --state <s|ALL>                     — list own postings by state (ALL = client-side union, read, paginated)
- *   job create <flags>                           — create a draft posting (write)
- *   job update <id> <flags>                      — partial update of a posting (write)
- *   job budget <id>                              — price a publish before committing money (read)
- *   job publish <id> --mode <m>                  — publish a draft (write; PROMOTED* spends money)
- *   job close <id>                               — stop accepting applications (write, bodyless)
- *   job applicants <id>                          — list applicants (read, POST-as-search)
- *   job applicant get <id> <app_id>              — one applicant's full detail (read)
- *   job applicant resume <id> <app_id> -o <f>    — download an applicant's résumé (binary)
+ *   job get <url|id>: retrieve one public job posting (read)
+ *   job list --state <s|ALL>: list own postings by state (ALL = client-side union, read, paginated)
+ *   job create <flags>: create a draft posting (write)
+ *   job update <id> <flags>: partial update of a posting (write)
+ *   job budget <id>: price a publish before committing money (read)
+ *   job publish <id> --mode <m>: publish a draft (write; PROMOTED* spends money)
+ *   job close <id>: stop accepting applications (write, bodyless)
+ *   job applicants <id>: list applicants (read, POST-as-search)
+ *   job applicant get <id> <app_id>: one applicant's full detail (read)
+ *   job applicant resume <id> <app_id> -o <f>: download an applicant's résumé (binary)
  *
  * Account-scoped. Read commands reject --preview (exit 2); write commands render
  * --preview and never touch the network under it. A paid publish
- * (PROMOTED/PROMOTED_PLUS) requires an explicit budget — supplying it IS the
+ * (PROMOTED/PROMOTED_PLUS) requires an explicit budget, supplying it IS the
  * opt-in to spend real money on the connected account's LinkedIn payment method.
  *
  * D10: `job list --state` is best-effort upstream (LinkedIn, not this CLI,
- * decides how strictly to honor it) — every returned page is re-filtered
+ * decides how strictly to honor it), every returned page is re-filtered
  * against each item's own `state` before reaching output (a stderr note
  * reports dropped items); the upstream pagination cursor is unaffected, so
  * `--all` still walks the same unfiltered upstream pages. See
@@ -39,7 +39,7 @@ import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 // ---------------------------------------------------------------------------
-// Types — request bodies/queries derived from the real SDK method signatures
+// Types, request bodies/queries derived from the real SDK method signatures
 // so a shape drift is a compile error, not a latent runtime break.
 // ---------------------------------------------------------------------------
 
@@ -252,7 +252,7 @@ function buildApplyMethod(flags: JobFlags, out: OutputStreams): { method: string
 
 /**
  * Run `job get <url|id>`.
- * Read command — rejects --preview (exit 2), no SDK call in that case.
+ * Read command, rejects --preview (exit 2), no SDK call in that case.
  */
 export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
@@ -270,13 +270,13 @@ export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputSt
 }
 
 /**
- * Run `job list --state <s>` — jobs.list (paginated read). --state is required.
+ * Run `job list --state <s>`, jobs.list (paginated read). --state is required.
  *
- * D10: LinkedIn's state filter is best-effort — every returned page is
+ * D10: LinkedIn's state filter is best-effort, every returned page is
  * re-filtered against each item's own `state` before reaching output, so
  * --json only ever contains real matches (a stderr note reports how many
  * were dropped). This is page-local: it never touches the pagination
- * cursor, which is threaded from the unfiltered upstream response — `--all`
+ * cursor, which is threaded from the unfiltered upstream response, `--all`
  * walks exactly the same upstream pages it always did.
  */
 export async function runJobList(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
@@ -290,7 +290,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
   const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
   const pageDelayMs = pageDelayFromFlags(flags);
 
-  // --state ALL → a best-effort client-side union over every enum state.
+  // --state ALL -> a best-effort client-side union over every enum state.
   if (state === "ALL") {
     await runJobListAllStates(ns, flags, out, outOpts, { all, maxPages, pageDelayMs });
     return;
@@ -306,8 +306,8 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
       // Narrow cast at the query-argument call site: state is validated above.
       // Re-filter each page's items in the wrapped fn (not after streamAll
       // flattens them) so the note stays page-local and streamAll's own
-      // cursor/truncation bookkeeping — driven by the untouched page.cursor
-      // — never sees the filtering at all.
+      // cursor/truncation bookkeeping, driven by the untouched page.cursor
+      //, never sees the filtering at all.
       const fn = (p: typeof base) =>
         ns.jobs.list(p as JobListQuery).then((page) => {
           const { items: filtered, dropped } = filterJobsByState(page.items, state);
@@ -354,7 +354,7 @@ function jobItemId(item: unknown): string | undefined {
 }
 
 /**
- * Run `job list --state ALL` — a best-effort client-side union over every enum
+ * Run `job list --state ALL`, a best-effort client-side union over every enum
  * state. Each state is queried and re-filtered against its own `state` (LinkedIn's
  * filter is best-effort), then results are merged and de-duplicated by id. A
  * modest pause separates the per-state fetches (pacing). With `--all`, each
@@ -426,7 +426,7 @@ async function runJobListAllStates(
   }
 }
 
-/** Run `job budget <id>` — jobs.getBudget (single read). */
+/** Run `job budget <id>`, jobs.getBudget (single read). */
 export async function runJobBudget(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -442,7 +442,7 @@ export async function runJobBudget(client: Curviate, flags: JobFlags, out: Outpu
   }
 }
 
-/** Run `job applicants <id>` — jobs.listApplicants (POST-as-search, paginated read). */
+/** Run `job applicants <id>`, jobs.listApplicants (POST-as-search, paginated read). */
 export async function runJobApplicants(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -482,7 +482,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
   }
 }
 
-/** Run `job applicant get <id> <app_id>` — jobs.getApplicant (single read). */
+/** Run `job applicant get <id> <app_id>`, jobs.getApplicant (single read). */
 export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -500,8 +500,8 @@ export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out:
 }
 
 /**
- * Run `job applicant resume <id> <app_id> -o <file>` — jobs.downloadResume (binary).
- * Read command — rejects --preview. Refuses to dump bytes to a TTY without -o.
+ * Run `job applicant resume <id> <app_id> -o <file>`, jobs.downloadResume (binary).
+ * Read command, rejects --preview. Refuses to dump bytes to a TTY without -o.
  * @param isTTY injectable for tests.
  */
 export async function runJobApplicantResume(client: Curviate, flags: JobFlags, out: OutputStreams, isTTY: boolean): Promise<void> {
@@ -527,7 +527,7 @@ export async function runJobApplicantResume(client: Curviate, flags: JobFlags, o
 // Write run functions
 // ---------------------------------------------------------------------------
 
-/** Run `job create <flags>` — jobs.create. All 7 body fields are required. */
+/** Run `job create <flags>`, jobs.create. All 7 body fields are required. */
 export async function runJobCreate(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   const accountId = requireAccount(flags.account, out);
 
@@ -581,7 +581,7 @@ export async function runJobCreate(client: Curviate, flags: JobFlags, out: Outpu
   }
 }
 
-/** Run `job update <id> <flags>` — jobs.update. Only the provided fields change. */
+/** Run `job update <id> <flags>`, jobs.update. Only the provided fields change. */
 export async function runJobUpdate(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   const accountId = requireAccount(flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
@@ -621,8 +621,8 @@ export async function runJobUpdate(client: Curviate, flags: JobFlags, out: Outpu
 }
 
 /**
- * Run `job publish <id> --mode <m>` — jobs.publish.
- * --mode is required. PROMOTED/PROMOTED_PLUS require a full --budget-* triple —
+ * Run `job publish <id> --mode <m>`, jobs.publish.
+ * --mode is required. PROMOTED/PROMOTED_PLUS require a full --budget-* triple,
  * supplying it is the explicit opt-in to spend real money.
  */
 export async function runJobPublish(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
@@ -663,7 +663,7 @@ export async function runJobPublish(client: Curviate, flags: JobFlags, out: Outp
   }
 }
 
-/** Run `job close <id>` — jobs.close (bodyless write). */
+/** Run `job close <id>`, jobs.close (bodyless write). */
 export async function runJobClose(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   const accountId = requireAccount(flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
@@ -709,7 +709,7 @@ async function withClient(
   await fn(client, { ...flags, account: flags.account ?? cfg.account }, out);
 }
 
-// Shared body flags for create/update (kebab → snake_case body keys).
+// Shared body flags for create/update (kebab -> snake_case body keys).
 const JOB_BODY_FLAGS = {
   "job-title": { type: "string" as const, description: "Job title as free text (or use --job-title-id for an existing LinkedIn title)." },
   "job-title-id": { type: "string" as const, description: "Existing LinkedIn job-title id." },

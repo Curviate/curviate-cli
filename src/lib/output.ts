@@ -107,8 +107,8 @@ function applyProjection(
  * The single object a `--fields` projection is applied against (for key
  * discovery), or null when there is no concrete object to inspect (empty list,
  * primitive, or an empty array). Mirrors `applyProjection`'s target selection:
- * a bare array → its first element; an `{ items: [...] }` envelope → the first
- * item; a single object → itself.
+ * a bare array -> its first element; an `{ items: [...] }` envelope -> the first
+ * item; a single object -> itself.
  */
 function firstProjectableItem(data: unknown): Record<string, unknown> | null {
   const isPlainObject = (v: unknown): v is Record<string, unknown> =>
@@ -131,7 +131,7 @@ function firstProjectableItem(data: unknown): Record<string, unknown> | null {
  * Which requested `--fields` match nothing on the response, plus the keys that
  * ARE available. A field is "unknown" when its top-level path segment is absent
  * from the first projectable item. Returns null when there is nothing to check
- * (no concrete item) or every field matches — i.e. no warning is warranted.
+ * (no concrete item) or every field matches, i.e. no warning is warranted.
  */
 export function detectUnknownFields(
   data: unknown,
@@ -177,7 +177,7 @@ export function renderSuccess(
 
   // Warn (diagnostics channel) when a requested field matches nothing on the
   // response the projection actually runs over (the slim output, if any).
-  // Output is unaffected — the known fields still project; this only saves an
+  // Output is unaffected, the known fields still project; this only saves an
   // agent from silently receiving {} and guessing why.
   const unknownFields = detectUnknownFields(slimmed, fields);
   if (unknownFields) {

@@ -1,21 +1,21 @@
 /**
- * `curviate comment` — comment-thread operations.
+ * `curviate comment`, comment-thread operations.
  *
  * A dedicated, legible surface over the SDK `comments.*` namespace (plus
  * `posts.listComments` for reading a post's comment thread). It replaces the
  * earlier overloaded post-flag design with intent-shaped verbs.
  *
  * Subcommands:
- *   comment list <post_id>                          — list comments on a post (read)
- *   comment add <post_id> <text>                    — publish a comment (write)
- *   comment reply <post_id> <comment_id> <text>     — reply to a comment (write)
- *   comment edit <post_id> <comment_id> <text>      — edit own comment (write)
- *   comment delete <post_id> <comment_id>           — delete own comment (write, bodyless)
- *   comment replies <post_id> <comment_id>          — list replies to a comment (read)
- *   comment react <post_id> <comment_id> <reaction> — react to a comment (write)
- *   comment reactions <post_id> <comment_id>        — list reactions on a comment (read)
- *   comment unreact <post_id> <comment_id> <reaction> — remove own reaction (write)
- *   comment user <user_id>                          — list a user's own comments (read)
+ *   comment list <post_id>: list comments on a post (read)
+ *   comment add <post_id> <text>: publish a comment (write)
+ *   comment reply <post_id> <comment_id> <text>: reply to a comment (write)
+ *   comment edit <post_id> <comment_id> <text>: edit own comment (write)
+ *   comment delete <post_id> <comment_id>: delete own comment (write, bodyless)
+ *   comment replies <post_id> <comment_id>: list replies to a comment (read)
+ *   comment react <post_id> <comment_id> <reaction>: react to a comment (write)
+ *   comment reactions <post_id> <comment_id>: list reactions on a comment (read)
+ *   comment unreact <post_id> <comment_id> <reaction>: remove own reaction (write)
+ *   comment user <user_id>: list a user's own comments (read)
  *
  * All subcommands are account-scoped. Read commands reject --preview (exit 2)
  * and support --all NDJSON streaming; write commands render --preview and never
@@ -24,7 +24,7 @@
  *
  * `react`/`unreact` take a reaction from the unified lowercase enum:
  * like | celebrate | support | love | insightful | funny.
- * `unreact` is a DELETE-with-body — the reaction value travels in the JSON body.
+ * `unreact` is a DELETE-with-body, the reaction value travels in the JSON body.
  */
 
 import { defineCommand } from "citty";
@@ -154,7 +154,7 @@ function assertReaction(reaction: string, out: OutputStreams): asserts reaction 
 // Read run functions
 // ---------------------------------------------------------------------------
 
-/** Run `comment list <post_id>` — posts.listComments (paginated read). */
+/** Run `comment list <post_id>`, posts.listComments (paginated read). */
 export async function runCommentList(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -184,7 +184,7 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
   }
 }
 
-/** Run `comment replies <post_id> <comment_id>` — comments.listReplies (paginated read). */
+/** Run `comment replies <post_id> <comment_id>`, comments.listReplies (paginated read). */
 export async function runCommentReplies(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -215,7 +215,7 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
   }
 }
 
-/** Run `comment reactions <post_id> <comment_id>` — comments.listReactions (paginated read). */
+/** Run `comment reactions <post_id> <comment_id>`, comments.listReactions (paginated read). */
 export async function runCommentReactions(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
   const accountId = requireAccount(flags.account, out);
@@ -247,10 +247,10 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
 }
 
 /**
- * Run `comment user <user_id>` — comments.listUserComments (paginated read).
+ * Run `comment user <user_id>`, comments.listUserComments (paginated read).
  * user_id is the "me" sentinel or a provider id, forwarded straight through;
  * a URL/slug 400s this endpoint (D7) and is first resolved to the provider
- * id via a users.get READ (contact-safe — notifies no one).
+ * id via a users.get READ (contact-safe, notifies no one).
  */
 export async function runCommentUser(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
@@ -294,8 +294,8 @@ export async function runCommentUser(client: Curviate, flags: CommentFlags, out:
 // ---------------------------------------------------------------------------
 
 /**
- * Run `comment add <post_id> <text> [--attach <file>…]` — comments.create.
- * Write command — supports --preview. TEXT accepts `-` for stdin.
+ * Run `comment add <post_id> <text> [--attach <file>...]`, comments.create.
+ * Write command, supports --preview. TEXT accepts `-` for stdin.
  */
 export async function runCommentAdd(
   client: Curviate,
@@ -348,8 +348,8 @@ export async function runCommentAdd(
 }
 
 /**
- * Run `comment reply <post_id> <comment_id> <text> [--attach <file>…]` — comments.reply.
- * Write command — supports --preview. TEXT accepts `-` for stdin.
+ * Run `comment reply <post_id> <comment_id> <text> [--attach <file>...]`, comments.reply.
+ * Write command, supports --preview. TEXT accepts `-` for stdin.
  */
 export async function runCommentReply(
   client: Curviate,
@@ -403,8 +403,8 @@ export async function runCommentReply(
 }
 
 /**
- * Run `comment edit <post_id> <comment_id> <text>` — comments.edit.
- * Write command — supports --preview. TEXT accepts `-` for stdin.
+ * Run `comment edit <post_id> <comment_id> <text>`, comments.edit.
+ * Write command, supports --preview. TEXT accepts `-` for stdin.
  */
 export async function runCommentEdit(
   client: Curviate,
@@ -440,8 +440,8 @@ export async function runCommentEdit(
 }
 
 /**
- * Run `comment delete <post_id> <comment_id>` — comments.delete (bodyless, 204).
- * Write command — supports --preview.
+ * Run `comment delete <post_id> <comment_id>`, comments.delete (bodyless, 204).
+ * Write command, supports --preview.
  */
 export async function runCommentDelete(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   const accountId = requireAccount(flags.account, out);
@@ -470,8 +470,8 @@ export async function runCommentDelete(client: Curviate, flags: CommentFlags, ou
 }
 
 /**
- * Run `comment react <post_id> <comment_id> <reaction>` — comments.addReaction.
- * Write command — supports --preview.
+ * Run `comment react <post_id> <comment_id> <reaction>`, comments.addReaction.
+ * Write command, supports --preview.
  */
 export async function runCommentReact(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   const accountId = requireAccount(flags.account, out);
@@ -503,8 +503,8 @@ export async function runCommentReact(client: Curviate, flags: CommentFlags, out
 }
 
 /**
- * Run `comment unreact <post_id> <comment_id> <reaction>` — comments.removeReaction.
- * Write command — supports --preview. DELETE-with-body: the reaction value
+ * Run `comment unreact <post_id> <comment_id> <reaction>`, comments.removeReaction.
+ * Write command, supports --preview. DELETE-with-body: the reaction value
  * travels in the JSON body, not the path.
  */
 export async function runCommentUnreact(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {

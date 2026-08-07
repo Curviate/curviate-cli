@@ -3,7 +3,7 @@
  *
  * These are the secrets a customer supplies to connect/reconnect a LinkedIn
  * account (a password, a session cookie pair, an optional managed-proxy
- * password) — distinct from the Curviate API key (see `lib/resolve.ts`).
+ * password), distinct from the Curviate API key (see `lib/resolve.ts`).
  * They are pass-through only: they land in exactly one place (the request
  * body assembled by the caller) and are never persisted client-side, logged,
  * or echoed.
@@ -12,7 +12,7 @@
  *   1. an explicit value flag, XOR its `--*-stdin` sibling
  *   2. an environment variable
  *   3. (required, prompt-eligible secrets only) a masked TTY prompt
- *   4. fail fast — never silently send an empty/missing required secret,
+ *   4. fail fast, never silently send an empty/missing required secret,
  *      never block reading stdin unless the caller explicitly asked for it
  *
  * An explicitly empty source (`--password ""` or `MY_ENV=""`) is treated as
@@ -27,7 +27,7 @@ export interface OutStreams {
 }
 
 /**
- * Cue written to stderr before a tier-1b interactive-TTY stdin read — the
+ * Cue written to stderr before a tier-1b interactive-TTY stdin read, the
  * terminal never sends EOF on Enter, so a live-terminal `--*-stdin` read
  * takes exactly one line instead of waiting to EOF; this line tells the
  * human what's happening. Exported so callers/tests can assert on it without
@@ -36,7 +36,7 @@ export interface OutStreams {
 export const STDIN_TTY_CUE = "Reading secret from stdin (paste + Enter): ";
 
 /**
- * Library-internal default for the single-line-reader seam — mirrors
+ * Library-internal default for the single-line-reader seam, mirrors
  * `defaultReadStdin`'s role for `readStdin`. Always masked: the raw-mode
  * branch of `readlineSync` is the only mechanism here that suppresses echo
  * (the non-mask fallback does not), so this must never drop `{ mask: true }`.
@@ -45,14 +45,14 @@ export const STDIN_TTY_CUE = "Reading secret from stdin (paste + Enter): ";
  * already wrote `STDIN_TTY_CUE` to `out.stderr` before invoking this reader.
  * `readlineSync` itself writes its `prompt` argument to stderr too, so
  * passing the cue text through here would print it a second time on a real
- * terminal — the injected `out.stderr` write is the single visible cue.
+ * terminal, the injected `out.stderr` write is the single visible cue.
  */
 function defaultReadSingleLine(): Promise<string> {
   return readlineSync("", { mask: true });
 }
 
 export interface ResolveSecretPrompt {
-  /** stdin.isTTY — injectable so tests never touch the real terminal. */
+  /** stdin.isTTY, injectable so tests never touch the real terminal. */
   isTTY: boolean;
   /** Injectable masked-prompt function (production: `lib/readline.ts`'s `readlineSync`). */
   readline: (prompt: string, opts?: { mask?: boolean }) => Promise<string>;
@@ -67,11 +67,11 @@ export interface ResolveSecretParams {
   /** Env var name checked at tier 2. */
   envVar: string;
   /**
-   * `stdin.isTTY` — top-level (not nested in `prompt`), injectable so tests
+   * `stdin.isTTY`: top-level (not nested in `prompt`), injectable so tests
    * never touch the real terminal. Gates the tier-1b `stdinRequested`
    * branch: TTY reads a single line via `readSingleLine`; non-TTY reads to
    * EOF via `readStdin`, unchanged. Deliberately separate from
-   * `prompt.isTTY` (tier 3's masked-fallback gate, password-only) — the two
+   * `prompt.isTTY` (tier 3's masked-fallback gate, password-only): the two
    * are gated by different questions (whether a stdin flag was passed, vs.
    * whether nothing at all was given) and must not be conflated. Default
    * false when omitted.
@@ -81,9 +81,9 @@ export interface ResolveSecretParams {
   readStdin?: () => Promise<string>;
   /**
    * Injectable single-line reader for the tier-1b interactive-TTY stdin
-   * read (production: `lib/readline.ts`'s `readlineSync(cue, {mask:true})`
-   * — the raw-mode, no-echo branch). A dedicated seam, never a reuse of
-   * `readStdin` (a fundamentally different read shape — one line vs. to
+   * read (production: `lib/readline.ts`'s `readlineSync(cue, {mask:true})`,
+   * the raw-mode, no-echo branch). A dedicated seam, never a reuse of
+   * `readStdin` (a fundamentally different read shape: one line vs. to
    * EOF) or `prompt.readline` (a different gate, tier 3 vs. tier 1b).
    */
   readSingleLine?: (cue: string) => Promise<string>;
@@ -91,26 +91,26 @@ export interface ResolveSecretParams {
   required?: boolean;
   /** Error message written to stderr before exiting 2 when a required secret has no source. */
   failMessage?: string;
-  /** Masked-prompt fallback — only ever supplied for the `credentials` password. */
+  /** Masked-prompt fallback, only ever supplied for the `credentials` password. */
   prompt?: ResolveSecretPrompt;
   /**
    * When false, tiers 3 (prompt) and 4 (fail-fast exit) are skipped even for
-   * a required secret with nothing resolved — the caller gets `undefined`
+   * a required secret with nothing resolved: the caller gets `undefined`
    * back instead. Used for `--preview` (a client-side render must never
    * prompt or exit) and for a `credentials` call still missing `--email`
    * (nothing meaningful to prompt toward yet). Default true.
    *
    * Also the tier-1b default gate (see `allowInteractiveStdinRead` below)
-   * when that field is omitted — most callers (li_at, cookie secrets) have
+   * when that field is omitted: most callers (li_at, cookie secrets) have
    * no reason for the two gates to diverge.
    */
   allowInteractive?: boolean;
   /**
-   * Tier-1b's OWN gate for the interactive-TTY `stdinRequested` read —
+   * Tier-1b's OWN gate for the interactive-TTY `stdinRequested` read,
    * preview-only, deliberately decoupled from `allowInteractive`. The
    * `credentials` password call gates tier 3 (masked prompt) and tier 4
-   * (fail-fast) on `!preview && Boolean(email)` — nothing meaningful to
-   * prompt/fail toward without an email yet — but tier-1b must still fire on
+   * (fail-fast) on `!preview && Boolean(email)`: nothing meaningful to
+   * prompt/fail toward without an email yet: but tier-1b must still fire on
    * `--password-stdin` whenever the run isn't a preview, `--email` or not:
    * the user explicitly asked for a stdin read, and suppressing it based on
    * an unrelated flag would silently swallow a real paste (any resulting
@@ -134,22 +134,22 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
     return params.flagValue;
   }
 
-  // Tier 1b: stdin (mutually exclusive with the value flag — conflicts are
+  // Tier 1b: stdin (mutually exclusive with the value flag, conflicts are
   // rejected upstream by checkCredentialConflicts before resolution starts).
   //
   // Mode-aware: a live terminal never sends EOF on Enter, so a naive
   // to-EOF read hangs forever on a TTY. Non-TTY (piped/redirected) keeps the
   // original to-EOF read, byte-for-byte. An interactive TTY instead reads a
   // single line (paste + Enter resolves immediately) through the dedicated
-  // single-line-reader seam — never through `readStdin`, which would still
+  // single-line-reader seam, never through `readStdin`, which would still
   // hang on a live terminal past EOF.
   if (params.stdinRequested) {
     if (params.isTTY) {
       // Suppressed entirely under --preview (allowInteractiveStdinRead ===
       // false, defaulting to allowInteractive): no cue, no block, no reader
-      // call — a client-side render must never prompt or read from the
+      // call, a client-side render must never prompt or read from the
       // terminal. Falls through to the next tier exactly as if nothing had
-      // been typed. Preview-only — deliberately NOT the same gate as tier 3
+      // been typed. Preview-only, deliberately NOT the same gate as tier 3
       // (see `allowInteractiveStdinRead`'s doc comment): an explicit
       // --*-stdin read must still fire even when tier 3/4 are suppressed for
       // an unrelated reason (e.g. `credentials` with no --email yet).
@@ -158,7 +158,7 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
         params.out.stderr.write(STDIN_TTY_CUE);
         const reader = params.readSingleLine ?? defaultReadSingleLine;
         const raw = await reader(STDIN_TTY_CUE);
-        // The raw-mode reader resolves un-trimmed — trimming is this
+        // The raw-mode reader resolves un-trimmed, trimming is this
         // resolver's job (matches the non-TTY EOF tier's own trim).
         const trimmed = raw.trim();
         if (trimmed !== "") {
@@ -175,7 +175,7 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
         return trimmed;
       }
       // An explicitly requested-but-empty stdin read falls through, same as
-      // an explicitly empty flag/env value — never silently send "".
+      // an explicitly empty flag/env value, never silently send "".
     }
   }
 
@@ -191,24 +191,24 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
   }
 
   // Interactive fallbacks suppressed (preview render, or a gating condition
-  // like "no --email yet" upstream) — return undefined rather than prompt
+  // like "no --email yet" upstream), return undefined rather than prompt
   // or exit, so a client-side render never blocks or fails.
   if (params.allowInteractive === false) {
     return undefined;
   }
 
-  // Tier 3: masked TTY prompt (password only — `prompt` is only ever passed
+  // Tier 3: masked TTY prompt (password only, `prompt` is only ever passed
   // for the credentials-method password; the cookie method has none).
   if (params.prompt && params.prompt.isTTY) {
     const value = await params.prompt.readline(params.prompt.promptText, { mask: true });
     if (value) {
       return value;
     }
-    // A blank prompt entry falls straight to the fail-fast below — this is
+    // A blank prompt entry falls straight to the fail-fast below; this is
     // not a re-prompt loop.
   }
 
-  // Tier 4: fail fast. Never read stdin here — the read only ever happens
+  // Tier 4: fail fast. Never read stdin here; the read only ever happens
   // in the stdinRequested branch above, so a non-interactive caller with no
   // source can never hang.
   params.out.stderr.write(`error: ${params.failMessage ?? "missing required credential"}\n`);
@@ -279,7 +279,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Return a copy of a request body with every known LinkedIn-credential
  * field (`credentials.password`, `cookie.li_at`, `cookie.li_a`,
  * `proxy.password`) replaced by a fixed mask, for `--preview` rendering.
- * Never mutates the input — the real (unmasked) body still goes to the
+ * Never mutates the input, the real (unmasked) body still goes to the
  * actual SDK call on a non-preview run.
  */
 export function maskCredentialSecretsForPreview(body: Record<string, unknown>): Record<string, unknown> {

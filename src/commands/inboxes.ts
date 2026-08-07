@@ -1,18 +1,18 @@
 /**
- * `curviate inboxes` — inbox discovery + per-inbox conversation listing (Beta).
+ * `curviate inboxes`, inbox discovery + per-inbox conversation listing (Beta).
  *
  * Subcommands:
- *   inboxes list [--kind personal|company] [--company-id <id>]  — discover inboxes
- *   inboxes chats <inbox_id> [--limit] [--cursor] [--all]        — list an inbox's conversations
+ *   inboxes list [--kind personal|company] [--company-id <id>]: discover inboxes
+ *   inboxes chats <inbox_id> [--limit] [--cursor] [--all]: list an inbox's conversations
  *
  * Distinct from the existing `inbox` command (a friendlier front door to the
- * account's own message thread inbox — `messaging.listChats`/`getChat`/
+ * account's own message thread inbox, `messaging.listChats`/`getChat`/
  * `markChatRead`/`messages`). `inboxes` (plural) wraps the newer discovery
  * surface: personal inbox plus, when the company product is attached, one
- * entry per company page. Every chat id `inboxes chats` returns is send-ready
- * — reply with the EXISTING `message send <chat_id> "<text>"`; a company
- * inbox's chat id (e.g. `COMPANY_83734124_2-…`) sends AS THE PAGE, no
- * separate parameter needed. Company inboxes are reply-only — they cannot
+ * entry per company page. Every chat id `inboxes chats` returns is send-ready;
+ * reply with the EXISTING `message send <chat_id> "<text>"`; a company
+ * inbox's chat id (e.g. `COMPANY_83734124_2-...`) sends AS THE PAGE, no
+ * separate parameter needed. Company inboxes are reply-only; they cannot
  * start a new conversation (`message new` requires a personal, `CLASSIC_`,
  * chat).
  *
@@ -127,7 +127,7 @@ function validateLimitRange(raw: string | undefined, out: OutputStreams): void {
 
 /**
  * Run `inboxes list [--kind personal|company] [--company-id <id>]`.
- * Read command — rejects --preview and --all (a flat, non-paginated list —
+ * Read command, rejects --preview and --all (a flat, non-paginated list,
  * no `cursor` on the response).
  */
 export async function runInboxesList(
@@ -156,11 +156,11 @@ export async function runInboxesList(
 
 /**
  * Run `inboxes chats <inbox_id> [--limit] [--cursor] [--all]`.
- * Read command — rejects --preview. Cursor-paginated: supports --all like
+ * Read command, rejects --preview. Cursor-paginated: supports --all like
  * every other list command.
  *
  * <inbox_id> comes from `inboxes list` (e.g. `CLASSIC_PRIMARY` or
- * `COMPANY_83734124_PRIMARY`). Every returned chat's `id` is send-ready —
+ * `COMPANY_83734124_PRIMARY`). Every returned chat's `id` is send-ready,
  * reply with `message send <chat_id> "<text>"`.
  */
 export async function runInboxesChats(
@@ -210,7 +210,7 @@ const inboxesListCommand = defineCommand({
   meta: { name: "list", description: "Discover the account's inboxes (personal + company pages)." },
   args: {
     // Single-object-shaped read: READ_SINGLE_FLAGS omits pagination flags
-    // (this response carries no cursor — every inbox comes back in one call).
+    // (this response carries no cursor, every inbox comes back in one call).
     ...READ_SINGLE_FLAGS,
     kind: {
       type: "string" as const,
@@ -245,7 +245,7 @@ const inboxesChatsCommand = defineCommand({
     name: "chats",
     description:
       "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. " +
-      "A company inbox's chat id (e.g. COMPANY_83734124_2-…) sends AS THE PAGE, no separate flag needed. " +
+      "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
   },
   args: {

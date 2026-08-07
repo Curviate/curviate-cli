@@ -8,7 +8,7 @@
  *   3. Active (or `--profile`-selected) config-file profile
  *   4. SDK defaults (`https://api.curviate.com`, `30000 ms`)
  *
- * The API key is passed through verbatim — no prefix validation.
+ * The API key is passed through verbatim, no prefix validation.
  */
 
 import { readConfig } from "./config.js";
@@ -38,7 +38,7 @@ const DEFAULT_BASE_URL = "https://api.curviate.com";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
- * Resolve the effective config by merging flags → env → profile → SDK defaults.
+ * Resolve the effective config by merging flags -> env -> profile -> SDK defaults.
  */
 export async function resolveEffectiveConfig(
   flags: FlagInputs,

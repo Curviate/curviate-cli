@@ -1,19 +1,19 @@
 /**
- * `curviate account` — account connection management (root-scoped).
+ * `curviate account`, account connection management (root-scoped).
  *
  * Subcommands:
- *   account list                                      — list connected accounts
- *   account get <account_id>                          — get one account
- *   account link <body…>                              — link a new account (write)
- *   account connect-session poll --session <id>       — poll a hosted connect session for completion (write)
- *   account update <account_id> <body…>               — update metadata / proxy config (write)
- *   account disconnect <account_id>                   — hard-disconnect an account (write)
- *   account checkpoint solve <account_id> --code      — solve a checkpoint with an OTP/2FA code (path-addressed, write)
- *   account checkpoint poll <account_id>              — poll mobile-app approval (path-addressed, write)
- *   account checkpoint request <account_id>           — re-request the challenge notification (path-addressed, write)
+ *   account list: list connected accounts
+ *   account get <account_id>: get one account
+ *   account link <body...>: link a new account (write)
+ *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
+ *   account update <account_id> <body...>: update metadata / proxy config (write)
+ *   account disconnect <account_id>: hard-disconnect an account (write)
+ *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (path-addressed, write)
+ *   account checkpoint poll <account_id>: poll mobile-app approval (path-addressed, write)
+ *   account checkpoint request <account_id>: re-request the challenge notification (path-addressed, write)
  *
  * Root-scoped: all methods live on `curviate.accounts.*` (NOT account-scoped).
- * account_id positionals pass verbatim (NOT resolveIdentifier — not a member/company id).
+ * account_id positionals pass verbatim (NOT resolveIdentifier, not a member/company id).
  * Checkpoint ops are path-addressed: the account_id (the provisional account from
  * the 202 response) is a positional argument that the SDK interpolates into the
  * request path, not a body field.
@@ -24,11 +24,11 @@
  * (test/parity.test.ts).
  *
  * Slim projection (default): account list and account get return a
- * compact field subset — six cached account-enrichment fields (username,
+ * compact field subset, six cached account-enrichment fields (username,
  * premium_id, public_identifier, substrate_created_at, signatures, groups)
  * are verbose-only. Pass --verbose for the full SDK response. account get
  * keeps --fields but suppresses --limit/--cursor/--all/--max-pages (a
- * single-object read) — account list is unaffected (a genuine list read,
+ * single-object read), account list is unaffected (a genuine list read,
  * keeps all pagination flags).
  */
 
@@ -60,7 +60,7 @@ import {
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
 /**
- * `POST /v1/auth/intent` body — a narrow cast target only (see
+ * `POST /v1/auth/intent` body, a narrow cast target only (see
  * `runAccountLink`'s comment): the body is assembled dynamically from
  * credential-resolution helpers, not a single typed literal.
  */
@@ -99,7 +99,7 @@ type AccountFlags = {
   "user-agent"?: string;
   "recruiter-contract-id"?: string;
   // update body fields
-  metadata?: string;     // JSON object string → flat string→string metadata map
+  metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
   // connect-link / reconnect-link body fields
   "expires-in-seconds"?: string;
@@ -243,24 +243,24 @@ export async function runAccountGet(
 /**
  * Injectable seams for LinkedIn-credential resolution (masked prompt +
  * non-TTY fail-fast) and for the guided checkpoint follow-through loop. All
- * optional — real defaults (the actual TTY state, the real masked readline,
+ * optional, real defaults (the actual TTY state, the real masked readline,
  * the real stdin reader, the real clock/timer) are substituted when
  * omitted, so existing call sites need not pass this at all.
  */
 export interface CredentialIO {
-  /** stdin.isTTY — injectable for tests. Defaults to the real process.stdin.isTTY. */
+  /** stdin.isTTY, injectable for tests. Defaults to the real process.stdin.isTTY. */
   isTTY?: boolean;
   /**
-   * stdout.isTTY — injectable for tests. Defaults to the real
+   * stdout.isTTY: injectable for tests. Defaults to the real
    * process.stdout.isTTY. Combined with `isTTY` to decide the guided
-   * checkpoint loop's interactive/non-interactive branch — either stream
+   * checkpoint loop's interactive/non-interactive branch: either stream
    * being non-TTY forces the non-interactive path.
    */
   isOutputTTY?: boolean;
   /**
    * Injectable prompt function. Defaults to lib/readline.ts's readlineSync.
    * Used masked ({mask:true}) for the credentials password prompt, and
-   * unmasked (no opts) for the checkpoint-code prompt — a checkpoint code
+   * unmasked (no opts) for the checkpoint-code prompt: a checkpoint code
    * is not persisted secret material, but it must never reach argv.
    */
   readline?: (prompt: string, opts?: { mask?: boolean }) => Promise<string>;
@@ -270,7 +270,7 @@ export interface CredentialIO {
    * Injectable single-line reader for an interactive-TTY --password-stdin/
    * --li-at-stdin read (a live terminal never sends EOF on Enter, so that
    * case must read one line, not to EOF). Defaults to
-   * lib/readline.ts's readlineSync in its masked, no-echo raw-mode branch —
+   * lib/readline.ts's readlineSync in its masked, no-echo raw-mode branch,
    * never the non-mask fallback, which does not suppress echo.
    */
   readSingleLine?: (cue: string) => Promise<string>;
@@ -281,7 +281,7 @@ export interface CredentialIO {
   /**
    * Injectable browser opener for `account connect-link`'s auto-open.
    * Defaults to the real `open` package (dynamically imported so it is never
-   * loaded — and never spawns a real browser — unless this default path is
+   * loaded: and never spawns a real browser, unless this default path is
    * actually reached). Tests inject a stub here instead of mocking the ESM
    * package directly.
    */
@@ -291,12 +291,12 @@ export interface CredentialIO {
 /**
  * Build the auth body for link/reconnect. Resolves the LinkedIn-account
  * secrets (password, li_at, li_a, proxy password) through the flag > stdin >
- * env > prompt > fail-fast tiers before assembling the body — the secret
+ * env > prompt > fail-fast tiers before assembling the body, the secret
  * reaches only this returned object, never a log or preview render.
  *
  * Under `--preview` (ctx.previewMode), interactive fallbacks (prompt,
- * fail-fast) are skipped entirely — a client-side render must never prompt
- * or exit — so a missing required secret simply resolves to `undefined` and
+ * fail-fast) are skipped entirely, a client-side render must never prompt
+ * or exit, so a missing required secret simply resolves to `undefined` and
  * is omitted from the body.
  */
 async function buildAuthBody(
@@ -327,13 +327,13 @@ async function buildAuthBody(
       readSingleLine: ctx.readSingleLine,
       required: true,
       // The masked-prompt/fail-fast tiers (3/4) only engage once --email is
-      // present (nothing meaningful to prompt toward yet otherwise) — and
+      // present (nothing meaningful to prompt toward yet otherwise), and
       // never under --preview (a client-side render must not prompt or
       // exit).
       allowInteractive: !ctx.previewMode && Boolean(flags.email),
       // Tier-1b's own gate is preview-only, deliberately NOT email-gated: a
       // user who passed --password-stdin on a TTY gets the read regardless
-      // of --email — an email-less body still fails downstream validation,
+      // of --email, an email-less body still fails downstream validation,
       // as expected, rather than the flag being silently ignored.
       allowInteractiveStdinRead: !ctx.previewMode,
       failMessage: "no password. Pass --password, --password-stdin, or set CURVIATE_LINKEDIN_PASSWORD",
@@ -349,7 +349,7 @@ async function buildAuthBody(
     }
   }
 
-  // cookie object (auth-method === "cookie") — no interactive prompt, by design.
+  // cookie object (auth-method === "cookie"), no interactive prompt, by design.
   if (flags["auth-method"] === "cookie") {
     const liAt = await resolveSecret({
       flagValue: flags["li-at"],
@@ -402,7 +402,7 @@ async function buildAuthBody(
 
 /**
  * The real browser opener, dynamically imported so the `open` package (and
- * any browser it might spawn) is only ever touched on this exact code path —
+ * any browser it might spawn) is only ever touched on this exact code path,
  * never during a test, which always injects its own `open` stub instead.
  */
 async function defaultOpen(url: string): Promise<unknown> {
@@ -425,11 +425,11 @@ function resolveCredentialIO(io: CredentialIO): {
     isOutputTTY: io.isOutputTTY ?? (process.stdout.isTTY ?? false),
     readline: io.readline ?? readlineSync,
     readStdin: io.readStdin ?? defaultReadStdin,
-    // Always the masked, no-echo raw-mode branch — never a bare readlineSync
+    // Always the masked, no-echo raw-mode branch, never a bare readlineSync
     // pass-through, which would default mask to false and echo the secret.
     // Prompt is deliberately EMPTY, not `cue`: credential-resolve.ts already
     // wrote STDIN_TTY_CUE to out.stderr before calling this reader, and
-    // readlineSync itself writes its `prompt` argument to stderr too — the
+    // readlineSync itself writes its `prompt` argument to stderr too, the
     // cue text would otherwise print twice on a real terminal.
     readSingleLine: io.readSingleLine ?? (() => readlineSync("", { mask: true })),
     sleep: io.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms))),
@@ -439,7 +439,7 @@ function resolveCredentialIO(io: CredentialIO): {
 }
 
 // ---------------------------------------------------------------------------
-// Guided checkpoint follow-through (link/reconnect 202 → resolve in-process)
+// Guided checkpoint follow-through (link/reconnect 202 -> resolve in-process)
 // ---------------------------------------------------------------------------
 
 /** The 202 checkpoint-required envelope (also the shape of a chained submit response). */
@@ -638,7 +638,7 @@ async function handleAccountConnectResult(
 }
 
 /**
- * Run `account link <body…>`.
+ * Run `account link <body...>`.
  * Required: --seat-id, --auth-method.
  */
 export async function runAccountLink(
@@ -661,7 +661,7 @@ export async function runAccountLink(
 
   // Cookie auth requires a User-Agent (the session cookie must be paired with
   // the browser UA it was minted under). Optional for credentials auth. Skipped
-  // under --preview — a client-side render must never exit (mirrors the
+  // under --preview, a client-side render must never exit (mirrors the
   // credential-resolution fail-fast's own preview carve-out).
   if (!flags.preview && flags["auth-method"] === "cookie" && !flags["user-agent"]) {
     out.stderr.write("error: --user-agent is required when --auth-method=cookie.\n");
@@ -681,8 +681,8 @@ export async function runAccountLink(
   const body: Record<string, unknown> = {
     seat_id: flags["seat-id"],
     ...authBody,
-    // --account-id (0.15.0): present → re-authenticate this existing account in
-    // place (reconnect); omit → connect a new account, with NO account_id key in
+    // --account-id (0.15.0): present -> re-authenticate this existing account in
+    // place (reconnect); omit -> connect a new account, with NO account_id key in
     // the body at all (not undefined, not empty).
     ...(flags["account-id"] ? { account_id: flags["account-id"] } : {}),
   };
@@ -699,7 +699,7 @@ export async function runAccountLink(
   try {
     // Narrow cast: the body is assembled dynamically across several
     // conditionals (credentials-vs-cookie discriminated union, optional
-    // proxy/location fields, async secret resolution) — required-field
+    // proxy/location fields, async secret resolution), required-field
     // validation (--seat-id/--auth-method) already runs above, and
     // auth.intent's own 400 covers anything this doesn't catch.
     result = await client.auth.intent(body as AuthIntentBody);
@@ -717,7 +717,7 @@ export async function runAccountLink(
   });
 }
 
-/** A connect session's poll response — `account_id` is null until `resolved`. */
+/** A connect session's poll response, `account_id` is null until `resolved`. */
 interface ConnectSessionEnvelope {
   object?: string;
   session_id?: string;
@@ -733,12 +733,12 @@ type ConnectSessionWaitOutcome =
   | { kind: "timeout"; result: unknown };
 
 /**
- * The connect-session `--wait` adaptive-cadence loop — structurally the same
+ * The connect-session `--wait` adaptive-cadence loop, structurally the same
  * loop as the checkpoint poll wait loop above (same cadence constants, same
  * lazily-derived timeout bound off the first response's `expires_at`), driven
  * against `accounts.getConnectSession` instead of `accounts.pollCheckpoint`.
  * Shared by `connect-link`'s post-open wait and the standalone
- * `connect-session poll --wait` command — one loop, two callers.
+ * `connect-session poll --wait` command, one loop, two callers.
  */
 async function runConnectSessionWaitLoop(
   client: Curviate,
@@ -758,7 +758,7 @@ async function runConnectSessionWaitLoop(
   await ctx.sleep(CHECKPOINT_POLL_FIRST_DELAY_MS);
 
   for (;;) {
-    // The session_id is a STRING path arg — the SDK interpolates it into
+    // The session_id is a STRING path arg, the SDK interpolates it into
     // /v1/accounts/connect-sessions/{session_id}. Passing an object here would
     // stringify to `[object Object]` and hit a bogus path.
     const result = await client.auth.getSession(sessionId);
@@ -778,7 +778,7 @@ async function runConnectSessionWaitLoop(
     if (n >= timeoutAt) return { kind: "timeout", result };
 
     if (ctx.showTicker) {
-      ctx.out.stderr.write(`\rWaiting for the account to connect… ${formatRemaining(timeoutAt - n)} remaining`);
+      ctx.out.stderr.write(`\rWaiting for the account to connect... ${formatRemaining(timeoutAt - n)} remaining`);
     }
 
     await ctx.sleep(nextCheckpointPollDelayMs(n - startedAt));
@@ -809,11 +809,11 @@ function resolveWaitTimeoutOverrideMs(flags: AccountFlags, out: OutputStreams): 
  * Run `account connect-session poll --session <session_id> [--wait] [--timeout <ms>]`.
  *
  * Without `--wait` (default): a single poll, prints the body, exits 0
- * regardless of status — the JSON `status` field is for the caller to branch
+ * regardless of status, the JSON `status` field is for the caller to branch
  * on, not an error signal.
  * With `--wait`: the same adaptive-cadence loop and terminal exit codes as
  * `connect-link`'s own wait (0 resolved, 9 expired/failed, 12 AUTH_NEEDED on
- * a wait-window timeout) — the standalone counterpart for an agent that
+ * a wait-window timeout), the standalone counterpart for an agent that
  * minted the link with `--no-wait`/non-interactively and is now checking on
  * a session_id it already has.
  */
@@ -824,7 +824,7 @@ export async function runAccountConnectSessionPoll(
   io: CredentialIO = {},
 ): Promise<void> {
   if (!flags.session) {
-    out.stderr.write("error: --session is required (the account's acc_… id from `account link` or a checkpoint response).\n");
+    out.stderr.write("error: --session is required (the account's acc_... id from `account link` or a checkpoint response).\n");
     process.exit(2);
   }
 
@@ -886,9 +886,9 @@ export async function runAccountConnectSessionPoll(
 }
 
 /**
- * Run `account update <account_id> <body…>`.
+ * Run `account update <account_id> <body...>`.
  * Body: optional metadata (a flat string map that replaces the store
- * wholesale) and/or a custom proxy — set one with --proxy-*, or clear it with
+ * wholesale) and/or a custom proxy, set one with --proxy-*, or clear it with
  * --clear-proxy (sends proxy:null). The managed country/ip knobs are gone
  * (a managed location is chosen at connect time instead).
  */
@@ -925,7 +925,7 @@ export async function runAccountUpdate(
   }
 
   if (flags["proxy-host"]) {
-    // Proxy password is optional: flag > env > omitted — no prompt, no fail-fast.
+    // Proxy password is optional: flag > env > omitted, no prompt, no fail-fast.
     const proxyPassword = await resolveSecret({
       flagValue: flags["proxy-password"],
       envVar: "CURVIATE_PROXY_PASSWORD",
@@ -1037,7 +1037,7 @@ export async function runAccountCheckpointSolve(
   }
 
   // A chained 202 (another challenge required) is a success response, not a
-  // CurviateError — the exit call sits outside the try/catch above so it is
+  // CurviateError, the exit call sits outside the try/catch above so it is
   // never miscaught and misrouted through handleError. Short-circuits the
   // one-shot command with AUTH_NEEDED (12): still resolvable, needs a further
   // `checkpoint solve` call for the new challenge_type.
@@ -1048,12 +1048,12 @@ export async function runAccountCheckpointSolve(
 
 /**
  * Run `account checkpoint request <account_id>`.
- * Path-addressed: account_id is the positional argument. No --code — a
+ * Path-addressed: account_id is the positional argument. No --code, a
  * re-request has nothing to submit.
  *
  * Exit 0 on any 200 regardless of the `resent` boolean: a `false` value is an
  * honest answer ("this challenge type has nothing to re-send, or the
- * platform declined"), not a command failure — the caller reads `resent`
+ * platform declined"), not a command failure; the caller reads `resent`
  * from the response to branch. Errors (404 no pending checkpoint, 409
  * expired, 501 unsupported) route through the standard exit-code table via
  * `handleError`, unchanged from `solve`/`poll`.
@@ -1148,7 +1148,7 @@ async function runCheckpointPollWaitLoop(
     if (n >= timeoutAt) return { kind: "timeout", result };
 
     if (ctx.showTicker) {
-      ctx.out.stderr.write(`\rWaiting for approval… ${formatRemaining(timeoutAt - n)} remaining`);
+      ctx.out.stderr.write(`\rWaiting for approval... ${formatRemaining(timeoutAt - n)} remaining`);
     }
 
     await ctx.sleep(nextCheckpointPollDelayMs(n - startedAt));
@@ -1162,7 +1162,7 @@ async function runCheckpointPollWaitLoop(
  * Without `--wait` (default): a single poll, unchanged (back-compat).
  * With `--wait`: the adaptive-cadence loop above, until `active` (exit 0),
  * `expired`/`failed` (exit 9), or the wait window elapses while still
- * `pending` (exit AUTH_NEEDED/12 — still resolvable, not a failure).
+ * `pending` (exit AUTH_NEEDED/12, still resolvable, not a failure).
  */
 export async function runAccountCheckpointPoll(
   client: Curviate,
@@ -1209,15 +1209,15 @@ export async function runAccountCheckpointPoll(
   }
 
   const resolvedIo = resolveCredentialIO(io);
-  // "TTY + not --json" per the flag's own contract — the raw --json flag,
+  // "TTY + not --json" per the flag's own contract, the raw --json flag,
   // not resolveOutputOpts's derived json (which also folds in the real
   // process.stdout.isTTY and would make the ticker untestable: this
   // function's own isOutputTTY seam is what tests control).
   const showTicker = resolvedIo.isOutputTTY && !(flags.json ?? false);
 
   // Poll only ever addresses a mobile_app_approval checkpoint (a code-based
-  // checkpoint 422s here — use `checkpoint solve` instead), so the resend
-  // hint's per-type gating always resolves to "resendable" — printed once,
+  // checkpoint 422s here, use `checkpoint solve` instead), so the resend
+  // hint's per-type gating always resolves to "resendable", printed once,
   // up front, not per attempt. Stderr diagnostic, not the stdout data
   // payload the "silent until terminal" discipline is about (mirrors
   // renderError's own one-liner-to-stderr-regardless-of-json convention).
@@ -1285,7 +1285,7 @@ const accountGetCommand = defineCommand({
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
-    "account-id": { type: "positional", description: "Account id (acc_…)." },
+    "account-id": { type: "positional", description: "Account id (acc_...)." },
   },
   async run({ args }) {
     const flags = args as AccountFlags;
@@ -1331,7 +1331,7 @@ const accountLinkCommand = defineCommand({
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
     "user-agent": { type: "string", description: "Browser User-Agent to pin for this account." },
     "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to (Recruiter tier only)." },
-    "account-id": { type: "string", description: "Existing account id (acc_…) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
+    "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",
       description: "Never prompt for a checkpoint code. On a checkpoint, always render the envelope and exit 12, even on a TTY.",
@@ -1368,7 +1368,7 @@ const accountConnectSessionPollCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     session: {
       type: "string",
-      description: "The account's acc_… id, returned by `account link` or a checkpoint response.",
+      description: "The account's acc_... id, returned by `account link` or a checkpoint response.",
       required: true,
     },
     wait: {
@@ -1377,7 +1377,7 @@ const accountConnectSessionPollCommand = defineCommand({
       default: false,
     },
     // Override WRITE_SINGLE_FLAGS.timeout: on this command --timeout is the
-    // --wait loop's own wall-clock bound in MILLISECONDS (requires --wait) —
+    // --wait loop's own wall-clock bound in MILLISECONDS (requires --wait),
     // NOT the SDK request timeout. Default: the time remaining to the
     // session's own expiry.
     timeout: {
@@ -1388,7 +1388,7 @@ const accountConnectSessionPollCommand = defineCommand({
   async run({ args }) {
     const flags = args as AccountFlags;
     // --timeout here means the --wait bound (ms), not the SDK request
-    // timeout — resolve config without it (same fix as `account checkpoint
+    // timeout, resolve config without it (same fix as `account checkpoint
     // poll` / `account connect-link`).
     const cfg = await resolveEffectiveConfig({
       apiKey: flags["api-key"],
@@ -1419,8 +1419,8 @@ const accountUpdateCommand = defineCommand({
   meta: { name: "update", description: "Update an account's metadata and/or custom-proxy configuration." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "account-id": { type: "positional", description: "Account id (acc_…)." },
-    metadata: { type: "string", description: `Custom metadata as a JSON object (flat string→string map). Replaces the store wholesale. Example: '{"team":"growth"}'.` },
+    "account-id": { type: "positional", description: "Account id (acc_...)." },
+    metadata: { type: "string", description: `Custom metadata as a JSON object (flat string->string map). Replaces the store wholesale. Example: '{"team":"growth"}'.` },
     "clear-proxy": { type: "boolean", description: "Clear the custom proxy (revert to automatic proxy protection). Mutually exclusive with --proxy-host.", default: false },
     "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5." },
     "proxy-host": { type: "string", description: "Proxy host or IP." },
@@ -1450,7 +1450,7 @@ const accountDisconnectCommand = defineCommand({
   meta: { name: "disconnect", description: "Hard-disconnect a LinkedIn account and release its seat." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "account-id": { type: "positional", description: "Account id (acc_…)." },
+    "account-id": { type: "positional", description: "Account id (acc_...)." },
   },
   async run({ args }) {
     const flags = args as AccountFlags;
@@ -1476,7 +1476,7 @@ const accountCheckpointSolveCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     "account-id": {
       type: "positional",
-      description: "The provisional account_id (acc_…) from the 202 checkpoint_required response.",
+      description: "The provisional account_id (acc_...) from the 202 checkpoint_required response.",
     },
     code: {
       type: "string",
@@ -1513,7 +1513,7 @@ const accountCheckpointPollCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     "account-id": {
       type: "positional",
-      description: "The provisional account_id (acc_…) from the 202 checkpoint_required response.",
+      description: "The provisional account_id (acc_...) from the 202 checkpoint_required response.",
     },
     wait: {
       type: "boolean",
@@ -1521,7 +1521,7 @@ const accountCheckpointPollCommand = defineCommand({
       default: false,
     },
     // Override WRITE_SINGLE_FLAGS.timeout: on this command --timeout is the
-    // --wait loop's own wall-clock bound in MILLISECONDS (requires --wait) —
+    // --wait loop's own wall-clock bound in MILLISECONDS (requires --wait),
     // NOT the SDK request timeout, and NOT seconds like `inbox sync-chat
     // --timeout`. Default: the time remaining to the checkpoint's own expiry.
     timeout: {
@@ -1532,7 +1532,7 @@ const accountCheckpointPollCommand = defineCommand({
   async run({ args }) {
     const flags = args as AccountFlags;
     // --timeout here means the --wait bound (ms), not the SDK request
-    // timeout — resolve config without it so the SDK client keeps its
+    // timeout, resolve config without it so the SDK client keeps its
     // default request timeout (mirrors `inbox sync-chat`'s own fix for the
     // identical flag-name collision).
     const cfg = await resolveEffectiveConfig({
@@ -1563,7 +1563,7 @@ const accountCheckpointRequestCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     "account-id": {
       type: "positional",
-      description: "The provisional account_id (acc_…) from the 202 checkpoint_required response.",
+      description: "The provisional account_id (acc_...) from the 202 checkpoint_required response.",
     },
   },
   async run({ args }) {

@@ -1,19 +1,19 @@
 /**
- * `curviate message` — LinkedIn message operations.
+ * `curviate message`, LinkedIn message operations.
  *
  * Subcommands:
- *   message new --to <url|slug|provider_id> "<text>" [--attach <file>…] — start new chat (write)
- *   message <chat_id> "<text>" [--attach <file>…]              — send message to chat (write)
- *   message get <chat_id> <message_id>                          — get a message (read)
- *   message edit <chat_id> <message_id> "<text>"                — edit a message (write)
- *   message delete <chat_id> <message_id>                       — delete a message (write)
- *   message react <chat_id> <message_id> <emoji>                — react to message (write, body field: reaction; --emoji alias)
- *   message attachment <chat_id> <message_id> <attachment_id> [-o <file>] — download attachment (binary)
- *   message inmail --to <url|slug|provider-id|urn> --subject <s> "<text>" — send InMail (write)
- *   message inmail-balance                                      — get InMail credit balance (read)
+ *   message new --to <url|slug|provider_id> "<text>" [--attach <file>...]: start new chat (write)
+ *   message <chat_id> "<text>" [--attach <file>...]: send message to chat (write)
+ *   message get <chat_id> <message_id>: get a message (read)
+ *   message edit <chat_id> <message_id> "<text>": edit a message (write)
+ *   message delete <chat_id> <message_id>: delete a message (write)
+ *   message react <chat_id> <message_id> <emoji>: react to message (write, body field: reaction; --emoji alias)
+ *   message attachment <chat_id> <message_id> <attachment_id> [-o <file>]: download attachment (binary)
+ *   message inmail --to <url|slug|provider-id|urn> --subject <s> "<text>": send InMail (write)
+ *   message inmail-balance: get InMail credit balance (read)
  *
  * v2: get/edit/delete/react/attachment are re-homed under
- * /chats/{chat_id}/messages/{message_id} — every one of them now takes a
+ * /chats/{chat_id}/messages/{message_id}, every one of them now takes a
  * leading chat_id as well as message_id. --surface has no v2 home on
  * sendInMail (the body is just recipient_urn/subject/text) and is dropped.
  *
@@ -119,7 +119,7 @@ function normalizeAttachPaths(attach: string | string[] | undefined): string[] {
 const MEMBER_URN_RE = /^urn:li:member:\d+$/;
 
 /**
- * A LinkedIn member provider id (e.g. ACoAAA…): "A", then C|D|E, then ≥4 id chars.
+ * A LinkedIn member provider id (e.g. ACoAAA...): "A", then C|D|E, then >=4 id chars.
  * Provider IDs always start with an uppercase A followed by C, D, or E.
  * LinkedIn profile slugs are lowercase, so this prefix uniquely identifies provider IDs.
  */
@@ -138,7 +138,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 
 /**
  * Human-readable acting-identity notice for a completed send, written to
- * stderr (diagnostic chrome, never the stdout data channel — the SDK's
+ * stderr (diagnostic chrome, never the stdout data channel, the SDK's
  * `sent_as` field is already on the JSON response regardless of this
  * notice). Personal sends print nothing (the common case stays quiet); a
  * company-page send names the page when the server correlated it to a
@@ -157,7 +157,7 @@ export function sentAsNotice(sentAs: unknown): string | null {
 /**
  * Client-side-only "will send as a company page" note for `--preview` on a
  * `COMPANY_` chat id. Never makes a network call (that would break the
- * zero-round-trip --preview contract) — a page's display name is only
+ * zero-round-trip --preview contract), a page's display name is only
  * resolvable by correlating a live inboxes/managed-companies read, so this
  * states the fact that the send would act as a page, derived purely from the
  * chat id's own `COMPANY_` prefix.
@@ -165,7 +165,7 @@ export function sentAsNotice(sentAs: unknown): string | null {
  * Used by `message send`'s --preview (the personal send still accepts a
  * `COMPANY_` chat id). Exported so it can be unit-tested directly.
  * (`company reply` no longer uses this: post-cutover its chat id is the
- * normal `2-…` form, so it derives the notice from the company identifier.)
+ * normal `2-...` form, so it derives the notice from the company identifier.)
  */
 export function willSendAsNotice(chatId: string): string | null {
   return chatId.startsWith("COMPANY_") ? "Will send as a company page\n" : null;
@@ -176,16 +176,16 @@ export function willSendAsNotice(chatId: string): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Run `message new --to <url|slug|provider_id> "<text>" [--attach <file>…]`.
- * Write command — supports --preview.
+ * Run `message new --to <url|slug|provider_id> "<text>" [--attach <file>...]`.
+ * Write command, supports --preview.
  *
  * --to resolution:
- *   LinkedIn URL or bare slug → users.get(slug) → provider_id passed to startChat.
- *   Provider-ID-shaped input (uppercase AC/AD/AE prefix) → passed directly, no users.get call.
- *   users.get not-found → exit 4.
+ *   LinkedIn URL or bare slug -> users.get(slug) -> provider_id passed to startChat.
+ *   Provider-ID-shaped input (uppercase AC/AD/AE prefix) -> passed directly, no users.get call.
+ *   users.get not-found -> exit 4.
  *
  * v2: attachments travel as base64 {content,content_type,filename} objects
- * (application/json only — no multipart op), never raw Buffers.
+ * (application/json only, no multipart op), never raw Buffers.
  */
 export async function runMessageNew(
   client: Curviate,
@@ -222,10 +222,10 @@ export async function runMessageNew(
   let providerId: string | undefined;
 
   if (MEMBER_PROVIDER_ID_RE.test(resolvedSlugOrId)) {
-    // Already a provider ID — use directly without an extra SDK call.
+    // Already a provider ID, use directly without an extra SDK call.
     providerId = resolvedSlugOrId;
   } else {
-    // Slug or other form — resolve via users.get.
+    // Slug or other form, resolve via users.get.
     try {
       const profileData = await ns.users.get(resolvedSlugOrId, {});
       providerId = profileData.id;
@@ -267,8 +267,8 @@ export async function runMessageNew(
 }
 
 /**
- * Run `message <chat_id> "<text>" [--attach <file>…]`.
- * Write command — supports --preview.
+ * Run `message <chat_id> "<text>" [--attach <file>...]`.
+ * Write command, supports --preview.
  *
  * <chat_id> accepts a LinkedIn messaging thread URL or bare provider ID.
  * Thread URLs are normalized to the bare provider ID (zero network calls).
@@ -337,8 +337,8 @@ export async function runMessageSend(
 
 /**
  * Run `message get <chat_id> <message_id>`.
- * Read command — rejects --preview and --all.
- * v2: re-homed under /chats/{chat_id}/messages/{message_id} — chat_id is now
+ * Read command, rejects --preview and --all.
+ * v2: re-homed under /chats/{chat_id}/messages/{message_id}, chat_id is now
  * a leading positional (normalized the same way as `message send`'s).
  */
 export async function runMessageGet(
@@ -365,8 +365,8 @@ export async function runMessageGet(
 
 /**
  * Run `message edit <chat_id> <message_id> "<text>"`.
- * Write command — supports --preview.
- * v2: re-homed under /chats/{chat_id}/messages/{message_id} — chat_id is now
+ * Write command, supports --preview.
+ * v2: re-homed under /chats/{chat_id}/messages/{message_id}, chat_id is now
  * a leading positional.
  */
 export async function runMessageEdit(
@@ -407,8 +407,8 @@ export async function runMessageEdit(
 
 /**
  * Run `message delete <chat_id> <message_id>`.
- * Write command — supports --preview.
- * v2: re-homed under /chats/{chat_id}/messages/{message_id} — chat_id is now
+ * Write command, supports --preview.
+ * v2: re-homed under /chats/{chat_id}/messages/{message_id}, chat_id is now
  * a leading positional.
  */
 export async function runMessageDelete(
@@ -444,11 +444,11 @@ export async function runMessageDelete(
 
 /**
  * Run `message react <chat_id> <message_id> <emoji>`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  * <emoji> is the canonical positional (the deprecated `--emoji` flag still
  * works as an alias); the SDK body field is `reaction` (confirmed from
  * AddReactionBody).
- * v2: re-homed under /chats/{chat_id}/messages/{message_id} — chat_id is now
+ * v2: re-homed under /chats/{chat_id}/messages/{message_id}, chat_id is now
  * a leading positional.
  */
 export async function runMessageReact(
@@ -464,7 +464,7 @@ export async function runMessageReact(
   const reaction = flags.emoji ?? flags.emojiAlias ?? "";
 
   // A reaction value is required (citty no longer enforces it now that the
-  // positional is optional to allow the flag alias) — a missing value is a
+  // positional is optional to allow the flag alias), a missing value is a
   // usage error, not a silent empty-body reaction.
   if (!reaction) {
     out.stderr.write("error: a reaction is required. Pass it as `message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
@@ -496,10 +496,10 @@ export async function runMessageReact(
 
 /**
  * Run `message attachment <chat_id> <message_id> <attachment_id> [-o <file>]`.
- * Read command — binary response. Rejects --preview.
- * v2: re-homed under /chats/{chat_id}/messages/{message_id}/attachments/{attachment_id}
- * — chat_id is now a leading positional.
- * @param isTTY — injectable for tests (avoids reading process.stdout.isTTY)
+ * Read command, binary response. Rejects --preview.
+ * v2: re-homed under /chats/{chat_id}/messages/{message_id}/attachments/{attachment_id};
+ * chat_id is now a leading positional.
+ * @param isTTY - injectable for tests (avoids reading process.stdout.isTTY)
  */
 export async function runMessageAttachment(
   client: Curviate,
@@ -534,16 +534,16 @@ export async function runMessageAttachment(
 
 /**
  * Run `message inmail --to <url|slug|provider-id|urn> --subject <s> "<text>"`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  *
  * --to resolution:
- *   LinkedIn URL or bare slug → users.get(slug) → provider_id used as recipient_urn.
- *   Provider ID (AC/AD/AE prefix) → passed directly as recipient_urn, no users.get call.
- *   Member URN (urn:li:member:<N>) → passed directly as recipient_urn, no users.get call.
- *   Empty string → exit 2.
- *   users.get not-found → exit 4.
+ *   LinkedIn URL or bare slug -> users.get(slug) -> provider_id used as recipient_urn.
+ *   Provider ID (AC/AD/AE prefix) -> passed directly as recipient_urn, no users.get call.
+ *   Member URN (urn:li:member:<N>) -> passed directly as recipient_urn, no users.get call.
+ *   Empty string -> exit 2.
+ *   users.get not-found -> exit 4.
  *
- * v2: the body is just {recipient_urn, subject, text} — --surface has no v2
+ * v2: the body is just {recipient_urn, subject, text}, --surface has no v2
  * home (the old body's `surface` field is gone) and is no longer accepted.
  */
 export async function runMessageInMail(
@@ -571,13 +571,13 @@ export async function runMessageInMail(
   let recipientUrn: string | undefined;
 
   if (MEMBER_URN_RE.test(resolvedSlugOrId)) {
-    // Already a member URN — pass through directly.
+    // Already a member URN, pass through directly.
     recipientUrn = resolvedSlugOrId;
   } else if (MEMBER_PROVIDER_ID_RE.test(resolvedSlugOrId)) {
-    // Already a provider ID — pass through directly.
+    // Already a provider ID, pass through directly.
     recipientUrn = resolvedSlugOrId;
   } else {
-    // Slug or URL-derived slug — resolve via users.get.
+    // Slug or URL-derived slug, resolve via users.get.
     try {
       const profileData = await ns.users.get(resolvedSlugOrId, {});
       recipientUrn = profileData.id;
@@ -620,7 +620,7 @@ export async function runMessageInMail(
 
 /**
  * Run `message inmail-balance`.
- * Read command — rejects --preview and --all.
+ * Read command, rejects --preview and --all.
  * v2: relocated to users.getInMailCredits (was messaging.getInMailBalance).
  */
 export async function runMessageInMailBalance(
@@ -655,7 +655,7 @@ const messageNewCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient: LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA…). URL and slug inputs resolve the provider ID automatically.",
+        "Recipient: LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically.",
       required: true,
     },
     text: { type: "positional", stdinArg: true, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
@@ -837,7 +837,7 @@ const messageInMailCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient: LinkedIn profile URL, bare slug, provider-id (ACoAAA…), or member URN (urn:li:member:<id>). URL and slug inputs resolve the provider ID automatically.",
+        "Recipient: LinkedIn profile URL, bare slug, provider-id (ACoAAA...), or member URN (urn:li:member:<id>). URL and slug inputs resolve the provider ID automatically.",
       required: true,
     },
     subject: { type: "string", description: "InMail subject line.", required: true },
@@ -863,7 +863,7 @@ const messageInMailCommand = defineCommand({
 });
 
 /**
- * `message send <chat_id> "<text>" [--attach <file>…]` — the documented
+ * `message send <chat_id> "<text>" [--attach <file>...]`, the documented
  * explicit-verb form for sending a message to an existing chat.
  *
  * This is a registered `send` subcommand so that `message send <chat_id> <text>`
@@ -955,9 +955,9 @@ const MESSAGE_SUBCOMMANDS = [
 ] as const;
 
 const MESSAGE_USAGE =
-  "Usage: curviate message new --to <attendee> \"<text>\" [--attach <file>…]\n" +
-  "       curviate message send <chat_id> \"<text>\" [--attach <file>…]\n" +
-  "       curviate message <chat_id> \"<text>\" [--attach <file>…]\n" +
+  "Usage: curviate message new --to <attendee> \"<text>\" [--attach <file>...]\n" +
+  "       curviate message send <chat_id> \"<text>\" [--attach <file>...]\n" +
+  "       curviate message <chat_id> \"<text>\" [--attach <file>...]\n" +
   "       curviate message get <chat_id> <message_id>\n" +
   "       curviate message edit <chat_id> <message_id> \"<text>\"\n" +
   "       curviate message delete <chat_id> <message_id>\n" +
@@ -989,7 +989,7 @@ export function guardBareMessageForm(
   const suggestion = nearestSubcommand(chatId, [...MESSAGE_SUBCOMMANDS]);
   out.stderr.write(
     `error: \`${chatId}\` is not a curviate message subcommand, and it is not a chat id ` +
-      `(a chat id looks like 2-… or COMPANY_…, or a linkedin.com/messaging/thread/… URL).\n`,
+      `(a chat id looks like 2-... or COMPANY_..., or a linkedin.com/messaging/thread/... URL).\n`,
   );
   if (suggestion) {
     out.stderr.write(`hint: did you mean \`curviate message ${suggestion}\`?\n`);
@@ -1040,7 +1040,7 @@ export const messageCommand = defineCommand({
 
     if (!flags.chatId) {
       out.stderr.write(MESSAGE_USAGE);
-      // <chat_id> is functionally required for the bare form — a missing
+      // <chat_id> is functionally required for the bare form, a missing
       // required positional is a usage error (exit 2), not a silent success.
       // `required: false` on the citty arg def exists only so this richer
       // usage block can run instead of citty's generic one-liner.

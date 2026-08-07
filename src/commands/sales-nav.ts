@@ -1,26 +1,26 @@
 /**
- * `curviate sales-nav` — Sales Navigator operations (tier: sn).
+ * `curviate sales-nav`, Sales Navigator operations (tier: sn).
  *
  * Subcommands:
- *   sales-nav search people [--keywords <k>] [--all] [--limit] [--cursor]        — search people (POST)
- *   sales-nav search companies [--keywords <k>] [--all] [--limit] [--cursor]     — search companies (POST)
- *   sales-nav search parameters --type <t>                                        — get filter parameters (read)
- *   sales-nav message new --to <id> "<text>" [--attach <f>…] [--voice <f>] [--video <f>] — start chat (write, multipart)
- *   sales-nav profile <identifier>                                                — get profile (read, resolveIdentifier)
- *   sales-nav save-lead --list <id> <user_id>                                     — save lead into a list (write, v2)
+ *   sales-nav search people [--keywords <k>] [--all] [--limit] [--cursor]: search people (POST)
+ *   sales-nav search companies [--keywords <k>] [--all] [--limit] [--cursor]: search companies (POST)
+ *   sales-nav search parameters --type <t>: get filter parameters (read)
+ *   sales-nav message new --to <id> "<text>" [--attach <f>...] [--voice <f>] [--video <f>], start chat (write, multipart)
+ *   sales-nav profile <identifier>: get profile (read, resolveIdentifier)
+ *   sales-nav save-lead --list <id> <user_id>: save lead into a list (write, v2)
  *
  * v2 list surface:
- *   sales-nav account-lists --account <id> [--all] [--limit] [--cursor]                              — list account lists (read)
- *   sales-nav lead-lists --account <id> [--all] [--limit] [--cursor]                                  — list lead lists (read)
- *   sales-nav browse-account-list <list_id> --account <id> [--filter --sort-by --sort-order]          — browse an account list (read)
- *   sales-nav browse-lead-list <list_id> --account <id> [--spotlight --sort-by --sort-order]          — browse a lead list (read)
- *   sales-nav save-account --list <id> <company_id> --account <id>                                    — save a company into a list (write)
+ *   sales-nav account-lists --account <id> [--all] [--limit] [--cursor]: list account lists (read)
+ *   sales-nav lead-lists --account <id> [--all] [--limit] [--cursor]: list lead lists (read)
+ *   sales-nav browse-account-list <list_id> --account <id> [--filter --sort-by --sort-order]: browse an account list (read)
+ *   sales-nav browse-lead-list <list_id> --account <id> [--spotlight --sort-by --sort-order]: browse a lead list (read)
+ *   sales-nav save-account --list <id> <company_id> --account <id>: save a company into a list (write)
  *
  * All subcommands are account-scoped.
- * Tier-gate: CLI never pre-checks — SDK call goes out; TIER_NOT_ACTIVE / LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5.
+ * Tier-gate: CLI never pre-checks, SDK call goes out; TIER_NOT_ACTIVE / LINKEDIN_FEATURE_NOT_SUBSCRIBED -> exit 5.
  * Identifier resolution: applied to `profile <identifier>` only; user_id/company_id/list_id pass verbatim.
  *
- * BREAKING (2026-07-04): `save-lead` re-signed for the v2 save-lead surface —
+ * BREAKING (2026-07-04): `save-lead` re-signed for the v2 save-lead surface,
  * the old `save-lead <user_id> [--list-id <id>]` (optional list) is retired,
  * no alias. The v2 op always saves into a specific list, so `--list` is now
  * required and the flag is renamed from `--list-id`.
@@ -44,9 +44,9 @@ import {
 } from "../lib/search-filters.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
-/** `GET /v1/{account_id}/sales-navigator/search/parameters` query — `type` required, `keywords` optional. */
+/** `GET /v1/{account_id}/sales-navigator/search/parameters` query, `type` required, `keywords` optional. */
 type SNGetParametersQuery = paths["/v1/{account_id}/sales-navigator/search/parameters"]["get"]["parameters"]["query"];
-/** `POST /v1/{account_id}/sales-navigator/search` body — `url` is the only accepted field. */
+/** `POST /v1/{account_id}/sales-navigator/search` body, `url` is the only accepted field. */
 type SNSearchFromUrlBody = paths["/v1/{account_id}/sales-navigator/search"]["post"]["requestBody"]["content"]["application/json"];
 
 // ---------------------------------------------------------------------------
@@ -159,8 +159,8 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `sales-nav search people [filters…]`.
- * POST search — read-classified (returns data), rejects --preview.
+ * Run `sales-nav search people [filters...]`.
+ * POST search, read-classified (returns data), rejects --preview.
  * Supports --all / --limit / --cursor pagination.
  */
 export async function runSalesNavSearchPeople(
@@ -226,8 +226,8 @@ export async function runSalesNavSearchPeople(
 }
 
 /**
- * Run `sales-nav search companies [filters…]`.
- * POST search — read-classified, rejects --preview.
+ * Run `sales-nav search companies [filters...]`.
+ * POST search, read-classified, rejects --preview.
  * Supports --all / --limit / --cursor pagination.
  */
 export async function runSalesNavSearchCompanies(
@@ -291,7 +291,7 @@ export async function runSalesNavSearchCompanies(
 
 /**
  * Run `sales-nav search parameters --type <t>`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runSalesNavGetParameters(
   client: Curviate,
@@ -310,7 +310,7 @@ export async function runSalesNavGetParameters(
   const outOpts = resolveOutputOpts(flags);
 
   // `type` is a free-form CLI string flag validated against the served enum
-  // server-side — a narrow cast here is the pragmatic alternative to
+  // server-side, a narrow cast here is the pragmatic alternative to
   // hand-duplicating the enum union client-side.
   const params: SNGetParametersQuery = { type: flags.type as SNGetParametersQuery["type"] };
   if (flags.keywords) params.keywords = flags.keywords;
@@ -326,7 +326,7 @@ export async function runSalesNavGetParameters(
 
 /**
  * Run `sales-nav search <url> [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview. Paginated. Runs a pasted Sales Navigator
+ * Read command, rejects --preview. Paginated. Runs a pasted Sales Navigator
  * search/list URL directly; the response is polymorphic (discriminated by
  * its own `object`) and rendered verbatim, no client-side branching.
  */
@@ -378,12 +378,12 @@ export async function runSalesNavSearchFromUrl(
 }
 
 /**
- * Run `sales-nav message new --to <id> --subject <s> "<text>" [--attach <f>…] [--voice <f>] [--video <f>]`.
- * Write command — supports --preview.
+ * Run `sales-nav message new --to <id> --subject <s> "<text>" [--attach <f>...] [--voice <f>] [--video <f>]`.
+ * Write command, supports --preview.
  *
  * v2: JSON-only (no multipart); `subject` is REQUIRED (unlike the classic
  * messaging surface, where it's optional). There is no separate
- * voice_message/video_message body field — every attachment (file, voice,
+ * voice_message/video_message body field, every attachment (file, voice,
  * or video) rides the single `attachments[]` array as a base64 object;
  * voice/video use `send_mode: "native"` for a platform-native bubble
  * (`metadata.duration` is not computed client-side and is left unset).
@@ -468,7 +468,7 @@ export async function runSalesNavMessageNew(
 
 /**
  * Run `sales-nav profile <identifier>`.
- * Read command — rejects --preview. Identifier resolved via resolveIdentifier.
+ * Read command, rejects --preview. Identifier resolved via resolveIdentifier.
  */
 export async function runSalesNavProfile(
   client: Curviate,
@@ -493,9 +493,9 @@ export async function runSalesNavProfile(
 
 /**
  * Run `sales-nav save-lead --list <id> <user_id>`.
- * Write command — supports --preview. user_id passes verbatim (NOT URL-resolved).
+ * Write command, supports --preview. user_id passes verbatim (NOT URL-resolved).
  *
- * BREAKING (2026-07-04): re-signed for the v2 save-lead surface — `--list` is
+ * BREAKING (2026-07-04): re-signed for the v2 save-lead surface, `--list` is
  * now required (v2 always saves into a specific list; the v1 optional
  * `--list-id` semantics do not exist in v2).
  */
@@ -533,12 +533,12 @@ export async function runSalesNavSaveLead(
 }
 
 // ---------------------------------------------------------------------------
-// v2 list surface — exported run functions
+// v2 list surface, exported run functions
 // ---------------------------------------------------------------------------
 
 /**
  * Run `sales-nav account-lists --account <id> [--limit] [--cursor] [--all]`.
- * Read command — rejects --preview. Lists the operator's saved-account lists.
+ * Read command, rejects --preview. Lists the operator's saved-account lists.
  */
 export async function runSalesNavAccountLists(
   client: Curviate,
@@ -579,7 +579,7 @@ export async function runSalesNavAccountLists(
 
 /**
  * Run `sales-nav lead-lists --account <id> [--limit] [--cursor] [--all]`.
- * Read command — rejects --preview. Lists the operator's saved-lead lists.
+ * Read command, rejects --preview. Lists the operator's saved-lead lists.
  */
 export async function runSalesNavLeadLists(
   client: Curviate,
@@ -620,7 +620,7 @@ export async function runSalesNavLeadLists(
 
 /**
  * Run `sales-nav browse-account-list <list_id> --account <id> [--filter --sort-by --sort-order] [--limit] [--cursor] [--all]`.
- * Read command (POST-with-body-filters) — rejects --preview.
+ * Read command (POST-with-body-filters), rejects --preview.
  */
 export async function runSalesNavBrowseAccountList(
   client: Curviate,
@@ -667,7 +667,7 @@ export async function runSalesNavBrowseAccountList(
 
 /**
  * Run `sales-nav browse-lead-list <list_id> --account <id> [--spotlight --sort-by --sort-order] [--limit] [--cursor] [--all]`.
- * Read command (POST-with-body-filters) — rejects --preview.
+ * Read command (POST-with-body-filters), rejects --preview.
  */
 export async function runSalesNavBrowseLeadList(
   client: Curviate,
@@ -714,7 +714,7 @@ export async function runSalesNavBrowseLeadList(
 
 /**
  * Run `sales-nav save-account --list <id> <company_id> --account <id>`.
- * Write command — supports --preview. company_id passes verbatim.
+ * Write command, supports --preview. company_id passes verbatim.
  */
 export async function runSalesNavSaveAccount(
   client: Curviate,
@@ -761,7 +761,7 @@ const salesNavMessageNewCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient's LinkedIn provider ID (ACw… format, e.g. from a Sales Navigator search result or profile). Not resolved from a URL/slug. Pass the provider ID directly.",
+        "Recipient's LinkedIn provider ID (ACw... format, e.g. from a Sales Navigator search result or profile). Not resolved from a URL/slug. Pass the provider ID directly.",
       required: true,
     },
     subject: { type: "string", description: "Message subject line (required for Sales Navigator messaging).", required: true },
@@ -796,7 +796,7 @@ const salesNavMessageCommand = defineCommand({
     new: salesNavMessageNewCommand,
   },
   async run() {
-    process.stderr.write("Usage: curviate sales-nav message new --to <id> \"<text>\" [--attach <file>…]\n");
+    process.stderr.write("Usage: curviate sales-nav message new --to <id> \"<text>\" [--attach <file>...]\n");
   },
 });
 
@@ -910,7 +910,7 @@ const salesNavSearchCommand = defineCommand({
   async run({ args }) {
     const flags = args as SalesNavFlags;
 
-    // Bare form: `sales-nav search <url>` runs the URL directly. No url → print usage.
+    // Bare form: `sales-nav search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
         "Usage: curviate sales-nav search <url>\n" +
@@ -969,7 +969,7 @@ const salesNavSaveLeadCommand = defineCommand({
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
-    userId: { type: "positional", description: "Sales Navigator member ID (ACw… format)." },
+    userId: { type: "positional", description: "Sales Navigator member ID (ACw... format)." },
     list: { type: "string", description: "Lead list ID to save the member into (required; the v2 save always targets a specific list).", required: true },
   },
   async run({ args }) {
@@ -992,7 +992,7 @@ const salesNavSaveLeadCommand = defineCommand({
 });
 
 // ---------------------------------------------------------------------------
-// v2 list surface — citty command definitions
+// v2 list surface, citty command definitions
 // ---------------------------------------------------------------------------
 
 const salesNavAccountListsCommand = defineCommand({

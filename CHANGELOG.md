@@ -8,6 +8,29 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Changed
+
+- **Punctuation swept out of the published copy and the printed help.** The
+  README, this changelog, and the help and error strings in `src/` used
+  typographic characters with no plain-ASCII equivalent on the keyboard: em and
+  en dashes, the single-glyph ellipsis, arrows. An id placeholder now elides
+  with `acc_...`, a range reads `1-100`, and a mapping reads
+  `write->read`. No release note changed what it claims; the changelog's word
+  stream is byte-identical to before. Two non-ASCII characters stay on purpose:
+  the redaction mask `config list` prints, and the literal emoji that documents
+  `message react`'s own argument.
+
+### Added
+
+- **`pnpm check:copy`**, a pre-publish copy-quality gate over the npm-page copy
+  (README, changelog, package description), chained into `prepack` next to the
+  existing internal-reference scan. It fails the pack on any non-ASCII
+  typographic character and reports, without failing, wording from the generic
+  marketing register. The printed help and error strings keep their own gate,
+  `test/copy-tells.test.ts`, which walks the TypeScript AST so it judges string
+  literals and never comments; that test now covers the full character set
+  rather than the em dash alone.
+
 ## [0.21.1] - 2026-08-06
 
 ### Fixed
@@ -169,21 +192,21 @@ covered by the published SDK, so no SDK bump was required).
 
 ### Added
 
-- **`inbox search`** — search chats via `messaging.searchChats`.
-- **`search groups`, `search services`, `search service-parameters`** — new search
+- **`inbox search`**: search chats via `messaging.searchChats`.
+- **`search groups`, `search services`, `search service-parameters`**: new search
   surfaces for groups, services, and service search parameters.
-- **`post saved`, `post save`, `post unsave`** — list, save, and unsave posts.
+- **`post saved`, `post save`, `post unsave`**: list, save, and unsave posts.
 - **`company managed`, `company followers`, `company chats`, `company chat`,
-  `company messages`, `company message`, `company search-chats`** — company-inbox
+  `company messages`, `company message`, `company search-chats`**: company-inbox
   and managed-company read/write surface.
-- **`profile subscription`, `profile analytics`, `profile visitors`, `profile ssi`**
-  — account-scoped profile insight subcommands (subscription status, post/profile
+- **`profile subscription`, `profile analytics`, `profile visitors`, `profile ssi`**:
+  account-scoped profile insight subcommands (subscription status, post/profile
   analytics, visitor list, Social Selling Index).
-- **`group` command group** — new top-level group closing the LinkedIn Groups gap.
-- **`feed`, `feed home`** — new command group to read the connected account's
+- **`group` command group**, new top-level group closing the LinkedIn Groups gap.
+- **`feed`, `feed home`**: new command group to read the connected account's
   LinkedIn home feed as agent-actionable posts.
 - **`notification`, `notification list`, `notification delete`,
-  `notification show-less`** — new command group to read and act on LinkedIn
+  `notification show-less`**: new command group to read and act on LinkedIn
   notification cards.
 
 Parity with the SDK surface is now 145/0 (no known gaps).
@@ -194,11 +217,11 @@ A patch aligning `company reply` with the company-inbox chat-id cutover. No brea
 
 ### Fixed
 
-- **`company reply <id> <chat_id> "<text>"`** now takes the normal `2-…` conversation
+- **`company reply <id> <chat_id> "<text>"`** now takes the normal `2-...` conversation
   id that `company chats` returns; the endpoint resolves the page mailbox internally from
   the company identifier, so the earlier `COMPANY_` chat-id requirement is gone. `--preview`
   now always prints a "Will send as company page `<id>`" notice derived from the resolved
-  identifier (previously it went silent for a bare `2-…` id). Reply-only and admin-gated,
+  identifier (previously it went silent for a bare `2-...` id). Reply-only and admin-gated,
   otherwise unchanged.
 
 ## [0.18.0] - 2026-07-17
@@ -207,10 +230,10 @@ A minor release adding the `company reply` command. No breaking changes, built a
 
 ### Added
 
-- **`company reply <id> <chat_id> "<text>" [--attach <file>…]`** (write, admin-gated,
+- **`company reply <id> <chat_id> "<text>" [--attach <file>...]`** (write, admin-gated,
   `--preview` accepted). Replies to an existing company-inbox conversation as the page,
   via the SDK's `companies.sendMessage`. `<chat_id>` must be a `COMPANY_` chat id from
-  `inboxes chats`, not the `2-…` id the `company` reads return; it passes through verbatim
+  `inboxes chats`, not the `2-...` id the `company` reads return; it passes through verbatim
   (no client-side pre-check) and a non-`COMPANY_` id is rejected by the API with a guiding
   400 naming the fix. Reply-only: it cannot start a new conversation on the page's behalf.
   `<id>` accepts a URL, slug, or numeric id, resolved to the numeric id first (including
@@ -225,7 +248,7 @@ commands. No breaking changes, built against `@curviate/sdk` 0.17.0.
 
 ### Added
 
-- **`company follow-invite <id> --invitee <AC…> [--invitee <AC…> ...]`** (write, admin-gated,
+- **`company follow-invite <id> --invitee <AC...> [--invitee <AC...> ...]`** (write, admin-gated,
   `--preview` accepted). Invites the connected account's 1st-degree connections to follow an
   administered company page. `--invitee` is repeatable, at least one required, max 50 per
   request. All-or-nothing: for an all-valid request you get one outcome per requested invitee,
@@ -256,7 +279,7 @@ built against `@curviate/sdk` 0.16.0.
   [--cursor] [--all]` lists a single inbox's conversations, cursor-paginated
   like every other list command. Every returned chat id is send-ready: reply
   with the existing `message send <chat_id> "<text>"`. A company inbox's
-  chat id (e.g. `COMPANY_83734124_2-…`) sends AS THE PAGE, no separate flag
+  chat id (e.g. `COMPANY_83734124_2-...`) sends AS THE PAGE, no separate flag
   needed. Company inboxes are reply-only and cannot start a new conversation.
   Distinct from the existing `inbox` command group (a friendlier front door
   to the account's own message-thread inbox: `messaging.listChats`/`getChat`/
@@ -293,11 +316,11 @@ A patch release fixing an interactive-terminal hang on `account link`.
 
 - **`account link --password-stdin` / `--li-at-stdin` no longer hang on an
   interactive terminal.** These flags previously read stdin to EOF, which a
-  human paste + Enter never produces on a TTY — the command hung
+  human paste + Enter never produces on a TTY; the command hung
   indefinitely and the pasted secret echoed on-screen. The read is now
   mode-aware: piped/redirected stdin (non-TTY) is unchanged (read to EOF,
   trimmed); an interactive TTY now prints a single cue line, then reads one
-  no-echo line — paste + Enter resolves immediately, including a paste whose
+  no-echo line; paste + Enter resolves immediately, including a paste whose
   clipboard content ends in a trailing newline. An empty line still falls
   through to the normal resolution order (env var, then the password
   prompt / `li_at` fail-fast).
@@ -315,15 +338,15 @@ streams, one back-compatible reaction-signature unification, and a
 ### Added
 
 - **Successor hints for removed/renamed commands.** Reaching for a command that
-  moved or was removed in 0.15.0 — `post list`, `post comment`/`comments`,
+  moved or was removed in 0.15.0 (`post list`, `post comment`/`comments`,
   `connect respond`, `profile connections`, `account connect-link`/`reconnect-link`/`reconnect`,
   `inbox sync`/`sync-chat`, `recruiter add-candidate`/`project-jobs`/`sync`,
-  `sales-nav sync`, `webhook state-diff`, `company followers` — now prints a
+  `sales-nav sync`, `webhook state-diff`, `company followers`) now prints a
   one-line "did you mean" pointer to the replacement instead of a bare
   "unknown command". The exit code is unchanged (2).
 - **`--all` NDJSON-mode notice.** When `--all` streaming engages, a one-line
-  notice on stderr makes the format switch explicit (`--all` streams NDJSON —
-  one object per line — not the `{items, cursor}` envelope), so an agent
+  notice on stderr makes the format switch explicit (`--all` streams NDJSON,
+  one object per line, not the `{items, cursor}` envelope), so an agent
   pattern-matching the plain-mode shape does not mis-parse the stream.
 - **`--page-delay <ms>` and default `--all` pacing.** `--all` now pauses a
   modest default between page fetches, keeping a long stream under the platform
@@ -331,12 +354,12 @@ streams, one back-compatible reaction-signature unification, and a
 - **`job list --state ALL`.** A best-effort client-side union across every state
   (DRAFT/OPEN/CLOSED/REVIEW/SUSPENDED): each state is queried, re-filtered
   against its own state, then merged and de-duplicated by id. There is no
-  unified cursor — each state is walked independently and `--max-pages` applies
+  unified cursor; each state is walked independently and `--max-pages` applies
   per state.
 - **`--fields` unknown-field warning.** Projecting a field that matches nothing
   on the response now emits one stderr warning naming the unmatched fields and
   listing the available keys, instead of silently returning `{}`. The output is
-  unchanged — the known fields still project.
+  unchanged; the known fields still project.
 
 ### Changed
 
@@ -364,7 +387,7 @@ streams, one back-compatible reaction-signature unification, and a
 
 ## [0.15.0] - 2026-07-11
 
-Full v2 API-surface parity — the coupled release with `@curviate/sdk` 0.15.0. A large
+Full v2 API-surface parity, the coupled release with `@curviate/sdk` 0.15.0. A large
 **breaking** minor (pre-1.0): the CLI is re-pointed onto the v2-only API, drops the
 commands whose endpoint no longer exists, relocates several verbs, and adds commands for
 the new v2 methods. Every command noun kept its intent-shaped name; only the wiring,
@@ -374,43 +397,43 @@ removed orphans, relocations, and additions changed.
 
 Commands whose underlying v2 endpoint no longer exists:
 
-- **`account connect-link`**, **`account reconnect-link`**, **`account reconnect`** — the hosted-link and in-place re-auth flows. Connect a new account with `account link`; poll a hosted session with `account connect-session poll`.
+- **`account connect-link`**, **`account reconnect-link`**, **`account reconnect`**: the hosted-link and in-place re-auth flows. Connect a new account with `account link`; poll a hosted session with `account connect-session poll`.
 - **`company followers`**
-- **`inbox sync`**, **`inbox sync-chat`** — message history now syncs implicitly.
+- **`inbox sync`**, **`inbox sync-chat`**: message history now syncs implicitly.
 - **`post list`**
 - **`recruiter sync`**, **`recruiter add-applicant`**, **`recruiter reject-applicant`**, **`recruiter job checkpoint`**
 - **`sales-nav sync`**
 - **`webhook state-diff`**
 
-Flags with no v2 request-side home — dropped entirely (not defined, parsed, or forwarded), with no replacement:
+Flags with no v2 request-side home, dropped entirely (not defined, parsed, or forwarded), with no replacement:
 
-- **`profile --notify`** — signal-a-view has no v2 request field.
-- **`message inmail --surface`** — the v2 send-InMail body carries no surface/type discriminator.
-- **`post create --video-thumbnail`** — v2 posts carry media only via `--attach`.
-- **`search people|companies|posts|jobs --url`** — from-URL search is now the bare `search <url>` form.
+- **`profile --notify`**: signal-a-view has no v2 request field.
+- **`message inmail --surface`**: the v2 send-InMail body carries no surface/type discriminator.
+- **`post create --video-thumbnail`**: v2 posts carry media only via `--attach`.
+- **`search people|companies|posts|jobs --url`**: from-URL search is now the bare `search <url>` form.
 
 ### Changed (BREAKING)
 
 Renames and relocations:
 
-- **`post comment`** / **`post comments`** (and `post react --comment-id`) → the new **`comment`** group (`comment add`, `comment reply`, `comment react`, and the rest). Comment threads are first-class.
-- **`connect respond --accept` / `--decline`** → **`connect accept <id>`** / **`connect decline <id>`**; the combined `respond` is removed.
-- **`recruiter add-candidate`** → **`recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`** (full body reshape).
-- **`recruiter project-jobs`** → **`recruiter project-job get <project_id>`** (cardinality fix — a project has at most one attached posting; single-object read, no pagination).
-- **`recruiter job applicants`** → **`recruiter applicants <project_id>`** (the applicant list is project-scoped, not job-scoped; `--channel-id` still required).
-- **`profile connections`** → **`profile relations`**.
-- **`profile endorse --skill`** → **`profile endorse --endorsement-id`** — value semantics unchanged (still the target's `endorsement_id`, obtained from their skills section via `profile <id> --sections skills`); the old flag name misleadingly suggested a skill name.
+- **`post comment`** / **`post comments`** (and `post react --comment-id`) -> the new **`comment`** group (`comment add`, `comment reply`, `comment react`, and the rest). Comment threads are first-class.
+- **`connect respond --accept` / `--decline`** -> **`connect accept <id>`** / **`connect decline <id>`**; the combined `respond` is removed.
+- **`recruiter add-candidate`** -> **`recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`** (full body reshape).
+- **`recruiter project-jobs`** -> **`recruiter project-job get <project_id>`** (cardinality fix: a project has at most one attached posting; single-object read, no pagination).
+- **`recruiter job applicants`** -> **`recruiter applicants <project_id>`** (the applicant list is project-scoped, not job-scoped; `--channel-id` still required).
+- **`profile connections`** -> **`profile relations`**.
+- **`profile endorse --skill`** -> **`profile endorse --endorsement-id`**, value semantics unchanged (still the target's `endorsement_id`, obtained from their skills section via `profile <id> --sections skills`); the old flag name misleadingly suggested a skill name.
 
 CLI-visible shape changes:
 
 - **`job publish`** now requires **`--mode`** (`FREE | PROMOTED | PROMOTED_PLUS`); `PROMOTED`/`PROMOTED_PLUS` additionally require the full `--budget-*` triple.
-- **`recruiter job create`** now requires **`--project-name`** and takes the full v2 job body — `--employment-status` replaces the pre-v2 `--employment-type` on this command, alongside the company / workplace / location flags.
-- **`recruiter message new`** is now **JSON-only** (file/voice/video attachments ride the body as base64 — no multipart) and requires **`--subject`** and **`--signature`**.
+- **`recruiter job create`** now requires **`--project-name`** and takes the full v2 job body; `--employment-status` replaces the pre-v2 `--employment-type` on this command, alongside the company / workplace / location flags.
+- **`recruiter message new`** is now **JSON-only** (file/voice/video attachments ride the body as base64, no multipart) and requires **`--subject`** and **`--signature`**.
 
 Dependency and request grammar:
 
 - **`@curviate/sdk` bumped to `0.15.0`.**
-- **Account-first path grammar.** Every account-scoped request now addresses the account in the URL path instead of a query/body field. This is handled entirely inside the SDK — no CLI syntax changes — but every command's underlying request moved.
+- **Account-first path grammar.** Every account-scoped request now addresses the account in the URL path instead of a query/body field. This is handled entirely inside the SDK, no CLI syntax changes, but every command's underlying request moved.
 
 ### Added
 
@@ -418,7 +441,7 @@ New **`comment`** command group (the comment-thread surface):
 
 - `comment list <post_id>`, `comment add`, `comment reply`, `comment edit`, `comment delete`, `comment replies`, `comment react`, `comment reactions`, `comment unreact`, `comment user`.
 
-Job-posting management — the **`job`** family:
+Job-posting management, the **`job`** family:
 
 - `job list`, `job create`, `job update`, `job budget`, `job publish`, `job close`, `job applicants`, `job applicant get`, and `job applicant resume` (binary résumé download via `-o`).
 
@@ -444,68 +467,68 @@ Sales Navigator:
 
 Account:
 
-- **`account link --account-id <acc_…>`** (optional, non-breaking) — re-authenticate an existing account **in place** (reconnect): passing the id makes `account link` an in-place reconnect of that account; omit it for an ordinary fresh connect (unchanged — no `account_id` is sent). This is the reconnect path now that the hosted `account reconnect` / `account reconnect-link` commands are removed.
+- **`account link --account-id <acc_...>`** (optional, non-breaking): re-authenticate an existing account **in place** (reconnect): passing the id makes `account link` an in-place reconnect of that account; omit it for an ordinary fresh connect (unchanged, no `account_id` is sent). This is the reconnect path now that the hosted `account reconnect` / `account reconnect-link` commands are removed.
 
 Exit-code mapping:
 
-- **`ACCOUNT_ALREADY_LINKED`** and **`LINKEDIN_OPERATION_NOT_SUPPORTED`** are now present in `EXIT_CODE_MAP` (exit `8`, account / connection state — grouped with `ACCOUNT_RESTRICTED`/`RESOURCE_ACCESS_RESTRICTED`); previously `ACCOUNT_ALREADY_LINKED` was already a valid SDK `ErrorCode` but had no exit-code entry, and `LINKEDIN_OPERATION_NOT_SUPPORTED` is a new SDK code (a permanent LinkedIn platform limitation for the attempted operation, e.g. listing a non-self user's following list). Both were silently falling through to the default exit `1`; the exhaustiveness test now covers them.
-- **`CONNECTION_REQUEST_CONFLICT`** (exit `8`, account / connection state — the documented "already invited or already connected" contract on a `connect` retry) and **`RATE_LIMITED`** (exit `6`, rate-limited — a general/unscoped rate-limit signal alongside `RATE_LIMIT_ACCOUNT`/`RATE_LIMIT_TENANT`/`PLATFORM_RATE_LIMIT`/`LINKEDIN_RATE_LIMITED`) are new SDK error codes, both now present in `EXIT_CODE_MAP`. Picked up via the refreshed `@curviate/sdk` 0.15.0 tarball dependency (pnpm-lock.yaml integrity hash only).
+- **`ACCOUNT_ALREADY_LINKED`** and **`LINKEDIN_OPERATION_NOT_SUPPORTED`** are now present in `EXIT_CODE_MAP` (exit `8`, account / connection state, grouped with `ACCOUNT_RESTRICTED`/`RESOURCE_ACCESS_RESTRICTED`); previously `ACCOUNT_ALREADY_LINKED` was already a valid SDK `ErrorCode` but had no exit-code entry, and `LINKEDIN_OPERATION_NOT_SUPPORTED` is a new SDK code (a permanent LinkedIn platform limitation for the attempted operation, e.g. listing a non-self user's following list). Both were silently falling through to the default exit `1`; the exhaustiveness test now covers them.
+- **`CONNECTION_REQUEST_CONFLICT`** (exit `8`, account / connection state, the documented "already invited or already connected" contract on a `connect` retry) and **`RATE_LIMITED`** (exit `6`, rate-limited, a general/unscoped rate-limit signal alongside `RATE_LIMIT_ACCOUNT`/`RATE_LIMIT_TENANT`/`PLATFORM_RATE_LIMIT`/`LINKEDIN_RATE_LIMITED`) are new SDK error codes, both now present in `EXIT_CODE_MAP`. Picked up via the refreshed `@curviate/sdk` 0.15.0 tarball dependency (pnpm-lock.yaml integrity hash only).
 
 ### Fixed
 
-- **`company <id> employees` / `company <id> posts` / `company <id> jobs` (id-first form) no longer silently returns the base company profile.** The router bound `<id>` and dropped the trailing sub-resource word, so the id-first form quietly returned the company profile with exit 0. It now routes the id-first form to the sub-resource (equivalent to `company <sub> <id>`), or exits 2 with an actionable error on a genuinely unexpected extra argument — never a silent wrong result. The guard is applied uniformly across every bare-form command group.
+- **`company <id> employees` / `company <id> posts` / `company <id> jobs` (id-first form) no longer silently returns the base company profile.** The router bound `<id>` and dropped the trailing sub-resource word, so the id-first form quietly returned the company profile with exit 0. It now routes the id-first form to the sub-resource (equivalent to `company <sub> <id>`), or exits 2 with an actionable error on a genuinely unexpected extra argument, never a silent wrong result. The guard is applied uniformly across every bare-form command group.
 - **`company employees|posts|jobs <slug>` (or a company URL) now works.** The three sub-resources previously required the numeric company id and erred on a handle; they now auto-resolve a slug/URL to the numeric id the same way the bare `company <slug>` retrieve does (a numeric id still passes straight through; a genuinely unresolvable identifier surfaces the not-found error).
-- **`profile follow <slug>` / `profile unfollow <slug>` (or a member URL) now work.** The follow endpoint accepts only a provider id, so a slug returned "not found"; both commands now resolve the identifier to the member's provider id first — the same auto-resolution `profile`, `connect`, and `message` already do.
-- **`company posts` / `search posts` slim `--json` output no longer emits a permanently-null `post_urn`/`posted_at` and silently drops the post's own id (D13).** Both endpoints share the identical v2 item schema (`{id, share_url, text, author, reaction_count, comment_count, repost_count, is_repost, attachments, reactions, permissions}`) — `post_urn` was never a real key and `posted_at` doesn't exist on this resource at all. Slim output now surfaces the real `id`; `--fields` projects the real v2 keys. `share_url`/`repost_count`/`is_repost`/`attachments`/`reactions`/`permissions`/the full `author` object remain verbose-only.
-- **`company <id>` slim `--json` output no longer emits permanently-null `employee_count`/`employee_count_range`/`followers_count`/`foundation_date`, and drops the entirely-fictitious `messaging` field.** The real v2 company-profile response nests headcount data at `insights.headcount` / `insights.headcount_range.from` (the range has no upper bound at all — documented open-ended-high, so no `to` is invented), the establishment date is a bare year at `establishment_year` (not a date string), the follower count key is singular, and there is no `messaging` field anywhere on this resource. Slim output now surfaces real `employee_count` / `employee_count_range` (`{from}` only) values; **`foundation_date` is renamed `establishment_year`** and **`followers_count` is renamed `follower_count`** (both now real, non-null); `messaging` is removed outright. `headquarters` (synthesized from `locations`) now reads the real `country_code`/`postal_code` location keys — the fictitious `country` key never existed and always projected null, and is renamed `country_code`; `postal_code` is added. `area` (region/state, e.g. "Washington") stays — it's real and often populated (verified live), even though the SDK's OpenAPI-generated types don't declare it for this endpoint.
+- **`profile follow <slug>` / `profile unfollow <slug>` (or a member URL) now work.** The follow endpoint accepts only a provider id, so a slug returned "not found"; both commands now resolve the identifier to the member's provider id first, the same auto-resolution `profile`, `connect`, and `message` already do.
+- **`company posts` / `search posts` slim `--json` output no longer emits a permanently-null `post_urn`/`posted_at` and silently drops the post's own id (D13).** Both endpoints share the identical v2 item schema (`{id, share_url, text, author, reaction_count, comment_count, repost_count, is_repost, attachments, reactions, permissions}`), `post_urn` was never a real key and `posted_at` doesn't exist on this resource at all. Slim output now surfaces the real `id`; `--fields` projects the real v2 keys. `share_url`/`repost_count`/`is_repost`/`attachments`/`reactions`/`permissions`/the full `author` object remain verbose-only.
+- **`company <id>` slim `--json` output no longer emits permanently-null `employee_count`/`employee_count_range`/`followers_count`/`foundation_date`, and drops the entirely-fictitious `messaging` field.** The real v2 company-profile response nests headcount data at `insights.headcount` / `insights.headcount_range.from` (the range has no upper bound at all, documented open-ended-high, so no `to` is invented), the establishment date is a bare year at `establishment_year` (not a date string), the follower count key is singular, and there is no `messaging` field anywhere on this resource. Slim output now surfaces real `employee_count` / `employee_count_range` (`{from}` only) values; **`foundation_date` is renamed `establishment_year`** and **`followers_count` is renamed `follower_count`** (both now real, non-null); `messaging` is removed outright. `headquarters` (synthesized from `locations`) now reads the real `country_code`/`postal_code` location keys, the fictitious `country` key never existed and always projected null, and is renamed `country_code`; `postal_code` is added. `area` (region/state, e.g. "Washington") stays; it's real and often populated (verified live), even though the SDK's OpenAPI-generated types don't declare it for this endpoint.
 - **`job get` / `recruiter job get` slim `--json` output no longer emits a permanently-null `company_id`/`applicants_counter`, and `job get` (Core) no longer emits a permanently-null `published_at`.** `company_id` is synthesized from the nested `company.id` (neither shape has a top-level `company_id`); `applicants_counter` is renamed to `applications_count` (the real key on both shapes); `published_at` falls back to `created_at` on the Core shape, which has no `published_at` field at all (the Recruiter shape's own `published_at` is real and unaffected).
-- **`profile me` / `profile <id>` slim `--json` output no longer emits permanently-null `provider_id`/`network_distance`/`is_premium`/`current_position`, restores `headline` sourced from its real location, and drops the entirely-fictitious `occupation`/`organizations` fields.** Both commands are backed by the identical real v2 user-profile response — there is no top-level `provider_id` (the real identifier is `id`), no top-level `network_distance`/`is_premium` (both nested under `specifics`), and no top-level `work_experience` (the real array is `specifics.experience`, which fed the `current_position` synthesis — also permanently null until now). `provider_id` now sources from `id`; `network_distance` and `is_premium` now source from `specifics.network_distance`/`specifics.is_premium`; `current_position` is synthesized from `specifics.experience[0]`. **`profile me`'s `email` is renamed `emails`** (the real field is a plural array, not a singular string). **`headline` ← `description`** — on a v2 read, LinkedIn serves the profile headline in the `description` wire field (a separate `bio` field carries the About-section paragraph); initially assumed to have no v2 source and dropped, then restored once the real source was confirmed live (3-way evidence: a written headline read back via `description` byte-for-byte, the same result from the M3 matrix probe, and `--verbose` showing headline-shaped text in `description` across live profiles). `occupation` and `organizations` are removed outright — neither has a v2 source; the real user-profile response has no occupation-summary field and no administered-organizations field of any kind. (`profile me`'s slim output drops from 10 fields to 9; `profile <id>`'s drops from 9 to 8.)
-- **`job list --state` now re-filters returned items against their own `state` (D10).** LinkedIn's upstream state filter is best-effort — it commonly returns items whose own `state` doesn't match the request. `--json` output (and `--all` streaming) now only contains items whose own `state` actually matches (`--state OPEN` maps to the response's `LISTED`, the one value that differs between the request and response vocabularies); dropped items produce a stderr note with the count. The re-filter is page-local and never touches the pagination cursor, so `--all` still walks the same unfiltered upstream pages — it may fetch more pages than the filtered item count implies. The `--state` help text now says so.
+- **`profile me` / `profile <id>` slim `--json` output no longer emits permanently-null `provider_id`/`network_distance`/`is_premium`/`current_position`, restores `headline` sourced from its real location, and drops the entirely-fictitious `occupation`/`organizations` fields.** Both commands are backed by the identical real v2 user-profile response; there is no top-level `provider_id` (the real identifier is `id`), no top-level `network_distance`/`is_premium` (both nested under `specifics`), and no top-level `work_experience` (the real array is `specifics.experience`, which fed the `current_position` synthesis, also permanently null until now). `provider_id` now sources from `id`; `network_distance` and `is_premium` now source from `specifics.network_distance`/`specifics.is_premium`; `current_position` is synthesized from `specifics.experience[0]`. **`profile me`'s `email` is renamed `emails`** (the real field is a plural array, not a singular string). **`headline` <- `description`**: on a v2 read, LinkedIn serves the profile headline in the `description` wire field (a separate `bio` field carries the About-section paragraph); initially assumed to have no v2 source and dropped, then restored once the real source was confirmed live (3-way evidence: a written headline read back via `description` byte-for-byte, the same result from the M3 matrix probe, and `--verbose` showing headline-shaped text in `description` across live profiles). `occupation` and `organizations` are removed outright, neither has a v2 source; the real user-profile response has no occupation-summary field and no administered-organizations field of any kind. (`profile me`'s slim output drops from 10 fields to 9; `profile <id>`'s drops from 9 to 8.)
+- **`job list --state` now re-filters returned items against their own `state` (D10).** LinkedIn's upstream state filter is best-effort; it commonly returns items whose own `state` doesn't match the request. `--json` output (and `--all` streaming) now only contains items whose own `state` actually matches (`--state OPEN` maps to the response's `LISTED`, the one value that differs between the request and response vocabularies); dropped items produce a stderr note with the count. The re-filter is page-local and never touches the pagination cursor, so `--all` still walks the same unfiltered upstream pages; it may fetch more pages than the filtered item count implies. The `--state` help text now says so.
 
-### Notes — no user action required
+### Notes: no user action required
 
 - **`post react --as-organization`**: unchanged at the flag level; only the internal wire key was renamed, so the flag behaves exactly as before.
 
 ## [0.14.0] - 2026-07-07
 
-Webhooks surface cascade — the coupled release with `@curviate/sdk` 0.14.0. Additive minor.
+Webhooks surface cascade, the coupled release with `@curviate/sdk` 0.14.0. Additive minor.
 
 ### Added
 
-- **`webhook get <id>`** — get a single webhook owned by the calling tenant (`webhooks.get`). Read command; `--preview` is a usage error (nothing to mutate), matching `webhook state-diff`.
+- **`webhook get <id>`**: get a single webhook owned by the calling tenant (`webhooks.get`). Read command; `--preview` is a usage error (nothing to mutate), matching `webhook state-diff`.
 
 ### Changed
 
-- **`@curviate/sdk` bumped to `^0.14.0`.** The SDK's webhook event catalogue expanded 21 → 27 (`chat.updated`, `chat.deleted`, `connection.new`, `account.initial_sync.*`, and account-lifecycle renames) and its `CurviateEvent` union re-keyed to match — this CLI never imports `CurviateEvent` directly, so `webhook verify`'s offline HMAC verification is unaffected; only the dependency range changed.
+- **`@curviate/sdk` bumped to `^0.14.0`.** The SDK's webhook event catalogue expanded 21 -> 27 (`chat.updated`, `chat.deleted`, `connection.new`, `account.initial_sync.*`, and account-lifecycle renames) and its `CurviateEvent` union re-keyed to match; this CLI never imports `CurviateEvent` directly, so `webhook verify`'s offline HMAC verification is unaffected; only the dependency range changed.
 
 ## [0.13.0] - 2026-07-05
 
-Accounts/Auth surface migration — the coupled release with `@curviate/sdk` 0.13.0. This is a
+Accounts/Auth surface migration, the coupled release with `@curviate/sdk` 0.13.0. This is a
 **breaking** minor (pre-1.0): the account connection and checkpoint commands were reshaped to
 match the new account-in-path grammar.
 
 ### Added
 
-- **`account reconnect-link <account_id>`** — mint a one-time hosted **re-authorization** link for an existing disconnected account (the hosted counterpart of `account reconnect`). Same open+wait UX as `account connect-link`: on an interactive TTY the URL auto-opens and the command waits for the account to reconnect (exit `0` resolved, `9` expired/failed, `12` on a wait-window timeout); non-interactively it prints the url + session_id and returns immediately. Optional `--expires-in-seconds` / `--redirect-url`.
-- **`account update --metadata '<json>'`** — set the account's custom metadata (a flat JSON object that replaces the store wholesale). **`account update --clear-proxy`** — clear the custom proxy (revert to automatic proxy protection).
-- **New connect/checkpoint response fields ride through `--json` output** (coupled with the SDK 0.13.0 connect-fix regen — the CLI duck-types the response, so the fields pass through verbatim with no code change):
-  - `recovered` (boolean) on `account link` and `account checkpoint solve` completions — `true` when the connect reclaimed a LinkedIn identity already present on the workspace rather than connecting a brand-new one.
+- **`account reconnect-link <account_id>`**: mint a one-time hosted **re-authorization** link for an existing disconnected account (the hosted counterpart of `account reconnect`). Same open+wait UX as `account connect-link`: on an interactive TTY the URL auto-opens and the command waits for the account to reconnect (exit `0` resolved, `9` expired/failed, `12` on a wait-window timeout); non-interactively it prints the url + session_id and returns immediately. Optional `--expires-in-seconds` / `--redirect-url`.
+- **`account update --metadata '<json>'`**: set the account's custom metadata (a flat JSON object that replaces the store wholesale). **`account update --clear-proxy`**: clear the custom proxy (revert to automatic proxy protection).
+- **New connect/checkpoint response fields ride through `--json` output** (coupled with the SDK 0.13.0 connect-fix regen, the CLI duck-types the response, so the fields pass through verbatim with no code change):
+  - `recovered` (boolean) on `account link` and `account checkpoint solve` completions, `true` when the connect reclaimed a LinkedIn identity already present on the workspace rather than connecting a brand-new one.
   - the completed-account `status` is widened to `active | reconnect_needed | restricted | disconnected` (a recovered identity often reports needing a reconnect); the CLI reads `status` as a free-form string, so the wider set is unaffected.
   - `challenge_type` (`mobile_app_approval`) + `recovery_hint` on an `account checkpoint poll` that returns `status: "expired"` (a mobile-approval timeout).
-  Surfacing `recovered` in the human-readable (non-`--json`) success line is a deferred UX follow-up — it would need consistent treatment across the direct-link, interactive-solve, and standalone-solve completion paths.
+  Surfacing `recovered` in the human-readable (non-`--json`) success line is a deferred UX follow-up; it would need consistent treatment across the direct-link, interactive-solve, and standalone-solve completion paths.
 
 ### Changed (BREAKING)
 
 - **Checkpoint commands are now account-in-path (positional), not `--checkpoint`.**
-  - `account checkpoint submit --checkpoint <id> --code <c>` → **`account checkpoint solve <account_id> --code <c>`**.
-  - `account checkpoint resend --checkpoint <id>` → **`account checkpoint request <account_id>`**.
-  - `account checkpoint poll --checkpoint <id>` → **`account checkpoint poll <account_id>`** (the `--checkpoint` flag becomes the account_id positional; `--wait`/`--timeout` unchanged).
+  - `account checkpoint submit --checkpoint <id> --code <c>` -> **`account checkpoint solve <account_id> --code <c>`**.
+  - `account checkpoint resend --checkpoint <id>` -> **`account checkpoint request <account_id>`**.
+  - `account checkpoint poll --checkpoint <id>` -> **`account checkpoint poll <account_id>`** (the `--checkpoint` flag becomes the account_id positional; `--wait`/`--timeout` unchanged).
   - Update scripts: replace `checkpoint submit --checkpoint X --code Y` with `checkpoint solve X --code Y`, `checkpoint resend --checkpoint X` with `checkpoint request X`, and `checkpoint poll --checkpoint X` with `checkpoint poll X`.
-- **`account refresh <account_id>` removed** — accounts restart and re-sync automatically now; there is no replacement command. Status freshness comes from the account-status webhook, the nightly reconcile, and `account get`.
-- **`account connect-link` is create-only** — the `--purpose` and `--account-id` flags are removed; it only mints a link to connect a **new** account. Use `account reconnect-link <account_id>` for hosted re-auth of an existing account.
-- **`account update` reshaped** — the managed `--country` / `--ip` flags are removed (a managed location is now chosen at connect time). The command now takes `--metadata` and/or a custom proxy (`--proxy-*` / `--clear-proxy`).
-- **`account link` / `account reconnect` require `--user-agent` for cookie auth** — connecting by session cookie (`--auth-method cookie`) without a `--user-agent` fails fast at exit `2` (it stays optional for `--auth-method credentials`). Under `--preview` the check is skipped (a render never exits).
-- SDK-parity manifest (`test/parity.test.ts`) repoints the checkpoint entries (`solve`/`request`/`poll`) and swaps `account refresh` → `account reconnect-link`; the manifest and SDK method count stay at 93 (`accounts` stays 12 methods).
+- **`account refresh <account_id>` removed**: accounts restart and re-sync automatically now; there is no replacement command. Status freshness comes from the account-status webhook, the nightly reconcile, and `account get`.
+- **`account connect-link` is create-only**; the `--purpose` and `--account-id` flags are removed; it only mints a link to connect a **new** account. Use `account reconnect-link <account_id>` for hosted re-auth of an existing account.
+- **`account update` reshaped**; the managed `--country` / `--ip` flags are removed (a managed location is now chosen at connect time). The command now takes `--metadata` and/or a custom proxy (`--proxy-*` / `--clear-proxy`).
+- **`account link` / `account reconnect` require `--user-agent` for cookie auth**; connecting by session cookie (`--auth-method cookie`) without a `--user-agent` fails fast at exit `2` (it stays optional for `--auth-method credentials`). Under `--preview` the check is skipped (a render never exits).
+- SDK-parity manifest (`test/parity.test.ts`) repoints the checkpoint entries (`solve`/`request`/`poll`) and swaps `account refresh` -> `account reconnect-link`; the manifest and SDK method count stay at 93 (`accounts` stays 12 methods).
 
 ### Fixed
 
@@ -513,44 +536,44 @@ match the new account-in-path grammar.
 
 ### Changed
 
-- `@curviate/sdk` dependency bumped to `^0.13.0` — the coupled release carrying the reshaped `accounts` surface (see the SDK's own CHANGELOG). The CLI duck-types the SDK, so its commands are covered by the parity manifest against that release.
+- `@curviate/sdk` dependency bumped to `^0.13.0`, the coupled release carrying the reshaped `accounts` surface (see the SDK's own CHANGELOG). The CLI duck-types the SDK, so its commands are covered by the parity manifest against that release.
 
 ## [0.12.0] - 2026-07-05
 
 ### Added
 
-- **`company employees <id>`** — list people who currently work at the company (facade over people search with the company filter). `--keywords` and `--location` narrow the result; pagination flags apply. `<id>` must be the company's numeric provider_id (the `id` field of `company <id>`).
-- **`company posts <id>`** — list the company's posts (facade over post search). Pagination flags apply; post `text` prints verbatim.
-- **`company jobs <id>`** — list the company's open job postings (facade over job search). `--keywords` narrows the result. An empty list is a valid result (the company currently has no open postings), not an error.
-- **`company followers <id>`** — list the company's followers (native — the same seam that backs `profile <id> --followers`). Requires the acting account to administer the target company page; a non-admin company returns the exit code for `RESOURCE_ACCESS_RESTRICTED` (new, see below).
+- **`company employees <id>`**: list people who currently work at the company (facade over people search with the company filter). `--keywords` and `--location` narrow the result; pagination flags apply. `<id>` must be the company's numeric provider_id (the `id` field of `company <id>`).
+- **`company posts <id>`**: list the company's posts (facade over post search). Pagination flags apply; post `text` prints verbatim.
+- **`company jobs <id>`**: list the company's open job postings (facade over job search). `--keywords` narrows the result. An empty list is a valid result (the company currently has no open postings), not an error.
+- **`company followers <id>`**: list the company's followers (native, the same seam that backs `profile <id> --followers`). Requires the acting account to administer the target company page; a non-admin company returns the exit code for `RESOURCE_ACCESS_RESTRICTED` (new, see below).
 - All four new subcommands support `--all` (NDJSON page streaming) alongside the existing pagination flags, and reject `--preview` (exit `2`) like every other read command.
-- `--account` is now required on `company <id>` (retrieve) — the underlying endpoint always requires `account_id`; previously the command silently fell back to an unscoped call.
-- **Sales Navigator v2 list surface — 5 new subcommands.** `sales-nav account-lists --account <id>` and `sales-nav lead-lists --account <id>` list the operator's saved-account/saved-lead lists (`--limit`/`--cursor`/`--all` paginate). `sales-nav browse-account-list <list_id> --account <id> [--filter --sort-by --sort-order]` and `sales-nav browse-lead-list <list_id> --account <id> [--spotlight --sort-by --sort-order]` browse the saved items in one list — genuine paginated reads, so they keep all pagination flags. `sales-nav save-account <company_id> --list <id> --account <id>` saves a company into an account list (write, `--preview` supported, no pagination flags in `--help`). All five call the SDK's new `salesNavigator` methods (`accountLists`/`leadLists`/`browseAccountList`/`browseLeadList`/`saveAccount`) — no re-implementation of the HTTP call.
+- `--account` is now required on `company <id>` (retrieve); the underlying endpoint always requires `account_id`; previously the command silently fell back to an unscoped call.
+- **Sales Navigator v2 list surface, 5 new subcommands.** `sales-nav account-lists --account <id>` and `sales-nav lead-lists --account <id>` list the operator's saved-account/saved-lead lists (`--limit`/`--cursor`/`--all` paginate). `sales-nav browse-account-list <list_id> --account <id> [--filter --sort-by --sort-order]` and `sales-nav browse-lead-list <list_id> --account <id> [--spotlight --sort-by --sort-order]` browse the saved items in one list, genuine paginated reads, so they keep all pagination flags. `sales-nav save-account <company_id> --list <id> --account <id>` saves a company into an account list (write, `--preview` supported, no pagination flags in `--help`). All five call the SDK's new `salesNavigator` methods (`accountLists`/`leadLists`/`browseAccountList`/`browseLeadList`/`saveAccount`), no re-implementation of the HTTP call.
 
 ### Changed (BREAKING)
 
-- **`company <id>` now routes to the SDK's `companies.get()`** instead of the retired `profiles.getCompany()` — an internal repoint (the hard-moved server endpoint), not a CLI UX change: flags, output shape, and slim projection are unchanged. `--account` becoming required (above) is the one user-visible behavior change.
-- SDK-parity manifest (`test/parity.test.ts`) repoints `company get` → `companies.get` and gains `company employees` / `company posts` / `company jobs` / `company followers`; the manifest and SDK method count both move from 84 to 88.
-- `@curviate/sdk` dependency bumped to `^0.12.0` — the released build carrying the `companies` resource and the v2 `salesNavigator` list-surface cascade (see the SDK's own CHANGELOG).
-- **`sales-nav save-lead` re-signed for the v2 save-lead surface.** The old `save-lead <user_id> [--list-id <id>]` (list optional) is **retired, no alias** — the v2 op always saves into a specific list. The replacement is `save-lead <user_id> --list <id>`: `--list` is now **required** and the flag is renamed from `--list-id`. Update scripts: `save-lead <id> --list-id <l>` → `save-lead <id> --list <l>`.
-- SDK-parity manifest gains the 5 new `sales-nav` v2 subcommands; the manifest and SDK method count both move from 88 to 93 (`salesNavigator` 7→12 methods).
+- **`company <id>` now routes to the SDK's `companies.get()`** instead of the retired `profiles.getCompany()`, an internal repoint (the hard-moved server endpoint), not a CLI UX change: flags, output shape, and slim projection are unchanged. `--account` becoming required (above) is the one user-visible behavior change.
+- SDK-parity manifest (`test/parity.test.ts`) repoints `company get` -> `companies.get` and gains `company employees` / `company posts` / `company jobs` / `company followers`; the manifest and SDK method count both move from 84 to 88.
+- `@curviate/sdk` dependency bumped to `^0.12.0`, the released build carrying the `companies` resource and the v2 `salesNavigator` list-surface cascade (see the SDK's own CHANGELOG).
+- **`sales-nav save-lead` re-signed for the v2 save-lead surface.** The old `save-lead <user_id> [--list-id <id>]` (list optional) is **retired, no alias**; the v2 op always saves into a specific list. The replacement is `save-lead <user_id> --list <id>`: `--list` is now **required** and the flag is renamed from `--list-id`. Update scripts: `save-lead <id> --list-id <l>` -> `save-lead <id> --list <l>`.
+- SDK-parity manifest gains the 5 new `sales-nav` v2 subcommands; the manifest and SDK method count both move from 88 to 93 (`salesNavigator` 7->12 methods).
 
 ### Fixed
 
-- **`RESOURCE_ACCESS_RESTRICTED`** — a new SDK error code (the non-admin mapping for `company followers`) is now present in `EXIT_CODE_MAP` (exit `8`, grouped with `ACCOUNT_RESTRICTED`); the exhaustiveness test would otherwise have silently mapped it to the default `1`.
+- **`RESOURCE_ACCESS_RESTRICTED`**: a new SDK error code (the non-admin mapping for `company followers`) is now present in `EXIT_CODE_MAP` (exit `8`, grouped with `ACCOUNT_RESTRICTED`); the exhaustiveness test would otherwise have silently mapped it to the default `1`.
 
 ## [0.11.0] - 2026-07-04
 
 ### Added
 
-- **Safe credential entry** for `account link` / `account reconnect` / `account update` — env-var fallbacks (an explicit flag always wins over its env var), `--password-stdin` / `--li-at-stdin` flags to read a secret from stdin, and a masked TTY prompt with a non-TTY fail-fast when a credential is required but not supplied any other way. A 5-way conflict matrix rejects supplying the same credential through more than one channel. The four secret-bearing flags carry a shell-history/`ps`-visibility warning, and `--preview` masks credential values instead of ever rendering them in cleartext.
-- **Guided checkpoint follow-through** on `account link` / `account reconnect`. A `202 checkpoint_required` response now resolves in-process on an interactive TTY — code prompt, retry loop on a `422`, chained-challenge follow-through, a codeless mobile-app-approval poll sub-loop, and a resend hint — instead of just printing the envelope. A non-interactive session (either stream not a TTY, or `--no-interactive`) still prints the envelope and exits with the new `12` (`AUTH_NEEDED`) code — a pending checkpoint, not an error.
-- **`account checkpoint poll --wait`** — an adaptive-cadence loop (1000ms, then 1500ms for 30s, then 3000ms) that blocks until the checkpoint resolves (exit `0`), expires/fails (exit `9`), or the wait window elapses while still pending (exit `12`, still resolvable later). `--wait` is off by default (the single-poll behavior is unchanged). `--timeout <ms>` overrides the wall-clock bound (default: the checkpoint's own expiry) and fails fast at exit `2` on a non-numeric value, before any call. `checkpoint submit`'s one-shot path also now detects a chained `checkpoint_required` response and exits `12` instead of rendering it as a plain success.
-- **`account checkpoint resend --checkpoint <id>`** — re-sends the pending challenge notification, mirroring `checkpoint submit` / `poll` (body-addressed, `WRITE_SINGLE_FLAGS`, `--preview` supported, no `--code` since there's nothing to submit). Exits `0` on any `200` regardless of the response's `resent` boolean — `false` is an honest answer, not a command failure.
-- **`account connect-link` browser handoff.** The command now completes the hosted-link round trip instead of only minting a URL: on an interactive TTY it auto-opens the URL and waits on the same adaptive cadence as `checkpoint poll --wait` for the account to connect (resolved → prints the connected account and exits `0`; expired/failed → exit `9`; wait window elapses while still pending → exit `12`). A non-interactive session (non-TTY, or `--no-interactive`) never opens a browser and never blocks — it prints the URL, a relay instruction, and the `session_id`, then returns immediately.
-- **`account connect-session poll --session <id>`** — the standalone counterpart to the above: a single poll by default (prints the body, exits `0` regardless of status), or the same adaptive wait loop with `--wait`. `--open`/`--no-open` and `--wait`/`--no-wait` are TTY-adaptive; `--timeout <ms>` overrides the wait bound (default: time remaining to the session's own expiry).
-- Pagination flags (`--limit`/`--cursor`/`--all`/`--max-pages`) are now suppressed on the 8 `account` subcommands that mutate or resolve exactly one resource (`link`, `connect-link`, `reconnect`, `refresh`, `update`, `disconnect`, `checkpoint submit`, `checkpoint poll`) — they had no meaning on a one-row response. `account list` is unaffected. `link` / `reconnect` help text gains a one-line note about the checkpoint-required path.
-- SDK-parity manifest (`test/parity.test.ts`) gains `account checkpoint resend` → `accounts.resendCheckpoint` and `account connect-session poll` → `accounts.getConnectSession` — both were held back pending the SDK's own `0.11.0` regen; the manifest and the SDK method count both move from 82 to 84.
+- **Safe credential entry** for `account link` / `account reconnect` / `account update`: env-var fallbacks (an explicit flag always wins over its env var), `--password-stdin` / `--li-at-stdin` flags to read a secret from stdin, and a masked TTY prompt with a non-TTY fail-fast when a credential is required but not supplied any other way. A 5-way conflict matrix rejects supplying the same credential through more than one channel. The four secret-bearing flags carry a shell-history/`ps`-visibility warning, and `--preview` masks credential values instead of ever rendering them in cleartext.
+- **Guided checkpoint follow-through** on `account link` / `account reconnect`. A `202 checkpoint_required` response now resolves in-process on an interactive TTY: code prompt, retry loop on a `422`, chained-challenge follow-through, a codeless mobile-app-approval poll sub-loop, and a resend hint, instead of just printing the envelope. A non-interactive session (either stream not a TTY, or `--no-interactive`) still prints the envelope and exits with the new `12` (`AUTH_NEEDED`) code, a pending checkpoint, not an error.
+- **`account checkpoint poll --wait`**: an adaptive-cadence loop (1000ms, then 1500ms for 30s, then 3000ms) that blocks until the checkpoint resolves (exit `0`), expires/fails (exit `9`), or the wait window elapses while still pending (exit `12`, still resolvable later). `--wait` is off by default (the single-poll behavior is unchanged). `--timeout <ms>` overrides the wall-clock bound (default: the checkpoint's own expiry) and fails fast at exit `2` on a non-numeric value, before any call. `checkpoint submit`'s one-shot path also now detects a chained `checkpoint_required` response and exits `12` instead of rendering it as a plain success.
+- **`account checkpoint resend --checkpoint <id>`**: re-sends the pending challenge notification, mirroring `checkpoint submit` / `poll` (body-addressed, `WRITE_SINGLE_FLAGS`, `--preview` supported, no `--code` since there's nothing to submit). Exits `0` on any `200` regardless of the response's `resent` boolean; `false` is an honest answer, not a command failure.
+- **`account connect-link` browser handoff.** The command now completes the hosted-link round trip instead of only minting a URL: on an interactive TTY it auto-opens the URL and waits on the same adaptive cadence as `checkpoint poll --wait` for the account to connect (resolved -> prints the connected account and exits `0`; expired/failed -> exit `9`; wait window elapses while still pending -> exit `12`). A non-interactive session (non-TTY, or `--no-interactive`) never opens a browser and never blocks; it prints the URL, a relay instruction, and the `session_id`, then returns immediately.
+- **`account connect-session poll --session <id>`**: the standalone counterpart to the above: a single poll by default (prints the body, exits `0` regardless of status), or the same adaptive wait loop with `--wait`. `--open`/`--no-open` and `--wait`/`--no-wait` are TTY-adaptive; `--timeout <ms>` overrides the wait bound (default: time remaining to the session's own expiry).
+- Pagination flags (`--limit`/`--cursor`/`--all`/`--max-pages`) are now suppressed on the 8 `account` subcommands that mutate or resolve exactly one resource (`link`, `connect-link`, `reconnect`, `refresh`, `update`, `disconnect`, `checkpoint submit`, `checkpoint poll`); they had no meaning on a one-row response. `account list` is unaffected. `link` / `reconnect` help text gains a one-line note about the checkpoint-required path.
+- SDK-parity manifest (`test/parity.test.ts`) gains `account checkpoint resend` -> `accounts.resendCheckpoint` and `account connect-session poll` -> `accounts.getConnectSession`; both were held back pending the SDK's own `0.11.0` regen; the manifest and the SDK method count both move from 82 to 84.
 
 ### Fixed
 
@@ -564,38 +587,38 @@ match the new account-in-path grammar.
 
 ### Added
 
-- `job get <url|id>` — a new top-level `job` command retrieving one public LinkedIn job posting's full detail. Accepts a job URL (`https://www.linkedin.com/jobs/view/<id>`) or a bare numeric id — a job URL is resolved to its numeric id client-side; anything else passes through and the API is the final validator. Slim-default output: `object`, `id`, `title`, `company`, `company_id`, `location`, `state`, `applicants_counter`, `published_at`, `description` — `description` stays in the default output since retrieving it is the point of the command. Pass `--verbose` for the full response (adds `cost`, `created_at`, `hiring_team`). An unknown job id exits with the not-found exit code. This is a read command — `--preview` is a usage error, matching every other single-object read.
-- `recruiter job get <url|id>` — the Recruiter-lens sibling of `job get`, joining the existing `recruiter job` command group. Retrieves any public job posting (not only postings you manage) — unlike `recruiter jobs`, which lists your own. Same URL/id resolution and slim/verbose projection as the top-level command; requires the Recruiter add-on tier (exit `5` without it).
+- `job get <url|id>`: a new top-level `job` command retrieving one public LinkedIn job posting's full detail. Accepts a job URL (`https://www.linkedin.com/jobs/view/<id>`) or a bare numeric id; a job URL is resolved to its numeric id client-side; anything else passes through and the API is the final validator. Slim-default output: `object`, `id`, `title`, `company`, `company_id`, `location`, `state`, `applicants_counter`, `published_at`, `description`; `description` stays in the default output since retrieving it is the point of the command. Pass `--verbose` for the full response (adds `cost`, `created_at`, `hiring_team`). An unknown job id exits with the not-found exit code. This is a read command; `--preview` is a usage error, matching every other single-object read.
+- `recruiter job get <url|id>`: the Recruiter-lens sibling of `job get`, joining the existing `recruiter job` command group. Retrieves any public job posting (not only postings you manage), unlike `recruiter jobs`, which lists your own. Same URL/id resolution and slim/verbose projection as the top-level command; requires the Recruiter add-on tier (exit `5` without it).
 - README gained a new numbered example chaining `search jobs` into `job get`, and a "Get any public job posting through the Recruiter lens" example in the Recruiter section.
 
 ### Changed
 
 - `@curviate/sdk` dependency bumped to `^0.10.0`.
-- `recruiter job get --help` does not advertise `--limit`/`--cursor`/`--all`/`--max-pages` — a single-object read, consistent with the other Recruiter single-reads (`profile`, `project`, `applicant`). `--fields` and `--verbose` are unchanged and available.
+- `recruiter job get --help` does not advertise `--limit`/`--cursor`/`--all`/`--max-pages`; a single-object read, consistent with the other Recruiter single-reads (`profile`, `project`, `applicant`). `--fields` and `--verbose` are unchanged and available.
 
 ## [0.9.0] - 2026-07-03
 
 ### Added
 
-- `account list` and `account get` gain a compact **slim-default** output — pass `--verbose` for the full API response. Slim `account list` items: `account_id`, `status`, `auth_method`, `full_name`, `headline`, `seat_id`, `connected_at`. Slim `account get`: the same seven fields plus `last_checked_at` and `quotas`. Six cached account-detail fields (`username`, `premium_id`, `public_identifier`, `substrate_created_at`, `signatures`, `groups`) are verbose-only on both commands — they are `null`/`[]` on an account that hasn't been enriched yet, never a missing key. `--all` NDJSON streaming on `account list` applies the same slim projection per item unless `--verbose` is passed.
-- `account get` gains `seat_id` in its slim output (previously only `account list` carried it) — the seat the account occupies, `null` for an admin seatless account.
+- `account list` and `account get` gain a compact **slim-default** output; pass `--verbose` for the full API response. Slim `account list` items: `account_id`, `status`, `auth_method`, `full_name`, `headline`, `seat_id`, `connected_at`. Slim `account get`: the same seven fields plus `last_checked_at` and `quotas`. Six cached account-detail fields (`username`, `premium_id`, `public_identifier`, `substrate_created_at`, `signatures`, `groups`) are verbose-only on both commands; they are `null`/`[]` on an account that hasn't been enriched yet, never a missing key. `--all` NDJSON streaming on `account list` applies the same slim projection per item unless `--verbose` is passed.
+- `account get` gains `seat_id` in its slim output (previously only `account list` carried it), the seat the account occupies, `null` for an admin seatless account.
 
 ### Changed
 
 - `@curviate/sdk` dependency bumped to `^0.9.0`.
-- `account get --help` no longer advertises `--limit`/`--cursor`/`--all`/`--max-pages` — a single-object read, those flags never applied. `--fields` is unchanged and still available. `account list` is unaffected (a genuine list read, keeps all pagination flags).
+- `account get --help` no longer advertises `--limit`/`--cursor`/`--all`/`--max-pages`; a single-object read, those flags never applied. `--fields` is unchanged and still available. `account list` is unaffected (a genuine list read, keeps all pagination flags).
 
 ## [0.8.0] - 2026-07-02
 
 ### Added
 
-- `recruiter reject-applicant` gained `--message` and `--notify-at` flags. The applicant is only notified of the rejection when `--message` is provided (the prior behavior — no notification — is unchanged when both are omitted). `--notify-at` schedules the notification (a UNIX-milliseconds timestamp) and requires `--message`; passing `--notify-at` alone, or a non-numeric value, is a usage error (exit `2`).
-- README gained dedicated "Sales Navigator" and "Recruiter" sections with numbered, runnable examples covering every in-scope command: searching and getting profiles, saving a lead, starting a chat, listing/searching Recruiter people and hiring projects, the job create → publish → checkpoint lifecycle, listing/getting applicants, downloading a resume, and rejecting an applicant with and without a notification.
+- `recruiter reject-applicant` gained `--message` and `--notify-at` flags. The applicant is only notified of the rejection when `--message` is provided (the prior behavior, no notification, is unchanged when both are omitted). `--notify-at` schedules the notification (a UNIX-milliseconds timestamp) and requires `--message`; passing `--notify-at` alone, or a non-numeric value, is a usage error (exit `2`).
+- README gained dedicated "Sales Navigator" and "Recruiter" sections with numbered, runnable examples covering every in-scope command: searching and getting profiles, saving a lead, starting a chat, listing/searching Recruiter people and hiring projects, the job create -> publish -> checkpoint lifecycle, listing/getting applicants, downloading a resume, and rejecting an applicant with and without a notification.
 
 ### Changed
 
-- **Help output cleanup:** Recruiter and Sales Navigator write commands (`add-candidate`, `add-applicant`, `reject-applicant`, `job create`/`publish`/`checkpoint`, `save-lead`, `message new`) and single-object read commands (`profile`, `project`, `applicant`, `applicant resume`) no longer advertise `--limit`/`--cursor`/`--all`/`--max-pages` in `--help` — those flags only ever applied to list/search commands, which keep them unchanged. Single-object reads keep `--fields`.
-- Corrected the `search parameters --type` flag description on both `recruiter` and `sales-nav` — it previously suggested example values (`LOCATION`, `INDUSTRY`, `TITLE`) that the API does not accept for either surface; it now lists the real accepted values.
+- **Help output cleanup:** Recruiter and Sales Navigator write commands (`add-candidate`, `add-applicant`, `reject-applicant`, `job create`/`publish`/`checkpoint`, `save-lead`, `message new`) and single-object read commands (`profile`, `project`, `applicant`, `applicant resume`) no longer advertise `--limit`/`--cursor`/`--all`/`--max-pages` in `--help`; those flags only ever applied to list/search commands, which keep them unchanged. Single-object reads keep `--fields`.
+- Corrected the `search parameters --type` flag description on both `recruiter` and `sales-nav`; it previously suggested example values (`LOCATION`, `INDUSTRY`, `TITLE`) that the API does not accept for either surface; it now lists the real accepted values.
 - Polished the `message new --to` flag description on both surfaces with the expected provider-ID format and a note that it is not resolved from a URL or slug.
 - Updated `@curviate/sdk` dependency to `^0.8.0`. No resource method signatures changed (per the SDK 0.8.0 changelog); Recruiter's job-lifecycle endpoints (applicant get/reject/resume, applicant list, job publish/checkpoint, Recruiter profile) are now fully implemented server-side instead of returning `501`.
 
@@ -609,7 +632,7 @@ match the new account-in-path grammar.
 
 ### Fixed
 
-- `recruiter message new` — the `--to` recipient ID is now sent as `attendees_ids` (plural) in the request body, matching the updated server contract. A prior version used the old `attendee_ids` (singular) field name which the API no longer accepts.
+- `recruiter message new`: the `--to` recipient ID is now sent as `attendees_ids` (plural) in the request body, matching the updated server contract. A prior version used the old `attendee_ids` (singular) field name which the API no longer accepts.
 
 ### Changed
 
@@ -619,20 +642,20 @@ match the new account-in-path grammar.
 
 ### Added
 
-- `search` — named filter flags that previously required raw `--filters` JSON:
+- `search`: named filter flags that previously required raw `--filters` JSON:
   - **companies**: `--has-job-offers`, `--headcount <buckets>` (comma-separated
-    size buckets `1-10 … 5001-10000`; `10001+` reports a usage error).
+    size buckets `1-10 ... 5001-10000`; `10001+` reports a usage error).
   - **jobs**: `--title <ids>`, `--presence`, `--benefits`, `--commitments`,
     `--has-verifications`, `--under-10-applicants`, `--in-your-network`,
     `--fair-chance-employer`, `--location-within-area <miles>`.
-  - **people**: `--connections-of`, `--followers-of` (comma-separated → array).
+  - **people**: `--connections-of`, `--followers-of` (comma-separated -> array).
   - **posts**: `--posted-by-member`, `--posted-by-company`, `--posted-by-me`,
     `--mentioning-member`, `--mentioning-company`, `--author-industry`,
     `--author-company`, `--author-keywords`.
 
 ### Fixed
 
-- `search jobs` slim `company_name` was always `null` — now derived from the
+- `search jobs` slim `company_name` was always `null`, now derived from the
   nested `company.name` (handles postings with no linked company). `--verbose`
   still returns the raw response unchanged.
 - `search parameters --type`, `search jobs --seniority`/`--job-type`, and
@@ -647,12 +670,12 @@ match the new account-in-path grammar.
 
 ### Added
 
-- `search people --title` (→ `advanced_keywords.title` keyword, nested-merged),
+- `search people --title` (-> `advanced_keywords.title` keyword, nested-merged),
   `--industry`, `--profile-language`; `--filters` deep-merge (named flags win).
-- `search jobs --location` → `region` (single id) + `--region` alias +
+- `search jobs --location` -> `region` (single id) + `--region` alias +
   `--date-posted <days>` (number).
-- `search posts --date-posted` hyphen→underscore normalize.
-- `--all` truncation emits `{"object":"stream_truncated",…}` JSON.
+- `search posts --date-posted` hyphen->underscore normalize.
+- `--all` truncation emits `{"object":"stream_truncated",...}` JSON.
 
 ### Changed
 
@@ -662,15 +685,15 @@ match the new account-in-path grammar.
 
 ### Added
 
-- `inbox list --unread` — filter the inbox to chats with unread messages.
+- `inbox list --unread`: filter the inbox to chats with unread messages.
 - `messages` now accepts `--before` and `--after` to page a conversation by
   timestamp window.
-- `sync-chat --wait` — poll until a chat sync completes instead of returning
+- `sync-chat --wait`: poll until a chat sync completes instead of returning
   immediately.
 - `message new --to` and `message inmail --to` now resolve a **LinkedIn profile
   URL or vanity slug** (e.g. `linkedin.com/in/<slug>`) to the recipient, in
   addition to provider ids and member URNs.
-- Thread-URL `chat_id` normalization — a pasted conversation URL is normalized to
+- Thread-URL `chat_id` normalization: a pasted conversation URL is normalized to
   the underlying chat id wherever a `chat_id` is accepted.
 - Write commands that take a TEXT positional accept `-` to read the value from
   stdin (pipe message bodies in).
@@ -687,10 +710,10 @@ match the new account-in-path grammar.
 
 ### Added
 
-- `message inmail --surface classic` — send an InMail from the account's own premium
+- `message inmail --surface classic`: send an InMail from the account's own premium
   InMail credits (in addition to `sales_nav` and `recruiter`). Use this to reach an
   out-of-network member from a LinkedIn Premium/Core account.
-- `message inmail --to` now accepts a member **provider id** (`ACoAAA…`) as well as a
+- `message inmail --to` now accepts a member **provider id** (`ACoAAA...`) as well as a
   member URN (`urn:li:member:<id>`). The server resolves the recipient either way.
 
 ## [0.4.1] - 2026-06-29
@@ -726,7 +749,7 @@ match the new account-in-path grammar.
 ### Fixed
 
 - `company` command now exits 2 with an error when `--sections` is passed (unsupported flag for that surface).
-- `slimProfile` work_experience field mapping corrected (`position`→`title`, `company`→`company_name`); `is_current` now derived from `end == null`; `company_id` is always `null` (the experience-entry ID is not a company ID).
+- `slimProfile` work_experience field mapping corrected (`position`->`title`, `company`->`company_name`); `is_current` now derived from `end == null`; `company_id` is always `null` (the experience-entry ID is not a company ID).
 
 ### Changed
 
@@ -750,7 +773,7 @@ match the new account-in-path grammar.
 
 ### Added
 
-- Initial public release — full SDK-surface parity CLI over the Curviate API.
+- Initial public release, full SDK-surface parity CLI over the Curviate API.
 - `curviate` root command with `--help` and `--version`.
 - Global flags: `--account`, `--json`, `--fields`, `--limit`, `--cursor`, `--all`,
   `--max-pages`, `--preview`, `--base-url`, `--timeout`, `--api-key`, `--profile`.

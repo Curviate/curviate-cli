@@ -1,12 +1,12 @@
 /**
- * `curviate feed` — the connected account's LinkedIn home feed (new
+ * `curviate feed`, the connected account's LinkedIn home feed (new
  * namespace).
  *
  * Subcommands:
- *   feed home [--sort recent|relevant] [--limit] [--cursor] [--all]  — read the home feed
+ *   feed home [--sort recent|relevant] [--limit] [--cursor] [--all]: read the home feed
  *
- * GRAMMAR NOTE (dev's call — the spec allowed either a bare `feed` form or
- * `feed home`): `feed home` is the only callable form — a bare `feed <flags>` is NOT
+ * GRAMMAR NOTE (dev's call, the spec allowed either a bare `feed` form or
+ * `feed home`): `feed home` is the only callable form, a bare `feed <flags>` is NOT
  * wired to run the read directly. `feed` has no positional argument, so a
  * bare invocation carrying a VALUE flag (e.g. `feed --sort relevant`, `feed
  * --limit 20`) collides with the citty-0.1.6 workaround dispatcher's
@@ -14,7 +14,7 @@
  * detection is positional-declaration-aware (mixing a bare positional with
  * subCommands, as `company`/`connect`/`profile` do), not value-flag-aware,
  * so the flag's VALUE token (`relevant`, `20`) is misread as an attempted
- * subcommand name and rejected with "unknown command" (exit 2) — confirmed
+ * subcommand name and rejected with "unknown command" (exit 2), confirmed
  * via a direct resolveLeaf() probe. Fixing that would mean changing the
  * shared dispatcher's routing semantics for every command in the tree, out
  * of scope for this gap-closure change. `feed` (bare, no args) still prints
@@ -109,8 +109,8 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `feed home [--sort recent|relevant] [--limit] [--cursor] [--all]` —
- * feed.home. Read command — rejects --preview. An empty feed is a valid
+ * Run `feed home [--sort recent|relevant] [--limit] [--cursor] [--all]`,
+ * feed.home. Read command, rejects --preview. An empty feed is a valid
  * 200 (items:[], cursor:null), not an error.
  */
 export async function runFeedHome(

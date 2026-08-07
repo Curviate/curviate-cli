@@ -1,20 +1,20 @@
 /**
- * `curviate connect` — connection invitation operations.
+ * `curviate connect`, connection invitation operations.
  *
  * Subcommands:
- *   connect <id> [--note <text>]            — send invitation (write, --preview OK)
- *   connect sent                            — list sent invitations (read)
- *   connect received                        — list received invitations (read)
- *   connect accept <id>                     — accept a received invitation (write, --preview OK)
- *   connect decline <id>                    — decline a received invitation (write, --preview OK)
- *   connect cancel <id>                     — cancel sent invitation (write, --preview OK)
+ *   connect <id> [--note <text>]: send invitation (write, --preview OK)
+ *   connect sent: list sent invitations (read)
+ *   connect received: list received invitations (read)
+ *   connect accept <id>: accept a received invitation (write, --preview OK)
+ *   connect decline <id>: decline a received invitation (write, --preview OK)
+ *   connect cancel <id>: cancel sent invitation (write, --preview OK)
  *
  * <id> for `connect <id>` passes through resolveIdentifier (member URL/slug/URN).
- * <id> for `accept`, `decline`, and `cancel` is an invitation_id — passed
+ * <id> for `accept`, `decline`, and `cancel` is an invitation_id, passed
  * verbatim, NOT resolved. All subcommands are account-scoped.
  *
  * v2: the old combined `invites.respond(id, {action, shared_secret})` split
- * into two dedicated, BODYLESS ops — `invites.accept` / `invites.decline` —
+ * into two dedicated, BODYLESS ops, `invites.accept` / `invites.decline`,
  * surfaced here as the separate `connect accept` / `connect decline`
  * subcommands. The combined `respond --action` command is removed; the
  * accept/decline ops take no body at all.
@@ -93,7 +93,7 @@ function resolveOutputOpts(flags: ConnectFlags) {
 
 /**
  * Run `connect <id> [--note <text>]`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  */
 export async function runConnectSend(
   client: Curviate,
@@ -140,7 +140,7 @@ export async function runConnectSend(
 
 /**
  * Run `connect sent [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runConnectSent(
   client: Curviate,
@@ -192,7 +192,7 @@ export async function runConnectSent(
 
 /**
  * Run `connect received [--all] [--limit] [--cursor]`.
- * Read command — rejects --preview.
+ * Read command, rejects --preview.
  */
 export async function runConnectReceived(
   client: Curviate,
@@ -243,8 +243,8 @@ export async function runConnectReceived(
 }
 
 /**
- * Run `connect accept <invitation_id>` — invites.accept (bodyless).
- * Write command — supports --preview.
+ * Run `connect accept <invitation_id>`, invites.accept (bodyless).
+ * Write command, supports --preview.
  * invitation_id is NOT passed through resolveIdentifier.
  */
 export async function runConnectAccept(
@@ -253,7 +253,7 @@ export async function runConnectAccept(
   out: OutputStreams,
 ): Promise<void> {
   const accountId = requireAccount(flags.account, out);
-  // invitation_id passes verbatim — NOT URL-normalized
+  // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
   if (flags.preview) {
@@ -286,8 +286,8 @@ export async function runConnectAccept(
 }
 
 /**
- * Run `connect decline <invitation_id>` — invites.decline (bodyless).
- * Write command — supports --preview.
+ * Run `connect decline <invitation_id>`, invites.decline (bodyless).
+ * Write command, supports --preview.
  * invitation_id is NOT passed through resolveIdentifier.
  */
 export async function runConnectDecline(
@@ -296,7 +296,7 @@ export async function runConnectDecline(
   out: OutputStreams,
 ): Promise<void> {
   const accountId = requireAccount(flags.account, out);
-  // invitation_id passes verbatim — NOT URL-normalized
+  // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
   if (flags.preview) {
@@ -330,7 +330,7 @@ export async function runConnectDecline(
 
 /**
  * Run `connect cancel <invitation_id>`.
- * Write command — supports --preview.
+ * Write command, supports --preview.
  * invitation_id is NOT passed through resolveIdentifier.
  */
 export async function runConnectCancel(
@@ -339,7 +339,7 @@ export async function runConnectCancel(
   out: OutputStreams,
 ): Promise<void> {
   const accountId = requireAccount(flags.account, out);
-  // invitation_id passes verbatim — NOT URL-normalized
+  // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
   if (flags.preview) {
@@ -564,21 +564,21 @@ export const connectCommand = defineCommand({
     name: "connect",
     description:
       "Send or manage connection invitations. " +
-      "Connection requests may take 10–30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
+      "Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
   },
   args: {
     ...WRITE_FLAGS,
     id: {
       type: "positional",
       description:
-        "Recipient's LinkedIn URL, public slug, or provider_id (ACoAAA… from `curviate profile`). " +
+        "Recipient's LinkedIn URL, public slug, or provider_id (ACoAAA... from `curviate profile`). " +
         "LinkedIn URN (`urn:li:member:N`) also accepted but the numeric member ID is not exposed by this API.",
       required: false,
     },
     note: {
       type: "string",
       description:
-        "Personalized message shown to the recipient alongside the connection request (≤300 chars; LinkedIn cap). " +
+        "Personalized message shown to the recipient alongside the connection request (<=300 chars; LinkedIn cap). " +
         "Omit to send a generic note. Personalized messages increase acceptance rates.",
     },
   },
@@ -595,7 +595,7 @@ export const connectCommand = defineCommand({
     if (!flags.id) {
       process.stderr.write(CONNECT_USAGE);
       // <id> is functionally required for the bare form (there is no valid
-      // "connect to nothing" action) — a missing required positional is a
+      // "connect to nothing" action), a missing required positional is a
       // usage error, not a silent success. `required: false` on the citty
       // arg def above exists only so this richer usage block can run instead
       // of citty's generic one-liner; it does not make the id optional.

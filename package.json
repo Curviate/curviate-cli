@@ -30,13 +30,14 @@
   },
   "scripts": {
     "build": "tsup",
-    "prepack": "node scripts/check-clean.mjs && tsup && node scripts/check-clean.mjs --dist",
+    "prepack": "node scripts/check-clean.mjs && node scripts/check-copy.mjs && tsup && node scripts/check-clean.mjs --dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "check:clean": "node scripts/check-clean.mjs",
     "check:clean:dist": "node scripts/check-clean.mjs --dist",
+    "check:copy": "node scripts/check-copy.mjs",
     "verify:dist": "pnpm build && node scripts/verify-dist.mjs",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

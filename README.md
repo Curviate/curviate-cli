@@ -23,20 +23,20 @@ Requires Node.js 18 or later.
 
 ## Authentication
 
-**Option 1 — interactive login** (stores a profile in `~/.config/curviate/`):
+**Option 1: interactive login** (stores a profile in `~/.config/curviate/`):
 
 ```bash
 curviate login
 ```
 
-**Option 2 — environment variable** (preferred in CI and agent loops):
+**Option 2: environment variable** (preferred in CI and agent loops):
 
 ```bash
 export CURVIATE_API_KEY=<your-api-key>
 curviate account list
 ```
 
-**Option 3 — per-command flag**:
+**Option 3: per-command flag**:
 
 ```bash
 curviate --api-key <your-api-key> account list
@@ -80,14 +80,14 @@ These examples show how coding agents compose the CLI in real workflows.
 Search for matching profiles, preview the invitations, then send them once satisfied:
 
 ```bash
-# Look first — a search is a read, so it just runs (no --preview on reads)
+# Look first: a search is a read, so it just runs (no --preview on reads)
 curviate search people \
   --keywords "AI engineer" \
   --location "Berlin" \
   --limit 10 \
   --json
 
-# Preview a single write before sending, then pipe IDs into connect — one request per person
+# Preview a single write before sending, then pipe IDs into connect, one request per person
 curviate connect "$SOME_ID" --note "Hi, I'd love to connect." --preview
 
 curviate search people --keywords "AI engineer" --location "Berlin" --all \
@@ -107,7 +107,7 @@ curviate inbox list --json --all \
 
 ### 3. Warm up a prospect by reacting to their recent posts
 
-Read recent posts from a profile, then react to each — useful for ambient warm-up before outreach:
+Read recent posts from a profile, then react to each, which is useful for ambient warm-up before outreach:
 
 ```bash
 PROFILE_URL="https://www.linkedin.com/in/example"
@@ -126,7 +126,7 @@ curviate sales-nav search people --keywords "VP Engineering" --json \
   || {
     code=$?
     if [ "$code" -eq 5 ]; then
-      echo "Sales Navigator add-on required — upgrade at https://docs.curviate.com"
+      echo "Sales Navigator add-on required. Upgrade at https://docs.curviate.com"
     else
       echo "Search failed with exit code $code"
       exit "$code"
@@ -136,7 +136,7 @@ curviate sales-nav search people --keywords "VP Engineering" --json \
 
 ### 5. Verify an inbound webhook signature offline
 
-Validate a webhook payload before processing it — works without a network call:
+Validate a webhook payload before processing it, with no network call:
 
 ```bash
 # Pipe the raw request body from stdin; pass the signature header and secret as flags
@@ -162,7 +162,7 @@ curviate account list --all --json \
 
 ### 7. Search jobs, then fetch full detail on the top result
 
-`job get` accepts either a job URL or the bare numeric id — including the `job_urn` field a
+`job get` accepts either a job URL or the bare numeric id, including the `job_urn` field a
 job-search result already returns:
 
 ```bash
@@ -178,7 +178,7 @@ curviate job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
 
 Company commands (`curviate company ...`) are Core-tier reads. `company <id>` accepts a public
 handle (the slug in `linkedin.com/company/<handle>`) or a numeric id; the four sub-resource
-commands require the company's **numeric provider id** — the `id` field `company <id>` returns.
+commands require the company's **numeric provider id**, the `id` field `company <id>` returns.
 `--account` (or a configured default account) is required on all of them.
 
 ### 1. Retrieve a company, then list its employees
@@ -199,7 +199,7 @@ curviate company jobs 112013061 --all --account acc_1 --json   # streams every p
 
 Sales Navigator commands (`curviate sales-nav ...`) require an account with the Sales Navigator
 add-on tier attached. A call against an account without it fails with **exit code `5`** and a
-`TIER_NOT_ACTIVE` error body naming the required tier (`sales_nav`) — branch on the exit code the
+`TIER_NOT_ACTIVE` error body naming the required tier (`sales_nav`); branch on the exit code the
 same way as example 4 above. Write commands (`save-lead`, `save-account`, `message new`) accept
 `--preview` to render the request without sending it.
 
@@ -216,7 +216,7 @@ curviate sales-nav search people \
 
 ### 2. Save a lead to a specific lead list
 
-Preview first, then send. `--list` is required — the save always targets a specific list.
+Preview first, then send. `--list` is required; the save always targets a specific list.
 
 ```bash
 curviate sales-nav save-lead ACwAAA1234567 \
@@ -233,7 +233,7 @@ curviate sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
 curviate sales-nav message new \
   --to ACwAAA1234567 \
   --account acc_1 \
-  "Hi — I'd love to connect about an opportunity at our company."
+  "Hi, I'd love to connect about an opportunity at our company."
 ```
 
 ### 4. Search Sales Navigator companies
@@ -321,7 +321,7 @@ the v2 job body. `recruiter job publish` is project-scoped and requires `--mode`
 ```bash
 curviate recruiter job create \
   --account acc_1 \
-  --project-name "Backend Hiring — 2026" \
+  --project-name "Backend Hiring 2026" \
   --job-title "Senior Backend Engineer" \
   --description "Remote-first team building the core platform." \
   --employment-status FULL_TIME \
@@ -380,14 +380,14 @@ curviate recruiter message new \
   --to AEM789 \
   --account acc_1 \
   --subject "A role you'd be a great fit for" \
-  --signature "— Alex, Talent Team" \
-  "Hi — I came across your profile and think you'd be a great fit for a role we're hiring for."
+  --signature "- Alex, Talent Team" \
+  "Hi, I came across your profile and think you'd be a great fit for a role we're hiring for."
 ```
 
 ### 9. List your postings, and get any public job posting through the Recruiter lens
 
 Unlike `recruiter jobs` (which lists postings you manage), `recruiter job get` retrieves the full
-detail of *any* public LinkedIn job posting — the Recruiter-seated counterpart to the top-level
+detail of *any* public LinkedIn job posting, the Recruiter-seated counterpart to the top-level
 `job get` command:
 
 ```bash
@@ -410,4 +410,4 @@ curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --acc
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
