@@ -2250,7 +2250,7 @@ describe("search people: renders notices[] from the SDK response", () => {
     process.stdout.isTTY = originalIsTTY;
   });
 
-  // §F shape: a filter value took the id fast path (field + value present).
+  // filter-value shape: a filter value took the id fast path (field + value present).
   const filterNotice = {
     code: "FILTER_VALUE_UNCHECKED",
     message: "The value was treated as an id and was not looked up.",
@@ -2258,13 +2258,13 @@ describe("search people: renders notices[] from the SDK response", () => {
     value: "42",
   };
 
-  // §G shape: page-scoped, no field/value (an anonymised-results page).
+  // page-scope shape: page-scoped, no field/value (an anonymised-results page).
   const pageNotice = {
     code: "ALL_RESULTS_HIDDEN",
     message: "Every result on this page is hidden from the connected account.",
   };
 
-  it("--json: the response's notices[] array reaches stdout intact (§F shape: field + value)", async () => {
+  it("--json: the response's notices[] array reaches stdout intact (filter-value shape: field + value)", async () => {
     const { runSearchPeople } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
     (accountNs.search.people as Mock).mockResolvedValue({
@@ -2284,7 +2284,7 @@ describe("search people: renders notices[] from the SDK response", () => {
     expect(parsed.notices).toEqual([filterNotice]);
   });
 
-  it("--json: the response's notices[] array reaches stdout intact (§G shape: page-scoped, no field/value)", async () => {
+  it("--json: the response's notices[] array reaches stdout intact (page-scope shape: page-scoped, no field/value)", async () => {
     const { runSearchPeople } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
     (accountNs.search.people as Mock).mockResolvedValue({
@@ -2327,7 +2327,7 @@ describe("search people: renders notices[] from the SDK response", () => {
     expect(rendered).toContain("value: 42");
   });
 
-  it("human mode (TTY, no --json): an all-hidden page (§G) still tells the user something was returned, not just an empty list", async () => {
+  it("human mode (TTY, no --json): an all-hidden page (page-scope notice) still tells the user something was returned, not just an empty list", async () => {
     process.stdout.isTTY = true;
     const { runSearchPeople } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
