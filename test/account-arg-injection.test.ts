@@ -353,6 +353,10 @@ describe("AC4 — an ambiguous name errors distinctly and writes nothing", () =>
   it("names every candidate so the caller can disambiguate", async () => {
     const r = await markRead("Ralf");
     const text = r.stdout + r.stderr;
+    // The code first. The not-found message also lists every connected
+    // account, so the four names below are satisfied by it too: without this
+    // line the test passes even when the ambiguity branch never runs.
+    expect(text).toContain("ACCOUNT_AMBIGUOUS");
     expect(text).toContain("acc_01RALF");
     expect(text).toContain("acc_01RALB");
     expect(text).toContain("Ralf Fischer");
