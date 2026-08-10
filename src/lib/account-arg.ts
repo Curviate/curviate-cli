@@ -40,6 +40,7 @@ import {
   pathSegmentViolation,
   redirectingViolation,
 } from "./path-safety.js";
+import { assertNoStdinPlaceholder } from "./stdin.js";
 import { getExitCode } from "./exit-codes.js";
 
 /**
@@ -166,6 +167,18 @@ export async function requireAccount(
 
   // Surrounding whitespace is a copy/paste artifact, not intent.
   const selector = account.trim();
+
+  // The stdin placeholder, first, because this resolver is the one place a
+  // caller-supplied value can cause a request to be SENT without ever appearing
+  // in it. The egress backstop in `client.ts` scans the outbound URL, headers
+  // and body, so it catches a placeholder that is interpolated into a path; it
+  // cannot catch one that is merely *looked up*, because the lookup carries the
+  // caller's bearer token to `/v1/accounts` with the placeholder nowhere in the
+  // request. Without this line, an unsubstituted placeholder arriving through
+  // CURVIATE_ACCOUNT is neither id-shaped nor redirecting, falls through to the
+  // name lookup, and transmits, breaking the backstop's whole guarantee that
+  // nothing is sent.
+  assertNoStdinPlaceholder("the --account value", [selector]);
 
   // Before anything else, and before any request can be built: a value that
   // could move the request to a different endpoint is rejected outright,

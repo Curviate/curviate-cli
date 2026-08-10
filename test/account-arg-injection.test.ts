@@ -39,6 +39,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ensureFreshBuild } from "./helpers/built-cli.js";
+import { STDIN_SENTINEL } from "../src/lib/stdin.js";
 
 interface Recorded {
   method: string;
@@ -131,6 +132,35 @@ function run(args: string[]): Promise<RunResult> {
 /** `inbox mark-read <chat>` — a write — with the given `--account` value. */
 function markRead(account: string): Promise<RunResult> {
   return run(["inbox", "mark-read", "chat_1", "--account", account, "--json"]);
+}
+
+/**
+ * The same write with the account supplied through the environment instead of
+ * the flag. A separate spawn because `run` deletes CURVIATE_ACCOUNT on purpose.
+ */
+function runWithAccountEnv(account: string): Promise<RunResult> {
+  recorded = [];
+  const xdg = mkdtempSync(join(tmpdir(), "curviate-acct-env-"));
+  return new Promise<RunResult>((resolvePromise) => {
+    const child = spawn(process.execPath, [cliPath, "inbox", "mark-read", "chat_1", "--json"], {
+      env: {
+        ...process.env,
+        XDG_CONFIG_HOME: xdg,
+        NODE_ENV: "production",
+        CURVIATE_API_KEY: "cvt_test_account_arg_stub",
+        CURVIATE_BASE_URL: baseUrl,
+        CURVIATE_ACCOUNT: account,
+      },
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (c: string) => (stdout += c));
+    child.stderr.on("data", (c: string) => (stderr += c));
+    child.on("close", (status) => resolvePromise({ status, stdout, stderr, requests: [...recorded] }));
+    child.stdin.end();
+  });
 }
 
 /**
@@ -320,30 +350,52 @@ describe("AC5 — a name that matches nothing gets its own error, not a wire 404
   });
 });
 
+/**
+ * Name resolution introduced the first path on which a caller-supplied
+ * `--account` can cause a request to be SENT without appearing in it. That is
+ * invisible to the egress backstop in `client.ts`, which scans the outbound
+ * URL, headers and body: the lookup carries the bearer token to `/v1/accounts`
+ * with the offending value nowhere in the request.
+ *
+ * So the resolver has to refuse these before the lookup, not rely on a
+ * downstream scan. Asserted on the recorded request set rather than on stderr,
+ * because "an error was printed" is true both when nothing was sent and when a
+ * request went out first.
+ */
+describe("a value that must never be transmitted is refused before the lookup", () => {
+  it("refuses a placeholder arriving through CURVIATE_ACCOUNT, before the lookup", async () => {
+    // The environment is the route the argument layer never sees, so it is the
+    // one that reaches the resolver intact. Nothing at all may be sent.
+    const r = await runWithAccountEnv(STDIN_SENTINEL);
+    expect(r.requests, "not even the resolution lookup may be sent").toEqual([]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr.toLowerCase()).toMatch(/stdin/);
+  });
+
+  it("refuses a placeholder embedded in a longer selector", async () => {
+    // A substring, so the dispatcher's exact-match dash restoration cannot
+    // normalise it away and the resolver's own refusal is what has to hold.
+    const r = await markRead(`Ralf ${STDIN_SENTINEL}`);
+    expect(r.requests).toEqual([]);
+    expect(r.status).not.toBe(0);
+  });
+
+  it("never transmits a placeholder typed as the flag value", async () => {
+    // `--account` does not declare the stdin contract, so the dispatcher
+    // restores a literal dash and the placeholder never reaches the resolver by
+    // this route. Asserted on the wire rather than on which mechanism caught
+    // it: if the restoration regresses, the refusal above is what must hold,
+    // and this stays green for the right reason either way.
+    const r = await markRead(STDIN_SENTINEL);
+    expect(JSON.stringify(r.requests)).not.toContain(STDIN_SENTINEL);
+    expect(r.requests.filter((q) => q.method !== "GET")).toEqual([]);
+    expect(r.status).not.toBe(0);
+  });
+});
+
 describe("the same guard applies wherever the account arrives from", () => {
   it("rejects a path-unsafe CURVIATE_ACCOUNT", async () => {
-    recorded = [];
-    const xdg = mkdtempSync(join(tmpdir(), "curviate-acct-env-"));
-    const r = await new Promise<RunResult>((resolvePromise) => {
-      const child = spawn(process.execPath, [cliPath, "inbox", "mark-read", "chat_1", "--json"], {
-        env: {
-          ...process.env,
-          XDG_CONFIG_HOME: xdg,
-          NODE_ENV: "production",
-          CURVIATE_API_KEY: "cvt_test_account_arg_stub",
-          CURVIATE_BASE_URL: baseUrl,
-          CURVIATE_ACCOUNT: "x/../../../v1/accounts",
-        },
-      });
-      let stdout = "";
-      let stderr = "";
-      child.stdout.setEncoding("utf8");
-      child.stderr.setEncoding("utf8");
-      child.stdout.on("data", (c: string) => (stdout += c));
-      child.stderr.on("data", (c: string) => (stderr += c));
-      child.on("close", (status) => resolvePromise({ status, stdout, stderr, requests: [...recorded] }));
-      child.stdin.end();
-    });
+    const r = await runWithAccountEnv("x/../../../v1/accounts");
     expect(r.requests).toEqual([]);
     expect(r.status).toBe(2);
   });
