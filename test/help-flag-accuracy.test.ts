@@ -21,6 +21,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { CommandDef } from "citty";
+import { successorHint } from "../src/dispatch.js";
 
 const asCmd = (c: unknown): CommandDef => c as CommandDef;
 
@@ -96,22 +97,35 @@ async function collectTree(): Promise<
     const meta = (await resolveValue(cmd.meta ?? {})) as Record<string, unknown>;
     const args = (await resolveValue(cmd.args ?? {})) as Record<
       string,
-      { alias?: string | string[] } | undefined
+      { alias?: string | string[]; description?: string } | undefined
     >;
 
     const declared = new Set<string>();
+    // Each arg's own description string, right alongside the command-level
+    // meta text below. Without this, a flag or command-name mention living in
+    // e.g. `--posts`'s own description (as opposed to the command's overall
+    // description/usage) is invisible to every check in this file — which is
+    // exactly how the `profile me --posts` "use 'post list'" defect survived
+    // the ORIGINAL version of this sweep: `--target`/`--profile` in the
+    // `group list` regression happened to live in the command-level
+    // description, so that one check never needed arg-level text to pass.
+    const argDescriptions: string[] = [];
     for (const [name, def] of Object.entries(args)) {
       declared.add(name);
       const alias = def?.alias;
       if (typeof alias === "string") declared.add(alias);
       else if (Array.isArray(alias)) for (const a of alias) declared.add(a);
+      if (def?.description) argDescriptions.push(def.description);
     }
 
-    // Every free-text field on meta: description, usage, anything added later.
-    const helpText = Object.entries(meta)
-      .filter(([key, value]) => key !== "name" && typeof value === "string")
-      .map(([, value]) => value as string)
-      .join("\n");
+    // Every free-text field on meta (description, usage, anything added
+    // later), plus every declared arg's own description.
+    const helpText = [
+      ...Object.entries(meta)
+        .filter(([key, value]) => key !== "name" && typeof value === "string")
+        .map(([, value]) => value as string),
+      ...argDescriptions,
+    ].join("\n");
 
     tree.set(path, { declared, helpText });
 
@@ -234,5 +248,104 @@ describe("help text names only flags the command declares", () => {
       .filter((v): v is string => typeof v === "string")
       .join("\n");
     expect(parentText).not.toContain("--profile");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Command-name references: help text naming a REMOVED command, not an
+// undeclared flag. Same defect family as the flag-mismatch sweep above
+// (stale advice a reader would follow straight into an error), one field
+// over: a command path instead of a flag name.
+//
+// `profile me --posts`'s description recommended 'post list' for
+// authored-only posts; `post list` was removed (src/dispatch.ts's own
+// REMOVED_COMMANDS map answers it with a successor hint), so following that
+// advice hit "post list was removed" on the same binary that printed the
+// recommendation. The flag-only sweep above could never have caught this:
+// 'post list' is a command-path reference, not a `--flag`. Scoped to
+// QUOTED spans specifically (backtick, single, or double) — a help author
+// writing a command reference reaches for quotes ('post list', `post list`),
+// which is the same signal that separates an intentional reference from
+// prose that merely happens to start with a group name.
+// ---------------------------------------------------------------------------
+
+/** Every backtick-, single-, or double-quoted span in `helpText`, trimmed. */
+function quotedSpans(helpText: string): string[] {
+  const out: string[] = [];
+  for (const m of helpText.matchAll(/`([^`]*)`|'([^']*)'|"([^"]*)"/g)) {
+    const inner = (m[1] ?? m[2] ?? m[3] ?? "").trim();
+    if (inner) out.push(inner);
+  }
+  return out;
+}
+
+interface StaleCommandFinding {
+  /** The command whose help text carries the stale reference. */
+  path: string;
+  /** The quoted span as written. */
+  quoted: string;
+  /** The successor hint dispatch.ts already carries for the removed token. */
+  hint: string;
+}
+
+/**
+ * Walk the tree and collect every quoted `<group> <token>` reference where
+ * `<token>` is a command dispatch.ts's own REMOVED_COMMANDS map already
+ * knows was removed/renamed under `<group>` — the exact shape of the
+ * `post list` defect. A leading "curviate" in the quoted span is stripped
+ * first, so both "post list" and "curviate post list" style references
+ * resolve the same way.
+ *
+ * Deliberately does NOT flag a quoted reference that fails to resolve to
+ * anything at all (live or removed): that would also catch ordinary quoted
+ * prose that happens to start with a group name, which is not this defect
+ * class and would make the check too noisy to keep passing honestly.
+ * Checking against the removed-command map specifically keeps the false-positive
+ * rate at zero: it only fires on a token dispatch.ts itself documents as gone.
+ */
+function findStaleCommandReferences(
+  tree: Map<string, { helpText: string }>,
+): StaleCommandFinding[] {
+  const findings: StaleCommandFinding[] = [];
+  const groupNames = new Set(Object.keys(GROUPS));
+
+  for (const [path, { helpText }] of tree) {
+    for (const quoted of quotedSpans(helpText)) {
+      const words = quoted.split(/\s+/).filter(Boolean);
+      if (words[0] === "curviate") words.shift();
+      const group = words[0];
+      const token = words[1];
+      if (group === undefined || token === undefined) continue;
+      if (!groupNames.has(group)) continue;
+
+      const hint = successorHint(group, token);
+      if (hint) findings.push({ path, quoted, hint });
+    }
+  }
+  return findings;
+}
+
+describe("help text names only commands that still exist", () => {
+  it("no command's description or usage quotes a removed/renamed command", async () => {
+    const tree = await collectTree();
+    const findings = findStaleCommandReferences(tree);
+    const report = findings.map(
+      (f) => `  ${f.path}: help quotes \`${f.quoted}\`, which was removed. ${f.hint}`,
+    );
+    expect(report, `stale command-name references:\n${report.join("\n")}`).toEqual([]);
+  });
+
+  it("the `profile me --posts` regression specifically: points at the real successor, not the removed command", async () => {
+    const profileCmd = await GROUPS["profile"]!();
+    const subs = (await resolveValue(profileCmd.subCommands)) as Record<string, unknown>;
+    const me = asCmd(await resolveValue(subs["me"]));
+    const args = (await resolveValue(me.args ?? {})) as Record<string, { description?: string }>;
+    const postsDescription = args["posts"]?.description ?? "";
+
+    // 'post list' is exactly the token dispatch.ts's REMOVED_COMMANDS answers
+    // with a successor hint — the description must not send a reader there.
+    expect(successorHint("post", "list")).not.toBeNull();
+    expect(postsDescription).not.toMatch(/['"`]post list['"`]/);
+    expect(postsDescription).toContain("post user-posts");
   });
 });

@@ -826,7 +826,7 @@ const companyEmployeesCommand = defineCommand({
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across employee profile fields." },
-    location: { type: "string", description: "Opaque location id from `search parameters --type LOCATION`." },
+    location: { type: "string", description: "Opaque location id from `curviate search parameters --type LOCATION`." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
