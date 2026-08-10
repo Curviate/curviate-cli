@@ -39,7 +39,7 @@ curviate account list
 **Option 3: per-command flag**:
 
 ```bash
-curviate account list --api-key <your-api-key>
+curviate --api-key <your-api-key> account list
 ```
 
 > **Security note:** a key passed via `--api-key` is visible to other users on
@@ -52,7 +52,9 @@ Get your API key from the [Curviate dashboard](https://app.curviate.com).
 ## Usage
 
 ```
-curviate [command] [subcommand] [flags]
+curviate [flags] [command] [subcommand] [flags]
+
+Global flags may appear anywhere in the invocation, before the command or after it.
 
 Global flags available on every command:
   --account      Target a specific account ID
