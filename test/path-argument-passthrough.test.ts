@@ -88,11 +88,18 @@ beforeAll(async () => {
       res.end(JSON.stringify({ object: "probe", items: [], cursor: null, id: "probe_1" }));
     });
   });
+  // Almost every case here actually opens a socket (that is the point), and the
+  // SDK's agent keeps them alive. `server.close()` only stops new connections
+  // and then WAITS for the live ones, so without this the file's teardown sits
+  // on an idle keep-alive socket whose owning child process has already exited,
+  // and vitest's task-update RPC times out while it waits.
+  server.keepAliveTimeout = 1;
   await new Promise<void>((r) => server.listen(0, r));
   baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 });
 
 afterAll(async () => {
+  server.closeAllConnections();
   await new Promise<void>((r) => server.close(() => r()));
 });
 
