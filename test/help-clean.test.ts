@@ -43,10 +43,11 @@ const LEAK_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   { label: "spec/doc refs",        pattern: /\b(FR|AC|NFR|TS|ADR)-\d+/ },
   { label: "internal path prefix", pattern: /\b(sdk|api|core|infra|mcp|cli)\/\d+/ },
   { label: "internal doc paths",   pattern: /docs\/(specs|adr)\b/ },
-  // A citation whose doc reference has been edited away (e.g. "api/008 §F"
-  // trimmed to a bare "§F") still names an internal document structure, but
-  // none of the patterns above can see it once the doc-reference half is
-  // gone. Mirrors scripts/check-clean.mjs's identical fix.
+  // A citation whose doc-reference half has been edited away (a "doc path
+  // plus section marker" trimmed down to just the bare marker) still names
+  // an internal document structure, but none of the patterns above can see
+  // it once the doc-reference half is gone. Mirrors scripts/check-clean.mjs's
+  // identical fix.
   { label: "bare section marker",  pattern: /§\s*[A-Za-z0-9]/ },
   { label: "issue tracker refs",   pattern: /#\d{3,}/ },
   { label: "internal policy labels", pattern: /hard\s+rule/i },
