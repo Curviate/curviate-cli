@@ -128,6 +128,24 @@ describe("check:clean guard — cli/NNN path-prefix citation", () => {
     const result = await scanDirectory(dir);
     expect(result.findings).toHaveLength(0);
   });
+
+  it("mutation check: a prefix list missing this package's own token misses the identical citation", async () => {
+    const citation = "cli" + "/004";
+    const dir = await makeFixtureDir({
+      "notes.ts": `// see ${citation} for the removed-command map\nexport const x = 1;\n`,
+    });
+    // Reproduces the historical shape of this exact bug in the sibling sdk
+    // package's copy of this guard: the path-prefix alternation listed every
+    // OTHER internal package's token but not this package's own, so a
+    // citation into this package's own docs sailed through undetected.
+    const patternsMissingOwnToken = PATTERNS.map((p: { label: string; pattern: RegExp }) =>
+      p.label.includes("internal path prefixes")
+        ? { ...p, pattern: /\b(sdk|api|core|infra|mcp)\/\d+/ }
+        : p,
+    );
+    const result = await scanDirectory(dir, { patterns: patternsMissingOwnToken });
+    expect(result.findings).toHaveLength(0);
+  });
 });
 
 describe("check:clean guard — quote-prefixed internal package import", () => {
