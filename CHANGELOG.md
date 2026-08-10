@@ -8,6 +8,71 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-08-10
+
+A security and correctness release. Upgrade promptly if `--account` is ever
+set from anything other than a literal you typed yourself (an environment
+variable, a config profile, or agent- or model-generated text): every
+published version through 0.22.0 interpolated it into the request path with
+no validation at all, so a value carrying a slash, `..`, a question mark, a
+hash, or a percent sign could redirect a request, including a write, to a
+different endpoint on the API host. This release also lets `--account` take a
+connected account's name, not just its id.
+
+### Fixed
+
+- **`--account` could redirect a request to a different endpoint.**
+  `inbox mark-read` on `--account 'x/../../../v1/accounts'` built
+  `PATCH /v1/accounts/chats/chat_1` instead of touching the account the caller
+  named. `--account 'a?x=1'` injected a query string into the middle of the
+  path. Neither needed a literal `..`: the URL Standard percent-decodes when it
+  decides whether a segment is a double-dot path segment, so `%2e%2e` walked up
+  the path with no slash in the value at all. Every account-scoped command was
+  reachable this way, since all of them build the request URL from `--account`.
+  The value is now checked before any request is built, and a value that could
+  redirect one is refused with `[INVALID_PATH_SEGMENT]` (exit `2`) naming the
+  character it contains, rather than being sent.
+
+- **`group get` / `group members` never actually accepted a group URL,
+  despite documenting it.** The help and this file both claimed the server
+  extracted the numeric id from a full `https://www.linkedin.com/groups/...`
+  URL passed through verbatim; it does not, and cannot: the URL's own slashes
+  split it into several path segments and the request landed on a route that
+  does not exist. The numeric id is now extracted client-side, the same way
+  member, company, chat, and job URLs already are. A bare numeric id is
+  unaffected.
+
+### Added
+
+- **`--account` accepts a connected account's name, not just its id.** A value
+  that is not shaped like an account id is looked up against
+  `accounts.list`: an exact name match wins outright, otherwise a unique
+  prefix match resolves. A name matching more than one connected account
+  exits with `[ACCOUNT_AMBIGUOUS]` (exit `2`) rather than guessing, since
+  acting on the wrong live persona cannot be undone. A name matching none
+  exits with `[ACCOUNT_NAME_NOT_FOUND]` (exit `4`) and lists what is
+  connected. On an API key with more connected accounts than the resolver
+  reads (250 per page, 10 pages), a name lookup exits with
+  `[ACCOUNT_LIST_TRUNCATED]` (exit `2`) instead of matching against a list
+  that might be missing the very account the name would have matched; pass
+  the id instead, which needs no lookup. An id-shaped value still costs no
+  extra request. `--preview` never issues the lookup, consistent with it
+  never calling the API.
+
+### Changed
+
+- **`@curviate/sdk` dependency bumped to `^0.20.1`.** ^0.20.0 still resolves
+  the vulnerable 0.20.0 build on a fresh install or an old lockfile; 0.20.1 is
+  a hard floor at the fix. Percent-encoding of every other command's path
+  parameters (chat, job, group, company and member ids, and so on) is the
+  SDK's job as of 0.20.0, not this CLI's: a previous CLI-side guard that
+  inspected each call's leading string argument has been removed, because it
+  could not know which argument actually became a path segment and was wrong
+  in both directions, missing a path parameter passed inside an object and
+  rejecting a body field that never reached a path (`post save <share URL>`
+  was one such false rejection). `--account` is guarded separately, above,
+  because it is the one value this CLI genuinely understands the meaning of.
+
 ## [0.22.0] - 2026-08-07
 
 Two correctness fixes for the same underlying failure: a command that answers
