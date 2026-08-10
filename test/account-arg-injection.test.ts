@@ -32,7 +32,7 @@
  * newer, so a red-then-green cycle cannot be measuring a stale artifact.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { mkdtempSync } from "node:fs";
@@ -66,6 +66,18 @@ const ACCOUNTS = {
   cursor: null,
 };
 
+/**
+ * How `/v1/accounts` paginates for the next run.
+ *
+ *   "single"   one page, cursor null: the ordinary tenant.
+ *   "twoPages" a second page, then cursor null: paging works and completes.
+ *   "endless"  a cursor on every page: more accounts than the walk will read.
+ *
+ * Set immediately before a `run()` and reset after. Runs in this file are
+ * sequential and the server is in-process, so there is nothing to race.
+ */
+let accountPaging: "single" | "twoPages" | "endless" = "single";
+
 beforeAll(async () => {
   cliPath = ensureFreshBuild();
   server = createServer((req, res) => {
@@ -75,6 +87,33 @@ beforeAll(async () => {
       recorded.push({ method: req.method ?? "", url });
       res.writeHead(200, { "content-type": "application/json" });
       if (url.startsWith("/v1/accounts")) {
+        if (accountPaging === "endless") {
+          // The first page carries the whole fixture, so a resolver that
+          // ignored completeness would find exactly one "Sophie Ahmed" and
+          // resolve it, confidently and wrongly. That is the case worth
+          // testing: a truncated walk that looks like a successful one.
+          const firstPage = !url.includes("cursor=");
+          res.end(
+            JSON.stringify({
+              object: "account_list",
+              items: firstPage ? ACCOUNTS.items : [],
+              cursor: "next",
+            }),
+          );
+          return;
+        }
+        if (accountPaging === "twoPages" && !url.includes("cursor=")) {
+          // The first page holds nobody the tests look for, so a resolution
+          // that stopped after one page could not accidentally succeed.
+          res.end(
+            JSON.stringify({
+              object: "account_list",
+              items: [{ account_id: "acc_01PAGE1", full_name: "Page One", status: "active" }],
+              cursor: "next",
+            }),
+          );
+          return;
+        }
         res.end(JSON.stringify(ACCOUNTS));
         return;
       }
@@ -466,6 +505,79 @@ describe("--preview calls the API for nothing, including account resolution", ()
     expect(r.status).toBe(0);
     // Nothing was resolved, so there is nothing to disclose.
     expect(r.stderr.trim()).toBe("");
+  });
+});
+
+/**
+ * AC6 — a resolution that could not read the whole account set refuses.
+ *
+ * The walk stops after a fixed number of cursor pages. Truncating there and
+ * matching anyway is the exact failure this whole guard exists to prevent, one
+ * layer down: the ambiguity check would report a *unique* match while the
+ * duplicate sat on a page never read, and a unique match is indistinguishable
+ * from a correct one. The caller would then act as an account they never named,
+ * which is the unrecoverable direction.
+ *
+ * "Matched nothing" is wrong for the same reason, so the refusal comes before
+ * matching rather than being folded into either outcome.
+ */
+describe("AC6 — an incomplete account list refuses to resolve", () => {
+  afterEach(() => {
+    accountPaging = "single";
+  });
+
+  it("refuses rather than matching against a truncated list, and writes nothing", async () => {
+    accountPaging = "endless";
+    const r = await markRead("Sophie Ahmed");
+
+    // The walk is bounded, so the run terminates instead of paging forever.
+    const lookups = r.requests.filter((q) => q.url.startsWith("/v1/accounts"));
+    expect(lookups.length, "the cap must actually be driven").toBeGreaterThan(1);
+    // Whatever it read, it must not have acted on it.
+    const write = r.requests.filter((q) => !q.url.startsWith("/v1/accounts"));
+    expect(write, "no write may be issued off an incomplete list").toEqual([]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("ACCOUNT_LIST_TRUNCATED");
+    // The remedy has to be in the message, or the caller is stuck.
+    expect(r.stderr.toLowerCase()).toContain("account id");
+  });
+
+  it("refuses a name that appears to match uniquely on the truncated pages", async () => {
+    // The dangerous case specifically: the read pages contain exactly one
+    // "Sophie", so a resolver that ignored completeness would resolve happily
+    // and look correct while doing so.
+    accountPaging = "endless";
+    const r = await markRead("Sophie");
+    const write = r.requests.filter((q) => !q.url.startsWith("/v1/accounts"));
+    expect(write).toEqual([]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("ACCOUNT_LIST_TRUNCATED");
+  });
+
+  it("uses an error code distinct from ambiguity and not-found", async () => {
+    accountPaging = "endless";
+    const truncated = await markRead("Sophie Ahmed");
+    accountPaging = "single";
+    const ambiguous = await markRead("Ralf");
+    const missing = await markRead("Nobody At All");
+    const codeOf = (s: string) => /\[([A-Z_]+)\]/.exec(s)?.[1] ?? "";
+    // Non-empty first: without it, a run that quietly succeeded would report no
+    // code at all and still satisfy both "distinct from" comparisons below.
+    expect(codeOf(truncated.stderr)).not.toBe("");
+    expect(codeOf(truncated.stderr)).not.toBe(codeOf(ambiguous.stderr));
+    expect(codeOf(truncated.stderr)).not.toBe(codeOf(missing.stderr));
+  });
+
+  it("still resolves when the walk completes across several pages", async () => {
+    // The control. A guard that refused every multi-page walk would pass every
+    // assertion above while breaking the ordinary large tenant, so the same
+    // paging path has to succeed when the cursor genuinely runs out.
+    accountPaging = "twoPages";
+    const r = await markRead("Sophie Ahmed");
+    expect(r.status).toBe(0);
+    const lookups = r.requests.filter((q) => q.url.startsWith("/v1/accounts"));
+    expect(lookups.length, "the second page must actually be fetched").toBe(2);
+    expect(r.requests.map((q) => q.url)).toContain("/v1/acc_01SOPH/chats/chat_1");
   });
 });
 

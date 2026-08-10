@@ -81,12 +81,36 @@ interface ConnectedAccount {
 }
 
 /**
+ * The account set a match is decided against, and whether it is all of them.
+ *
+ * `complete` is what makes the ambiguity guard trustworthy. A guard that
+ * reports "exactly one match" over a set that silently lost members is not a
+ * guard at all: losing the duplicate looks identical to there never having been
+ * one, and the caller gets a confident answer that is wrong in the one
+ * direction that matters (acting as an account they did not name). So the walk
+ * reports how it ended, and a walk that ended at the page cap rather than at
+ * the end of the cursor refuses to answer.
+ */
+interface AccountSet {
+  accounts: ConnectedAccount[];
+  /** False when the walk stopped at `MAX_LOOKUP_PAGES` with a cursor still open. */
+  complete: boolean;
+}
+
+/**
  * One `accounts.list` result per client, so several `requireAccount` calls in
  * a single command run cannot multiply into several lookups.
  */
-const listCache = new WeakMap<object, Promise<ConnectedAccount[]>>();
+const listCache = new WeakMap<object, Promise<AccountSet>>();
 
-/** Cursor pages to walk before giving up. 250 per page covers any real tenant. */
+/**
+ * Cursor pages to walk before giving up, 250 accounts each.
+ *
+ * A bound is needed (a broken cursor that never clears would otherwise page
+ * forever), but the bound is not a silent one: hitting it makes the result
+ * incomplete, and an incomplete result refuses to resolve rather than matching
+ * against a partial list.
+ */
 const MAX_LOOKUP_PAGES = 10;
 
 function toConnectedAccount(item: unknown): ConnectedAccount | null {
@@ -102,11 +126,11 @@ function toConnectedAccount(item: unknown): ConnectedAccount | null {
 }
 
 /** Read every connected account, following cursors, memoized per client. */
-function listConnectedAccounts(client: Curviate): Promise<ConnectedAccount[]> {
+function listConnectedAccounts(client: Curviate): Promise<AccountSet> {
   const cached = listCache.get(client);
   if (cached) return cached;
 
-  const pending = (async (): Promise<ConnectedAccount[]> => {
+  const pending = (async (): Promise<AccountSet> => {
     const accounts: ConnectedAccount[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < MAX_LOOKUP_PAGES; page++) {
@@ -119,10 +143,13 @@ function listConnectedAccounts(client: Curviate): Promise<ConnectedAccount[]> {
         const account = toConnectedAccount(item);
         if (account) accounts.push(account);
       }
-      if (!result.cursor) break;
+      // The cursor running out is the only ending that means "that was all of
+      // them". Reaching the last page with one still open means the opposite,
+      // and the two must not be reported the same way.
+      if (!result.cursor) return { accounts, complete: true };
       cursor = result.cursor;
     }
-    return accounts;
+    return { accounts, complete: false };
   })();
 
   listCache.set(client, pending);
@@ -232,9 +259,9 @@ export async function requireAccount(
     return selector;
   }
 
-  let accounts: ConnectedAccount[];
+  let listed: AccountSet;
   try {
-    accounts = await listConnectedAccounts(client);
+    listed = await listConnectedAccounts(client);
   } catch (err: unknown) {
     const { CurviateError } = await import("@curviate/sdk");
     if (err instanceof CurviateError) {
@@ -247,6 +274,23 @@ export async function requireAccount(
     throw err;
   }
 
+  // Before any matching, because every answer below is only as good as the set
+  // it was decided against. A unique match on a truncated list is exactly the
+  // failure this refuses: it is indistinguishable from a genuine unique match,
+  // and picking it acts as an account the caller never named. "Matched nothing"
+  // would be just as wrong, since the account may sit on a page never read.
+  if (!listed.complete) {
+    out.stderr.write(
+      `error: [ACCOUNT_LIST_TRUNCATED] --account "${selector}" cannot be resolved by name: ` +
+        `this API key has more connected accounts than the resolver reads (it stops after ` +
+        `${MAX_LOOKUP_PAGES} pages of 250), so the name would be matched against an incomplete list ` +
+        `and a single match would not prove there is only one. ` +
+        `Pass the account id instead; an id is used as given and needs no lookup.\n`,
+    );
+    process.exit(2);
+  }
+
+  const accounts = listed.accounts;
   const matches = matchAccounts(accounts, selector);
 
   if (matches.length === 1) {
