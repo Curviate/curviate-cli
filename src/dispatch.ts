@@ -39,8 +39,31 @@ import {
   restoreLiteralDashes,
   type RestorableArgDef,
 } from "./lib/stdin.js";
+import { GLOBAL_FLAGS } from "./lib/global-flags.js";
 
 type AnyCommand = CommandDef;
+
+/**
+ * Every global flag name, and the subset that is boolean (takes no value).
+ * `GLOBAL_FLAGS` is merged into each LEAF's own `args` (see global-flags.ts's
+ * header comment: "curviate <anything> --json --account acc_1 parses
+ * identically regardless of which command is running"), but a GROUP node on
+ * the way to that leaf, the root `main` command and pure groups like
+ * `account`/`webhook` (no bare positional, only `subCommands`), declares no
+ * `args` of its own. The routing scan below (which walks every node from the
+ * root down, before any leaf is chosen) still has to recognise a global flag
+ * and skip its value there, so it unions the current node's own declared
+ * flags with this constant. `findUnknownFlag`, by contrast, must NOT use this
+ * union: whether a flag is actually ALLOWED on the resolved leaf stays
+ * leaf-precise (`account link` deliberately declares no `--limit`), so
+ * accept/reject decisions read only the leaf's own args, never this constant.
+ */
+const GLOBAL_FLAG_NAMES = new Set(Object.keys(GLOBAL_FLAGS));
+const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
+  Object.entries(GLOBAL_FLAGS)
+    .filter(([, def]) => def.type === "boolean")
+    .map(([name]) => name),
+);
 
 /**
  * Removed/renamed commands -> a one-line "did you mean" successor hint.
@@ -113,9 +136,162 @@ async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>)): Promi
   return typeof input === "function" ? (input as () => T | Promise<T>)() : input;
 }
 
-/** Index of the first token that is not a flag (does not start with "-"). */
-function firstPositionalIndex(rawArgs: string[]): number {
-  return rawArgs.findIndex((a) => !a.startsWith("-"));
+/**
+ * The stripped flag name a token names, or null when the token is not
+ * flag-shaped: it doesn't start with "-", or it IS the bare "-" (the stdin
+ * sentinel's literal meaning elsewhere in this file, never a flag name).
+ * Strips every leading dash (so both `-o` and `--output` resolve to a plain
+ * name) and any inline `=value` suffix.
+ */
+function stripFlagName(token: string): string | null {
+  if (!token.startsWith("-") || token === "-") return null;
+  const body = token.replace(/^-+/, "");
+  const eq = body.indexOf("=");
+  const name = eq === -1 ? body : body.slice(0, eq);
+  return name === "" ? null : name;
+}
+
+/** Does `token` name a flag present in `declared` (full name, or its "no-"-stripped form)? */
+function isDeclaredFlagToken(token: string, declared: Set<string>): boolean {
+  const name = stripFlagName(token);
+  if (name === null) return false;
+  return declared.has(name) || (name.startsWith("no-") && declared.has(name.slice(3)));
+}
+
+interface TokenWalk {
+  /** Non-flag tokens, and every token after a literal "--", in argv order. */
+  positionals: Array<{ token: string; index: number }>;
+  /** Every flag-name occurrence NOT consumed as another flag's value, in argv order. */
+  flags: Array<{ token: string; index: number; name: string }>;
+  /**
+   * `{ flagIndex, valueIndex }` pairs where a KNOWN (declared) flag consumed
+   * the following token as its value AND that value starts with "-" (length
+   * > 1; the bare stdin sentinel "-" is a different, already-solved case, see
+   * stdin.ts). citty's own parser (a vendored mri) refuses to bind such a
+   * value through the space-separated form: mri only consumes the next token
+   * when its first character is not "-" (see citty's `parseRawArgs`), so a
+   * value that legitimately starts with "-" (an API key, "--limit -5", a
+   * message beginning with a dash) is left unbound and re-parsed as its own
+   * (bogus) flag. `mergeDashPrefixedValues` below uses these pairs to rewrite
+   * the pair into the unambiguous inline `--flag=value` form before citty
+   * ever sees it.
+   */
+  merges: Array<{ flagIndex: number; valueIndex: number }>;
+}
+
+/**
+ * Walk `rawArgs` ONCE, classifying every token as the "--" end-of-flags
+ * marker, a flag name (bare, inline `--flag=value`, or one that consumes the
+ * FOLLOWING token as its value), or a positional. This is the single source
+ * of truth for "which token is the subcommand keyword" (routing),
+ * "which tokens are extra beyond a leaf's declared arity" (D4a), and "which
+ * tokens are genuine flag-name occurrences to validate" (unknown-flag
+ * detection) — the same shape of question three call sites used to answer
+ * with three separately-drifting scans, none of which tracked a token already
+ * consumed as a value, so each re-inspected it as if it were fresh input.
+ *
+ * Consumption rule for a `--flag` (or `-x`) with no inline `=value`:
+ *   - a declared BOOLEAN (or its "no-"-negated form): consumes nothing.
+ *   - a declared VALUE flag: consumes the very next token as its value
+ *     UNCONDITIONALLY — including one that starts with "-" — unless that
+ *     token is itself a declared flag name (so `--limit --json` still splits
+ *     into two flags, and a value that happens to collide with a real flag
+ *     name stays a separate flag, never silently swallowed) or is the "--"
+ *     terminator. This is the fix: previously a dash-prefixed value was never
+ *     consumed, so it fell through and was re-scanned as its own (usually
+ *     unknown) flag.
+ *   - an UNDECLARED (unknown) flag: this scan does not know its arity, so it
+ *     keeps the pre-existing conservative default, consume the next token
+ *     unless it looks like a flag. An unknown flag is rejected downstream
+ *     regardless (`findUnknownFlag`); this only affects how its neighbour is
+ *     classified while we don't yet know whether the flag itself survives.
+ */
+function walkTokens(
+  rawArgs: string[],
+  booleanFlags: Set<string>,
+  declaredFlags: Set<string>,
+): TokenWalk {
+  const positionals: TokenWalk["positionals"] = [];
+  const flags: TokenWalk["flags"] = [];
+  const merges: TokenWalk["merges"] = [];
+  let afterDoubleDash = false;
+
+  for (let i = 0; i < rawArgs.length; i++) {
+    const arg = rawArgs[i]!;
+    if (afterDoubleDash) {
+      positionals.push({ token: arg, index: i });
+      continue;
+    }
+    if (arg === "--") {
+      afterDoubleDash = true;
+      continue;
+    }
+    const name = stripFlagName(arg);
+    if (name === null) {
+      positionals.push({ token: arg, index: i });
+      continue;
+    }
+    flags.push({ token: arg, index: i, name });
+    if (arg.replace(/^-+/, "").includes("=")) continue; // inline value, self-contained.
+
+    const isBoolean =
+      booleanFlags.has(name) || (name.startsWith("no-") && booleanFlags.has(name.slice(3)));
+    if (isBoolean) continue;
+
+    const next = rawArgs[i + 1];
+    if (next === undefined || next === "--") continue;
+
+    const isDeclared =
+      declaredFlags.has(name) || (name.startsWith("no-") && declaredFlags.has(name.slice(3)));
+    const nextIsDashValue = next.startsWith("-") && next !== "-";
+    const consume = isDeclared
+      ? !isDeclaredFlagToken(next, declaredFlags)
+      : !nextIsDashValue; // unknown flag: legacy fallback, unchanged.
+
+    if (consume) {
+      if (isDeclared && nextIsDashValue) merges.push({ flagIndex: i, valueIndex: i + 1 });
+      i++;
+    }
+  }
+
+  return { positionals, flags, merges };
+}
+
+/**
+ * `booleanFlagNames`/`declaredArgNames` augmented with the global flag set,
+ * for the ROUTING scan only (see the constants above for why). Never used to
+ * decide whether a flag is accepted, only to correctly delineate token
+ * boundaries while searching for the next subcommand keyword or counting a
+ * node's extra positionals.
+ */
+async function routingBooleanFlagNames(cmd: AnyCommand): Promise<Set<string>> {
+  return new Set([...(await booleanFlagNames(cmd)), ...GLOBAL_BOOLEAN_FLAG_NAMES]);
+}
+async function routingDeclaredFlagNames(cmd: AnyCommand): Promise<Set<string>> {
+  return new Set([...(await declaredArgNames(cmd)), ...GLOBAL_FLAG_NAMES]);
+}
+
+/**
+ * Rewrite each `{flagIndex, valueIndex}` pair from a `TokenWalk` into the
+ * single inline-value token `--flag=value` (or `-x=value`), the one form
+ * citty's parser binds correctly regardless of what the value starts with
+ * (see `TokenWalk.merges`'s doc comment). Every other token, including a
+ * bare "-" (handled separately, see stdin.ts), passes through unchanged.
+ */
+function mergeDashPrefixedValues(
+  rawArgs: string[],
+  merges: TokenWalk["merges"],
+): string[] {
+  if (merges.length === 0) return rawArgs;
+  const valueIndexOfFlag = new Map(merges.map((m) => [m.flagIndex, m.valueIndex]));
+  const consumedValueIndices = new Set(merges.map((m) => m.valueIndex));
+  const out: string[] = [];
+  for (let i = 0; i < rawArgs.length; i++) {
+    if (consumedValueIndices.has(i)) continue;
+    const valueIndex = valueIndexOfFlag.get(i);
+    out.push(valueIndex === undefined ? rawArgs[i]! : `${rawArgs[i]}=${rawArgs[valueIndex]}`);
+  }
+  return out;
 }
 
 /**
@@ -186,67 +362,24 @@ function arityPhrase(count: number): string {
 }
 
 /**
- * The positional tokens citty/mri would leave after parsing `rawArgs` against a
- * node's declared flags, matching mri's rule that a `--flag` consumes the
- * FOLLOWING token as its value UNLESS the flag is declared boolean (or the value
- * is inline `--flag=value`, or the following token is itself a flag). An unknown
- * `--flag` consumes its follower too (mri's default), so a subcommand's own flag
- * (e.g. `company <id> employees --keywords eng`) is classified correctly even at
- * the parent node that never declared it.
- *
- * Used to detect UNEXPECTED extra positionals, tokens beyond a node's declared
- * positional arity that citty would silently swallow into `args._` (the D4a
- * silent-wrong-data class). Each result carries its index in `rawArgs` so a
- * reroute can drop exactly the subcommand-naming token.
- */
-function positionalTokens(
-  rawArgs: string[],
-  booleanFlags: Set<string>,
-): Array<{ token: string; index: number }> {
-  const out: Array<{ token: string; index: number }> = [];
-  let afterDoubleDash = false;
-  for (let i = 0; i < rawArgs.length; i++) {
-    const arg = rawArgs[i]!;
-    if (afterDoubleDash) {
-      out.push({ token: arg, index: i });
-      continue;
-    }
-    if (arg === "--") {
-      afterDoubleDash = true;
-      continue;
-    }
-    // A flag: starts with "-" but is not the bare "-" stdin sentinel.
-    if (arg.startsWith("-") && arg !== "-") {
-      const body = arg.replace(/^-+/, "");
-      if (body.includes("=")) continue; // inline value, self-contained
-      const isBoolean =
-        booleanFlags.has(body) ||
-        (body.startsWith("no-") && booleanFlags.has(body.slice(3)));
-      if (isBoolean) continue; // boolean flag, consumes no following token
-      // Value-flag (declared string or unknown): consume the next token as its
-      // value when present and not itself a flag (mirrors mri).
-      const next = rawArgs[i + 1];
-      if (next !== undefined && !(next.startsWith("-") && next !== "-")) i++;
-      continue;
-    }
-    // Positional (including the bare "-" stdin sentinel).
-    out.push({ token: arg, index: i });
-  }
-  return out;
-}
-
-/**
  * The positional tokens `cmd` would NOT bind: everything beyond its declared
  * positional arity. citty swallows these into `args._`, which no handler
  * reads, so an unchecked extra is silently discarded and the command returns
  * something other than what was asked for.
+ *
+ * Delegates the token-boundary classification to `walkTokens` (the routing-
+ * augmented sets, so a global flag's value is correctly skipped even here,
+ * mirroring the routing scan in `resolveLeaf` below); only the accept/reject
+ * decision for a flag NAME stays leaf-precise, and that decision is not this
+ * function's job.
  */
 async function extraPositionals(
   cmd: AnyCommand,
   rawArgs: string[],
 ): Promise<Array<{ token: string; index: number }>> {
-  const booleanFlags = await booleanFlagNames(cmd);
-  const positionals = positionalTokens(rawArgs, booleanFlags);
+  const booleanFlags = await routingBooleanFlagNames(cmd);
+  const declaredFlags = await routingDeclaredFlagNames(cmd);
+  const { positionals } = walkTokens(rawArgs, booleanFlags, declaredFlags);
   const declaredCount = await nodePositionalCount(cmd);
   return positionals.slice(declaredCount);
 }
@@ -319,21 +452,17 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
  *
  * citty's own parser silently accepts unknown flags, so this check is the CLI
  * layer's responsibility.
+ *
+ * Reads a pre-computed `TokenWalk.flags` list (leaf-precise sets, no global
+ * union, see the constants above) rather than re-scanning `rawArgs` itself:
+ * every entry there is already a genuine flag-NAME occurrence, a token
+ * consumed as a KNOWN flag's value (dash-prefixed or not) never reaches this
+ * list, so it can never be mistaken for a flag of its own. That is the actual
+ * fix for a value like `--api-key -something`: the old version scanned every
+ * dash-led token unconditionally and had no notion of "already spoken for".
  */
-function findUnknownFlag(rawArgs: string[], declared: Set<string>): string | null {
-  let afterDoubleDash = false;
-  for (const arg of rawArgs) {
-    if (afterDoubleDash) continue;
-    if (arg === "--") {
-      afterDoubleDash = true;
-      continue;
-    }
-    if (!arg.startsWith("-")) continue;
-    // Strip leading dashes and any "=value" suffix to get the flag name.
-    let name = arg.replace(/^-+/, "");
-    const eq = name.indexOf("=");
-    if (eq !== -1) name = name.slice(0, eq);
-    if (name === "") continue; // bare "--" already handled
+function findUnknownFlag(flags: TokenWalk["flags"], declared: Set<string>): string | null {
+  for (const { token, name } of flags) {
     // Match the full declared name FIRST, a flag may be literally declared
     // with a "no-" prefix (e.g. "no-interactive"), and that declaration must
     // win. Only fall back to stripping "no-" for citty's implicit negation
@@ -341,7 +470,7 @@ function findUnknownFlag(rawArgs: string[], declared: Set<string>): string | nul
     // itself declared.
     if (declared.has(name)) continue;
     if (name.startsWith("no-") && declared.has(name.slice(3))) continue;
-    return arg;
+    return token;
   }
   return null;
 }
@@ -405,14 +534,32 @@ export async function resolveLeaf(
     | undefined;
 
   if (subCommands && Object.keys(subCommands).length > 0) {
-    const idx = firstPositionalIndex(rawArgs);
+    // Routing-augmented sets: a global flag (--api-key, --json, ...) must be
+    // recognised and its value skipped here even though a pure group like
+    // `account` or the root `main` declares no args of its own (see the
+    // GLOBAL_FLAG_NAMES/GLOBAL_BOOLEAN_FLAG_NAMES comment above). Without
+    // this, `curviate --api-key <key> account list` misreads the key's VALUE
+    // as the first positional and never finds `account` at all.
+    const booleanFlags = await routingBooleanFlagNames(cmd);
+    const declaredFlags = await routingDeclaredFlagNames(cmd);
+    const { positionals } = walkTokens(rawArgs, booleanFlags, declaredFlags);
+    const idx = positionals.length > 0 ? positionals[0]!.index : -1;
     const token = idx === -1 ? undefined : rawArgs[idx];
     const hasBarePositional = await nodeHasPositional(cmd);
 
     if (token !== undefined && subCommands[token]) {
-      // Token is a known subcommand keyword -> descend into it ONLY.
+      // Token is a known subcommand keyword -> descend into it ONLY. Drop
+      // JUST the matched keyword token, not everything before it: idx is no
+      // longer always 0 now that the scan above can skip a leading global
+      // flag (and its value) to find the keyword, so a flag preceding the
+      // keyword (`curviate --api-key X account list`) must survive into the
+      // descended rawArgs the same way `--api-key X` already does when it
+      // follows the keyword, or the value is silently dropped on the floor
+      // and whatever profile/env fallback exists underneath it answers
+      // instead, an even quieter failure than the routing error this fixes.
       const sub = (await resolveValue(subCommands[token])) as AnyCommand;
-      return resolveLeaf(sub, rawArgs.slice(idx + 1), {
+      const remaining = [...rawArgs.slice(0, idx), ...rawArgs.slice(idx + 1)];
+      return resolveLeaf(sub, remaining, {
         path: [...here.path, token],
         siblings: subCommands,
       });
@@ -516,11 +663,25 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     if (hasEmptyFields(leafArgs)) {
       usageError("--fields must not be empty.");
     }
+    // Leaf-precise sets (no global union, see the constants above): whether a
+    // flag is ALLOWED on this specific leaf must not loosen just because it
+    // happens to be a global flag elsewhere in the tree.
+    const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
-    const unknown = findUnknownFlag(leafArgs, declared);
+    const walk = walkTokens(leafArgs, booleanFlags, declared);
+    const unknown = findUnknownFlag(walk.flags, declared);
     if (unknown !== null) {
       usageError(`unknown flag \`${unknown}\`.`);
     }
+
+    // Rewrite `--flag -value` pairs the SAME walk already proved are a known
+    // flag consuming a dash-prefixed value into the inline `--flag=-value`
+    // form citty's parser binds unambiguously (see mergeDashPrefixedValues's
+    // doc comment). Must run BEFORE the stdin-sentinel substitution below:
+    // it only ever touches a value of length > 1 that starts with "-", so it
+    // can never touch the bare "-" sentinel case, and doing it first keeps
+    // that substitution's own indices meaningful (a straight per-token map).
+    const mergedLeafArgs = mergeDashPrefixedValues(leafArgs, walk.merges);
 
     // Pre-process: replace bare "-" with the stdin sentinel before handing to
     // citty/mri. mri's embedded parser (j-dash-count loop) silently swallows "-"
@@ -528,7 +689,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // -> never lands in `_[]` -> citty cannot bind it to a positional. The sentinel
     // starts with "_" (no leading dash) so mri treats it as a plain positional;
     // resolveTextOrStdin then recognises both "-" and the sentinel.
-    const processedLeafArgs = leafArgs.map((a) => (a === "-" ? STDIN_SENTINEL : a));
+    const processedLeafArgs = mergedLeafArgs.map((a) => (a === "-" ? STDIN_SENTINEL : a));
 
     // Post-process, symmetrically: the substitution above is indiscriminate, so
     // undo it for every argument that did not opt into the stdin contract. The

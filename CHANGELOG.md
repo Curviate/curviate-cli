@@ -8,6 +8,25 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Fixed
+
+- **A global flag placed before the subcommand was rejected, and any flag
+  value beginning with `-` was rejected.** `curviate --api-key <key> account
+  list` exited 2 with "unknown command", and a value like `--api-key
+  -something` exited 2 with "unknown flag". Both shared one root cause: the
+  dispatcher's flag scan never tracked which tokens it had already consumed
+  as another flag's value, so it re-inspected a value token as if it were
+  fresh input, misreading a flag's value as the subcommand name in the first
+  case and re-scanning a dash-prefixed value as its own (unknown) flag in the
+  second. Fixing the scan surfaced a second, more serious defect on the same
+  path: once a leading global flag was correctly found, the token AFTER it
+  was dropped entirely on the way to the resolved command, so the flag's
+  value silently never reached the request at all (a stored profile or
+  environment variable answered instead, with no error). All three are
+  fixed. Global flags now work in any position, and a flag value starting
+  with `-` (an API key, a negative `--limit`, a message beginning with a
+  dash) is bound exactly as typed.
+
 ## [0.23.0] - 2026-08-10
 
 A security and correctness release. Upgrade promptly if `--account` is ever
