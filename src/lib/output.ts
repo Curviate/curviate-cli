@@ -104,6 +104,36 @@ function applyProjection(
 }
 
 /**
+ * Carry a response's top-level `notices[]` across projection.
+ *
+ * A notice is not a data field. It is the reason the data looks the way it
+ * does, so it must reach the caller whatever projection was asked for, and a
+ * projection that removed it would restore exactly the unexplained empty
+ * result the notices channel exists to abolish.
+ *
+ * It has to be reattached rather than merely left alone, because two layers
+ * upstream of the renderer drop it. Eight of the shipped slim projectors
+ * rebuild their envelope from a fixed allowlist instead of spreading it, and
+ * `--fields` on a single object is a strict allowlist by definition. Doing it
+ * here, at the one point every command's output passes through, means a
+ * projector cannot forget and a new one inherits the guarantee for free; the
+ * alternative was the same rule hand-written in a dozen places, which is what
+ * produced the ones that were wrong.
+ *
+ * Absent, empty, or malformed `notices` reattaches nothing, so a response
+ * without one renders byte-identically to how it always has.
+ */
+function withPreservedNotices(original: unknown, rendered: unknown): unknown {
+  const isPlain = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
+  if (!isPlain(original) || !isPlain(rendered)) return rendered;
+  const notices = original["notices"];
+  if (!Array.isArray(notices) || notices.length === 0) return rendered;
+  if (rendered["notices"] === notices) return rendered;
+  return { ...rendered, notices };
+}
+
+/**
  * The single object a `--fields` projection is applied against (for key
  * discovery), or null when there is no concrete object to inspect (empty list,
  * primitive, or an empty array). Mirrors `applyProjection`'s target selection:
@@ -187,7 +217,7 @@ export function renderSuccess(
     );
   }
 
-  const projected = applyProjection(slimmed, fields);
+  const projected = withPreservedNotices(data, applyProjection(slimmed, fields));
 
   if (json) {
     out.stdout.write(JSON.stringify(projected) + "\n");
