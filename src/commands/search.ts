@@ -373,7 +373,7 @@ export async function runSearchPeople(
     }
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -425,7 +425,7 @@ export async function runSearchCompanies(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -477,7 +477,7 @@ export async function runSearchPosts(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -529,7 +529,7 @@ export async function runSearchJobs(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -593,7 +593,7 @@ export async function runSearchParameters(
     process.exit(2);
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -645,7 +645,7 @@ export async function runSearchGroups(
     process.exit(2);
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -695,7 +695,7 @@ export async function runSearchServices(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -758,7 +758,7 @@ export async function runSearchServiceParameters(
     process.exit(2);
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -796,7 +796,7 @@ export async function runSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);

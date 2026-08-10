@@ -393,6 +393,82 @@ describe("a value that must never be transmitted is refused before the lookup", 
   });
 });
 
+/**
+ * `--preview` is published as "Render the request that would be sent without
+ * calling the API" (the `--help` text, not a comment). Name resolution is the
+ * first thing in the CLI that could make a preview call the API, and it would
+ * do so on the one flag whose entire purpose is that it does not: an agent
+ * reaches for `--preview` precisely when it is not ready to touch the wire.
+ *
+ * So a preview echoes the selector as the caller supplied it, which is also
+ * exactly what 0.22.0 printed, and says on stderr that the real run resolves
+ * it. Asserted against the sink, because "the preview printed something
+ * plausible" is true whether or not a lookup went out first.
+ */
+describe("--preview calls the API for nothing, including account resolution", () => {
+  it("issues no request for a name, and still renders", async () => {
+    const r = await run([
+      "inbox",
+      "mark-read",
+      "chat_1",
+      "--account",
+      "Sophie Ahmed",
+      "--preview",
+      "--json",
+    ]);
+    expect(r.requests, "--preview must not call the API").toEqual([]);
+    expect(r.status).toBe(0);
+    const preview = JSON.parse(r.stdout.trim()) as Record<string, unknown>;
+    expect(preview["method"]).toBe("messaging.markChatRead");
+    // The selector, verbatim: what 0.22.0 rendered, before names resolved.
+    expect(preview["account"]).toBe("Sophie Ahmed");
+    // ... and said so, so the rendered account is not read as the literal path.
+    expect(r.stderr).toMatch(/resolve/i);
+  });
+
+  it("issues no request for an ambiguous name either", async () => {
+    // "Ralf" matches two accounts. A preview that resolved would have to fail
+    // here; a preview that does not call the API has nothing to fail on.
+    const r = await run(["connect", "some-slug", "--account", "Ralf", "--preview"]);
+    expect(r.requests).toEqual([]);
+    expect(r.status).toBe(0);
+  });
+
+  it("still rejects a redirecting value under --preview, with nothing sent", async () => {
+    // Not calling the API is not the same as not validating: a value that could
+    // move the request is a usage error whether or not this run sends it, and
+    // the caller should learn that now rather than when they drop --preview.
+    const r = await run([
+      "inbox",
+      "mark-read",
+      "chat_1",
+      "--account",
+      "x/../../../v1/accounts",
+      "--preview",
+      "--json",
+    ]);
+    expect(r.requests).toEqual([]);
+    expect(r.status).toBe(2);
+    expect(r.stdout.trim()).toBe("");
+  });
+
+  it("renders an id-shaped account with no note and no request", async () => {
+    const r = await run([
+      "inbox",
+      "mark-read",
+      "chat_1",
+      "--account",
+      "acc_01SOPH",
+      "--preview",
+      "--json",
+    ]);
+    expect(r.requests).toEqual([]);
+    expect(r.status).toBe(0);
+    // Nothing was resolved, so there is nothing to disclose.
+    expect(r.stderr.trim()).toBe("");
+  });
+});
+
 describe("the same guard applies wherever the account arrives from", () => {
   it("rejects a path-unsafe CURVIATE_ACCOUNT", async () => {
     const r = await runWithAccountEnv("x/../../../v1/accounts");

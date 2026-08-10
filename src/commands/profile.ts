@@ -184,7 +184,7 @@ export async function runProfileMe(
     return;
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -333,7 +333,7 @@ export async function runProfileGet(
     parsedSections = result.sections;
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
   const ns = client.account(accountId);
@@ -477,7 +477,7 @@ export async function runProfileRelations(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -524,7 +524,7 @@ export async function runProfileEndorse(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const skillId = flags["endorsement-id"] ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -590,7 +590,7 @@ export async function runProfileSubscription(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -615,7 +615,7 @@ export async function runProfileAnalytics(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -639,7 +639,7 @@ export async function runProfileVisitors(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -682,7 +682,7 @@ export async function runProfileSsi(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -706,7 +706,7 @@ export async function runProfileUpdate(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
 
   const body: Record<string, unknown> = {};
   if (flags["first-name"]) body.first_name = flags["first-name"];
@@ -774,7 +774,7 @@ export async function runProfileFollow(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -809,7 +809,7 @@ export async function runProfileUnfollow(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -842,7 +842,7 @@ export async function runProfileFollowers(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -878,7 +878,7 @@ export async function runProfileFollowing(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);

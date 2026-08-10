@@ -118,7 +118,7 @@ export async function runGroupList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -162,7 +162,7 @@ export async function runGroupGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const groupId = flags.groupId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -187,7 +187,7 @@ export async function runGroupMembers(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const groupId = flags.groupId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);

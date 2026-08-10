@@ -93,7 +93,7 @@ export async function runConnectSend(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
 
@@ -142,7 +142,7 @@ export async function runConnectSent(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -194,7 +194,7 @@ export async function runConnectReceived(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -245,7 +245,7 @@ export async function runConnectAccept(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
@@ -288,7 +288,7 @@ export async function runConnectDecline(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
@@ -331,7 +331,7 @@ export async function runConnectCancel(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 

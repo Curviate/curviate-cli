@@ -164,7 +164,7 @@ export async function runSalesNavSearchPeople(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -231,7 +231,7 @@ export async function runSalesNavSearchCompanies(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -298,7 +298,7 @@ export async function runSalesNavGetParameters(
     process.exit(2);
   }
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -330,7 +330,7 @@ export async function runSalesNavSearchFromUrl(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -386,7 +386,7 @@ export async function runSalesNavMessageNew(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const to = flags.to ?? "";
   const text = flags.text ?? "";
   const subject = flags.subject ?? "";
@@ -470,7 +470,7 @@ export async function runSalesNavProfile(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.identifier ?? "";
   const resolvedId = resolveIdentifier(rawId);
   const ns = client.account(accountId);
@@ -497,7 +497,7 @@ export async function runSalesNavSaveLead(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const userId = flags.userId ?? "";
   const listId = flags.list ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -540,7 +540,7 @@ export async function runSalesNavAccountLists(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -581,7 +581,7 @@ export async function runSalesNavLeadLists(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -622,7 +622,7 @@ export async function runSalesNavBrowseAccountList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const listId = flags.listId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -669,7 +669,7 @@ export async function runSalesNavBrowseLeadList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const listId = flags.listId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -714,7 +714,7 @@ export async function runSalesNavSaveAccount(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const listId = flags.list ?? "";
   const companyId = flags.companyId ?? "";
   const outOpts = resolveOutputOpts(flags);

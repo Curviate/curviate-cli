@@ -104,7 +104,7 @@ export async function runNotificationList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -144,7 +144,7 @@ export async function runNotificationDelete(
   flags: NotificationFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const cardUrn = flags.cardUrn ?? "";
 
   if (flags.preview) {
@@ -173,7 +173,7 @@ export async function runNotificationShowLess(
   flags: NotificationFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const cardUrn = flags.cardUrn ?? "";
 
   if (flags.preview) {

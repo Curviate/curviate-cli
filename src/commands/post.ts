@@ -146,7 +146,7 @@ export async function runPostGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -176,7 +176,7 @@ export async function runPostCreate(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawText = flags.text ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
 
@@ -245,7 +245,7 @@ export async function runPostReact(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
   // Unified reaction input: the canonical positional <reaction>, falling back
   // to the deprecated `--reaction` alias. Positional wins when both are given.
@@ -301,7 +301,7 @@ export async function runPostReactions(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -342,7 +342,7 @@ export async function runPostSaved(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -379,7 +379,7 @@ export async function runPostSave(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
 
   if (flags.preview) {
@@ -408,7 +408,7 @@ export async function runPostUnsave(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
 
   if (flags.preview) {
@@ -436,7 +436,7 @@ export async function runPostDelete(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
 
   if (flags.preview) {
@@ -465,7 +465,7 @@ export async function runPostUnreact(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
   const reaction = flags.reaction ?? "";
 
@@ -510,7 +510,7 @@ export async function runPostUserPosts(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -558,7 +558,7 @@ export async function runPostUserReactions(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 

@@ -186,7 +186,7 @@ export async function runMessageNew(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawTo = flags.to ?? "";
   const rawText = flags.text ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
@@ -272,7 +272,7 @@ export async function runMessageSend(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const rawText = flags.text ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
@@ -342,7 +342,7 @@ export async function runMessageGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const messageId = flags.messageId ?? "";
   const ns = client.account(accountId);
@@ -368,7 +368,7 @@ export async function runMessageEdit(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const messageId = flags.messageId ?? "";
   const rawText = flags.text ?? "";
@@ -409,7 +409,7 @@ export async function runMessageDelete(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const messageId = flags.messageId ?? "";
 
@@ -449,7 +449,7 @@ export async function runMessageReact(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const messageId = flags.messageId ?? "";
   // Unified reaction input: the canonical positional <emoji>, falling back to
@@ -502,7 +502,7 @@ export async function runMessageAttachment(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const messageId = flags.messageId ?? "";
   const attachmentId = flags.attachmentId ?? "";
@@ -545,7 +545,7 @@ export async function runMessageInMail(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
 
   const rawTo = flags.to ?? "";
   if (!rawTo) {
@@ -624,7 +624,7 @@ export async function runMessageInMailBalance(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 

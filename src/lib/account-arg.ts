@@ -58,6 +58,22 @@ export interface AccountArgStreams {
   stderr: { write: (s: string) => void };
 }
 
+/**
+ * The parts of a command's flags this resolver reads.
+ *
+ * The whole flags object is passed rather than `flags.account` alone because
+ * resolution is no longer a pure function of the selector: whether a lookup may
+ * be issued at all depends on `--preview`. Taking the object means every call
+ * site carries that answer by construction, instead of 131 handlers each having
+ * to remember to forward it.
+ */
+export interface AccountSelectorFlags {
+  /** The merged account value (flag > env > profile). */
+  account?: string | undefined;
+  /** Set when the caller asked for a client-side render instead of a call. */
+  preview?: boolean | undefined;
+}
+
 /** The fields of a connected account this resolver matches on. */
 interface ConnectedAccount {
   accountId: string;
@@ -150,14 +166,17 @@ function matchAccounts(
 /**
  * Resolve the effective `--account` value to an account id, or exit.
  *
- * @param client  the SDK client, used only when a lookup is actually needed
- * @param account the merged value (flag > env > profile), or undefined
+ * @param client the SDK client, used only when a lookup is actually needed
+ * @param flags  the command's flags; `account` is the merged value
+ *               (flag > env > profile) and `preview` decides whether a lookup
+ *               may be issued at all
  */
 export async function requireAccount(
   client: Curviate,
-  account: string | undefined,
+  flags: AccountSelectorFlags,
   out: AccountArgStreams,
 ): Promise<string> {
+  const account = flags.account;
   if (!account) {
     out.stderr.write(
       "error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n",
@@ -192,6 +211,26 @@ export async function requireAccount(
   }
 
   if (ACCOUNT_ID_RE.test(selector)) return selector;
+
+  // `--preview` is published as "Render the request that would be sent without
+  // calling the API", so the lookup is not available here: a preview is reached
+  // for precisely when the caller is not ready to touch the wire, and an agent
+  // that previews before every write would otherwise double its request count
+  // and stop working offline. The selector is echoed as supplied, which is byte
+  // for byte what 0.22.0 rendered, and the note keeps that from being read as
+  // the literal path the real request would carry.
+  //
+  // Safety is unaffected: the redirecting check above has already run, so a
+  // value that could move a request is refused under `--preview` too, and the
+  // worst a previewed selector can do if a handler ignored `--preview` is
+  // produce the same 404 that 0.22.0 produced.
+  if (flags.preview === true) {
+    out.stderr.write(
+      `note: --preview does not call the API, so --account "${selector}" is shown as you typed it. ` +
+        `A real run resolves it to an account id first, and fails if it matches no connected account or more than one.\n`,
+    );
+    return selector;
+  }
 
   let accounts: ConnectedAccount[];
   try {

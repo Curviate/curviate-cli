@@ -148,7 +148,7 @@ export async function runInboxList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -196,7 +196,7 @@ export async function runInboxGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -219,7 +219,7 @@ export async function runInboxMarkRead(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const body = { read: true };
 
@@ -253,7 +253,7 @@ export async function runInboxMessages(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -305,7 +305,7 @@ export async function runInboxSearch(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = await requireAccount(client, flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const query = flags.query ?? "";
   if (!query) {
     out.stderr.write("error: <query> is required.\n");
