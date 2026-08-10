@@ -248,10 +248,13 @@ curviate sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
 
 ### 3. Start a new Sales Navigator chat
 
+`--subject` is required for Sales Navigator messaging.
+
 ```bash
 curviate sales-nav message new \
   --to ACwAAA1234567 \
   --account acc_1 \
+  --subject "An opportunity at our company" \
   "Hi, I'd love to connect about an opportunity at our company."
 ```
 
@@ -333,8 +336,12 @@ curviate recruiter project-job get "$PROJECT_ID" --account acc_1 --json
 
 ### 3. Create a job posting draft, then publish it
 
-`recruiter job create` requires `--project-name` (the hiring project the posting opens) and takes
-the v2 job body. `recruiter job publish` is project-scoped and requires `--mode`
+`recruiter job create` requires `--project-name` (the hiring project the posting opens) plus the
+full v2 job body: `--job-title`, `--company-id`/`--company-name`, `--workplace-type`, `--location`,
+`--employment-status`, `--seniority-level`, `--description` (200 characters minimum), `--industry`,
+`--job-function`, and `--apply-method`. `--location`/`--industry`/`--job-function` take resolved
+parameter ids, the same `search parameters --type LOCATION`/`--type INDUSTRY`/`--type JOB_FUNCTION`
+resolution from example 1 above. `recruiter job publish` is project-scoped and requires `--mode`
 (`FREE | PROMOTED | PROMOTED_PLUS`); the paid modes also require the full `--budget-*` triple.
 
 ```bash
@@ -342,8 +349,15 @@ curviate recruiter job create \
   --account acc_1 \
   --project-name "Backend Hiring 2026" \
   --job-title "Senior Backend Engineer" \
-  --description "Remote-first team building the core platform." \
+  --company-name "Curviate GmbH" \
+  --workplace-type REMOTE \
+  --location 103035651 \
   --employment-status FULL_TIME \
+  --seniority-level MID_SENIOR_LEVEL \
+  --description "We are looking for a senior backend engineer to join our remote-first team building the core platform that powers agent-native LinkedIn automation for thousands of developers and their AI agents worldwide." \
+  --industry 96 \
+  --job-function 15 \
+  --apply-method linkedin \
   --json
 
 curviate recruiter job publish "$PROJECT_ID" "$JOB_ID" --account acc_1 --mode FREE --json
@@ -399,7 +413,7 @@ curviate recruiter message new \
   --to AEM789 \
   --account acc_1 \
   --subject "A role you'd be a great fit for" \
-  --signature "- Alex, Talent Team" \
+  --signature "Alex, Talent Team" \
   "Hi, I came across your profile and think you'd be a great fit for a role we're hiring for."
 ```
 
