@@ -171,3 +171,68 @@ describe("routing — polarity: shapes that were already correctly rejected stay
     expect(leafArgs).toEqual(["--note", "--json", "jdoe"]);
   });
 });
+
+/**
+ * The two filed symptoms (space-separated value before the subcommand,
+ * dash-prefixed value) are the two that were OBSERVED, not the whole class a
+ * consumed-token-blindness fix can affect. These cases enumerate the
+ * remaining token shapes named in the issue's derived-affected-set
+ * requirement: the inline `--flag=value` form, a repeated flag, a value that
+ * is exactly the bare "-" stdin sentinel (never dash-prefixed by
+ * `walkTokens`'s own definition), and the literal "--" end-of-flags
+ * terminator, each placed BEFORE the subcommand keyword the same way the
+ * filed symptom was.
+ *
+ * Mutation-checked individually (see the PR description for the transcript):
+ * every case here except the last ALSO failed pre-fix, just through the
+ * THIRD defect this fix closes rather than the two named symptoms directly -
+ * the routing scan itself found the right keyword even in the old code (none
+ * of these tokens defeated the old naive "skip anything starting with -"
+ * scan on the ROUTING DECISION), but the old descent step's
+ * `rawArgs.slice(idx + 1)` then dropped everything before AND including that
+ * keyword, so `leafArgs` came back empty regardless of which flag shape
+ * preceded it. That is a wider blast radius than the issue's own two named
+ * symptoms suggested, which is exactly why this file asserts the shape space
+ * rather than only the reported cases. The last case (`connect --
+ * -not-a-flag`) never descends into a subcommand at all, so it never hit
+ * either defect and is a pure regression lock.
+ */
+describe("routing — the rest of the token-shape space around a leading global flag", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("account --api-key=X list -> inline `=value` form routes identically (also broken pre-fix, via the descent-truncation defect, not the routing-decision one)", async () => {
+    const { leaf, leafArgs } = await resolveLeaf(asCmd(accountCommand), ["--api-key=X", "list"]);
+    expect(await nameOf(leaf)).toBe("list");
+    expect(leafArgs).toEqual(["--api-key=X"]);
+  });
+
+  it("account --api-key X --api-key Y list -> a repeated global flag before the keyword still routes (last-value-wins is citty's concern, not routing's)", async () => {
+    const { leaf, leafArgs } = await resolveLeaf(asCmd(accountCommand), [
+      "--api-key",
+      "X",
+      "--api-key",
+      "Y",
+      "list",
+    ]);
+    expect(await nameOf(leaf)).toBe("list");
+    expect(leafArgs).toEqual(["--api-key", "X", "--api-key", "Y"]);
+  });
+
+  it("account --api-key - list -> a value that IS the bare stdin sentinel is still consumed as a value, not treated as dash-prefixed or as the subcommand token", async () => {
+    const { leaf, leafArgs } = await resolveLeaf(asCmd(accountCommand), ["--api-key", "-", "list"]);
+    expect(await nameOf(leaf)).toBe("list");
+    expect(leafArgs).toEqual(["--api-key", "-"]);
+  });
+
+  it("account -- list -> the \"--\" end-of-flags terminator before the keyword still lets routing find it (positional, not a flag, per stripFlagName)", async () => {
+    const { leaf, leafArgs } = await resolveLeaf(asCmd(accountCommand), ["--", "list"]);
+    expect(await nameOf(leaf)).toBe("list");
+    expect(leafArgs).toEqual(["--"]);
+  });
+
+  it("connect -- -not-a-flag -> a flag-SHAPED token after a literal \"--\" is a positional (the id), never re-scanned as an unknown flag", async () => {
+    const { leaf, leafArgs } = await resolveLeaf(asCmd(connectCommand), ["--", "-not-a-flag"]);
+    expect(await nameOf(leaf)).toBe("connect");
+    expect(leafArgs).toEqual(["--", "-not-a-flag"]);
+  });
+});
