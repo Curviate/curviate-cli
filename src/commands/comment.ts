@@ -27,6 +27,7 @@
  * `unreact` is a DELETE-with-body, the reaction value travels in the JSON body.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
@@ -89,14 +90,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
-}
-
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
   if (preview) {
     out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
@@ -157,7 +150,7 @@ function assertReaction(reaction: string, out: OutputStreams): asserts reaction 
 /** Run `comment list <post_id>`, posts.listComments (paginated read). */
 export async function runCommentList(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -187,7 +180,7 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
 /** Run `comment replies <post_id> <comment_id>`, comments.listReplies (paginated read). */
 export async function runCommentReplies(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const ns = client.account(accountId);
@@ -218,7 +211,7 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
 /** Run `comment reactions <post_id> <comment_id>`, comments.listReactions (paginated read). */
 export async function runCommentReactions(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const ns = client.account(accountId);
@@ -254,7 +247,7 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
  */
 export async function runCommentUser(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -303,7 +296,7 @@ export async function runCommentAdd(
   out: OutputStreams,
   readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
 
@@ -357,7 +350,7 @@ export async function runCommentReply(
   out: OutputStreams,
   readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
@@ -412,7 +405,7 @@ export async function runCommentEdit(
   out: OutputStreams,
   readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const text = await resolveTextOrStdin(flags.text ?? "", out, readStdin);
@@ -444,7 +437,7 @@ export async function runCommentEdit(
  * Write command, supports --preview.
  */
 export async function runCommentDelete(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
 
@@ -474,7 +467,7 @@ export async function runCommentDelete(client: Curviate, flags: CommentFlags, ou
  * Write command, supports --preview.
  */
 export async function runCommentReact(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const reaction = flags.reaction ?? "";
@@ -508,7 +501,7 @@ export async function runCommentReact(client: Curviate, flags: CommentFlags, out
  * travels in the JSON body, not the path.
  */
 export async function runCommentUnreact(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const postId = flags.postId ?? "";
   const commentId = flags.commentId ?? "";
   const reaction = flags.reaction ?? "";

@@ -21,6 +21,7 @@
  * List POST searches support --all NDJSON streaming.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -168,14 +169,6 @@ function buildOutputStreams(): OutputStreams {
     stdout: { write: (s: string) => process.stdout.write(s) },
     stderr: { write: (s: string) => process.stderr.write(s) },
   };
-}
-
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -380,7 +373,7 @@ export async function runSearchPeople(
     }
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -432,7 +425,7 @@ export async function runSearchCompanies(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -484,7 +477,7 @@ export async function runSearchPosts(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -536,7 +529,7 @@ export async function runSearchJobs(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
@@ -600,7 +593,7 @@ export async function runSearchParameters(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -652,7 +645,7 @@ export async function runSearchGroups(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -702,7 +695,7 @@ export async function runSearchServices(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -765,7 +758,7 @@ export async function runSearchServiceParameters(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -803,7 +796,7 @@ export async function runSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);

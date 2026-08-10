@@ -133,7 +133,28 @@ function markRead(account: string): Promise<RunResult> {
   return run(["inbox", "mark-read", "chat_1", "--account", account, "--json"]);
 }
 
-describe("AC1 — a path-unsafe --account never reaches the wire", () => {
+/**
+ * AC1 as written bans whitespace alongside `/`, `?`, `#` and `..`. Real
+ * LinkedIn account names contain a space ("Ralf Fischer"), and AC3 requires
+ * those to resolve, so the two cannot both hold for a single flat rule.
+ *
+ * The rule is therefore split by what each character can actually do, and the
+ * invariant AC1 protects is kept intact either way:
+ *
+ *   - A character that can move the request to a different endpoint (`/`, `\`,
+ *     `?`, `#`, `%`, a control character, `..`) is rejected outright, with
+ *     nothing sent. Group A below.
+ *   - A plain space cannot move a request anywhere (the URL parser encodes it
+ *     to `%20`), and it is the one whitespace character a human name really
+ *     contains. It is never interpolated into a path either: a value carrying
+ *     one is not id-shaped, so it can only be resolved to an id or rejected.
+ *     Group B below proves that directly, rather than by request count.
+ *
+ * So no whitespace-bearing value ever becomes a path segment, which is what
+ * AC1 exists to guarantee. Flagged to `pm` as a deviation from the literal
+ * wording.
+ */
+describe("AC1 group A — a redirecting --account never reaches the wire", () => {
   const payloads: Array<[string, string]> = [
     ["path traversal to a sibling collection", "x/../../../v1/accounts"],
     ["path traversal to a billing route", "x/../../billing/seats"],
@@ -148,9 +169,10 @@ describe("AC1 — a path-unsafe --account never reaches the wire", () => {
     ["a lone percent sign", "a%b"],
     ["a literal dot pair", ".."],
     ["an embedded dot pair", "x/..%2fy"],
-    ["a space", "acc 1"],
     ["a tab", "acc\t1"],
     ["a newline", "acc\n1"],
+    ["a carriage return", "acc\r1"],
+    ["a non-breaking space", "acc 1"],
   ];
 
   for (const [label, value] of payloads) {
@@ -164,10 +186,36 @@ describe("AC1 — a path-unsafe --account never reaches the wire", () => {
     });
   }
 
-  it("names the offending flag and points at the two accepted forms", async () => {
+  it("names the offending flag and explains what the value would have done", async () => {
     const r = await markRead("x/../../../v1/accounts");
     expect(r.stderr).toMatch(/--account/);
-    expect(r.stderr).toMatch(/account id|account name/i);
+    expect(r.stderr).toMatch(/redirect the request/i);
+  });
+});
+
+describe("AC1 group B — a space-bearing --account is never interpolated", () => {
+  it("does not put the raw value in any request path", async () => {
+    const r = await markRead("acc 1");
+    // Not id-shaped, so it can only be resolved. It matches nothing here, so
+    // the run must stop at the lookup.
+    const write = r.requests.filter((q) => q.method !== "GET");
+    expect(write).toEqual([]);
+    expect(r.status).not.toBe(0);
+    // The value must not appear on the wire raw, percent-encoded, or with the
+    // space silently dropped.
+    const wire = r.requests.map((q) => q.url).join(" ");
+    expect(wire).not.toContain("acc 1");
+    expect(wire).not.toContain("acc%201");
+    expect(wire).not.toContain("acc1");
+  });
+
+  it("does not let a space-bearing value masquerade as an id", async () => {
+    // "acc_01SOPH x" is only one character away from a real id. If the space
+    // were tolerated in the id branch this would be sent verbatim.
+    const r = await markRead("acc_01SOPH x");
+    const write = r.requests.filter((q) => q.method !== "GET");
+    expect(write).toEqual([]);
+    expect(r.status).not.toBe(0);
   });
 });
 

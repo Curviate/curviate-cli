@@ -26,6 +26,7 @@
  * `filterJobsByState`/`requestStateToItemState` below.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
@@ -163,14 +164,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
-}
-
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
   if (preview) {
     out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
@@ -256,7 +249,7 @@ function buildApplyMethod(flags: JobFlags, out: OutputStreams): { method: string
  */
 export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const resolvedId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -281,7 +274,7 @@ export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputSt
  */
 export async function runJobList(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const state = requireFlag(flags.state, "--state", out);
 
   const ns = client.account(accountId);
@@ -429,7 +422,7 @@ async function runJobListAllStates(
 /** Run `job budget <id>`, jobs.getBudget (single read). */
 export async function runJobBudget(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -445,7 +438,7 @@ export async function runJobBudget(client: Curviate, flags: JobFlags, out: Outpu
 /** Run `job applicants <id>`, jobs.listApplicants (POST-as-search, paginated read). */
 export async function runJobApplicants(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -485,7 +478,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
 /** Run `job applicant get <id> <app_id>`, jobs.getApplicant (single read). */
 export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const applicantId = flags.applicantId ?? "";
   const ns = client.account(accountId);
@@ -506,7 +499,7 @@ export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out:
  */
 export async function runJobApplicantResume(client: Curviate, flags: JobFlags, out: OutputStreams, isTTY: boolean): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const applicantId = flags.applicantId ?? "";
   const ns = client.account(accountId);
@@ -529,7 +522,7 @@ export async function runJobApplicantResume(client: Curviate, flags: JobFlags, o
 
 /** Run `job create <flags>`, jobs.create. All 7 body fields are required. */
 export async function runJobCreate(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
 
   // Validate every required field FIRST, naming the missing flag (exit 2,
   // before any SDK call).
@@ -583,7 +576,7 @@ export async function runJobCreate(client: Curviate, flags: JobFlags, out: Outpu
 
 /** Run `job update <id> <flags>`, jobs.update. Only the provided fields change. */
 export async function runJobUpdate(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
 
   const body: Record<string, unknown> = {};
@@ -626,7 +619,7 @@ export async function runJobUpdate(client: Curviate, flags: JobFlags, out: Outpu
  * supplying it is the explicit opt-in to spend real money.
  */
 export async function runJobPublish(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const mode = requireFlag(flags.mode, "--mode", out);
   requireEnum(mode, PUBLISH_MODES, "--mode", out);
@@ -665,7 +658,7 @@ export async function runJobPublish(client: Curviate, flags: JobFlags, out: Outp
 
 /** Run `job close <id>`, jobs.close (bodyless write). */
 export async function runJobClose(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags.account, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
 
   if (flags.preview) {
