@@ -8,15 +8,19 @@
  *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
  *   account update <account_id> <body...>: update metadata / proxy config (write)
  *   account disconnect <account_id>: hard-disconnect an account (write)
- *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (path-addressed, write)
- *   account checkpoint poll <account_id>: poll mobile-app approval (path-addressed, write)
- *   account checkpoint request <account_id>: re-request the challenge notification (path-addressed, write)
+ *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (write)
+ *   account checkpoint poll <account_id>: poll mobile-app approval (write)
+ *   account checkpoint request <account_id>: re-request the challenge notification (write)
  *
  * Root-scoped: all methods live on `curviate.accounts.*` (NOT account-scoped).
  * account_id positionals pass verbatim (NOT resolveIdentifier, not a member/company id).
- * Checkpoint ops are path-addressed: the account_id (the provisional account from
- * the 202 response) is a positional argument that the SDK interpolates into the
- * request path, not a body field.
+ * The three checkpoint ops address a FIXED path (`/v1/auth/checkpoint/{solve,
+ * request,poll}`) and carry the account_id (the provisional account from the 202
+ * response) as a BODY field. It is a leading positional argument to the SDK
+ * method, which is not the same thing as a path parameter: nothing about these
+ * three calls varies the URL. An earlier revision read the argument position as
+ * proof of path-hood and refused values on that basis; the position proves
+ * nothing, only the SDK's path template does.
  *
  * The run functions are typed against the real exported `Curviate` client, so a
  * renamed/removed/relocated SDK method is a compile error at the call site rather
@@ -989,8 +993,8 @@ export async function runAccountDisconnect(
 
 /**
  * Run `account checkpoint solve <account_id> --code <code>`.
- * Path-addressed: account_id is the positional argument (interpolated into the
- * request path); the body is `{ code }`.
+ * `POST /v1/auth/checkpoint/solve` with body `{ account_id, code }`: the
+ * account_id is the leading positional here and a body field on the wire.
  * Required: --account-id (positional), --code.
  */
 export async function runAccountCheckpointSolve(
@@ -1048,8 +1052,8 @@ export async function runAccountCheckpointSolve(
 
 /**
  * Run `account checkpoint request <account_id>`.
- * Path-addressed: account_id is the positional argument. No --code, a
- * re-request has nothing to submit.
+ * `POST /v1/auth/checkpoint/request` with body `{ account_id }`. No --code, a
+ * re-request has nothing else to submit.
  *
  * Exit 0 on any 200 regardless of the `resent` boolean: a `false` value is an
  * honest answer ("this challenge type has nothing to re-send, or the
@@ -1157,7 +1161,7 @@ async function runCheckpointPollWaitLoop(
 
 /**
  * Run `account checkpoint poll <account_id> [--wait] [--timeout <ms>]`.
- * Path-addressed: account_id is the positional argument.
+ * `POST /v1/auth/checkpoint/poll` with body `{ account_id }`.
  *
  * Without `--wait` (default): a single poll, unchanged (back-compat).
  * With `--wait`: the adaptive-cadence loop above, until `active` (exit 0),

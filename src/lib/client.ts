@@ -10,7 +10,6 @@
 
 import { Curviate } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
-import { pathSegmentErrorMessage, pathSegmentViolation } from "./path-safety.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -46,102 +45,46 @@ const guardedFetch: typeof fetch = (input, init) => {
 };
 
 /**
- * Methods whose leading string argument is NOT about to become a path segment.
+ * ## Why there is no path-segment guard here
  *
- * Exactly one: `client.account(accountId)` is a namespace factory, not a
- * request, and its argument is already the most closely guarded value in the
- * CLI. `requireAccount` returns only an `acc_`-shaped id (path-safe by its own
- * pattern), an id it has explicitly run `pathSegmentViolation` over, or, under
- * `--preview`, a selector it will never send. Validating it a second time here
- * would reject that last case and break `--preview` on a name, which is the one
- * shape deliberately allowed to carry a space.
+ * A previous revision wrapped the client in a proxy that walked each call's
+ * leading string arguments and refused any that could not be a path segment,
+ * on the premise that path parameters are always the leading strings. Both
+ * halves of that premise are false, and the guard was wrong in both
+ * directions:
+ *
+ *   - It MISSED calls whose path parameter arrives inside an object.
+ *     `salesNavigator.saveLead({ list_id, user_id })` destructures `list_id`
+ *     out of `args[0]`, so the walk saw a non-string and stopped before
+ *     validating anything.
+ *   - It WRONGLY REJECTED calls whose leading string is a BODY field.
+ *     `posts.save(postId)` sends `{ post_id }` to `/v1/{account_id}/saved-posts`
+ *     and `auth.solveCheckpoint(accountId, body)` sends `{ account_id, ... }`
+ *     to `/v1/auth/checkpoint/solve`; neither value ever enters a path. So
+ *     `post save <share URL>` went from exit 0 to a usage error whose stated
+ *     reason ("would redirect the request to a different endpoint") was
+ *     factually false for the value it was refusing.
+ *
+ * The general lesson is the reason this comment exists rather than a smaller
+ * guard: **the CLI cannot soundly know which argument becomes a path segment.**
+ * That knowledge lives in the SDK, which owns the path templates, and any
+ * CLI-side rule is a proxy for it that drifts the moment a signature changes.
+ * A guard that is wrong in both directions is worse than no guard when the
+ * layer beneath is correct, so path-parameter encoding is the SDK's
+ * responsibility and is discharged there (every path parameter is
+ * percent-encoded through a tagged template, with a round-trip matrix over the
+ * id shapes this API mints).
+ *
+ * What stays here is the stdin-placeholder egress backstop above, which is
+ * about a value that must never be transmitted at all, and is therefore a
+ * property of the request rather than of any argument position.
+ *
+ * `--account` is guarded separately in `account-arg.ts`, and that guard is
+ * sound for a reason this one was not: the CLI genuinely knows what `--account`
+ * means (it selects a live LinkedIn persona), so it can say that a value
+ * carrying a slash is neither an account id nor anybody's name, without
+ * guessing at a call signature.
  */
-const NOT_A_PATH_CALL = new Set(["account"]);
-
-/**
- * Apply the path-segment rule to every call the CLI makes into the SDK.
- *
- * ## Why here and not in the commands
- *
- * Almost every id the CLI forwards lands in a URL path segment, and the SDK
- * interpolates path segments verbatim, so each one is an injection point:
- * `inbox mark-read 'x/../../../v1/accounts'` sent `PATCH /v1/v1/accounts`,
- * a write redirected onto a path the caller never named, with the caller's
- * bearer token, exit 0.
- *
- * Fixing that argument by argument means maintaining a list of "the values that
- * are path segments". That list is exactly the kind that loses a member: the
- * SDK has 69 distinct interpolating path templates today and gains more, and an
- * argument added next month would be unguarded while looking identical from the
- * outside to a guarded one. So the rule is applied once, at the boundary every
- * request must cross, and derived from the SDK's own calling convention rather
- * than from an enumeration.
- *
- * ## The convention this relies on
- *
- * Path parameters are the leading string arguments; bodies and query objects
- * follow. That holds across all 86 SDK methods that take a string
- * (`markChatRead(chatId, body)`, `getMessage(chatId, messageId)`,
- * `browseAccountList(listId, body, query)`), and it is what lets the rule stop
- * at the first non-string argument instead of guessing which strings matter.
- * A free-text value is never passed positionally, so no message body, keyword or
- * note is ever subject to this.
- *
- * Exits 2 before the call, so nothing is sent, and names the method and
- * argument position rather than a generic failure.
- */
-function guardPathSegments<T extends object>(target: T, prefix: string): T {
-  return new Proxy(target, {
-    get(t, prop) {
-      // `this` is bound to the raw target below, so getters and private state
-      // behave exactly as they would without the proxy.
-      const value = Reflect.get(t, prop) as unknown;
-      if (typeof prop === "symbol") return value;
-      const label = prefix === "" ? prop : `${prefix}.${prop}`;
-
-      if (typeof value === "function") {
-        const fn = value as (...a: unknown[]) => unknown;
-        const exempt = NOT_A_PATH_CALL.has(label);
-        return (...args: unknown[]): unknown => {
-          if (!exempt) {
-            for (let i = 0; i < args.length; i++) {
-              const arg = args[i];
-              // The first non-string argument is the body or query; every path
-              // parameter has been seen by then.
-              if (typeof arg !== "string") break;
-              const reason = pathSegmentViolation(arg);
-              if (reason !== null) {
-                process.stderr.write(
-                  pathSegmentErrorMessage(`${label} argument ${i + 1}`, arg, reason),
-                );
-                process.exit(2);
-              }
-            }
-          }
-          const result = fn.apply(t, args);
-          // A namespace factory hands back an object rather than a promise;
-          // keep guarding the methods underneath it.
-          if (
-            result !== null &&
-            typeof result === "object" &&
-            typeof (result as { then?: unknown }).then !== "function"
-          ) {
-            // The account factory is dropped from the label so a diagnostic
-            // names the method the way `--preview` already prints it
-            // ("messaging.markChatRead"), rather than the internal call chain.
-            return guardPathSegments(result as object, exempt ? prefix : label);
-          }
-          return result;
-        };
-      }
-
-      if (value !== null && typeof value === "object") {
-        return guardPathSegments(value as object, label);
-      }
-      return value;
-    },
-  });
-}
 
 export interface ClientConfig {
   apiKey: string;
@@ -155,11 +98,10 @@ export interface ClientConfig {
  * surrounding whitespace. The SDK is the validator of last resort.
  */
 export function createClient(config: ClientConfig): Curviate {
-  const client = new Curviate({
+  return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,
     ...(config.baseUrl !== undefined ? { baseUrl: config.baseUrl } : {}),
     ...(config.timeout !== undefined ? { timeout: config.timeout } : {}),
   });
-  return guardPathSegments(client, "");
 }

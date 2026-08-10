@@ -30,8 +30,11 @@
  *
  * An id-shaped value costs nothing: it is used directly and no lookup is
  * issued, so every existing scripted invocation runs exactly as many requests
- * as before. Only a name pays for one `accounts.list` read, and the result is
- * memoized per client so a command that asks twice still resolves once.
+ * as before. Only a name pays, and it pays for the whole `accounts.list` walk:
+ * one read for a tenant that fits on a page, and up to `MAX_LOOKUP_PAGES`
+ * cursor reads for one that does not, because the ambiguity guard below is only
+ * as good as the set it decides against. The walk is memoized per client, so a
+ * command that asks twice still resolves once.
  */
 
 import type { Curviate, CurviateError } from "@curviate/sdk";

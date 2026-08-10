@@ -1,15 +1,25 @@
 /**
- * The single authority on what may be interpolated into a request path.
+ * The rule for what may be used as an `--account` selector.
  *
- * ## Why this exists
+ * ## Scope: this is about `--account`, not about every argument
  *
- * Almost every value the CLI forwards to the SDK lands in a URL path segment,
- * and the SDK interpolates path segments verbatim (only `card_urn` is
- * percent-encoded). So an account id, a chat id, a post id, a project id, a
- * list id are all injection points: whatever the caller types is what the URL
- * parser sees.
+ * An earlier revision applied this rule to every leading string argument of
+ * every SDK call. That was unsound in both directions (see `client.ts`), and it
+ * is gone: which argument becomes a path segment is the SDK's knowledge, and
+ * percent-encoding path parameters is the SDK's job.
  *
- * The URL parser is not a passive consumer of that string. Given
+ * What is left is the one value the CLI genuinely understands. `--account`
+ * names a live LinkedIn persona, and the CLI resolves it: it is either an
+ * `acc_`-shaped id used as-is, or a connected account's name looked up against
+ * the account list. Neither of those carries a slash, a question mark or a
+ * percent sign, so a value that does is a caller mistake worth naming before
+ * anything is sent, and the resolved id is checked once more on the way out.
+ *
+ * ## Why the rule is shaped the way it is
+ *
+ * The account id is interpolated into the path of every account-scoped request,
+ * so an unresolved `--account` reaching a URL is not a cosmetic problem. The
+ * URL parser is not a passive consumer of that string. Given
  * `/v1/<value>/chats/chat_1`, it will happily rewrite the request:
  *
  *   value = 'x/../../../v1/accounts'  ->  /v1/accounts/chats/chat_1
@@ -25,7 +35,7 @@
  * That matters most on the CLI's write surface. A read sent to the wrong path
  * wastes a round trip. A write sent to the wrong path acts, with the caller's
  * bearer token, on a resource the caller never named, and this CLI is wired
- * into agent loops where these values are plausibly filled from model or user
+ * into agent loops where `--account` is plausibly filled from model or user
  * text.
  *
  * ## Why reject rather than encode
@@ -40,12 +50,10 @@
  * ## Deny, not allow
  *
  * The rule is a denylist of the characters that are structurally significant
- * in a URL, not an allowlist of "id-shaped" characters. The identifiers this
- * CLI handles are wildly heterogeneous (ULIDs, base64 chat ids with `=`,
- * LinkedIn URNs with `:` and parentheses, public slugs, bare integers), and an
- * allowlist would reject a legitimate id the day the platform mints a new
- * shape. A denylist can only ever reject a value that was already going to
- * produce a wrong URL.
+ * in a URL, not an allowlist of "id-shaped" characters. An account id is the
+ * platform's to shape, and a person's display name is theirs, so an allowlist
+ * would reject a legitimate selector the day either changes. A denylist can
+ * only ever reject a value that was already going to produce a wrong URL.
  *
  * ## Two strengths, because a selector is not a segment
  *
@@ -150,10 +158,10 @@ export function redirectingViolation(value: string): string | null {
  * Why `value` cannot be used as a path segment, or `null` when it can.
  *
  * Strictly stronger than `redirectingViolation`: it additionally rejects the
- * plain space. A space cannot redirect anything, but no identifier this API
+ * plain space. A space cannot redirect anything, but no account id this API
  * mints contains one, so a space in a value that is about to become a path
- * segment means the caller passed something that is not an identifier, and
- * saying so beats sending `%20` and round-tripping a 404.
+ * segment means the caller passed something that is not an id, and saying so
+ * beats sending `%20` and round-tripping a 404.
  *
  * Pure and synchronous: no I/O, no exit, no output. Callers own how the reason
  * is surfaced.
@@ -163,11 +171,6 @@ export function pathSegmentViolation(value: string): string | null {
   if (redirecting !== null) return redirecting;
   if (value.includes(" ")) return "it contains a space";
   return null;
-}
-
-/** True when `value` is safe to interpolate into a request path segment. */
-export function isSafePathSegment(value: string): boolean {
-  return pathSegmentViolation(value) === null;
 }
 
 /**
@@ -187,29 +190,4 @@ export function pathSegmentErrorMessage(
     `would redirect the request to a different endpoint. ` +
     `Received: ${JSON.stringify(value)}.\n`
   );
-}
-
-/** The output surface a guard writes its diagnostic to. */
-export interface GuardStreams {
-  stderr: { write: (s: string) => void };
-}
-
-/**
- * Reject `value` as a path segment, or return it unchanged.
- *
- * Exits 2 (usage) before the caller can build a request. Every command that
- * forwards a caller-supplied value into a path segment routes through here, so
- * the rule lives in one place rather than being restated per command.
- */
-export function requireSafePathSegment(
-  label: string,
-  value: string,
-  out: GuardStreams,
-): string {
-  const reason = pathSegmentViolation(value);
-  if (reason !== null) {
-    out.stderr.write(pathSegmentErrorMessage(label, value, reason));
-    process.exit(2);
-  }
-  return value;
 }
