@@ -20,6 +20,7 @@
  * accept/decline ops take no body at all.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
 import { nearestSubcommand } from "../lib/bare-form-guard.js";
@@ -63,14 +64,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
-}
-
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
   if (preview) {
     out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
@@ -100,7 +93,7 @@ export async function runConnectSend(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
 
@@ -149,7 +142,7 @@ export async function runConnectSent(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -201,7 +194,7 @@ export async function runConnectReceived(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -252,7 +245,7 @@ export async function runConnectAccept(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
@@ -295,7 +288,7 @@ export async function runConnectDecline(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 
@@ -338,7 +331,7 @@ export async function runConnectCancel(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   // invitation_id passes verbatim, NOT URL-normalized
   const invitationId = flags.id ?? "";
 

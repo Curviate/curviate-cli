@@ -53,6 +53,7 @@
  * DO NOT invoke citty's own `runCommand`/`runMain` directly on this tree.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
@@ -115,14 +116,6 @@ function buildOutputStreams(): OutputStreams {
     stdout: { write: (s: string) => process.stdout.write(s) },
     stderr: { write: (s: string) => process.stderr.write(s) },
   };
-}
-
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -217,7 +210,7 @@ export async function runCompanyGet(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
 
@@ -244,7 +237,7 @@ export async function runCompanyEmployees(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -288,7 +281,7 @@ export async function runCompanyPosts(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -330,7 +323,7 @@ export async function runCompanyJobs(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -377,7 +370,7 @@ export async function runCompanyInvitableFollowers(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -422,7 +415,7 @@ export async function runCompanyFollowInvite(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -469,7 +462,7 @@ export async function runCompanyManaged(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -511,7 +504,7 @@ export async function runCompanyFollowers(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -554,7 +547,7 @@ export async function runCompanyChats(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -601,7 +594,7 @@ export async function runCompanyChat(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const chatId = flags.chatId ?? "";
@@ -627,7 +620,7 @@ export async function runCompanyMessages(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const chatId = flags.chatId ?? "";
@@ -681,7 +674,7 @@ export async function runCompanyMessage(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const chatId = flags.chatId ?? "";
@@ -709,7 +702,7 @@ export async function runCompanySearchChats(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -763,7 +756,7 @@ export async function runCompanyReply(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 

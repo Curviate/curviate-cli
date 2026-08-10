@@ -44,6 +44,48 @@ const guardedFetch: typeof fetch = (input, init) => {
   return fetch(input, init);
 };
 
+/**
+ * ## Why there is no path-segment guard here
+ *
+ * A previous revision wrapped the client in a proxy that walked each call's
+ * leading string arguments and refused any that could not be a path segment,
+ * on the premise that path parameters are always the leading strings. Both
+ * halves of that premise are false, and the guard was wrong in both
+ * directions:
+ *
+ *   - It MISSED calls whose path parameter arrives inside an object.
+ *     `salesNavigator.saveLead({ list_id, user_id })` destructures `list_id`
+ *     out of `args[0]`, so the walk saw a non-string and stopped before
+ *     validating anything.
+ *   - It WRONGLY REJECTED calls whose leading string is a BODY field.
+ *     `posts.save(postId)` sends `{ post_id }` to `/v1/{account_id}/saved-posts`
+ *     and `auth.solveCheckpoint(accountId, body)` sends `{ account_id, ... }`
+ *     to `/v1/auth/checkpoint/solve`; neither value ever enters a path. So
+ *     `post save <share URL>` went from exit 0 to a usage error whose stated
+ *     reason ("would redirect the request to a different endpoint") was
+ *     factually false for the value it was refusing.
+ *
+ * The general lesson is the reason this comment exists rather than a smaller
+ * guard: **the CLI cannot soundly know which argument becomes a path segment.**
+ * That knowledge lives in the SDK, which owns the path templates, and any
+ * CLI-side rule is a proxy for it that drifts the moment a signature changes.
+ * A guard that is wrong in both directions is worse than no guard when the
+ * layer beneath is correct, so path-parameter encoding is the SDK's
+ * responsibility and is discharged there (every path parameter is
+ * percent-encoded through a tagged template, with a round-trip matrix over the
+ * id shapes this API mints).
+ *
+ * What stays here is the stdin-placeholder egress backstop above, which is
+ * about a value that must never be transmitted at all, and is therefore a
+ * property of the request rather than of any argument position.
+ *
+ * `--account` is guarded separately in `account-arg.ts`, and that guard is
+ * sound for a reason this one was not: the CLI genuinely knows what `--account`
+ * means (it selects a live LinkedIn persona), so it can say that a value
+ * carrying a slash is neither an account id nor anybody's name, without
+ * guessing at a call signature.
+ */
+
 export interface ClientConfig {
   apiKey: string;
   baseUrl?: string;

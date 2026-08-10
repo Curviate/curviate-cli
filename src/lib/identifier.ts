@@ -94,6 +94,36 @@ export function normalizeChatId(raw: string): string {
 }
 
 /**
+ * LinkedIn group URL pattern, e.g. https://www.linkedin.com/groups/9123014/,
+ * with or without a locale subdomain, trailing slash, query or fragment.
+ */
+const GROUP_URL_RE = /^https?:\/\/(?:[a-z0-9-]+\.)?linkedin\.com\/groups\/([^/?#]+)/i;
+
+/** Bare `/groups/<id>` path. */
+const GROUP_PATH_RE = /^\/groups\/([^/?#]+)\/?$/;
+
+/**
+ * Normalize a group positional to a bare group id.
+ *
+ * `group get` / `group members` document a full group URL as an accepted
+ * input, on the understanding that the server extracts the id from either
+ * form. It cannot: a URL carries slashes, so as a path segment it splits into
+ * several and the request lands on a route that does not exist. The documented
+ * form only ever produced a broken URL, so the extraction happens here, where
+ * the same normalization already happens for member, company, chat and job
+ * inputs.
+ *
+ * Pure and synchronous, no network calls. A bare id passes through unchanged.
+ */
+export function normalizeGroupId(raw: string): string {
+  const urlMatch = GROUP_URL_RE.exec(raw);
+  if (urlMatch?.[1]) return urlMatch[1];
+  const pathMatch = GROUP_PATH_RE.exec(raw);
+  if (pathMatch?.[1]) return pathMatch[1];
+  return raw;
+}
+
+/**
  * LinkedIn job posting URL pattern.
  * Matches `.../jobs/view/<id>` (with or without a locale/country subdomain,
  * trailing slash, or query string) and captures the numeric job id.

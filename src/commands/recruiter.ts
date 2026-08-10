@@ -25,6 +25,7 @@
  * user_id / job_id / applicant_id / project_id pass verbatim.
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
@@ -166,14 +167,6 @@ function buildOutputStreams(): OutputStreams {
     stdout: { write: (s: string) => process.stdout.write(s) },
     stderr: { write: (s: string) => process.stderr.write(s) },
   };
-}
-
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -386,7 +379,7 @@ export async function runRecruiterMessageNew(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const to = flags.to ?? "";
   const text = flags.text ?? "";
   const subject = flags.subject ?? "";
@@ -476,7 +469,7 @@ export async function runRecruiterProfile(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawId = flags.identifier ?? "";
   const resolvedId = resolveIdentifier(rawId);
   const ns = client.account(accountId);
@@ -503,7 +496,7 @@ export async function runRecruiterSearchPeople(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -582,7 +575,7 @@ export async function runRecruiterSearchParameters(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -618,7 +611,7 @@ export async function runRecruiterSearchFromUrl(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -669,7 +662,7 @@ export async function runRecruiterListProjects(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -711,7 +704,7 @@ export async function runRecruiterGetProject(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -734,7 +727,7 @@ export async function runRecruiterUpdateProject(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const outOpts = resolveOutputOpts(flags);
 
@@ -786,7 +779,7 @@ export async function runRecruiterListPipeline(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -849,7 +842,7 @@ export async function runRecruiterGetProjectJob(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -873,7 +866,7 @@ export async function runRecruiterGetProjectJobBudget(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const jobId = flags.jobId ?? "";
   const ns = client.account(accountId);
@@ -900,7 +893,7 @@ export async function runRecruiterSaveCandidate(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const outOpts = resolveOutputOpts(flags);
 
@@ -941,7 +934,7 @@ export async function runRecruiterListJobs(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -996,7 +989,7 @@ export async function runRecruiterCreateJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   const assembled = await assembleRecruiterJobBody(flags, readers);
@@ -1049,7 +1042,7 @@ export async function runRecruiterCreateProjectJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const outOpts = resolveOutputOpts(flags);
 
@@ -1095,7 +1088,7 @@ export async function runRecruiterUpdateProjectJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const jobId = flags.jobId ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -1143,7 +1136,7 @@ export async function runRecruiterPublishJob(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const jobId = flags.jobId ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -1218,7 +1211,7 @@ export async function runRecruiterCloseJob(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const jobId = flags.jobId ?? "";
 
@@ -1263,7 +1256,7 @@ export async function runRecruiterSearchTalentPool(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -1333,7 +1326,7 @@ export async function runRecruiterListApplicants(
     process.exit(2);
   }
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -1366,7 +1359,7 @@ export async function runRecruiterGetJob(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const rawJobId = flags.jobId ?? "";
   const jobId = resolveJobIdentifier(rawJobId);
   const ns = client.account(accountId);
@@ -1392,7 +1385,7 @@ export async function runRecruiterGetApplicant(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const applicantId = flags.applicantId ?? "";
   const ns = client.account(accountId);
@@ -1420,7 +1413,7 @@ export async function runRecruiterDownloadResume(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const applicantId = flags.applicantId ?? "";
   const ns = client.account(accountId);

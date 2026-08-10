@@ -114,6 +114,34 @@ function run(args: string[]): Promise<RunResult> {
   });
 }
 
+/** Percent-decode, tolerating a value that is not valid percent-encoding. */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/**
+ * The recorded request's path segments, each percent-decoded.
+ *
+ * Comparing on decoded segments, not raw URL text, is deliberate: the `=` in
+ * `REAL_CHAT_ID`'s base64 padding is legal in a URL path only unencoded, so an
+ * SDK release that starts percent-encoding it (`=` -> `%3D`) changes the wire
+ * bytes without changing what was sent. A raw `.toContain(REAL_CHAT_ID)`
+ * assertion pins the *unencoded* wire format as part of the contract, which
+ * was never the point here, matching the same fix already applied in
+ * test/path-argument-passthrough.test.ts.
+ */
+function decodedSegments(url: string): string[] {
+  const path = url.split(/[?#]/)[0] ?? "";
+  return path
+    .split("/")
+    .filter((s) => s !== "")
+    .map(safeDecode);
+}
+
 // A real chat id, of the shape `inbox list` / `inboxes chats` return.
 const REAL_CHAT_ID = "2-NmMyYzhlZWEtYjA5OS00OWQ0LWFhZjItYjBiYzUwZjcxYzM3XzEwMA==";
 
@@ -176,7 +204,16 @@ describe("message: the legitimate bare form still sends", () => {
     expect(r.status).toBe(0);
     expect(r.requests).toHaveLength(1);
     expect(r.requests[0]!.method).toBe("POST");
-    expect(r.requests[0]!.url).toContain(REAL_CHAT_ID);
+    // Decoded, not raw: proves the chat id reached the wire as exactly one
+    // path segment and survives the round trip, whether or not the SDK
+    // percent-encodes its `=` padding.
+    expect(decodedSegments(r.requests[0]!.url)).toEqual([
+      "v1",
+      "acc_x",
+      "chats",
+      REAL_CHAT_ID,
+      "messages",
+    ]);
     expect(JSON.parse(r.requests[0]!.body)).toMatchObject({ text: "hello there" });
   });
 
@@ -197,7 +234,16 @@ describe("message: the legitimate bare form still sends", () => {
     ]);
     expect(r.status).toBe(0);
     expect(r.requests).toHaveLength(1);
-    expect(r.requests[0]!.url).toContain(REAL_CHAT_ID);
+    // Decoded, not raw: the URL form is normalised to REAL_CHAT_ID before the
+    // request is built (see normalizeChatId), so this must land on the exact
+    // same one-segment path as the bare form above.
+    expect(decodedSegments(r.requests[0]!.url)).toEqual([
+      "v1",
+      "acc_x",
+      "chats",
+      REAL_CHAT_ID,
+      "messages",
+    ]);
   });
 
   it("the explicit `message send <chat_id> \"<text>\"` form is unaffected", async () => {

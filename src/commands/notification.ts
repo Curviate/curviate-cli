@@ -19,6 +19,7 @@
  * support --preview (local render, zero network calls, no server param sent).
  */
 
+import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -58,14 +59,6 @@ function buildOutputStreams(): OutputStreams {
     stdout: { write: (s: string) => process.stdout.write(s) },
     stderr: { write: (s: string) => process.stderr.write(s) },
   };
-}
-
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -111,7 +104,7 @@ export async function runNotificationList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -151,7 +144,7 @@ export async function runNotificationDelete(
   flags: NotificationFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const cardUrn = flags.cardUrn ?? "";
 
   if (flags.preview) {
@@ -180,7 +173,7 @@ export async function runNotificationShowLess(
   flags: NotificationFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const cardUrn = flags.cardUrn ?? "";
 
   if (flags.preview) {

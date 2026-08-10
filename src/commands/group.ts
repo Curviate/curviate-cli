@@ -12,11 +12,13 @@
  * interests-groups section only, total_count always null).
  *
  * `<group_id>` on `group get`/`group members` accepts a numeric group id or a
- * full LinkedIn group URL (e.g. https://www.linkedin.com/groups/9123014/),
- * passed through verbatim; the server extracts the numeric id from either
- * form. This is NOT the same normalization as `resolveIdentifier` (which
- * targets member/company slugs, not group URLs), no client-side extraction
- * is performed.
+ * full LinkedIn group URL (e.g. https://www.linkedin.com/groups/9123014/).
+ * The URL form is reduced to the numeric id client-side by `normalizeGroupId`,
+ * for the same reason the member, company, chat and job positionals are: the
+ * value becomes a path segment, and a URL carries slashes, so passing it
+ * through split it into several segments and produced a route that does not
+ * exist. This file previously claimed the server extracted the id from either
+ * form; it never received either form intact.
  *
  * `group members --name <filter>` folds member search into the same
  * endpoint, not a separate operation.
@@ -24,6 +26,8 @@
  * All subcommands are account-scoped, read-only (no --preview support).
  */
 
+import { requireAccount } from "../lib/account-arg.js";
+import { normalizeGroupId } from "../lib/identifier.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -64,14 +68,6 @@ function buildOutputStreams(): OutputStreams {
     stdout: { write: (s: string) => process.stdout.write(s) },
     stderr: { write: (s: string) => process.stderr.write(s) },
   };
-}
-
-function requireAccount(account: string | undefined, out: OutputStreams): string {
-  if (!account) {
-    out.stderr.write("error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n");
-    process.exit(2);
-  }
-  return account;
 }
 
 function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
@@ -125,7 +121,7 @@ export async function runGroupList(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
+  const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
@@ -169,8 +165,8 @@ export async function runGroupGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = requireAccount(flags.account, out);
-  const groupId = flags.groupId ?? "";
+  const accountId = await requireAccount(client, flags, out);
+  const groupId = normalizeGroupId(flags.groupId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
@@ -194,8 +190,8 @@ export async function runGroupMembers(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
-  const accountId = requireAccount(flags.account, out);
-  const groupId = flags.groupId ?? "";
+  const accountId = await requireAccount(client, flags, out);
+  const groupId = normalizeGroupId(flags.groupId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
