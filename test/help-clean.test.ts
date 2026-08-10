@@ -43,7 +43,14 @@ const LEAK_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   { label: "spec/doc refs",        pattern: /\b(FR|AC|NFR|TS|ADR)-\d+/ },
   { label: "internal path prefix", pattern: /\b(sdk|api|core|infra|mcp|cli)\/\d+/ },
   { label: "internal doc paths",   pattern: /docs\/(specs|adr)\b/ },
+  // A citation whose doc-reference half has been edited away (a "doc path
+  // plus section marker" trimmed down to just the bare marker) still names
+  // an internal document structure, but none of the patterns above can see
+  // it once the doc-reference half is gone. Mirrors scripts/check-clean.mjs's
+  // identical fix.
+  { label: "bare section marker",  pattern: /§\s*[A-Za-z0-9]/ },
   { label: "issue tracker refs",   pattern: /#\d{3,}/ },
+  { label: "internal policy labels", pattern: /hard\s+rule/i },
   { label: "internal codenames",   pattern: codenamePat },
   { label: "internal key prefix",  pattern: /\brdc_(?!live_)/ },
 ];
@@ -102,6 +109,10 @@ describe("help output — leak-clean across command source", () => {
   it("README.md is free of vendor/internal-ref leaks", async () => {
     const readmePath = resolve(pkgRoot, "README.md");
     const content = await readFile(readmePath, "utf8");
+    // An empty (or truncated) read would make "0 findings" a false assurance
+    // rather than a real clean verdict — the same failure shape check:clean's
+    // zero-files guard exists to catch, one file lower.
+    expect(content.length, "README.md should not read back empty/truncated").toBeGreaterThan(500);
     const lines = content.split("\n");
 
     const findings: string[] = [];

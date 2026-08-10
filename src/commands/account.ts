@@ -1526,19 +1526,18 @@ const accountCheckpointPollCommand = defineCommand({
     },
     // Override WRITE_SINGLE_FLAGS.timeout: on this command --timeout is the
     // --wait loop's own wall-clock bound in MILLISECONDS (requires --wait),
-    // NOT the SDK request timeout, and NOT seconds like `inbox sync-chat
-    // --timeout`. Default: the time remaining to the checkpoint's own expiry.
+    // NOT the SDK request timeout. Default: the time remaining to the
+    // checkpoint's own expiry.
     timeout: {
       type: "string",
-      description: "Wait-loop timeout in milliseconds (requires --wait; default: time remaining to the checkpoint's expiry). Note the unit: this is milliseconds; `inbox sync-chat --timeout` is seconds.",
+      description: "Wait-loop timeout in milliseconds (requires --wait; default: time remaining to the checkpoint's expiry).",
     },
   },
   async run({ args }) {
     const flags = args as AccountFlags;
     // --timeout here means the --wait bound (ms), not the SDK request
     // timeout, resolve config without it so the SDK client keeps its
-    // default request timeout (mirrors `inbox sync-chat`'s own fix for the
-    // identical flag-name collision).
+    // default request timeout.
     const cfg = await resolveEffectiveConfig({
       apiKey: flags["api-key"],
       baseUrl: flags["base-url"],

@@ -295,7 +295,7 @@ describe("lib/paginate — streamAll surfaces page notices[]", () => {
     message: "Every result on this page is hidden from the connected account.",
   };
 
-  it("writes a §F-shaped page notice (field + value) to stderr, not stdout", async () => {
+  it("writes a filter-value-shaped page notice (field + value) to stderr, not stdout", async () => {
     const method = makePaginatedMethod([
       { items: [], cursor: null, notices: [filterNotice] } as never,
     ]);
@@ -316,7 +316,7 @@ describe("lib/paginate — streamAll surfaces page notices[]", () => {
     expect(stdoutText).not.toContain("FILTER_VALUE_UNCHECKED");
   });
 
-  it("writes a §G-shaped page notice (no field/value) to stderr on an all-hidden page", async () => {
+  it("writes a page-scope-shaped page notice (no field/value) to stderr on an all-hidden page", async () => {
     const method = makePaginatedMethod([
       { items: [{ id: "p_1", visibility: "hidden" }], cursor: null, notices: [pageNotice] } as never,
     ]);

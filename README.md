@@ -39,7 +39,7 @@ curviate account list
 **Option 3: per-command flag**:
 
 ```bash
-curviate --api-key <your-api-key> account list
+curviate account list --api-key <your-api-key>
 ```
 
 > **Security note:** a key passed via `--api-key` is visible to other users on
@@ -47,7 +47,7 @@ curviate --api-key <your-api-key> account list
 > history. Prefer `curviate login` or the `CURVIATE_API_KEY` environment
 > variable; reserve `--api-key` for one-off, low-trust contexts.
 
-Get your API key from the [Curviate dashboard](https://docs.curviate.com).
+Get your API key from the [Curviate dashboard](https://app.curviate.com).
 
 ## Usage
 
@@ -62,9 +62,11 @@ Global flags available on every command:
   --fields       Comma-separated list of fields to include in JSON output
   --limit        Maximum number of results to return per page
   --cursor       Pagination cursor from a previous response
-  --all          Fetch all pages (streams results)
+  --all          Stream all pages as NDJSON
   --max-pages    Cap on the number of pages fetched with --all
+  --page-delay   Milliseconds to pause between pages when --all is used (default 400)
   --preview      Show what would happen without sending any write request
+  --verbose      Output the full SDK response instead of the slim default
   --base-url     Override the API base URL (for testing)
   --timeout      Request timeout in milliseconds (default: 30000)
 ```
@@ -77,44 +79,59 @@ These examples show how coding agents compose the CLI in real workflows.
 
 ### 1. Find people and send connection requests
 
-Search for matching profiles, preview the invitations, then send them once satisfied:
+Search for matching profiles, preview the invitations, then send them once satisfied.
+`--location` on `search people` takes location **ids**, not free text; resolve a
+human-readable place name to an id first with `curviate search parameters --type LOCATION`:
 
 ```bash
-# Look first: a search is a read, so it just runs (no --preview on reads)
+curviate search parameters --type LOCATION --keywords "Berlin" --account acc_1 --json
+# {"items":[{"id":"103035651","name":"Berlin, Germany"}, {"id":"106967730","name":"Berlin, Berlin, Germany"}, ...]}
+
+# Look first, a search is a read, so it just runs (no --preview on reads)
 curviate search people \
   --keywords "AI engineer" \
-  --location "Berlin" \
+  --location 103035651 \
+  --account acc_1 \
   --limit 10 \
   --json
 
 # Preview a single write before sending, then pipe IDs into connect, one request per person
-curviate connect "$SOME_ID" --note "Hi, I'd love to connect." --preview
+curviate connect "$SOME_ID" --account acc_1 --note "Hi, I'd love to connect." --preview
 
-curviate search people --keywords "AI engineer" --location "Berlin" --all \
+curviate search people --keywords "AI engineer" --location 103035651 --account acc_1 --all \
   | jq -r '.id' \
   | head -5 \
-  | xargs -I{} curviate connect {} --note "Hi, I'd love to connect."
+  | xargs -I{} curviate connect {} --account acc_1 --note "Hi, I'd love to connect."
 ```
 
 ### 2. Triage the inbox and extract unread threads
 
-Pull the inbox as JSON, filter unread chats, and surface the most recent message from each:
+Pull the inbox, filter unread chats, and surface the most recent message from each.
+`--all` streams **NDJSON** (one JSON object per line), not a `{items:[...]}` envelope or a
+bare array, so pipe each line straight into `jq` with no `.[]`. The chat's own id is `id`
+(`chat_id` only appears nested inside `last_message`, pointing back at its own chat); the
+unread signal is the integer `unread_count`, not a boolean `unread`; and `last_message` has
+no `sender` object, only `sender_id` (a provider id, not a display name), so a
+human-readable sender comes from the chat's own `user.display_name` instead (present on
+1:1 chats):
 
 ```bash
-curviate inbox list --json --all \
-  | jq '[.[] | select(.unread == true) | {chat_id, sender: .last_message.sender, preview: .last_message.text[0:80]}]'
+curviate inbox list --json --all --account acc_1 \
+  | jq -c 'select(.unread_count > 0) | {chat_id: .id, sender: (.user.display_name // .last_message.sender_id), preview: .last_message.text[0:80]}'
 ```
 
 ### 3. Warm up a prospect by reacting to their recent posts
 
-Read recent posts from a profile, then react to each, which is useful for ambient warm-up before outreach:
+Read recent posts from a profile, then react to each, useful for ambient warm-up before outreach.
+A post's id is `id` (there is no `post_id` field), and `--posts` returns a `{items:[...]}`
+envelope, not a bare array:
 
 ```bash
 PROFILE_URL="https://www.linkedin.com/in/example"
 
-curviate profile "$PROFILE_URL" --posts --fields post_id --json \
-  | jq -r '.[].post_id' \
-  | xargs -I{} curviate post react {} --reaction like
+curviate profile "$PROFILE_URL" --posts --fields id --account acc_1 --json \
+  | jq -r '.items[].id' \
+  | xargs -I{} curviate post react {} --account acc_1 --reaction like
 ```
 
 ### 4. Check tier entitlement before a Sales Navigator sweep
@@ -122,7 +139,7 @@ curviate profile "$PROFILE_URL" --posts --fields post_id --json \
 Exit code `5` means the account lacks the required add-on. Branch on it in a script:
 
 ```bash
-curviate sales-nav search people --keywords "VP Engineering" --json \
+curviate sales-nav search people --keywords "VP Engineering" --account acc_1 --json \
   || {
     code=$?
     if [ "$code" -eq 5 ]; then
@@ -152,11 +169,13 @@ Exit `2` means the signature is invalid or the replay window has expired.
 
 ### 6. Export all accounts to a CSV (agent-friendly pipeline)
 
-List every connected account, select key fields, and format as CSV with `jq`:
+List every connected account, select key fields, and format as CSV with `jq`. `--all` streams
+NDJSON, so slurp it into an array first with `jq -s`; the fields are `account_id` and
+`full_name`, not `id` / `name`:
 
 ```bash
 curviate account list --all --json \
-  | jq -r '["id","name","status"], (.[] | [.id, .name, .status]) | @csv' \
+  | jq -s -r '["account_id","full_name","status"], (.[] | [.account_id, .full_name, .status]) | @csv' \
   > accounts.csv
 ```
 
@@ -229,10 +248,13 @@ curviate sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
 
 ### 3. Start a new Sales Navigator chat
 
+`--subject` is required for Sales Navigator messaging.
+
 ```bash
 curviate sales-nav message new \
   --to ACwAAA1234567 \
   --account acc_1 \
+  --subject "An opportunity at our company" \
   "Hi, I'd love to connect about an opportunity at our company."
 ```
 
@@ -314,8 +336,12 @@ curviate recruiter project-job get "$PROJECT_ID" --account acc_1 --json
 
 ### 3. Create a job posting draft, then publish it
 
-`recruiter job create` requires `--project-name` (the hiring project the posting opens) and takes
-the v2 job body. `recruiter job publish` is project-scoped and requires `--mode`
+`recruiter job create` requires `--project-name` (the hiring project the posting opens) plus the
+full v2 job body: `--job-title`, `--company-id`/`--company-name`, `--workplace-type`, `--location`,
+`--employment-status`, `--seniority-level`, `--description` (200 characters minimum), `--industry`,
+`--job-function`, and `--apply-method`. `--location`/`--industry`/`--job-function` take resolved
+parameter ids, the same `search parameters --type LOCATION`/`--type INDUSTRY`/`--type JOB_FUNCTION`
+resolution from example 1 above. `recruiter job publish` is project-scoped and requires `--mode`
 (`FREE | PROMOTED | PROMOTED_PLUS`); the paid modes also require the full `--budget-*` triple.
 
 ```bash
@@ -323,8 +349,15 @@ curviate recruiter job create \
   --account acc_1 \
   --project-name "Backend Hiring 2026" \
   --job-title "Senior Backend Engineer" \
-  --description "Remote-first team building the core platform." \
+  --company-name "Curviate GmbH" \
+  --workplace-type REMOTE \
+  --location 103035651 \
   --employment-status FULL_TIME \
+  --seniority-level MID_SENIOR_LEVEL \
+  --description "We are looking for a senior backend engineer to join our remote-first team building the core platform that powers agent-native LinkedIn automation for thousands of developers and their AI agents worldwide." \
+  --industry 96 \
+  --job-function 15 \
+  --apply-method linkedin \
   --json
 
 curviate recruiter job publish "$PROJECT_ID" "$JOB_ID" --account acc_1 --mode FREE --json
@@ -380,7 +413,7 @@ curviate recruiter message new \
   --to AEM789 \
   --account acc_1 \
   --subject "A role you'd be a great fit for" \
-  --signature "- Alex, Talent Team" \
+  --signature "Alex, Talent Team" \
   "Hi, I came across your profile and think you'd be a great fit for a role we're hiring for."
 ```
 
@@ -407,6 +440,13 @@ curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --acc
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |
 | 5 | Feature requires an add-on or higher plan |
+| 6 | Rate limited |
+| 7 | Transient platform error (retry likely to succeed) |
+| 8 | Account or connection state blocks the request |
+| 9 | Checkpoint flow error (expired, invalid code, or too many attempts) |
+| 10 | Messaging window expired or recipient unreachable |
+| 11 | Billing issue (payment required, failed, or seat cancelled) |
+| 12 | Auth action needed (a pending checkpoint; not an error) |
 
 ## License
 

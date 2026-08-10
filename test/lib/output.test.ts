@@ -200,7 +200,7 @@ describe("lib/output — renderSuccess renders notices[] (filter fast-path and a
     stderr: { write: (s: string) => { stderrLines.push(s); } },
   };
 
-  // §F shape: field + value present (a filter value took the id fast path).
+  // filter-value shape: field + value present (a filter value took the id fast path).
   const filterNotice = {
     code: "FILTER_VALUE_UNCHECKED",
     message: "The value was treated as an id and was not looked up.",
@@ -208,19 +208,19 @@ describe("lib/output — renderSuccess renders notices[] (filter fast-path and a
     value: "42",
   };
 
-  // §G shape: page-scoped, no field/value (an anonymised-results page).
+  // page-scope shape: page-scoped, no field/value (an anonymised-results page).
   const pageNotice = {
     code: "ALL_RESULTS_HIDDEN",
     message: "Every result on this page is hidden from the connected account.",
   };
 
-  it("JSON mode: a §F-shaped notice (field + value) passes through the array intact", () => {
+  it("JSON mode: a filter-value-shaped notice (field + value) passes through the array intact", () => {
     const data = { items: [], cursor: null, notices: [filterNotice] };
     renderSuccess(data, { json: true, isTTY: false, fields: undefined }, mockOut as never);
     expect(JSON.parse(stdoutLines.join(""))).toEqual(data);
   });
 
-  it("JSON mode: a §G-shaped notice (no field/value) passes through the array intact", () => {
+  it("JSON mode: a page-scope-shaped notice (no field/value) passes through the array intact", () => {
     const data = { items: [{ id: "p_1" }], cursor: null, notices: [pageNotice] };
     renderSuccess(data, { json: true, isTTY: false, fields: undefined }, mockOut as never);
     expect(JSON.parse(stdoutLines.join(""))).toEqual(data);
@@ -234,7 +234,7 @@ describe("lib/output — renderSuccess renders notices[] (filter fast-path and a
     expect(parsed.notices).toEqual([pageNotice]);
   });
 
-  it("human mode: a §F-shaped notice renders visibly, above an empty result list, not blank", () => {
+  it("human mode: a filter-value-shaped notice renders visibly, above an empty result list, not blank", () => {
     const data = { items: [], cursor: null, notices: [filterNotice] };
     renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
     const rendered = stdoutLines.join("");
@@ -247,7 +247,7 @@ describe("lib/output — renderSuccess renders notices[] (filter fast-path and a
     expect(rendered.indexOf("FILTER_VALUE_UNCHECKED")).toBeLessThan(rendered.indexOf("(no items)"));
   });
 
-  it("human mode: a §G-shaped notice (no field/value) renders visibly, no blank/malformed line", () => {
+  it("human mode: a page-scope-shaped notice (no field/value) renders visibly, no blank/malformed line", () => {
     const data = { items: [{ id: "p_1", full_name: "Alice" }], cursor: null, notices: [pageNotice] };
     renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
     const rendered = stdoutLines.join("");
@@ -259,7 +259,7 @@ describe("lib/output — renderSuccess renders notices[] (filter fast-path and a
     expect(rendered).not.toContain("(value:");
   });
 
-  it("human mode: an all-hidden page (empty items + §G notice) still surfaces the notice, not just '(no items)'", () => {
+  it("human mode: an all-hidden page (empty items + page-scope notice) still surfaces the notice, not just '(no items)'", () => {
     const data = { items: [], cursor: null, notices: [pageNotice] };
     renderSuccess(data, { json: false, isTTY: true, fields: undefined }, mockOut as never);
     const rendered = stdoutLines.join("");

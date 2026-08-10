@@ -925,7 +925,7 @@ const profileMeCommand = defineCommand({
     },
     posts: {
       type: "boolean",
-      description: "List own activity feed (posts + reposts). For authored-only posts, use 'post list'.",
+      description: "List own activity feed (posts + reposts). For authored-only posts, use 'post user-posts me'.",
       default: false,
     },
     comments: {
@@ -992,7 +992,7 @@ const profileEndorseCommand = defineCommand({
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
     "endorsement-id": {
       type: "string",
-      description: "Endorsement ID to endorse. Get it from the target's skills section via `profile <id> --sections linkedin_skills`.",
+      description: "Endorsement ID to endorse. Get it from the target's skills section via `curviate profile <id> --sections linkedin_skills`.",
       required: true,
     },
   },
