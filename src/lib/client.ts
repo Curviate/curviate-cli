@@ -101,8 +101,9 @@ function guardPathSegments<T extends object>(target: T, prefix: string): T {
 
       if (typeof value === "function") {
         const fn = value as (...a: unknown[]) => unknown;
+        const exempt = NOT_A_PATH_CALL.has(label);
         return (...args: unknown[]): unknown => {
-          if (!NOT_A_PATH_CALL.has(label)) {
+          if (!exempt) {
             for (let i = 0; i < args.length; i++) {
               const arg = args[i];
               // The first non-string argument is the body or query; every path
@@ -125,7 +126,10 @@ function guardPathSegments<T extends object>(target: T, prefix: string): T {
             typeof result === "object" &&
             typeof (result as { then?: unknown }).then !== "function"
           ) {
-            return guardPathSegments(result as object, label);
+            // The account factory is dropped from the label so a diagnostic
+            // names the method the way `--preview` already prints it
+            // ("messaging.markChatRead"), rather than the internal call chain.
+            return guardPathSegments(result as object, exempt ? prefix : label);
           }
           return result;
         };
