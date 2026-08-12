@@ -14,13 +14,15 @@
  *
  * Real substrate `specifics.experience[]` item shape (v2 UserProfile, the
  * array itself is nested under `specifics`, not a top-level `work_experience`
- * field; see slimProfile/slimProfileMe):
- *   { id, company, position, location, status, company_picture_url, skills, start, end }
+ * field; see slimProfile/slimProfileMe). Captured live, not inferred:
+ *   { id, company: {id, name, picture_url, profile_url}, job_title,
+ *     started_on, ended_on?, location, description?, employment_type?,
+ *     workplace_type?, skills_preview? }
  * Mapping into CurrentPosition:
- *   title        <- position
- *   company_name <- company
- *   company_id   <- null (ALWAYS: entry.id is the experience-entry id, not a company id)
- *   is_current   <- (end == null)
+ *   title        <- job_title
+ *   company_name <- company.name
+ *   company_id   <- company.id
+ *   is_current   <- (ended_on == null)
  */
 
 // ---------------------------------------------------------------------------
@@ -30,7 +32,7 @@
 export type CurrentPosition = {
   title: string | null;
   company_name: string | null;
-  company_id: null;
+  company_id: string | null;
   is_current: boolean;
 };
 
@@ -39,12 +41,16 @@ export type CurrentPosition = {
  * (the real wire's `specifics.experience`, callers extract that nested
  * array before calling this; see slimProfile/slimProfileMe).
  *
- * Uses the first entry in the array (index 0).
- * Input item shape (real substrate): `{ id, company, position, end, ... }`
- *   - title        <- position
- *   - company_name <- company
- *   - company_id   <- null (ALWAYS: never read from the entry)
- *   - is_current   <- (end == null)
+ * Uses the first entry (index 0) and reports whether THAT entry is current; it
+ * does not search the array for a current role. Field mapping is in the file
+ * header; the capture backing it is test/fixtures/profile-sections.ts.
+ *
+ * `ended_on` PRESENT means the role ended, ABSENT means it is current, and its
+ * absence is the only signal on the entry. Read the key's presence, never its
+ * value: an `ended_on` is the first of the end month plus 29 days, so a
+ * February end arrives as an early-March date and any month derived from it
+ * overstates a February tenure by one. No date is projected here, so nothing
+ * needs the -29d correction; anything that later derives a month does.
  *
  * Returns null when the array is empty or not provided.
  */
@@ -55,11 +61,20 @@ export function synthesizeCurrentPosition(
     return null;
   }
   const entry = workExperience[0] as Record<string, unknown>;
+
+  // `company` is an object on the wire. Anything else projects null rather
+  // than leaking a non-string into a field typed `string | null`: the wire
+  // arrives index-signature typed, so the compiler cannot catch a drift here.
+  const company =
+    entry["company"] !== null && typeof entry["company"] === "object"
+      ? (entry["company"] as Record<string, unknown>)
+      : null;
+
   return {
-    title: (entry["position"] as string | null | undefined) ?? null,
-    company_name: (entry["company"] as string | null | undefined) ?? null,
-    company_id: null,
-    is_current: entry["end"] == null,
+    title: (entry["job_title"] as string | null | undefined) ?? null,
+    company_name: (company?.["name"] as string | null | undefined) ?? null,
+    company_id: (company?.["id"] as string | null | undefined) ?? null,
+    is_current: entry["ended_on"] == null,
   };
 }
 

@@ -20,39 +20,70 @@ import {
   slimSearchPostsItem,
   slimSearchPosts,
 } from "../../src/lib/slim.js";
+import { CAPTURED_EXPERIENCE, CAPTURED_EDUCATION } from "../fixtures/profile-sections.js";
 
 // ---------------------------------------------------------------------------
 // synthesizeCurrentPosition
+//
+// Asserted against CAPTURED_EXPERIENCE — the live capture, not a fixture
+// written to match what the projector already assumed. The previous suite
+// pinned `position` / `company`-as-a-string / `end`, none of which exist on
+// the wire, so it stayed green while the projector emitted title:null,
+// company_name-as-an-object, and is_current:true for every ended role.
 // ---------------------------------------------------------------------------
 
 describe("synthesizeCurrentPosition", () => {
-  it("maps position→title, company→company_name, company_id always null, end null → is_current true", () => {
-    const result = synthesizeCurrentPosition([
-      { id: "exp1", position: "Founder", company: "RedHire", end: null, start: { month: 3, year: 2023 } },
-    ]);
+  const current = CAPTURED_EXPERIENCE[0]!;
+  const endedFebruary = CAPTURED_EXPERIENCE[1]!;
+  const endedOrdinary = CAPTURED_EXPERIENCE[2]!;
+
+  it("reads title from job_title, the real wire key (there is no `position` key)", () => {
+    const result = synthesizeCurrentPosition([current]);
+    expect(result!.title).toBe("Founder");
+  });
+
+  it("reads company_name from company.name — company is an object on the wire, never a name string", () => {
+    const result = synthesizeCurrentPosition([current]);
+    expect(result!.company_name).toBe("Example Ventures");
+  });
+
+  it("reads company_id from company.id — a genuine company id, unlike the entry's own id", () => {
+    const result = synthesizeCurrentPosition([current]);
+    expect(result!.company_id).toBe("112013061");
+    // The entry id is an experience-entry id and must never leak into it.
+    expect(result!.company_id).not.toBe(current["id"]);
+  });
+
+  it("is_current true only when ended_on is absent — absence is the only current signal", () => {
+    expect(synthesizeCurrentPosition([current])!.is_current).toBe(true);
+  });
+
+  it("is_current false for an ended role (ordinary end month)", () => {
+    const result = synthesizeCurrentPosition([endedOrdinary]);
+    expect(result!.is_current).toBe(false);
+    expect(result!.title).toBe("Data Science Developer");
+    expect(result!.company_name).toBe("Example Media");
+  });
+
+  it("is_current false for a February-ending role, whose ended_on falls in the following March", () => {
+    // `03/02/2025` means February 2025 (first-of-month plus 29 days). The
+    // presence of the key is what settles is_current; the month never enters.
+    expect(endedFebruary["ended_on"]).toBe("03/02/2025");
+    expect(synthesizeCurrentPosition([endedFebruary])!.is_current).toBe(false);
+  });
+
+  it("the whole captured array projects entry 0, and only entry 0 decides is_current", () => {
+    // Ordering guard: a capture whose first entry is the current role must not
+    // be read as current merely because some other entry is.
+    const result = synthesizeCurrentPosition(CAPTURED_EXPERIENCE);
     expect(result).toEqual({
       title: "Founder",
-      company_name: "RedHire",
-      company_id: null,
+      company_name: "Example Ventures",
+      company_id: "112013061",
       is_current: true,
     });
-  });
-
-  it("end non-null → is_current false", () => {
-    const result = synthesizeCurrentPosition([
-      { id: "exp2", position: "Engineer", company: "Acme", end: { year: 2024, month: 6 } },
-    ]);
-    expect(result).not.toBeNull();
-    expect(result!.is_current).toBe(false);
-  });
-
-  it("company_id is ALWAYS null — even when entry has an id field", () => {
-    const result = synthesizeCurrentPosition([
-      { id: "exp3", position: "CTO", company: "TechCo", end: null },
-    ]);
-    expect(result).not.toBeNull();
-    // id from entry must NOT leak into company_id
-    expect(result!.company_id).toBeNull();
+    const endedFirst = synthesizeCurrentPosition([endedOrdinary, current]);
+    expect(endedFirst!.is_current).toBe(false);
   });
 
   it("empty array → null", () => {
@@ -63,14 +94,23 @@ describe("synthesizeCurrentPosition", () => {
     expect(synthesizeCurrentPosition(null as unknown as unknown[])).toBeNull();
   });
 
-  it("absent position field → title null", () => {
-    const result = synthesizeCurrentPosition([{ company: "Acme", end: null }]);
+  it("absent job_title → title null", () => {
+    const result = synthesizeCurrentPosition([{ company: { name: "Acme" } }]);
     expect(result!.title).toBeNull();
   });
 
-  it("absent company field → company_name null", () => {
-    const result = synthesizeCurrentPosition([{ position: "Dev", end: null }]);
+  it("absent company → company_name and company_id both null", () => {
+    const result = synthesizeCurrentPosition([{ job_title: "Dev" }]);
     expect(result!.company_name).toBeNull();
+    expect(result!.company_id).toBeNull();
+  });
+
+  it("a non-object company projects null rather than leaking a non-string into company_name", () => {
+    // Defensive: the wire is index-signature typed, so nothing stops a future
+    // shape change reaching here. A visible null beats a wrong-typed value.
+    const result = synthesizeCurrentPosition([{ job_title: "Dev", company: "Acme" }]);
+    expect(result!.company_name).toBeNull();
+    expect(result!.company_id).toBeNull();
   });
 });
 
@@ -192,8 +232,8 @@ describe("slimProfileMe", () => {
       is_open_profile: false,
       is_premium: true,
       is_influencer: false,
-      experience: [{ position: "Engineer", company: "Acme", end: null }],
-      education: [{ school: "MIT" }],
+      experience: CAPTURED_EXPERIENCE,
+      education: CAPTURED_EDUCATION,
       throttled_sections: ["experience"],
     },
   };
@@ -267,9 +307,9 @@ describe("slimProfileMe", () => {
   it("current_position synthesized from specifics.experience[0] (parity with profile <id>)", () => {
     const result = slimProfileMe(fullProfile);
     expect(result["current_position"]).toEqual({
-      title: "Engineer",
-      company_name: "Acme",
-      company_id: null,
+      title: "Founder",
+      company_name: "Example Ventures",
+      company_id: "112013061",
       is_current: true,
     });
   });
@@ -357,20 +397,8 @@ describe("slimProfile", () => {
       network_distance: "FIRST_DEGREE",
       is_premium: false,
       is_open_to_work: false,
-      experience: [
-        {
-          id: "exp_1",
-          position: "Senior Engineer",
-          company: "TechCorp",
-          location: "London",
-          status: null,
-          company_picture_url: null,
-          skills: [],
-          start: { month: 1, year: 2020 },
-          end: null,
-        },
-      ],
-      education: [{ school: "Oxford" }],
+      experience: CAPTURED_EXPERIENCE,
+      education: CAPTURED_EDUCATION,
       throttled_sections: ["experience"],
     },
   };
@@ -434,32 +462,33 @@ describe("slimProfile", () => {
   it("current_position synthesized from specifics.experience[0] with correct field mapping", () => {
     const result = slimProfile(fullProfile);
     expect(result["current_position"]).toEqual({
-      title: "Senior Engineer",     // ← from position
-      company_name: "TechCorp",     // ← from company
-      company_id: null,             // ALWAYS null
-      is_current: true,             // ← end == null
+      title: "Founder",                 // <- job_title
+      company_name: "Example Ventures", // <- company.name
+      company_id: "112013061",          // <- company.id
+      is_current: true,                 // <- ended_on absent
     });
   });
 
-  it("company_id is ALWAYS null even when entry has an id field", () => {
+  it("company_id is the company's id, never the experience entry's own id", () => {
     const result = slimProfile(fullProfile);
     const pos = result["current_position"] as Record<string, unknown>;
-    // entry.id is "exp_1" — must NOT appear as company_id
-    expect(pos["company_id"]).toBeNull();
+    expect(pos["company_id"]).toBe("112013061");
+    expect(pos["company_id"]).not.toBe(CAPTURED_EXPERIENCE[0]!["id"]);
   });
 
-  it("is_current false when end is non-null", () => {
+  it("is_current false when the entry carries ended_on", () => {
     const result = slimProfile({
       ...fullProfile,
       specifics: {
         ...fullProfile.specifics,
-        experience: [
-          { id: "exp_2", position: "Intern", company: "OldCo", end: { year: 2019, month: 6 } },
-        ],
+        // The captured February-ending role: ended 18 months before the
+        // captured current one, and must not read as current.
+        experience: [CAPTURED_EXPERIENCE[1]],
       },
     });
     const pos = result["current_position"] as Record<string, unknown>;
     expect(pos["is_current"]).toBe(false);
+    expect(pos["title"]).toBe("Senior Machine Learning Engineer");
   });
 
   it("current_position is null when specifics.experience is empty", () => {

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { CAPTURED_EXPERIENCE, CAPTURED_EDUCATION } from "../fixtures/profile-sections.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -699,8 +700,8 @@ describe("profile me — slim mode (no --verbose)", () => {
     entity_urn: "urn:li:member:123",
     specifics: {
       is_premium: false,
-      experience: [{ id: "exp1", position: "Engineer", company: "Acme", end: null }],
-      education: [{ school: "MIT" }],
+      experience: CAPTURED_EXPERIENCE,
+      education: CAPTURED_EDUCATION,
     },
   };
 
@@ -747,10 +748,32 @@ describe("profile me — slim mode (no --verbose)", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const result = JSON.parse(written) as Record<string, unknown>;
     expect(result["current_position"]).toEqual({
-      title: "Engineer",
-      company_name: "Acme",
-      company_id: null,
+      title: "Founder",
+      company_name: "Example Ventures",
+      company_id: "112013061",
       is_current: true,
+    });
+  });
+
+  it("is_current is false end-to-end for a role the member has left", async () => {
+    // The whole point of the fix, proven through the command, not the helper:
+    // a captured role that ended must not reach stdout reading as current.
+    const { runProfileMe } = await import("../../src/commands/profile.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    (accountNs.users.get as Mock).mockResolvedValue({
+      ...richProfile,
+      specifics: { ...richProfile.specifics, experience: [CAPTURED_EXPERIENCE[1]] },
+    });
+
+    await runProfileMe(client as never, { account: "acc_1", json: true } as ProfileCommandArgs, out);
+
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    const result = JSON.parse(written) as Record<string, unknown>;
+    expect(result["current_position"]).toEqual({
+      title: "Senior Machine Learning Engineer",
+      company_name: "Example Systems",
+      company_id: "112013062",
+      is_current: false,
     });
   });
 });
@@ -763,8 +786,8 @@ describe("profile me — --verbose mode", () => {
     last_name: "Doe",
     entity_urn: "urn:li:member:123",
     specifics: {
-      experience: [{ id: "exp1", position: "Engineer", company: "Acme", end: null }],
-      education: [{ school: "MIT" }],
+      experience: CAPTURED_EXPERIENCE,
+      education: CAPTURED_EDUCATION,
     },
   };
 
@@ -821,20 +844,8 @@ describe("profile <id> — slim mode (current_position synthesis)", () => {
     description: "Senior Engineer at TechCorp",
     specifics: {
       network_distance: "FIRST_DEGREE",
-      experience: [
-        {
-          id: "exp_1",
-          position: "Senior Engineer",
-          company: "TechCorp",
-          location: "London",
-          status: null,
-          company_picture_url: null,
-          skills: [],
-          start: { month: 1, year: 2020 },
-          end: null,
-        },
-      ],
-      education: [{ school: "Oxford" }],
+      experience: CAPTURED_EXPERIENCE,
+      education: CAPTURED_EDUCATION,
     },
     viewer_permissions: { can_send_inmail: false },
   };
@@ -869,10 +880,10 @@ describe("profile <id> — slim mode (current_position synthesis)", () => {
     expect(result["headline"]).toBe("Senior Engineer at TechCorp");
     expect(result).toHaveProperty("current_position");
     expect(result["current_position"]).toEqual({
-      title: "Senior Engineer",     // ← from position
-      company_name: "TechCorp",     // ← from company
-      company_id: null,             // ALWAYS null
-      is_current: true,             // ← end == null
+      title: "Founder",                 // <- job_title
+      company_name: "Example Ventures", // <- company.name
+      company_id: "112013061",          // <- company.id
+      is_current: true,                 // <- ended_on absent
     });
     expect(result).not.toHaveProperty("occupation");
     expect(result).not.toHaveProperty("specifics");

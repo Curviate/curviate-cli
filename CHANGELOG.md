@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [Unreleased]
+
+### Fixed
+
+- **`profile` reported every past role as the person's current job, with no
+  job title and a malformed company name.** The `current_position` projection
+  read three field names that do not exist on the wire: `position` for the
+  title, `company` as if it were a name string, and `end` for the end date.
+  The visible result was `title: null` on every profile, a company object
+  emitted into `company_name` where the field is documented as a string, and
+  `is_current: true` for roles that ended years ago. It now reads `job_title`,
+  `company.name`, and `ended_on`. A role is current when `ended_on` is absent,
+  which is the only signal the platform provides. `company_id` is also
+  populated now, from `company.id`, instead of always being null.
+
+  If you consumed `current_position.is_current`, treat every previous reading
+  of `true` as unverified: it was returned unconditionally.
+
 ## [0.23.1] - 2026-08-10
 
 ### Fixed
