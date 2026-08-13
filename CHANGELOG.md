@@ -8,6 +8,17 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-08-13
+
+### Changed
+
+- **`@curviate/sdk` dependency floor raised to `^0.21.0`** (was `^0.20.1`).
+  The new SDK minor carries two changes that are breaking for a typed
+  consumer of the SDK directly (`total_count` and a search result's
+  `profile_url` are now nullable; profile section arrays gained a described
+  shape), but this CLI does not read any of those fields directly, so no CLI
+  behavior changes. Typecheck, lint, and the full test suite are unaffected.
+
 ### Fixed
 
 - **`profile` reported every past role as the person's current job, with no
