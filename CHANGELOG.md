@@ -8,6 +8,18 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-08-17
+
+### Changed
+
+- **`@curviate/sdk` dependency floor raised to `^0.22.0`** (was `^0.21.0`).
+  A caret range on a `0.x` version is locked to that minor, so without this
+  bump the CLI would have stayed on the previous SDK types. The new SDK minor
+  is a regeneration against the production API document: the Recruiter and
+  Sales Navigator profile section arrays now declare their item shapes, and
+  every paginated endpoint's 400 description names a malformed cursor. No CLI
+  behavior changes; typecheck, lint, and the full test suite are unaffected.
+
 ## [0.23.2] - 2026-08-13
 
 ### Changed
