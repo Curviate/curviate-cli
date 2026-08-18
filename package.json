@@ -1,6 +1,6 @@
 {
   "name": "@curviate/cli",
-  "version": "0.23.3",
+  "version": "0.24.0",
   "private": false,
   "description": "Official command-line interface for the Curviate API.",
   "license": "MIT",
@@ -42,7 +42,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@curviate/sdk": "^0.22.0",
+    "@curviate/sdk": "^0.23.0",
     "citty": "^0.1.6",
     "open": "^10.1.0"
   },

@@ -8,6 +8,43 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-08-18
+
+### Changed
+
+- **Corrected flag-to-body-field drift across `search`, `sales-nav`, and
+  `recruiter`.** Named filter flags were hand-mapped to request-body field
+  names with no compiler coupling, so several server-side field
+  renames/removals left flags pointing at fields the body schema now rejects
+  with a 400. Every one of these previously produced a 400, so nothing that
+  worked is being taken away:
+  - `search people`: `--company` -> `current_company` (was: `company`)
+  - `search companies`: `--has-job-offers` -> `has_job_postings` (was:
+    `has_job_offers`); `--network-distance` **removed** (field no longer
+    accepted on this endpoint)
+  - `search companies --filters` help text corrected: the request body is
+    `.strict()` and rejects unknown fields with a 400, it does not
+    validate-and-strip them
+  - `sales-nav search people`: `--groups` -> `group` (was: `groups`, plural)
+  - `sales-nav search companies`: `--technologies` / `--recent-activities` /
+    `--network-distance` **removed** (none is an accepted field on this
+    endpoint)
+  - `recruiter search people`: `--function` -> `job_function` (was:
+    `function`); `--locale` **removed** (no accepted field exists for it)
+  - Adds a guard test that checks every command's real body output against
+    the accepted request-body properties in the SDK's OpenAPI fixture, so a
+    future rename/removal reds a test instead of shipping silently.
+- **`@curviate/sdk` dependency floor raised to `^0.23.0`** (was `^0.22.0`),
+  matching the SDK regeneration the fixes above were verified against.
+
+### Removed
+
+- `--locale` (recruiter search people), `--technologies` and
+  `--recent-activities` (sales-nav search companies). All three previously
+  produced a 400 on every call; a script passing them now fails at argument
+  parsing instead. Breaking to the command surface even though the flags
+  were non-functional, hence a minor bump rather than a patch.
+
 ## [0.23.3] - 2026-08-17
 
 ### Changed
