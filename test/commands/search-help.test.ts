@@ -150,12 +150,16 @@ describe("search --filters help text: precedence and strip note", () => {
     expect(lower.includes("named flags") || lower.includes("flag") || lower.includes("win") || lower.includes("override") || lower.includes("precedence")).toBe(true);
   });
 
-  it("--filters on people command mentions server strips unknown fields", async () => {
+  it("--filters on people command accurately warns the body is strict (rejects unknown fields, doesn't strip them)", async () => {
     const args = await getSearchSubArgs("people");
     const desc = args["filters"]?.description ?? "";
-    // Must mention server strips / ignores unknown fields
     const lower = desc.toLowerCase();
-    expect(lower.includes("strip") || lower.includes("unknown") || lower.includes("validates")).toBe(true);
+    // Must mention unknown fields are rejected (400), and must NOT claim the
+    // server silently strips them — that claim is false (the body schema is
+    // `.strict()`) and was shipped as customer-facing help text.
+    expect(lower.includes("unknown")).toBe(true);
+    expect(lower.includes("reject") || lower.includes("400") || lower.includes("strict")).toBe(true);
+    expect(lower.includes("strips")).toBe(false);
   });
 
   it("--filters on jobs command mentions named flags win on conflict", async () => {

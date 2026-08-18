@@ -151,7 +151,7 @@ const FILTER_FLAGS = {
   filters: {
     type: "string" as const,
     stdinArg: true,
-    description: "Filter body as a JSON object (named flags win on conflict; server validates and strips unknown fields); '-' reads JSON from stdin.",
+    description: "Filter body as a JSON object (named flags win on conflict; the server body schema is strict and rejects unknown fields with a 400); '-' reads JSON from stdin.",
   },
   "filters-file": {
     type: "string" as const,
@@ -231,7 +231,8 @@ const NAMED_FLAG_MAPPERS: Record<
   people(body, flags) {
     if (flags.industry) body["industry"] = splitCsv(flags.industry);
     if (flags.location) body["location"] = splitCsv(flags.location);
-    if (flags.company) body["company"] = splitCsv(flags.company);
+    // --company (server field is current_company, not company)
+    if (flags.company) body["current_company"] = splitCsv(flags.company);
     if (flags["past-company"]) body["past_company"] = splitCsv(flags["past-company"]);
     if (flags.school) body["school"] = splitCsv(flags.school);
     if (flags["network-distance"]) body["network_distance"] = splitCsvNumbers(flags["network-distance"]);
@@ -255,9 +256,8 @@ const NAMED_FLAG_MAPPERS: Record<
   companies(body, flags) {
     if (flags.industry) body["industry"] = splitCsv(flags.industry);
     if (flags.location) body["location"] = splitCsv(flags.location);
-    if (flags["network-distance"]) body["network_distance"] = splitCsvNumbers(flags["network-distance"]);
-    // --has-job-offers / --headcount
-    if (flags["has-job-offers"]) body["has_job_offers"] = true;
+    // --has-job-offers (server field is has_job_postings) / --headcount
+    if (flags["has-job-offers"]) body["has_job_postings"] = true;
     if (flags.headcount) {
       const buckets = splitCsv(flags.headcount);
       const mapped: Array<{ min: number; max: number }> = [];
@@ -884,7 +884,6 @@ const searchCompaniesCommand = defineCommand({
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
     location: { type: "string", description: "Location ids (comma-separated)." },
-    "network-distance": { type: "string", description: "Network distance, 1-3 (comma-separated)." },
     "has-job-offers": { type: "boolean", description: "only companies with active job listings" },
     headcount: {
       type: "string",

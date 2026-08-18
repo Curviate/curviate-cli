@@ -39,7 +39,6 @@ import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.
 import {
   assembleFilters,
   splitCsv,
-  splitCsvNumbers,
   DEFAULT_FILTER_READERS,
   type FilterReaders,
 } from "../lib/search-filters.js";
@@ -85,9 +84,6 @@ type SalesNavFlags = {
   "last-name"?: string;
   groups?: string;
   "profile-language"?: string;
-  technologies?: string;
-  "recent-activities"?: string;
-  "network-distance"?: string;
   identifier?: string;
   userId?: string;
   // v2 list surface
@@ -183,7 +179,8 @@ export async function runSalesNavSearchPeople(
   if (flags.keywords) body["keywords"] = flags.keywords;
   if (flags["first-name"]) body["first_name"] = flags["first-name"];
   if (flags["last-name"]) body["last_name"] = flags["last-name"];
-  if (flags.groups) body["groups"] = splitCsv(flags.groups);
+  // --groups (server field is singular "group")
+  if (flags.groups) body["group"] = splitCsv(flags.groups);
   if (flags["profile-language"]) body["profile_language"] = splitCsv(flags["profile-language"]);
 
   const params: Record<string, unknown> = {};
@@ -247,9 +244,6 @@ export async function runSalesNavSearchCompanies(
   }
   const body = assembled.body;
   if (flags.keywords) body["keywords"] = flags.keywords;
-  if (flags.technologies) body["technologies"] = splitCsv(flags.technologies);
-  if (flags["recent-activities"]) body["recent_activities"] = splitCsv(flags["recent-activities"]);
-  if (flags["network-distance"]) body["network_distance"] = splitCsvNumbers(flags["network-distance"]);
 
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
@@ -831,9 +825,6 @@ const salesNavSearchCompaniesCommand = defineCommand({
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
-    technologies: { type: "string", description: "Technology tags (comma-separated)." },
-    "recent-activities": { type: "string", description: "Recent activity ids (comma-separated)." },
-    "network-distance": { type: "string", description: "Network distance, 1-3 (comma-separated)." },
   },
   async run({ args }) {
     const flags = args as SalesNavFlags;

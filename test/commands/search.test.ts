@@ -245,7 +245,7 @@ describe("search people — filters escape hatch + named flags", () => {
     expect(body).toEqual({
       industry: ["96", "4"],
       location: ["103644278"],
-      company: ["1441"],
+      current_company: ["1441"],
       past_company: ["111"],
       school: ["222"],
       network_distance: [1, 2],
@@ -344,17 +344,17 @@ describe("search companies / posts / jobs", () => {
       account: "acc_1",
       industry: "96",
       location: "103644278",
-      "network-distance": "1",
-      filters: '{"has_job_offers":true}',
+      "has-job-offers": true,
+      filters: '{"keywords":"from-filters"}',
       json: true,
     } as SearchArgs, out);
 
     const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
     expect(body).toEqual({
-      has_job_offers: true,
+      has_job_postings: true,
       industry: ["96"],
       location: ["103644278"],
-      network_distance: [1],
+      keywords: "from-filters",
     });
   });
 
@@ -1452,14 +1452,14 @@ describe("search companies: --has-job-offers / --headcount named flags", () => {
     vi.restoreAllMocks();
   });
 
-  it("--has-job-offers → body has_job_offers: true", async () => {
+  it("--has-job-offers → body has_job_postings: true", async () => {
     const { runSearchCompanies } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runSearchCompanies(client as never, { "has-job-offers": true, account: "acc_1", json: true } as SearchArgs, out);
 
     const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ has_job_offers: true });
+    expect(body).toEqual({ has_job_postings: true });
   });
 
   it("--headcount 1001-5000 → body headcount: [{min:1001,max:5000}]", async () => {
@@ -1499,7 +1499,7 @@ describe("search companies: --has-job-offers / --headcount named flags", () => {
     } as SearchArgs, out);
 
     const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ has_job_offers: true, headcount: [{ min: 51, max: 200 }] });
+    expect(body).toEqual({ has_job_postings: true, headcount: [{ min: 51, max: 200 }] });
   });
 
   it("--headcount not-a-bucket → exit 2, no SDK call", async () => {
