@@ -101,7 +101,6 @@ type RecruiterFlags = {
   //  reused by `recruiter search people`; it maps to the same API field.)
   filters?: string;
   "filters-file"?: string;
-  locale?: string;
   function?: string;
   "profile-language"?: string;
   identifier?: string;
@@ -513,9 +512,9 @@ export async function runRecruiterSearchPeople(
   }
   const body = assembled.body;
   if (flags.keywords) body["keywords"] = flags.keywords;
-  if (flags.locale) body["locale"] = flags.locale;
   if (flags["employment-type"]) body["employment_type"] = splitCsv(flags["employment-type"]);
-  if (flags.function) body["function"] = splitCsv(flags.function);
+  // --function (server field is job_function, not function)
+  if (flags.function) body["job_function"] = splitCsv(flags.function);
   if (flags["profile-language"]) body["profile_language"] = splitCsv(flags["profile-language"]);
 
   const params: Record<string, unknown> = {};
@@ -1520,9 +1519,8 @@ const recruiterSearchPeopleCommand = defineCommand({
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
-    locale: { type: "string", description: "Result locale, e.g. en." },
     "employment-type": { type: "string", description: "Employment type ids (comma-separated)." },
-    function: { type: "string", description: "Job function ids (comma-separated)." },
+    function: { type: "string", description: "Job function ids (comma-separated); maps to the API's job_function." },
     "profile-language": { type: "string", description: "Profile language codes (comma-separated)." },
   },
   async run({ args }) {

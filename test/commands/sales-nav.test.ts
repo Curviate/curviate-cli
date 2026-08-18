@@ -270,7 +270,8 @@ describe("sales-nav search people", () => {
       keywords: "ai",
       first_name: "Ada",
       last_name: "Lovelace",
-      groups: ["g1", "g2"],
+      // --groups (server field is singular "group")
+      group: ["g1", "g2"],
       profile_language: ["en"],
     });
   });
@@ -356,27 +357,21 @@ describe("sales-nav search companies", () => {
     expect(callArgs[0]).toEqual({ keywords: "tech" });
   });
 
-  it("--filters + named flags map to exact API fields", async () => {
+  it("--filters merges over --keywords; only keywords is a named flag on this command (technologies/recent-activities/network-distance were removed, none is an accepted field)", async () => {
     const { runSalesNavSearchCompanies } = await import("../../src/commands/sales-nav.js");
     const out = makeOut();
 
     await runSalesNavSearchCompanies(client as never, {
       account: "acc_1",
       keywords: "tech",
-      filters: '{"has_job_offers":true}',
-      technologies: "react,node",
-      "recent-activities": "senior_leadership_changes",
-      "network-distance": "1,2",
+      filters: '{"headcount":{"include":[{"min":11,"max":50}]}}',
       json: true,
     }, out);
 
     const body = (ns.salesNavigator.searchCompanies as Mock).mock.calls[0]![0] as Record<string, unknown>;
     expect(body).toEqual({
-      has_job_offers: true,
       keywords: "tech",
-      technologies: ["react", "node"],
-      recent_activities: ["senior_leadership_changes"],
-      network_distance: [1, 2],
+      headcount: { include: [{ min: 11, max: 50 }] },
     });
   });
 

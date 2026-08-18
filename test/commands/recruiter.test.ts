@@ -557,7 +557,6 @@ describe("recruiter search people", () => {
       account: "acc_1",
       keywords: "ml",
       filters: '{"industry":{"include":["96"]}}',
-      locale: "en",
       "employment-type": "FULL_TIME,CONTRACT",
       function: "eng",
       "profile-language": "en,de",
@@ -568,9 +567,9 @@ describe("recruiter search people", () => {
     expect(body).toEqual({
       industry: { include: ["96"] },
       keywords: "ml",
-      locale: "en",
       employment_type: ["FULL_TIME", "CONTRACT"],
-      function: ["eng"],
+      // --function (server field is job_function, not function)
+      job_function: ["eng"],
       profile_language: ["en", "de"],
     });
   });
