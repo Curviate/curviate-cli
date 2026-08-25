@@ -240,6 +240,34 @@ describe("check:clean guard — zero scannable files fails closed (hole 2)", () 
   });
 });
 
+describe("check:clean guard — npm auth token in a committed .npmrc (security-auditor F3)", () => {
+  it("catches an npm_-prefixed auth token in .npmrc", async () => {
+    // 36 base62 chars after "npm_" — the real shape `//registry.npmjs.org/:_authToken=`
+    // writes. Assembled from fragments per the file-header convention so this
+    // source file never itself contains a contiguous token-shaped string.
+    const token = "npm_" + "a".repeat(18) + "B".repeat(18);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+  });
+
+  it("mutation check: probed against the pre-fix pattern list, this .npmrc scanned clean", async () => {
+    const token = "npm_" + "a".repeat(18) + "B".repeat(18);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const patternsWithoutCredential = PATTERNS.filter(
+      (p: { label: string }) => !p.label.includes("npm auth token"),
+    );
+    const result = await scanDirectory(dir, { patterns: patternsWithoutCredential });
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+});
+
 describe("check:clean guard — an unreadable file fails closed the same way", () => {
   it("a file with no read permission is reported, not silently skipped", async () => {
     const dir = await makeFixtureDir({ "locked.ts": "export const x = 1;\n" });

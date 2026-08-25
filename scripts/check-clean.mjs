@@ -125,6 +125,14 @@ export const PATTERNS = [
     label: "substrate vendor name",
     pattern: new RegExp(vendorName, "i"),
   },
+  {
+    label: "npm auth token (credential shape)",
+    // Classic npm auth tokens are "npm_" + 36 base62 chars, the shape an
+    // accidentally-committed .npmrc `//registry.npmjs.org/:_authToken=` line
+    // carries. Probed directly (security-auditor F3): a fixture .npmrc with
+    // one of these scanned clean before this pattern existed.
+    pattern: /\bnpm_[A-Za-z0-9]{36}\b/,
+  },
 ];
 
 /**

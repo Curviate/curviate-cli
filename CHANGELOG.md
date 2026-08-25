@@ -25,6 +25,17 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   against the *declared* dependency, and fails the build on any mismatch or
   non-exact range. Chained into `prepack` alongside the existing leak-scan
   guards, so this class of drift cannot reach a publish undetected again.
+- **`check:clean` now flags a committed npm auth token** (the
+  `npm_`-prefixed shape an accidentally-tracked `.npmrc` carries), and
+  `.npmrc` / `*.tgz` are gitignored. Neither was previously scanned or
+  excluded (security-auditor F3).
+- **Fixed the flag-to-body-field guard's fail-open fixture check.** It
+  previously `describe.skip`'d its entire 8-test suite whenever the sibling
+  `packages/sdk` fixture wasn't found at a `process.cwd()`-relative path,
+  reporting green while running nothing. It now resolves the fixture
+  relative to the test file's own location (not cwd) and fails loudly, per
+  test, when the fixture is missing, since a broken checkout is a failing suite,
+  not a skipped one.
 
 ## [0.24.0] - 2026-08-18
 
