@@ -1,6 +1,6 @@
 {
   "name": "@curviate/cli",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "private": false,
   "description": "Official command-line interface for the Curviate API.",
   "license": "MIT",
@@ -30,7 +30,8 @@
   },
   "scripts": {
     "build": "tsup",
-    "prepack": "node scripts/check-clean.mjs && node scripts/check-copy.mjs && tsup && node scripts/check-clean.mjs --dist",
+    "prepack": "node scripts/check-clean.mjs && node scripts/check-copy.mjs && node scripts/check-sdk-pin.mjs && node scripts/check-fixture-pin.mjs && tsup && node scripts/check-clean.mjs --dist",
+    "pretest": "node scripts/check-fixture-pin.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -38,11 +39,13 @@
     "check:clean": "node scripts/check-clean.mjs",
     "check:clean:dist": "node scripts/check-clean.mjs --dist",
     "check:copy": "node scripts/check-copy.mjs",
+    "check:sdk-pin": "node scripts/check-sdk-pin.mjs",
+    "check:fixture-pin": "node scripts/check-fixture-pin.mjs",
     "verify:dist": "pnpm build && node scripts/verify-dist.mjs",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@curviate/sdk": "^0.23.0",
+    "@curviate/sdk": "0.24.2",
     "citty": "^0.1.6",
     "open": "^10.1.0"
   },

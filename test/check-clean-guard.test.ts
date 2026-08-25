@@ -240,6 +240,90 @@ describe("check:clean guard — zero scannable files fails closed (hole 2)", () 
   });
 });
 
+describe("check:clean guard — npm auth token in a committed .npmrc (security-auditor F3)", () => {
+  it("catches an npm_-prefixed auth token in .npmrc", async () => {
+    // 36 base62 chars after "npm_" — the real shape `//registry.npmjs.org/:_authToken=`
+    // writes. Assembled from fragments per the file-header convention so this
+    // source file never itself contains a contiguous token-shaped string.
+    const token = "npm_" + "a".repeat(18) + "B".repeat(18);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+  });
+
+  it("mutation check: probed against the pre-fix pattern list, this .npmrc scanned clean", async () => {
+    const token = "npm_" + "a".repeat(18) + "B".repeat(18);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const patternsWithoutCredential = PATTERNS.filter(
+      (p: { label: string }) => !p.label.includes("npm auth token"),
+    );
+    const result = await scanDirectory(dir, { patterns: patternsWithoutCredential });
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+
+  it("catches a longer-than-36-char npm_-prefixed token (qa, cycle 3: exact-36 missed this)", async () => {
+    // 42 base62 chars after "npm_" — longer than the classic 36-char shape
+    // the original pattern hardcoded. The pre-widening pattern (exactly 36)
+    // scanned this clean; assert that directly as the red-then-green pair.
+    const token = "npm_" + "a".repeat(21) + "B".repeat(21);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+
+    const preWideningPattern = /\bnpm_[A-Za-z0-9]{36}\b/;
+    expect(preWideningPattern.test(`//registry.npmjs.org/:_authToken=${token}`)).toBe(false);
+  });
+
+  it("catches a legacy classic (UUID-shaped, no npm_ prefix) auth token in .npmrc", async () => {
+    // Pre-granular npm auth tokens are a bare UUID with no "npm_" prefix at
+    // all — a shape the npm_-prefixed pattern alone can never match. Keyed
+    // off the real `_authToken=` assignment line, assembled from fragments
+    // so this source file never itself contains a contiguous UUID.
+    const uuid = ["10a1e2b3", "4c5d", "6e7f", "8a9b", "0c1d2e3f4a5b"].join("-");
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${uuid}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+
+    const preWideningPattern = /\bnpm_[A-Za-z0-9]{36}\b/;
+    expect(preWideningPattern.test(`//registry.npmjs.org/:_authToken=${uuid}`)).toBe(false);
+  });
+
+  it("does NOT flag ordinary npm_config_*/npm_package_*/npm_lifecycle_* prose (qa: no regression on the widened pattern)", async () => {
+    const dir = await makeFixtureDir({
+      "src/env.ts": [
+        "// reads npm_config_registry from the environment",
+        "const v = process.env.npm_package_version;",
+        "if (process.env.npm_lifecycle_event === 'postpublish') {}",
+      ].join("\n"),
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+
+  it("does NOT flag an unrelated bare UUID (e.g. a request id) with no _authToken= context", async () => {
+    const uuid = ["10a1e2b3", "4c5d", "6e7f", "8a9b", "0c1d2e3f4a5b"].join("-");
+    const dir = await makeFixtureDir({
+      "src/request.ts": `export const requestId = "${uuid}";\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+});
+
 describe("check:clean guard — an unreadable file fails closed the same way", () => {
   it("a file with no read permission is reported, not silently skipped", async () => {
     const dir = await makeFixtureDir({ "locked.ts": "export const x = 1;\n" });
@@ -254,6 +338,30 @@ describe("check:clean guard — an unreadable file fails closed the same way", (
       // Restore before the afterEach rm(), or cleanup itself can fail.
       await chmod(lockedPath, 0o644);
     }
+  });
+});
+
+describe("check:clean guard — LICENSE is scanned (security-auditor F2)", () => {
+  // extname("LICENSE") === "" like every dotfile this guard already handles,
+  // and LICENSE ships in the published tarball (package.json's `files`
+  // allowlist) — so before this fix it sat outside BOTH the extension
+  // filter and the dotfile allowlist, unscanned by this guard.
+  const VENDOR_FRAGMENT = ["uni", "pi", "le"].join(""); // kept non-contiguous in source, see file header
+
+  it("catches the substrate vendor name appended to a LICENSE file", async () => {
+    const dir = await makeFixtureDir({ LICENSE: `MIT License\n\nCopyright notice mentioning ${VENDOR_FRAGMENT}.\n` });
+    const result = await scanDirectory(dir);
+    expect(result.findings.some((f) => f.rel === "LICENSE" && f.label === "substrate vendor name")).toBe(true);
+  });
+
+  it("mutation check: without LICENSE in the scanned basenames, the identical file is invisible", async () => {
+    const dir = await makeFixtureDir({ LICENSE: `MIT License\n\nCopyright notice mentioning ${VENDOR_FRAGMENT}.\n` });
+    const dotfilesWithoutLicense = new Set([".gitignore", ".npmrc", ".nvmrc", ".env.example", ".editorconfig"]);
+    const result = await scanDirectory(dir, { scanDotfiles: dotfilesWithoutLicense });
+    expect(result.filesScanned).toBe(0);
+    expect(result.findings).toEqual([]);
+    expect(verdict(result).ok).toBe(false); // still fails, but for empty-scan, not for the actual leak
+    expect(verdict(result).reason).toBe("empty-scan");
   });
 });
 
