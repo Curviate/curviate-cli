@@ -266,6 +266,62 @@ describe("check:clean guard — npm auth token in a committed .npmrc (security-a
     expect(result.findings).toHaveLength(0);
     expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
   });
+
+  it("catches a longer-than-36-char npm_-prefixed token (qa, cycle 3: exact-36 missed this)", async () => {
+    // 42 base62 chars after "npm_" — longer than the classic 36-char shape
+    // the original pattern hardcoded. The pre-widening pattern (exactly 36)
+    // scanned this clean; assert that directly as the red-then-green pair.
+    const token = "npm_" + "a".repeat(21) + "B".repeat(21);
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${token}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+
+    const preWideningPattern = /\bnpm_[A-Za-z0-9]{36}\b/;
+    expect(preWideningPattern.test(`//registry.npmjs.org/:_authToken=${token}`)).toBe(false);
+  });
+
+  it("catches a legacy classic (UUID-shaped, no npm_ prefix) auth token in .npmrc", async () => {
+    // Pre-granular npm auth tokens are a bare UUID with no "npm_" prefix at
+    // all — a shape the npm_-prefixed pattern alone can never match. Keyed
+    // off the real `_authToken=` assignment line, assembled from fragments
+    // so this source file never itself contains a contiguous UUID.
+    const uuid = ["10a1e2b3", "4c5d", "6e7f", "8a9b", "0c1d2e3f4a5b"].join("-");
+    const dir = await makeFixtureDir({
+      ".npmrc": `//registry.npmjs.org/:_authToken=${uuid}\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("npm auth token");
+
+    const preWideningPattern = /\bnpm_[A-Za-z0-9]{36}\b/;
+    expect(preWideningPattern.test(`//registry.npmjs.org/:_authToken=${uuid}`)).toBe(false);
+  });
+
+  it("does NOT flag ordinary npm_config_*/npm_package_*/npm_lifecycle_* prose (qa: no regression on the widened pattern)", async () => {
+    const dir = await makeFixtureDir({
+      "src/env.ts": [
+        "// reads npm_config_registry from the environment",
+        "const v = process.env.npm_package_version;",
+        "if (process.env.npm_lifecycle_event === 'postpublish') {}",
+      ].join("\n"),
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+
+  it("does NOT flag an unrelated bare UUID (e.g. a request id) with no _authToken= context", async () => {
+    const uuid = ["10a1e2b3", "4c5d", "6e7f", "8a9b", "0c1d2e3f4a5b"].join("-");
+    const dir = await makeFixtureDir({
+      "src/request.ts": `export const requestId = "${uuid}";\n`,
+    });
+    const result = await scanDirectory(dir);
+    expect(result.findings).toHaveLength(0);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
 });
 
 describe("check:clean guard — an unreadable file fails closed the same way", () => {
