@@ -14,11 +14,15 @@
 
 export interface FixturePinResult {
   ok: boolean;
-  reason: "match" | "mismatch" | "unresolved";
+  reason: "match" | "mismatch" | "hash-mismatch" | "unresolved";
   declared: string | null;
   vendored: string | null;
+  recordedHash: string | null;
+  actualHash: string | null;
 }
 
 export const pkgRoot: string;
 
 export function checkFixturePin(root?: string): Promise<FixturePinResult>;
+
+export function fixtureHash(sdkVersion: string, fileBuf: Buffer): string;
