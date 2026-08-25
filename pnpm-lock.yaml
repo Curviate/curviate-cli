@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@curviate/sdk':
-        specifier: ^0.23.0
-        version: 0.23.0
+        specifier: 0.24.2
+        version: 0.24.2
       citty:
         specifier: ^0.1.6
         version: 0.1.6
@@ -39,8 +39,8 @@ importers:
 
 packages:
 
-  '@curviate/sdk@0.23.0':
-    resolution: {integrity: sha512-iZpF4nUcKRPDZLyQeiaDeAj7elt0DOKRdj7rmUwBq/ZoxcQ1hPJzqTvk8c1xaxRYOBipRIa366bvZxinNI44BQ==}
+  '@curviate/sdk@0.24.2':
+    resolution: {integrity: sha512-ESqCeOh11WjmxwFj+pU0CGonrCdYlaRtnLF/Ph5vJpLujn7RKdVe4EkDtXoSHLqDiAdSDd925Omeid9RgMrecQ==}
     engines: {node: '>=18'}
 
   '@esbuild/aix-ppc64@0.27.7':
@@ -673,6 +673,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -1212,7 +1213,7 @@ packages:
 
 snapshots:
 
-  '@curviate/sdk@0.23.0':
+  '@curviate/sdk@0.24.2':
     dependencies:
       zod: 3.25.76
 

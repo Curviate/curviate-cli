@@ -8,6 +8,24 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-08-25
+
+### Fixed
+
+- **`@curviate/sdk` dependency pinned to an exact `0.24.2`** (was `^0.23.0`).
+  A caret range on a `0.x` package pins the minor (`^0.23.0` resolves to
+  `>=0.23.0 <0.24.0`), so the published CLI could never resolve the
+  registry's actual `latest` SDK once it moved to `0.24.x` - every SDK
+  release, the floor had been hand-bumped and drifted a minor behind. The
+  CLI is compiler-coupled to one SDK build, so the pin is now exact rather
+  than a range that can silently fail to admit the version actually
+  published.
+- **Added a `check:sdk-pin` prepack guard** that compares the *resolved*
+  `@curviate/sdk` version under `node_modules` (what actually gets bundled)
+  against the *declared* dependency, and fails the build on any mismatch or
+  non-exact range. Chained into `prepack` alongside the existing leak-scan
+  guards, so this class of drift cannot reach a publish undetected again.
+
 ## [0.24.0] - 2026-08-18
 
 ### Changed
