@@ -30,7 +30,8 @@
   },
   "scripts": {
     "build": "tsup",
-    "prepack": "node scripts/check-clean.mjs && node scripts/check-copy.mjs && node scripts/check-sdk-pin.mjs && tsup && node scripts/check-clean.mjs --dist",
+    "prepack": "node scripts/check-clean.mjs && node scripts/check-copy.mjs && node scripts/check-sdk-pin.mjs && node scripts/check-fixture-pin.mjs && tsup && node scripts/check-clean.mjs --dist",
+    "pretest": "node scripts/check-fixture-pin.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -39,6 +40,7 @@
     "check:clean:dist": "node scripts/check-clean.mjs --dist",
     "check:copy": "node scripts/check-copy.mjs",
     "check:sdk-pin": "node scripts/check-sdk-pin.mjs",
+    "check:fixture-pin": "node scripts/check-fixture-pin.mjs",
     "verify:dist": "pnpm build && node scripts/verify-dist.mjs",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

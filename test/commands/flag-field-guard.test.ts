@@ -17,12 +17,15 @@
  * committed `@curviate/sdk` OpenAPI fixture — the practical offline stand-in
  * for the runtime `/.well-known/openapi.json`.
  *
- * `packages/cli` and `packages/sdk` are sibling git submodules of the same
- * parent repo (see `.gitmodules`) and are always checked out together in
- * this org's dev/QA flow (CLAUDE.md: "Gates are local+Railway, not
- * Actions" — there is no CI clone of `packages/cli` in isolation). The
- * fixture is read via a relative path across that sibling boundary; if it's
- * ever unavailable the suite skips loudly rather than passing silently.
+ * The fixture is vendored into THIS repo (test/fixtures/openapi.json), not
+ * read across a sibling `packages/sdk` checkout — the publish runbook's own
+ * step 1 clones this repo standalone (`git clone .../curviate-cli.git`),
+ * where no such sibling exists, and a cross-repo relative path there reds
+ * gate 4 on the documented checkout (qa BLOCKER). The vendored
+ * copy is kept from silently drifting from the real SDK spec by
+ * scripts/check-fixture-pin.mjs, chained into prepack and pretest: it fails
+ * loudly whenever test/fixtures/VENDORED_FROM.json's recorded SDK version
+ * stops matching the exact `@curviate/sdk` pin in package.json.
  *
  * Pagination (`--cursor`/`--limit`) is deliberately excluded from every
  * invocation below: the SDK's own resource methods split those out of the
@@ -41,11 +44,10 @@ import { fileURLToPath } from "node:url";
 // Resolved from THIS FILE's location, not process.cwd() — a cwd-relative path
 // silently pointed nowhere when vitest was invoked from a different working
 // directory than the one the author ran it from. This file lives at
-// <cli-repo>/test/commands/flag-field-guard.test.ts; the sibling `packages/sdk`
-// checkout this fixture reads lives at <cli-repo>/../sdk/fixtures/openapi.json
-// regardless of invocation cwd.
+// <cli-repo>/test/commands/flag-field-guard.test.ts; the vendored fixture
+// lives at <cli-repo>/test/fixtures/openapi.json, inside this same repo.
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OPENAPI_FIXTURE = resolve(__dirname, "../../../sdk/fixtures/openapi.json");
+const OPENAPI_FIXTURE = resolve(__dirname, "../fixtures/openapi.json");
 
 type JsonSchema = { $ref?: string; properties?: Record<string, unknown>; [k: string]: unknown };
 type OpenApiDoc = {
@@ -61,8 +63,8 @@ type OpenApiDoc = {
 function loadSpec(): OpenApiDoc {
   if (!existsSync(OPENAPI_FIXTURE)) {
     throw new Error(
-      `flag-field-guard: fixture not found at ${OPENAPI_FIXTURE} — expects packages/sdk ` +
-        `checked out as a sibling of packages/cli (see file header). This suite cannot run without it.`,
+      `flag-field-guard: fixture not found at ${OPENAPI_FIXTURE} — it is vendored into this repo ` +
+        `at test/fixtures/openapi.json and must always be present. This suite cannot run without it.`,
     );
   }
   return JSON.parse(readFileSync(OPENAPI_FIXTURE, "utf8")) as OpenApiDoc;

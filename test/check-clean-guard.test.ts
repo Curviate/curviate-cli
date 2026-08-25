@@ -341,6 +341,30 @@ describe("check:clean guard — an unreadable file fails closed the same way", (
   });
 });
 
+describe("check:clean guard — LICENSE is scanned (security-auditor F2)", () => {
+  // extname("LICENSE") === "" like every dotfile this guard already handles,
+  // and LICENSE ships in the published tarball (package.json's `files`
+  // allowlist) — so before this fix it sat outside BOTH the extension
+  // filter and the dotfile allowlist, unscanned by this guard.
+  const VENDOR_FRAGMENT = ["uni", "pi", "le"].join(""); // kept non-contiguous in source, see file header
+
+  it("catches the substrate vendor name appended to a LICENSE file", async () => {
+    const dir = await makeFixtureDir({ LICENSE: `MIT License\n\nCopyright notice mentioning ${VENDOR_FRAGMENT}.\n` });
+    const result = await scanDirectory(dir);
+    expect(result.findings.some((f) => f.rel === "LICENSE" && f.label === "substrate vendor name")).toBe(true);
+  });
+
+  it("mutation check: without LICENSE in the scanned basenames, the identical file is invisible", async () => {
+    const dir = await makeFixtureDir({ LICENSE: `MIT License\n\nCopyright notice mentioning ${VENDOR_FRAGMENT}.\n` });
+    const dotfilesWithoutLicense = new Set([".gitignore", ".npmrc", ".nvmrc", ".env.example", ".editorconfig"]);
+    const result = await scanDirectory(dir, { scanDotfiles: dotfilesWithoutLicense });
+    expect(result.filesScanned).toBe(0);
+    expect(result.findings).toEqual([]);
+    expect(verdict(result).ok).toBe(false); // still fails, but for empty-scan, not for the actual leak
+    expect(verdict(result).reason).toBe("empty-scan");
+  });
+});
+
 describe("check:clean guard — real invocation against the actual package (integration)", () => {
   it("node scripts/check-clean.mjs exits 0 against the real, currently-clean source tree", () => {
     // Black-box smoke test: proves the CLI entry point (argv handling, exit

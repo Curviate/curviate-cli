@@ -69,9 +69,18 @@ export const SKIP_DIRS = new Set(["node_modules", "dist"]);
 // scanned set.
 export const SCAN_EXTS = new Set([".ts", ".mts", ".cts", ".mjs", ".cjs", ".js", ".md", ".json", ".map"]);
 
-// Extensionless dotfiles to scan explicitly, matched by exact basename
-// (SCAN_EXTS can't catch these — see the module header comment).
-export const SCAN_DOTFILES = new Set([".gitignore", ".npmrc", ".nvmrc", ".env.example", ".editorconfig"]);
+// Extensionless files to scan explicitly, matched by exact basename
+// (SCAN_EXTS can't catch these — see the module header comment). LICENSE is
+// here (security-auditor F2) because it ships in the published
+// tarball (see the `files` allowlist in package.json) and extname("LICENSE")
+// === "" like every dotfile below, so without this it sat outside BOTH the
+// extension filter and the dotfile allowlist — unscanned by this guard and
+// by check:copy alike. Proven by mutation: appending the vendor name to
+// LICENSE passed every gate green until this fix. Enumerated the rest of the
+// `files` array for the same gap: README.md/CHANGELOG.md are already
+// extensioned (SCAN_EXTS), dist/ is covered by --dist mode; LICENSE was the
+// only unscanned entry.
+export const SCAN_DOTFILES = new Set([".gitignore", ".npmrc", ".nvmrc", ".env.example", ".editorconfig", "LICENSE"]);
 
 // The vendor name assembled from parts so the literal never appears in this file.
 const vendorName = ["uni", "pi", "le"].join("");
@@ -128,7 +137,7 @@ export const PATTERNS = [
   {
     label: "npm auth token (credential shape)",
     // Classic granular npm auth tokens are "npm_" + 36+ base62 chars (qa,
-    // cycle 3 of #1001: exactly-36 missed a real longer token) — the shape an
+    // cycle 3: exactly-36 missed a real longer token) — the shape an
     // accidentally-committed .npmrc `//registry.npmjs.org/:_authToken=` line
     // carries. Also matches the legacy pre-granular token shape, a bare UUID,
     // which carries no "npm_" prefix at all — keyed off the `_authToken=`

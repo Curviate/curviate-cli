@@ -1,0 +1,7 @@
+{
+  "sdkVersion": "0.24.2",
+  "vendoredAt": "2026-08-25T19:45:00.000Z",
+  "sourceFile": "packages/sdk/fixtures/openapi.json",
+  "sourceServerGitSha": "bc7f42a28f14334a972e37f5d5233f1e7d38ceff",
+  "note": "Copied so flag-field-guard.test.ts runs on a standalone clone (qa BLOCKER: the sibling-repo path reds gate 4 on a fresh `git clone`). scripts/check-fixture-pin.mjs fails loudly if sdkVersion here stops matching the exact @curviate/sdk pin in package.json — refresh by re-copying packages/sdk/fixtures/openapi.json from a sibling checkout at the new pinned version and updating sdkVersion below. Do not hand-edit openapi.json itself."
+}
