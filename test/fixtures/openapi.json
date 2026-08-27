@@ -381,6 +381,160 @@
           "user_fixable": true,
           "retry_likely_to_succeed": false
         }
+      },
+      "Message": {
+        "type": "object",
+        "description": "A message. `quoted` carries the message this one quotes, when it quotes one; a quoted message has the same shape and may itself carry a `quoted`.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": [
+              "message"
+            ],
+            "description": "Response type discriminator."
+          },
+          "quoted": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "id": {
+            "type": "string",
+            "description": "Message identifier."
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Account id that owns this message."
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Chat this message belongs to."
+          },
+          "sender_id": {
+            "type": "string",
+            "description": "Identifier of the sender."
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Full message text (content pass-through, never stored)."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Attachment descriptors (no bytes, use the attachment endpoint to download).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Attachment identifier."
+                },
+                "mimetype": {
+                  "type": "string",
+                  "description": "MIME type of the attachment."
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Attachment kind: file | img | video | audio."
+                },
+                "filename": {
+                  "type": "string",
+                  "description": "Original file name."
+                },
+                "file_size": {
+                  "type": "number",
+                  "description": "Size in bytes."
+                },
+                "unavailable": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "description": "True when the attachment is no longer available."
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 UTC send timestamp."
+          },
+          "is_sender": {
+            "type": "boolean",
+            "description": "True if the connected account sent this message."
+          },
+          "is_seen": {
+            "type": "boolean"
+          },
+          "is_delivered": {
+            "type": "boolean"
+          },
+          "is_edited": {
+            "type": "boolean"
+          },
+          "is_mentionned": {
+            "type": "boolean",
+            "description": "True if the account is mentioned in this message."
+          },
+          "reactions": {
+            "type": "array",
+            "description": "Per-type reaction breakdown on the message.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "reaction_count": {
+            "type": "number",
+            "description": "Total reaction count across all types (derived)."
+          },
+          "provider": {
+            "type": "string",
+            "description": "The platform this message originates from."
+          },
+          "sender": {
+            "description": "The sender's profile, when the platform returned one alongside the message. sender_id always carries the identifier; this object carries the rest of what is known about that person.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Identifier of the counterpart."
+              },
+              "type": {
+                "type": "string",
+                "description": "individual | organization."
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "profile_url": {
+                "type": "string"
+              },
+              "public_picture_url": {
+                "type": "string"
+              },
+              "public_identifier": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The vanity slug from the profile URL, for example jane-smith. Present only when the request asks for it with expand=public_identifier, and then always present, carrying the slug or null when the platform surfaces none for this person."
+              },
+              "specifics": {
+                "type": "object",
+                "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
       }
     },
     "headers": {
@@ -7904,13 +8058,19 @@
                                 "type": "string"
                               },
                               "name": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "is_company": {
                                 "type": "boolean"
                               },
                               "public_identifier": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "additionalProperties": true
@@ -8427,19 +8587,34 @@
                             "description": "Hiring company details. Present when available.",
                             "properties": {
                               "id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "name": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "profile_url": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "public_identifier": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "public_picture_url": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "additionalProperties": true
@@ -16177,13 +16352,19 @@
                                 "type": "string"
                               },
                               "name": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "is_company": {
                                 "type": "boolean"
                               },
                               "public_identifier": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "additionalProperties": true
@@ -16928,19 +17109,34 @@
                             "description": "Hiring company details. Present when available.",
                             "properties": {
                               "id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "name": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "profile_url": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "public_identifier": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "public_picture_url": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "additionalProperties": true
@@ -17829,13 +18025,19 @@
                                     "type": "string"
                                   },
                                   "name": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "is_company": {
                                     "type": "boolean"
                                   },
                                   "public_identifier": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   }
                                 },
                                 "additionalProperties": true
@@ -17975,19 +18177,34 @@
                                 "description": "Hiring company details. Present when available.",
                                 "properties": {
                                   "id": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "name": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "profile_url": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "public_identifier": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "public_picture_url": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   }
                                 },
                                 "additionalProperties": true
@@ -19935,8 +20152,8 @@
                             "description": "Identifier of the 1:1 counterpart."
                           },
                           "last_message": {
-                            "description": "The most recent message in the chat.",
                             "type": "object",
+                            "description": "The most recent message in the chat.",
                             "properties": {
                               "object": {
                                 "type": "string",
@@ -19944,6 +20161,9 @@
                                   "message"
                                 ],
                                 "description": "Response type discriminator."
+                              },
+                              "quoted": {
+                                "$ref": "#/components/schemas/Message"
                               },
                               "id": {
                                 "type": "string",
@@ -20078,7 +20298,7 @@
                                   },
                                   "specifics": {
                                     "type": "object",
-                                    "description": "Provider-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                                    "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
                                     "additionalProperties": true
                                   }
                                 }
@@ -21031,8 +21251,8 @@
                       "description": "Identifier of the 1:1 counterpart."
                     },
                     "last_message": {
-                      "description": "The most recent message in the chat.",
                       "type": "object",
+                      "description": "The most recent message in the chat.",
                       "properties": {
                         "object": {
                           "type": "string",
@@ -21040,6 +21260,9 @@
                             "message"
                           ],
                           "description": "Response type discriminator."
+                        },
+                        "quoted": {
+                          "$ref": "#/components/schemas/Message"
                         },
                         "id": {
                           "type": "string",
@@ -21174,7 +21397,7 @@
                             },
                             "specifics": {
                               "type": "object",
-                              "description": "Provider-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                              "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
                               "additionalProperties": true
                             }
                           }
@@ -21915,6 +22138,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
+                        "description": "A message. `quoted` carries the message this one quotes, when it quotes one; a quoted message has the same shape and may itself carry a `quoted`.",
                         "properties": {
                           "object": {
                             "type": "string",
@@ -21922,6 +22146,9 @@
                               "message"
                             ],
                             "description": "Response type discriminator."
+                          },
+                          "quoted": {
+                            "$ref": "#/components/schemas/Message"
                           },
                           "id": {
                             "type": "string",
@@ -22056,7 +22283,7 @@
                               },
                               "specifics": {
                                 "type": "object",
-                                "description": "Provider-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                                "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
                                 "additionalProperties": true
                               }
                             }
@@ -22858,6 +23085,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "description": "A message. `quoted` carries the message this one quotes, when it quotes one; a quoted message has the same shape and may itself carry a `quoted`.",
                   "properties": {
                     "object": {
                       "type": "string",
@@ -22865,6 +23093,9 @@
                         "message"
                       ],
                       "description": "Response type discriminator."
+                    },
+                    "quoted": {
+                      "$ref": "#/components/schemas/Message"
                     },
                     "id": {
                       "type": "string",
@@ -22999,7 +23230,7 @@
                         },
                         "specifics": {
                           "type": "object",
-                          "description": "Provider-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                          "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
                           "additionalProperties": true
                         }
                       }
@@ -24513,15 +24744,6 @@
               "type": "string"
             },
             "description": "Pagination cursor from a previous response; decodable, wraps a zero-based item offset, pass it back verbatim."
-          },
-          {
-            "name": "expand",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
           }
         ],
         "responses": {
@@ -24665,39 +24887,6 @@
                         "null"
                       ],
                       "description": "Opaque next-page cursor; null on the last page."
-                    },
-                    "notices": {
-                      "type": "array",
-                      "description": "Present only when expand=public_identifier was asked for and this page held more people needing a profile lookup than one request performs. Absent whenever there is nothing to report, so a response that resolved everyone carries no such key. Branch on each entry's code, never on its message.",
-                      "items": {
-                        "type": "object",
-                        "description": "One thing you should know about this response.",
-                        "properties": {
-                          "code": {
-                            "type": "string",
-                            "enum": [
-                              "EXPANSION_LIMIT_REACHED"
-                            ],
-                            "description": "EXPANSION_LIMIT_REACHED: more people on this page needed a profile lookup than one request performs, so the ones past the budget carry public_identifier null without ever having been looked up. Their null therefore does not mean the person has no public profile. Ask for a smaller page to resolve everyone."
-                          },
-                          "message": {
-                            "type": "string",
-                            "description": "One sentence explaining the condition and how to resolve it."
-                          },
-                          "field": {
-                            "type": "string",
-                            "description": "The request field the notice is about, here expand."
-                          },
-                          "value": {
-                            "type": "string",
-                            "description": "The expansion the notice is about, here public_identifier."
-                          }
-                        },
-                        "required": [
-                          "code",
-                          "message"
-                        ]
-                      }
                     }
                   }
                 },
@@ -25559,6 +25748,27 @@
               }
             }
           },
+          "404": {
+            "description": "No such account for this tenant. An id whose connection was replaced or removed also stops resolving here, and it is already absent from the list, so re-read `GET /v1/accounts` for the current id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limited.",
             "content": {
@@ -25858,8 +26068,8 @@
                             "description": "Identifier of the 1:1 counterpart."
                           },
                           "last_message": {
-                            "description": "The most recent message in the chat.",
                             "type": "object",
+                            "description": "The most recent message in the chat.",
                             "properties": {
                               "object": {
                                 "type": "string",
@@ -25867,6 +26077,9 @@
                                   "message"
                                 ],
                                 "description": "Response type discriminator."
+                              },
+                              "quoted": {
+                                "$ref": "#/components/schemas/Message"
                               },
                               "id": {
                                 "type": "string",
@@ -26001,7 +26214,7 @@
                                   },
                                   "specifics": {
                                     "type": "object",
-                                    "description": "Provider-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
+                                    "description": "Platform-enriched detail about the sender (for example connection distance, premium or verified status), when the platform returns it.",
                                     "additionalProperties": true
                                   }
                                 }
@@ -26222,6 +26435,27 @@
                     "value": {
                       "code": "RESOURCE_ACCESS_RESTRICTED",
                       "message": "The connected account is not an admin of this page.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such account for this tenant. An id whose connection was replaced or removed also stops resolving here, and it is already absent from the list, so re-read `GET /v1/accounts` for the current id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -60915,9 +61149,8 @@
                             "description": "Company website URL. May be null."
                           },
                           "founded_on": {
-                            "description": "Structural platform pass-through; shape and presence vary. May be null.",
-                            "items": {},
-                            "additionalProperties": true
+                            "type": "number",
+                            "description": "Year the company was founded, as a number. Present when available."
                           },
                           "is_starred": {
                             "type": "boolean",
@@ -60989,9 +61222,7 @@
                           "lists_count": 2,
                           "notes_count": 1,
                           "website": "https://northwind.example",
-                          "founded_on": {
-                            "year": 2019
-                          },
+                          "founded_on": 2019,
                           "is_starred": true,
                           "recommended_lead": null
                         },
@@ -61012,7 +61243,7 @@
                           "lists_count": 1,
                           "notes_count": 0,
                           "website": null,
-                          "founded_on": null,
+                          "founded_on": 2008,
                           "is_starred": false,
                           "recommended_lead": null
                         }
@@ -61434,6 +61665,74 @@
                             "type": "string",
                             "description": "Display name."
                           },
+                          "member_id": {
+                            "type": "string",
+                            "description": "Numeric member ID, distinct from id. Present when available."
+                          },
+                          "public_identifier": {
+                            "type": "string",
+                            "description": "LinkedIn public identifier. Present when available."
+                          },
+                          "profile_url": {
+                            "type": "string",
+                            "description": "Sales Navigator profile URL. Present when available."
+                          },
+                          "public_picture_url": {
+                            "type": "string",
+                            "description": "Profile picture URL. Present when available."
+                          },
+                          "public_picture_url_large": {
+                            "type": "string",
+                            "description": "Large variant of the profile picture URL. Present when available."
+                          },
+                          "relations_count": {
+                            "type": "number",
+                            "description": "Connection count. Present when available."
+                          },
+                          "location": {
+                            "type": "string",
+                            "description": "Member location. Present when available."
+                          },
+                          "headline": {
+                            "type": "string",
+                            "description": "LinkedIn headline. Present when available."
+                          },
+                          "summary": {
+                            "type": "string",
+                            "description": "About section text. Present when populated."
+                          },
+                          "can_send_inmail": {
+                            "type": "boolean",
+                            "description": "Whether an InMail can be sent to this member."
+                          },
+                          "shared_relations_count": {
+                            "type": "number",
+                            "description": "Shared connections count. Present when available."
+                          },
+                          "latest_contact": {
+                            "type": "object",
+                            "description": "Present when available.",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "performed_at": {
+                                "type": "string",
+                                "description": "ISO-8601 UTC timestamp."
+                              },
+                              "resource_id": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "social_handles": {
+                            "type": "object",
+                            "properties": {
+                              "twitter": {
+                                "type": "string"
+                              }
+                            }
+                          },
                           "network_distance": {
                             "type": "string",
                             "enum": [
@@ -61477,6 +61776,20 @@
                             "type": "boolean",
                             "description": "Present when available."
                           },
+                          "websites": {
+                            "type": "array",
+                            "description": "Present when available.",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "addresses": {
+                            "type": "array",
+                            "description": "Present when available.",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "contact_info": {
                             "type": "object",
                             "description": "Contact info. Present when available.",
@@ -61484,15 +61797,13 @@
                               "phones": {
                                 "type": "array",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               },
                               "emails": {
                                 "type": "array",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               }
                             }
@@ -61510,7 +61821,94 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Identifier of this education entry. Present when available."
+                                },
+                                "school": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "The institution. May carry a null id."
+                                },
+                                "degree": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "activities": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "skills_preview": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "grade": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "fields_of_study": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                }
+                              }
                             }
                           },
                           "skills": {
@@ -61523,7 +61921,94 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Identifier of this work-experience entry. Present when available."
+                                },
+                                "company": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "The employer. May carry a null id."
+                                },
+                                "job_title": {
+                                  "type": "string",
+                                  "description": "Job title held."
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "location": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "employment_type": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "workplace_type": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "skills_preview": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                }
+                              },
+                              "required": [
+                                "job_title"
+                              ]
                             }
                           },
                           "languages": {
@@ -61536,7 +62021,71 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "organization": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "Present when available. May carry a null id."
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "description": "Role held."
+                                },
+                                "cause": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                }
+                              },
+                              "required": [
+                                "role"
+                              ]
                             }
                           },
                           "saved_at": {
@@ -61619,7 +62168,17 @@
                           "object": "sn_saved_lead",
                           "id": "sn_saved_lead_001",
                           "display_name": "Alice Growth",
+                          "member_id": "111003",
+                          "public_identifier": "alice-growth",
+                          "profile_url": "https://www.linkedin.com/sales/lead/sn_saved_lead_001",
+                          "public_picture_url": "https://media.example/alice_saved.jpg",
+                          "relations_count": 128,
+                          "location": "Berlin, Germany",
+                          "headline": "Head of Growth at Northwind Analytics",
+                          "summary": "Scaling outbound and lifecycle programs.",
                           "network_distance": "SECOND_DEGREE",
+                          "can_send_inmail": true,
+                          "shared_relations_count": 6,
                           "has_posted_recently": true,
                           "has_viewed_your_profile": false,
                           "was_hired_recently": false,
@@ -61628,6 +62187,12 @@
                           "is_premium": true,
                           "is_past_colleague": false,
                           "is_open_profile": true,
+                          "websites": [
+                            "https://alice-growth.example"
+                          ],
+                          "addresses": [
+                            "Berlin, Germany"
+                          ],
                           "contact_info": {
                             "phones": [],
                             "emails": []
@@ -61636,7 +62201,11 @@
                           "notes_count": 2,
                           "education": [
                             {
-                              "school": "TU Berlin"
+                              "id": "edu_sl_001",
+                              "school": {
+                                "id": null,
+                                "name": "TU Berlin"
+                              }
                             }
                           ],
                           "skills": [
@@ -61644,15 +62213,27 @@
                           ],
                           "work_experience": [
                             {
-                              "company": "Northwind Analytics",
-                              "role": "VP Growth"
+                              "id": "we_sl_001",
+                              "company": {
+                                "id": null,
+                                "name": "Northwind Analytics"
+                              },
+                              "job_title": "VP Growth"
                             }
                           ],
                           "languages": [
                             "en",
                             "de"
                           ],
-                          "volunteering": [],
+                          "volunteering": [
+                            {
+                              "organization": {
+                                "id": null,
+                                "name": "Berlin Volunteers"
+                              },
+                              "role": "Mentor"
+                            }
+                          ],
                           "saved_at": "2026-07-01T12:00:00.000Z",
                           "associated_account": {
                             "id": "sn_saved_acct_001",
@@ -63352,16 +63933,14 @@
                             "type": "array",
                             "description": "Present when available.",
                             "items": {
-                              "type": "object",
-                              "additionalProperties": true
+                              "type": "string"
                             }
                           },
                           "addresses": {
                             "type": "array",
                             "description": "Present when available.",
                             "items": {
-                              "type": "object",
-                              "additionalProperties": true
+                              "type": "string"
                             }
                           },
                           "contact_info": {
@@ -63371,15 +63950,13 @@
                               "phones": {
                                 "type": "array",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               },
                               "emails": {
                                 "type": "array",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               }
                             }
@@ -63419,7 +63996,94 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Identifier of this education entry. Present when available."
+                                },
+                                "school": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "The institution. May carry a null id."
+                                },
+                                "degree": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "activities": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "skills_preview": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "grade": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "fields_of_study": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                }
+                              }
                             }
                           },
                           "skills": {
@@ -63442,7 +64106,94 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Identifier of this work-experience entry. Present when available."
+                                },
+                                "company": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "The employer. May carry a null id."
+                                },
+                                "job_title": {
+                                  "type": "string",
+                                  "description": "Job title held."
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "location": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "employment_type": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "workplace_type": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "description": "Present when available.",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "skills_preview": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                }
+                              },
+                              "required": [
+                                "job_title"
+                              ]
                             }
                           },
                           "languages": {
@@ -63465,7 +64216,71 @@
                             "description": "Present when available.",
                             "items": {
                               "type": "object",
-                              "additionalProperties": true
+                              "additionalProperties": true,
+                              "properties": {
+                                "organization": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "The organization's platform identifier, when known."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "The organization's name."
+                                    },
+                                    "public_identifier": {
+                                      "type": "string",
+                                      "description": "The organization's public URL slug, when known."
+                                    },
+                                    "picture_url": {
+                                      "type": "string",
+                                      "description": "The organization's logo URL."
+                                    },
+                                    "profile_url": {
+                                      "type": "string",
+                                      "description": "Full LinkedIn URL for the organization."
+                                    },
+                                    "industries": {
+                                      "type": "array",
+                                      "description": "The organization's industry labels.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "description": "Present when available. May carry a null id."
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "description": "Role held."
+                                },
+                                "cause": {
+                                  "type": "string",
+                                  "description": "Present when available."
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "description": "Present when populated."
+                                },
+                                "started_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                },
+                                "ended_on": {
+                                  "type": "string",
+                                  "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                  "description": "Present when available."
+                                }
+                              },
+                              "required": [
+                                "role"
+                              ]
                             }
                           }
                         },
@@ -64524,7 +65339,11 @@
                             "description": "Employee count. Present when available."
                           },
                           "specialties": {
-                            "description": "Present when available."
+                            "type": "array",
+                            "description": "Present when available.",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "is_hiring_on_linkedin": {
                             "type": "boolean"
@@ -64534,7 +65353,8 @@
                             "description": "Company website URL. Present when available."
                           },
                           "founded_on": {
-                            "description": "Year or date the company was founded. Present when available."
+                            "type": "number",
+                            "description": "Year the company was founded, as a number. Present when available."
                           }
                         },
                         "required": [
@@ -65341,16 +66161,14 @@
                                 "type": "array",
                                 "description": "Present when available.",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               },
                               "addresses": {
                                 "type": "array",
                                 "description": "Present when available.",
                                 "items": {
-                                  "type": "object",
-                                  "additionalProperties": true
+                                  "type": "string"
                                 }
                               },
                               "contact_info": {
@@ -65360,15 +66178,13 @@
                                   "phones": {
                                     "type": "array",
                                     "items": {
-                                      "type": "object",
-                                      "additionalProperties": true
+                                      "type": "string"
                                     }
                                   },
                                   "emails": {
                                     "type": "array",
                                     "items": {
-                                      "type": "object",
-                                      "additionalProperties": true
+                                      "type": "string"
                                     }
                                   }
                                 }
@@ -65408,7 +66224,94 @@
                                 "description": "Present when available.",
                                 "items": {
                                   "type": "object",
-                                  "additionalProperties": true
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Identifier of this education entry. Present when available."
+                                    },
+                                    "school": {
+                                      "type": "object",
+                                      "additionalProperties": true,
+                                      "properties": {
+                                        "id": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ],
+                                          "description": "The organization's platform identifier, when known."
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "description": "The organization's name."
+                                        },
+                                        "public_identifier": {
+                                          "type": "string",
+                                          "description": "The organization's public URL slug, when known."
+                                        },
+                                        "picture_url": {
+                                          "type": "string",
+                                          "description": "The organization's logo URL."
+                                        },
+                                        "profile_url": {
+                                          "type": "string",
+                                          "description": "Full LinkedIn URL for the organization."
+                                        },
+                                        "industries": {
+                                          "type": "array",
+                                          "description": "The organization's industry labels.",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "description": "The institution. May carry a null id."
+                                    },
+                                    "degree": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "description": "Present when populated."
+                                    },
+                                    "activities": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "skills": {
+                                      "type": "array",
+                                      "description": "Present when available.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "skills_preview": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "grade": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "fields_of_study": {
+                                      "type": "array",
+                                      "description": "Present when available.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "started_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    },
+                                    "ended_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    }
+                                  }
                                 }
                               },
                               "skills": {
@@ -65431,7 +66334,94 @@
                                 "description": "Present when available.",
                                 "items": {
                                   "type": "object",
-                                  "additionalProperties": true
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Identifier of this work-experience entry. Present when available."
+                                    },
+                                    "company": {
+                                      "type": "object",
+                                      "additionalProperties": true,
+                                      "properties": {
+                                        "id": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ],
+                                          "description": "The organization's platform identifier, when known."
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "description": "The organization's name."
+                                        },
+                                        "public_identifier": {
+                                          "type": "string",
+                                          "description": "The organization's public URL slug, when known."
+                                        },
+                                        "picture_url": {
+                                          "type": "string",
+                                          "description": "The organization's logo URL."
+                                        },
+                                        "profile_url": {
+                                          "type": "string",
+                                          "description": "Full LinkedIn URL for the organization."
+                                        },
+                                        "industries": {
+                                          "type": "array",
+                                          "description": "The organization's industry labels.",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "description": "The employer. May carry a null id."
+                                    },
+                                    "job_title": {
+                                      "type": "string",
+                                      "description": "Job title held."
+                                    },
+                                    "started_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    },
+                                    "ended_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    },
+                                    "location": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "description": "Present when populated."
+                                    },
+                                    "employment_type": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "workplace_type": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "skills": {
+                                      "type": "array",
+                                      "description": "Present when available.",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "skills_preview": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    }
+                                  },
+                                  "required": [
+                                    "job_title"
+                                  ]
                                 }
                               },
                               "languages": {
@@ -65454,7 +66444,71 @@
                                 "description": "Present when available.",
                                 "items": {
                                   "type": "object",
-                                  "additionalProperties": true
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "organization": {
+                                      "type": "object",
+                                      "additionalProperties": true,
+                                      "properties": {
+                                        "id": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ],
+                                          "description": "The organization's platform identifier, when known."
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "description": "The organization's name."
+                                        },
+                                        "public_identifier": {
+                                          "type": "string",
+                                          "description": "The organization's public URL slug, when known."
+                                        },
+                                        "picture_url": {
+                                          "type": "string",
+                                          "description": "The organization's logo URL."
+                                        },
+                                        "profile_url": {
+                                          "type": "string",
+                                          "description": "Full LinkedIn URL for the organization."
+                                        },
+                                        "industries": {
+                                          "type": "array",
+                                          "description": "The organization's industry labels.",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "description": "Present when available. May carry a null id."
+                                    },
+                                    "role": {
+                                      "type": "string",
+                                      "description": "Role held."
+                                    },
+                                    "cause": {
+                                      "type": "string",
+                                      "description": "Present when available."
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "description": "Present when populated."
+                                    },
+                                    "started_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    },
+                                    "ended_on": {
+                                      "type": "string",
+                                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+                                      "description": "Present when available."
+                                    }
+                                  },
+                                  "required": [
+                                    "role"
+                                  ]
                                 }
                               }
                             },
@@ -65531,7 +66585,11 @@
                                 "description": "Employee count. Present when available."
                               },
                               "specialties": {
-                                "description": "Present when available."
+                                "type": "array",
+                                "description": "Present when available.",
+                                "items": {
+                                  "type": "string"
+                                }
                               },
                               "is_hiring_on_linkedin": {
                                 "type": "boolean"
@@ -65541,7 +66599,8 @@
                                 "description": "Company website URL. Present when available."
                               },
                               "founded_on": {
-                                "description": "Year or date the company was founded. Present when available."
+                                "type": "number",
+                                "description": "Year the company was founded, as a number. Present when available."
                               }
                             },
                             "required": [

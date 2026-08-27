@@ -8,6 +8,36 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-08-27
+
+### Changed
+
+- **`@curviate/sdk` pin raised from `0.24.2` to `0.24.3`** (exact, per the
+  compiler-coupling policy that `check:sdk-pin` enforces). The SDK's
+  corrected Sales Navigator response types now flow through to CLI users:
+  - `founded_on` is a `number`, was an open object.
+  - `websites` and `addresses` are `string[]`, were arrays of open objects.
+  - `contact_info.phones` and `contact_info.emails` are `string[]`, were
+    arrays of open objects.
+  - `specialties` is a `string[]` on `sales-navigator/search/companies`, was
+    `unknown`.
+  - `job_title` and `role` are required (non-optional) on `work_experience`
+    and `volunteering`.
+  - Nested `school`, `company` and `organization` references on `education`,
+    `work_experience` and `volunteering` are now declared, each with a
+    nullable `id`.
+
+  These are corrections, not behaviour changes. The wire has always sent
+  these shapes; the previous declarations described them wrongly. Upgrading
+  may turn a consumer's `tsc` red where it was green against a declaration
+  that did not match reality. That red is a pre-existing bug becoming
+  visible, not a new one. The CLI's own runtime behaviour and command surface
+  are unchanged in this release.
+
+- The vendored OpenAPI test fixture (`test/fixtures/openapi.json`) was
+  re-copied from the SDK at `0.24.3`, with `test/fixtures/VENDORED_FROM.json`
+  updated to match, as `check:fixture-pin` requires.
+
 ## [0.24.1] - 2026-08-25
 
 ### Fixed
