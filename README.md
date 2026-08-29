@@ -122,6 +122,16 @@ curviate inbox list --json --all --account acc_1 \
   | jq -c 'select(.unread_count > 0) | {chat_id: .id, sender: (.user.display_name // .last_message.sender_id), preview: .last_message.text[0:80]}'
 ```
 
+`inbox list` reads one folder per call, `primary` by default. An archived chat never appears
+in a `primary` walk, no matter the `--limit` or how far `--cursor`/`--all` page through it;
+pass `--inbox archived` to reach it. `inmail` and `starred` are alternate views over chats
+`primary` already returns, useful as a narrower filter rather than for reachability. All six
+values: `primary`, `inmail`, `archived`, `spam`, `jobs`, `starred`.
+
+```bash
+curviate inbox list --json --all --account acc_1 --inbox archived
+```
+
 ### 3. Warm up a prospect by reacting to their recent posts
 
 Read recent posts from a profile, then react to each, useful for ambient warm-up before outreach.
