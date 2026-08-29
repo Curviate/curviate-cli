@@ -182,3 +182,93 @@ describe("lib/config — profile management", () => {
     expect(cfg!.profiles["default"]?.account).toBe("acc_9");
   });
 });
+
+// ---------------------------------------------------------------------------
+// #990 — `cfg.profiles[profileName]` falls through to Object.prototype.
+//
+// `profileName` is a value the user typed on the command line
+// (`curviate config use <name>` / `--profile <name>`). Every function above
+// reads `cfg.profiles[profileName]` against `profiles`, which comes straight
+// off `JSON.parse` (readConfig) or a fresh `{}` literal (writeProfile's
+// no-file fallback) -- both plain objects. `profiles["constructor"]` is a
+// live Function inherited from Object.prototype, truthy, so a naive
+// existence check (`if (!cfg.profiles[name])`) incorrectly treated
+// "constructor" as an EXISTING profile that was never written -- the CLI
+// could be told to switch to, or refuse to create, a profile that does not
+// exist. Every assertion below drives the real on-disk config through the
+// real exported functions, never the internal map.
+// ---------------------------------------------------------------------------
+describe("lib/config — #990 profile names never fall through to Object.prototype", () => {
+  let tmpDir: string;
+  let origXdg: string | undefined;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-config-990-"));
+    origXdg = process.env["XDG_CONFIG_HOME"];
+    process.env["XDG_CONFIG_HOME"] = tmpDir;
+  });
+
+  afterEach(async () => {
+    if (origXdg === undefined) {
+      delete process.env["XDG_CONFIG_HOME"];
+    } else {
+      process.env["XDG_CONFIG_HOME"] = origXdg;
+    }
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  const PROTO_KEYS = ["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"];
+
+  it.each(PROTO_KEYS)(
+    "AC-1: setActiveProfile(%j) throws 'not found' -- it was never written",
+    async (name) => {
+      await writeProfile("default", { apiKey: "rdc_live_A" });
+      await expect(setActiveProfile(name)).rejects.toThrow(/not found/);
+      const cfg = await readConfig();
+      // active must be unchanged -- the polluted call must not have "succeeded".
+      expect(cfg!.active).toBe("default");
+    },
+  );
+
+  it.each(PROTO_KEYS)(
+    "AC-1: renameProfile(\"work\", %j) does NOT throw 'already exists' -- it was never written",
+    async (name) => {
+      await writeProfile("default", { apiKey: "rdc_live_A" });
+      await writeProfile("work", { apiKey: "rdc_live_B" });
+      await expect(renameProfile("work", name)).resolves.toBeUndefined();
+      const cfg = await readConfig();
+      expect(cfg!.profiles[name]).toBeDefined();
+      expect(cfg!.profiles[name]?.apiKey).toBe("rdc_live_B");
+    },
+  );
+
+  it.each(PROTO_KEYS)(
+    "AC-1: a profile actually named %j can be written, read back, and switched to (round-trip)",
+    async (name) => {
+      await writeProfile(name, { apiKey: "rdc_live_POISON" });
+      await setActiveProfile(name);
+      const cfg = await readConfig();
+      expect(cfg!.active).toBe(name);
+      expect(cfg!.profiles[name]?.apiKey).toBe("rdc_live_POISON");
+    },
+  );
+
+  it("AC-2: an ordinary profile name still round-trips through every function unaffected", async () => {
+    await writeProfile("default", { apiKey: "rdc_live_A" });
+    await writeProfile("work", { apiKey: "rdc_live_B" });
+    await setActiveProfile("work");
+    await renameProfile("work", "team");
+    await updateProfileField("team", "account", "acc_9");
+    const cfg = await readConfig();
+    expect(cfg!.active).toBe("team");
+    expect(cfg!.profiles["team"]?.account).toBe("acc_9");
+    await removeProfile("team");
+    const after = await readConfig();
+    expect(after!.profiles["team"]).toBeUndefined();
+  });
+
+  it("AC-3: an unknown-but-ordinary profile name (widget_exploded) still throws 'not found', unchanged behaviour", async () => {
+    await writeProfile("default", { apiKey: "rdc_live_A" });
+    await expect(setActiveProfile("widget_exploded")).rejects.toThrow(/not found/);
+  });
+});
