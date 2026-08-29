@@ -184,7 +184,7 @@ describe("lib/config — profile management", () => {
 });
 
 // ---------------------------------------------------------------------------
-// #990 — `cfg.profiles[profileName]` falls through to Object.prototype.
+// `cfg.profiles[profileName]` falls through to Object.prototype.
 //
 // `profileName` is a value the user typed on the command line
 // (`curviate config use <name>` / `--profile <name>`). Every function above
@@ -198,7 +198,7 @@ describe("lib/config — profile management", () => {
 // exist. Every assertion below drives the real on-disk config through the
 // real exported functions, never the internal map.
 // ---------------------------------------------------------------------------
-describe("lib/config — #990 profile names never fall through to Object.prototype", () => {
+describe("lib/config — profile names never fall through to Object.prototype", () => {
   let tmpDir: string;
   let origXdg: string | undefined;
 
@@ -220,7 +220,7 @@ describe("lib/config — #990 profile names never fall through to Object.prototy
   const PROTO_KEYS = ["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"];
 
   it.each(PROTO_KEYS)(
-    "AC-1: setActiveProfile(%j) throws 'not found' -- it was never written",
+    "setActiveProfile(%j) throws 'not found' -- it was never written",
     async (name) => {
       await writeProfile("default", { apiKey: "rdc_live_A" });
       await expect(setActiveProfile(name)).rejects.toThrow(/not found/);
@@ -231,7 +231,7 @@ describe("lib/config — #990 profile names never fall through to Object.prototy
   );
 
   it.each(PROTO_KEYS)(
-    "AC-1: renameProfile(\"work\", %j) does NOT throw 'already exists' -- it was never written",
+    "renameProfile(\"work\", %j) does NOT throw 'already exists' -- it was never written",
     async (name) => {
       await writeProfile("default", { apiKey: "rdc_live_A" });
       await writeProfile("work", { apiKey: "rdc_live_B" });
@@ -243,7 +243,7 @@ describe("lib/config — #990 profile names never fall through to Object.prototy
   );
 
   it.each(PROTO_KEYS)(
-    "AC-1: a profile actually named %j can be written, read back, and switched to (round-trip)",
+    "a profile actually named %j can be written, read back, and switched to (round-trip)",
     async (name) => {
       await writeProfile(name, { apiKey: "rdc_live_POISON" });
       await setActiveProfile(name);
@@ -253,7 +253,7 @@ describe("lib/config — #990 profile names never fall through to Object.prototy
     },
   );
 
-  it("AC-2: an ordinary profile name still round-trips through every function unaffected", async () => {
+  it("an ordinary profile name still round-trips through every function unaffected", async () => {
     await writeProfile("default", { apiKey: "rdc_live_A" });
     await writeProfile("work", { apiKey: "rdc_live_B" });
     await setActiveProfile("work");
@@ -267,7 +267,7 @@ describe("lib/config — #990 profile names never fall through to Object.prototy
     expect(after!.profiles["team"]).toBeUndefined();
   });
 
-  it("AC-3: an unknown-but-ordinary profile name (widget_exploded) still throws 'not found', unchanged behaviour", async () => {
+  it("an unknown-but-ordinary profile name (widget_exploded) still throws 'not found', unchanged behaviour", async () => {
     await writeProfile("default", { apiKey: "rdc_live_A" });
     await expect(setActiveProfile("widget_exploded")).rejects.toThrow(/not found/);
   });

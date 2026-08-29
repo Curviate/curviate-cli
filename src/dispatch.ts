@@ -126,9 +126,18 @@ const REMOVED_COMMANDS: Record<string, Record<string, string>> = {
  * The successor hint for a removed/renamed `<group> <token>`, or null when the
  * token is a current command or a plausible identifier. Exported for direct
  * unit coverage of the map.
+ *
+ * `token` is a value the user typed on the command line. `REMOVED_COMMANDS[group]`
+ * is a plain object literal, so an inherited Object.prototype member name
+ * (`constructor`, `toString`, ...) as `token` would otherwise resolve to that
+ * inherited function instead of `null` -- the `??` guard only catches
+ * null/undefined, not a truthy non-string. `hasOwnProperty.call` makes this
+ * safe by construction regardless of what `token` is.
  */
 export function successorHint(group: string, token: string): string | null {
-  return REMOVED_COMMANDS[group]?.[token] ?? null;
+  const groupMap = REMOVED_COMMANDS[group];
+  if (!groupMap || !Object.prototype.hasOwnProperty.call(groupMap, token)) return null;
+  return groupMap[token] ?? null;
 }
 
 /** Resolve a possibly-lazy citty value (subCommands entry, args, meta). */
@@ -547,7 +556,11 @@ export async function resolveLeaf(
     const token = idx === -1 ? undefined : rawArgs[idx];
     const hasBarePositional = await nodeHasPositional(cmd);
 
-    if (token !== undefined && subCommands[token]) {
+    if (
+      token !== undefined &&
+      Object.prototype.hasOwnProperty.call(subCommands, token) &&
+      subCommands[token]
+    ) {
       // Token is a known subcommand keyword -> descend into it ONLY. Drop
       // JUST the matched keyword token, not everything before it: idx is no
       // longer always 0 now that the scan above can skip a leading global

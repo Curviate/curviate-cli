@@ -8,6 +8,33 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.24.3] - 2026-08-29
+
+### Fixed
+
+- **A profile name of `constructor` (or any other `Object.prototype` member
+  name) is no longer treated as an existing profile it never was.**
+  `cfg.profiles[profileName]`, read against a plain object straight
+  off `JSON.parse` or a fresh `{}`, resolved `"constructor"` to the live,
+  inherited `Function`, truthy, so `curviate config use constructor`
+  incorrectly succeeded ("Switched to profile...") on a profile that was
+  never written, and `curviate config rename <name> constructor` incorrectly
+  refused with "already exists". `profiles` is now rebuilt with no prototype
+  (`Object.create(null)`) at both places a config is constructed, so every
+  lookup against it is safe by construction, including a profile literally
+  named `__proto__`, which previously silently vanished on write (the
+  bracket assignment hit the inherited `__proto__` accessor instead of
+  creating an own key) instead of being saved.
+- **The same "user-typed token indexes a plain object" shape also lived in
+  command routing** (`src/dispatch.ts`): a subcommand token of
+  `hasOwnProperty` crashed ("Cannot convert undefined or null to object",
+  the inherited method invoked with no receiver) instead of exiting 2 with
+  "unknown command", and `constructor` / `toString` silently no-opped
+  (exit 0, no output) instead of erroring. Both the subcommand-keyword match
+  and the removed-command "did you mean" lookup now guard with
+  `Object.prototype.hasOwnProperty.call` before indexing, matching the
+  pattern already used elsewhere in this file for the id-first reroute path.
+
 ## [0.24.2] - 2026-08-27
 
 ### Changed

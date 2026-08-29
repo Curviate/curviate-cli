@@ -38,7 +38,7 @@ export interface CliConfig {
 }
 
 /**
- * #990: every function below reads `cfg.profiles[profileName]` (or `[oldName]`
+ * Every function below reads `cfg.profiles[profileName]` (or `[oldName]`
  * / `[newName]`) against a profile name the user typed on the command line
  * (`--profile <name>`). On a plain object -- what `JSON.parse` and `{}`
  * both produce -- `profiles["constructor"]` returns a live Function
