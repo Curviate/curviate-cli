@@ -8,6 +8,27 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-08-29
+
+### Added
+
+- **`inbox list --inbox <folder>` selects which inbox folder to read.**
+  Accepts the six folders the endpoint supports: `primary` (the default),
+  `inmail`, `archived`, `spam`, `jobs`, `starred`. Without the flag the
+  behaviour is unchanged, and the parameter is omitted from the request
+  rather than sent explicitly.
+
+  Previously `inbox list` could only ever read `primary`, which left
+  archived conversations unreachable from the CLI at any `--limit` and at
+  any pagination depth; on a test account, 34 archived chats were absent
+  from a full walk of the inbox. `inmail` and `starred` are alternate
+  views over conversations `primary` already returns, so for those the
+  flag is a filter rather than a way to reach anything new.
+
+  An unrecognised value fails before any network call, with exit code 2
+  and a message naming the accepted values. The flag composes with
+  `--all` and `--cursor`, so a folder can be walked to exhaustion.
+
 ## [0.24.3] - 2026-08-29
 
 ### Fixed
