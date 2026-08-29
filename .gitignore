@@ -6,3 +6,6 @@ node_modules/
 coverage/
 .npmrc
 *.tgz
+
+# This package pins pnpm-lock.yaml; an npm lockfile must never be committed.
+package-lock.json

@@ -2,7 +2,9 @@
  * `curviate inbox`, messaging inbox operations.
  *
  * Subcommands:
- *   inbox list: list chats (paginated, --all/--limit/--cursor)
+ *   inbox list: list chats (paginated, --all/--limit/--cursor, --inbox <folder>
+ *     selects which of the six folders to read: primary [default], inmail,
+ *     archived, spam, jobs, starred; one folder per call, same as the API)
  *   inbox get <chat_id>: get a single chat (read, rejects --preview and --all)
  *   inbox messages <chat_id>: list messages in a chat (paginated)
  *   inbox mark-read <chat_id>: mark a chat as read (write)
@@ -41,8 +43,9 @@ type InboxFlags = {
   "base-url"?: string;
   timeout?: string;
   profile?: string;
-  // inbox list filter
+  // inbox list filters
   unread?: boolean;
+  inbox?: string;
   // inbox messages date filters
   before?: string;
   after?: string;
@@ -122,6 +125,22 @@ function validateLimitRange(raw: string | undefined, out: OutputStreams): void {
   }
 }
 
+/** The six folders the API's `inbox` param accepts. Default (unset): primary. */
+const INBOX_FOLDERS = ["primary", "inmail", "archived", "spam", "jobs", "starred"] as const;
+
+/**
+ * Validate --inbox against the six-value folder enum before any SDK call,
+ * the same pattern as validateLimitRange above and requireEnum in job.ts.
+ * An unset value is a no-op, the server default (primary) applies.
+ */
+function validateInboxFolder(raw: string | undefined, out: OutputStreams): void {
+  if (raw === undefined) return;
+  if (!(INBOX_FOLDERS as readonly string[]).includes(raw)) {
+    out.stderr.write(`error: --inbox must be one of: ${INBOX_FOLDERS.join(", ")}. Got "${raw}".\n`);
+    process.exit(2);
+  }
+}
+
 async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOutputOpts>, out: OutputStreams): Promise<never> {
   const { CurviateError } = await import("@curviate/sdk");
   if (err instanceof CurviateError) {
@@ -138,8 +157,10 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
 // ---------------------------------------------------------------------------
 
 /**
- * Run `inbox list [--all] [--limit] [--cursor]`.
- * Read command, rejects --preview.
+ * Run `inbox list [--all] [--limit] [--cursor] [--inbox <folder>]`.
+ * Read command, rejects --preview. `--inbox` selects one of six folders
+ * server-side (primary, inmail, archived, spam, jobs, starred); default
+ * primary, one folder per call, matching the API's own contract.
  */
 export async function runInboxList(
   client: Curviate,
@@ -155,10 +176,16 @@ export async function runInboxList(
   const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
   const params = buildPaginationParams(flags);
   validateLimitRange(flags.limit, out);
+  validateInboxFolder(flags.inbox, out);
 
   // Apply unread filter (three-way: true / false / omit, pass no key when undefined)
   if (flags.unread !== undefined) {
     params.unread = flags.unread;
+  }
+
+  // Apply folder selection (omit when unset, the server default is primary)
+  if (flags.inbox !== undefined) {
+    params.inbox = flags.inbox;
   }
 
   try {
@@ -351,6 +378,11 @@ const inboxListCommand = defineCommand({
       type: "boolean" as const,
       description: "Show unread chats only (--no-unread for read-only; omit for all).",
       // No default -> three-way semantics: undefined when omitted, true for --unread, false for --no-unread
+    },
+    inbox: {
+      type: "string" as const,
+      description:
+        "Which inbox folder to list chats from: primary, inmail, archived, spam, jobs, starred. Default primary.",
     },
   },
   async run({ args }) {

@@ -46,8 +46,9 @@ type InboxArgs = {
   "base-url"?: string;
   timeout?: string;
   profile?: string;
-  // Inbox list filter
+  // Inbox list filters
   unread?: boolean;
+  inbox?: string;
   // Inbox messages date filters
   before?: string;
   after?: string;
@@ -401,6 +402,109 @@ describe("inbox list unread filter", () => {
 
     const call = ((ns.messaging.listChats as Mock).mock.calls[0] as [Record<string, unknown>])[0];
     expect(call).not.toHaveProperty("unread");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// inbox list --inbox folder selection
+// ---------------------------------------------------------------------------
+
+describe("inbox list --inbox folder selection", () => {
+  let ns: ReturnType<typeof makeMessagingNs>;
+  let client: ReturnType<typeof makeClient>;
+
+  beforeEach(() => {
+    ns = makeMessagingNs();
+    client = makeClient(ns);
+    (ns.messaging.listChats as Mock).mockResolvedValue({ items: [], cursor: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("inbox list --inbox inmail passes inbox: \"inmail\" to the SDK", async () => {
+    const { runInboxList } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runInboxList(
+      client as never,
+      { account: "acc_1", json: true, inbox: "inmail" } as InboxArgs,
+      out,
+    );
+
+    expect(ns.messaging.listChats).toHaveBeenCalledWith(
+      expect.objectContaining({ inbox: "inmail" }),
+    );
+  });
+
+  it.each(["primary", "archived", "spam", "jobs", "starred"])(
+    "inbox list --inbox %s passes it through to the SDK",
+    async (folder) => {
+      const { runInboxList } = await import("../../src/commands/inbox.js");
+      const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+      await runInboxList(
+        client as never,
+        { account: "acc_1", json: true, inbox: folder } as InboxArgs,
+        out,
+      );
+
+      expect(ns.messaging.listChats).toHaveBeenCalledWith(
+        expect.objectContaining({ inbox: folder }),
+      );
+    },
+  );
+
+  it("inbox list without --inbox sends no inbox parameter to the SDK (server default: primary)", async () => {
+    const { runInboxList } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runInboxList(client as never, { account: "acc_1", json: true } as InboxArgs, out);
+
+    const call = ((ns.messaging.listChats as Mock).mock.calls[0] as [Record<string, unknown>])[0];
+    expect(call).not.toHaveProperty("inbox");
+  });
+
+  it("inbox list --inbox bogus exits 2 with a clear message naming the accepted values, before any SDK call", async () => {
+    const { runInboxList } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runInboxList(client as never, { account: "acc_1", inbox: "bogus" } as InboxArgs, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    expect(ns.messaging.listChats).not.toHaveBeenCalled();
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText).toContain("--inbox must be one of: primary, inmail, archived, spam, jobs, starred");
+  });
+
+  it("inbox list --inbox inmail --all streams NDJSON, folder param reaches every page fetch", async () => {
+    const { runInboxList } = await import("../../src/commands/inbox.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (ns.messaging.listChats as Mock)
+      .mockResolvedValueOnce({ items: [{ id: "c1" }], cursor: "next" })
+      .mockResolvedValueOnce({ items: [{ id: "c2" }], cursor: null });
+
+    await runInboxList(
+      client as never,
+      { account: "acc_1", inbox: "inmail", all: true } as InboxArgs,
+      out,
+    );
+
+    const calls = (ns.messaging.listChats as Mock).mock.calls as [Record<string, unknown>][];
+    expect(calls).toHaveLength(2);
+    for (const [params] of calls) {
+      expect(params).toMatchObject({ inbox: "inmail" });
+    }
   });
 });
 
