@@ -1549,6 +1549,33 @@ describe("search companies: --has-job-offers / --headcount named flags", () => {
     }
     expect(accountNs.search.companies).not.toHaveBeenCalled();
   });
+
+  // -------------------------------------------------------------------------
+  // HEADCOUNT_BUCKETS is a plain object literal indexed by the user-typed
+  // --headcount bucket string. An Object.prototype member name as that
+  // string resolves to the inherited member instead of undefined, so the
+  // `if (!range)` guard never fires: "__proto__" pushed the object's own
+  // prototype (serializes as {}), "constructor" pushed the live Function
+  // (serializes as null), shipping a malformed body instead of exit 2.
+  // -------------------------------------------------------------------------
+  it.each(["__proto__", "constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"])(
+    "--headcount %j → exit 2, unrecognized bucket, no SDK call (not an inherited Object.prototype member)",
+    async (bucket) => {
+      const { runSearchCompanies } = await import("../../src/commands/search.js");
+      const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+      const exitSpy = makeExitMock();
+
+      try {
+        await runSearchCompanies(client as never, { headcount: bucket, account: "acc_1" } as SearchArgs, out);
+        expect.fail("should have exited");
+      } catch (e) {
+        expect((e as Error).message).toContain("process.exit(2)");
+      } finally {
+        exitSpy.mockRestore();
+      }
+      expect(accountNs.search.companies).not.toHaveBeenCalled();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -262,9 +262,13 @@ const NAMED_FLAG_MAPPERS: Record<
       const buckets = splitCsv(flags.headcount);
       const mapped: Array<{ min: number; max: number }> = [];
       for (const bucket of buckets) {
-        const range = HEADCOUNT_BUCKETS[bucket];
-        if (!range) return `--headcount: unrecognized bucket "${bucket}"`;
-        mapped.push(range);
+        // HEADCOUNT_BUCKETS is a plain object literal; bucket is user-typed,
+        // so an Object.prototype member name ("constructor", "__proto__", ...)
+        // must not resolve to the inherited member. hasOwnProperty.call guards it.
+        if (!Object.prototype.hasOwnProperty.call(HEADCOUNT_BUCKETS, bucket)) {
+          return `--headcount: unrecognized bucket "${bucket}"`;
+        }
+        mapped.push(HEADCOUNT_BUCKETS[bucket]!);
       }
       body["headcount"] = mapped;
     }

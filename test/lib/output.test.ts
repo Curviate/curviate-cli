@@ -51,6 +51,31 @@ describe("lib/output — projectFields", () => {
     // Empty fields array → return as-is (caller validates --fields "")
     expect(projectFields(item, [])).toEqual(item);
   });
+
+  // ---------------------------------------------------------------------
+  // `result[field] = value` builds a fresh plain `{}`. `field` comes from
+  // the user-typed `--fields` flag, so a genuine response field literally
+  // named `__proto__` (JSON.parse creates it as a real own property, not
+  // via the prototype setter) hit the inherited accessor on write instead
+  // of creating an own key -- reassigning `result`'s prototype and
+  // silently dropping the projected value, exit 0, no warning. Same defect
+  // class as config.ts's `redacted[name] = ...` (M1).
+  // ---------------------------------------------------------------------
+  it("a response field literally named __proto__ projects, not silently dropped", () => {
+    const withProtoField = JSON.parse('{"id":"p_1","__proto__":"legit-value"}') as Record<
+      string,
+      unknown
+    >;
+    const result = projectFields(withProtoField, ["id", "__proto__"]);
+    expect(Object.keys(result).sort()).toEqual(["__proto__", "id"]);
+    expect(result["__proto__"]).toBe("legit-value");
+  });
+
+  it("--fields constructor on an object without that field omits it, never leaks the inherited Function", () => {
+    const result = projectFields(item, ["id", "constructor"]);
+    expect(Object.keys(result)).toEqual(["id"]);
+    expect(result["constructor"]).toBeUndefined();
+  });
 });
 
 describe("lib/output — renderSuccess (JSON mode)", () => {

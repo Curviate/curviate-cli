@@ -34,6 +34,23 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   and the removed-command "did you mean" lookup now guard with
   `Object.prototype.hasOwnProperty.call` before indexing, matching the
   pattern already used elsewhere in this file for the id-first reroute path.
+- **The same shape reached two more surfaces on write, not just read.**
+  `config list --json` rebuilt a fresh `{}` and assigned
+  `redacted[name] = ...` for each profile: a profile literally named
+  `__proto__` hit the inherited accessor on that assignment instead of
+  creating an own key, so it silently vanished from `--json` output (exit
+  0, no warning) while text mode still printed it. `--fields` (the
+  projection flag on every command) had both the read and the write shape
+  at once in `projectFields`: an inherited member name like `constructor`
+  was treated as a present field on read, and a response field genuinely
+  named `__proto__` was silently dropped on write. All three sites are now
+  built with no prototype (`Object.create(null)`) or guarded with
+  `hasOwnProperty.call`, same as above.
+- **`search companies --headcount` indexed its fixed bucket table with the
+  user-typed bucket string.** A bucket of `__proto__` or `constructor`
+  resolved to the inherited Object.prototype member (both truthy), so the
+  "unrecognized bucket" guard never fired and a malformed request body
+  shipped instead of the intended usage error.
 
 ## [0.24.2] - 2026-08-27
 
