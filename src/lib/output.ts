@@ -48,12 +48,25 @@ export function projectFields(
 ): Record<string, unknown> {
   if (fields.length === 0) return obj;
 
-  const result: Record<string, unknown> = {};
+  // `field` is a value from the user-typed `--fields` flag. `result` must
+  // have no prototype: a genuine response field named `__proto__` (JSON.parse
+  // creates it as a real own property) would otherwise hit the inherited
+  // accessor on write instead of creating an own key, silently dropping the
+  // projected value and reassigning result's own prototype.
+  const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const field of fields) {
     const parts = field.split(".");
     let value: unknown = obj;
     for (const part of parts) {
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      // Same user-typed-key hazard on read: an Object.prototype member name
+      // (constructor, toString, ...) as `part` must never resolve to the
+      // inherited member as if it were a real field.
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.prototype.hasOwnProperty.call(value, part)
+      ) {
         value = (value as Record<string, unknown>)[part];
       } else {
         value = undefined;

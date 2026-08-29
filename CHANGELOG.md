@@ -8,6 +8,52 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.24.3] - 2026-08-29
+
+### Fixed
+
+- **A profile name of `constructor` (or any other `Object.prototype` member
+  name) is no longer treated as an existing profile it never was.**
+  `cfg.profiles[profileName]`, read against a plain object straight
+  off `JSON.parse` or a fresh `{}`, resolved `"constructor"` to the live,
+  inherited `Function`, truthy, so `curviate config use constructor`
+  incorrectly succeeded ("Switched to profile...") on a profile that was
+  never written, and `curviate config rename <name> constructor` incorrectly
+  refused with "already exists". `profiles` is now rebuilt with no prototype
+  (`Object.create(null)`) at both places a config is constructed, so every
+  lookup against it is safe by construction, including a profile literally
+  named `__proto__`, which previously silently vanished on write (the
+  bracket assignment hit the inherited `__proto__` accessor instead of
+  creating an own key) instead of being saved.
+- **The same "user-typed token indexes a plain object" shape also lived in
+  command routing** (`src/dispatch.ts`): a subcommand token of
+  `hasOwnProperty` crashed ("Cannot convert undefined or null to object",
+  the inherited method invoked with no receiver) instead of exiting 2 with
+  "unknown command", and `constructor` / `toString` silently no-opped
+  (exit 0, no output) instead of erroring. Both the subcommand-keyword match
+  and the removed-command "did you mean" lookup now guard with
+  `Object.prototype.hasOwnProperty.call` before indexing, matching the
+  pattern already used elsewhere in this file for the id-first reroute path.
+- **The same shape reached two more surfaces on write, not just read.**
+  `config list --json` rebuilt a fresh `{}` and assigned
+  `redacted[name] = ...` for each profile: a profile literally named
+  `__proto__` hit the inherited accessor on that assignment instead of
+  creating an own key, so it silently vanished from `--json` output (exit
+  0, no warning) while text mode still printed it. `--fields` (the
+  projection flag on every command) carried the same shape in
+  `projectFields`: a response field genuinely named `__proto__` was
+  silently dropped from the projected output. An inherited member name
+  like `constructor` was already refused upstream by the available-keys
+  check, so the matching read-side guard is defense in depth rather than
+  a user-visible fix. All three sites are now built with no prototype
+  (`Object.create(null)`) or guarded with `hasOwnProperty.call`, same as
+  above.
+- **`search companies --headcount` indexed its fixed bucket table with the
+  user-typed bucket string.** A bucket of `__proto__` or `constructor`
+  resolved to the inherited Object.prototype member (both truthy), so the
+  "unrecognized bucket" guard never fired and a malformed request body
+  shipped instead of the intended usage error.
+
 ## [0.24.2] - 2026-08-27
 
 ### Changed

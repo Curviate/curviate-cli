@@ -53,6 +53,24 @@ export interface ScanDirectoryOptions {
   maxLineLen?: number;
 }
 
+export interface CommitScanResult {
+  commitsScanned: number;
+  findings: Finding[];
+  /** Non-null when `baseRef` could not be resolved; commitsScanned is 0 in that case. */
+  error: string | null;
+}
+
+export type CommitVerdict =
+  | { ok: true; reason: "clean" }
+  | { ok: false; reason: "error" | "leaks" };
+
+export interface ScanCommitMessagesOptions {
+  patterns?: LeakPattern[];
+  /** Defaults to "origin/main". */
+  baseRef?: string;
+  maxLineLen?: number;
+}
+
 export const pkgRoot: string;
 export const SKIP_DIRS: Set<string>;
 export const SCAN_EXTS: Set<string>;
@@ -62,3 +80,5 @@ export const PATTERNS: LeakPattern[];
 export function collectFiles(dir: string, opts?: CollectFilesOptions): Promise<string[]>;
 export function scanDirectory(root: string, opts?: ScanDirectoryOptions): Promise<ScanResult>;
 export function verdict(result: ScanResult): Verdict;
+export function scanCommitMessages(root: string, opts?: ScanCommitMessagesOptions): Promise<CommitScanResult>;
+export function commitVerdict(result: CommitScanResult): CommitVerdict;

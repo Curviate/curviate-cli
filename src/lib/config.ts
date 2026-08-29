@@ -37,6 +37,26 @@ export interface CliConfig {
   profiles: Record<string, ProfileEntry | undefined>;
 }
 
+/**
+ * Every function below reads `cfg.profiles[profileName]` (or `[oldName]`
+ * / `[newName]`) against a profile name the user typed on the command line
+ * (`--profile <name>`). On a plain object -- what `JSON.parse` and `{}`
+ * both produce -- `profiles["constructor"]` returns a live Function
+ * inherited from Object.prototype. `??`/truthiness checks don't catch it,
+ * so e.g. `setActiveProfile("constructor")` on a config that never had a
+ * "constructor" profile incorrectly found one and did not throw.
+ *
+ * Rebuild `profiles` with no prototype at the two places a CliConfig is
+ * created (parsed from disk, or the fresh-file default below) so every
+ * read against it in this file -- however it's written -- is safe by
+ * construction.
+ */
+function nullProtoProfiles(
+  profiles: Record<string, ProfileEntry | undefined>,
+): Record<string, ProfileEntry | undefined> {
+  return Object.assign(Object.create(null) as Record<string, ProfileEntry | undefined>, profiles);
+}
+
 /** Return the absolute path to the config file (even if it does not exist). */
 export function getConfigPath(): string {
   const xdg =
@@ -59,7 +79,8 @@ export async function readConfig(): Promise<CliConfig | null> {
     if (e.code === "ENOENT") return null;
     throw err;
   }
-  return JSON.parse(raw) as CliConfig;
+  const parsed = JSON.parse(raw) as CliConfig;
+  return { ...parsed, profiles: nullProtoProfiles(parsed.profiles ?? {}) };
 }
 
 /**
@@ -127,7 +148,7 @@ export async function writeProfile(
 ): Promise<void> {
   const existing = (await readConfig()) ?? {
     active: profileName,
-    profiles: {},
+    profiles: nullProtoProfiles({}),
   };
 
   // Merge entry into existing profile (don't overwrite unrelated fields).

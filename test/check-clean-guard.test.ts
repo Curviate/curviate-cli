@@ -42,7 +42,7 @@ import { mkdtemp, mkdir, writeFile, chmod, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
-import { scanDirectory, verdict, PATTERNS, pkgRoot } from "../scripts/check-clean.mjs";
+import { scanDirectory, verdict, scanCommitMessages, commitVerdict, PATTERNS, pkgRoot } from "../scripts/check-clean.mjs";
 
 // Section-marker character, held one hop away from any digit/letter literal
 // so no line in this file itself reads as "§" immediately followed by alnum.
@@ -362,6 +362,88 @@ describe("check:clean guard — LICENSE is scanned (security-auditor F2)", () =>
     expect(result.findings).toEqual([]);
     expect(verdict(result).ok).toBe(false); // still fails, but for empty-scan, not for the actual leak
     expect(verdict(result).reason).toBe("empty-scan");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// scanCommitMessages / commitVerdict — the --commits mode (M4: a leak in a
+// commit MESSAGE survives even a perfectly clean source scan, because the
+// message describing a fix can still name the tracker ref the diff itself
+// correctly stripped).
+// ---------------------------------------------------------------------------
+
+/** A fresh git repo with a base commit, then one empty commit per message. */
+async function makeCommitFixture(messages: string[]): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "check-clean-git-fixture-"));
+  tmpDirs.push(dir);
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git("init", "-q");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  git("commit", "-q", "--allow-empty", "-m", "base");
+  git("branch", "-f", "main", "HEAD");
+  for (const message of messages) {
+    git("commit", "-q", "--allow-empty", "-m", message);
+  }
+  return dir;
+}
+
+describe("check:clean guard — scanCommitMessages / commitVerdict (--commits mode)", () => {
+  it("a clean branch (no tracker refs, no AI trailer) reports OK", async () => {
+    const dir = await makeCommitFixture(["fix(config): stop a lookup falling through to the prototype"]);
+    const result = await scanCommitMessages(dir, { baseRef: "main" });
+    expect(result.commitsScanned).toBe(1);
+    expect(result.findings).toEqual([]);
+    expect(commitVerdict(result)).toEqual({ ok: true, reason: "clean" });
+  });
+
+  // Fixture payloads below assemble any leak-shaped literal (a bare hash
+  // followed by digits, an AI-session trailer, a private-repo cross-ref)
+  // from concatenated fragments — see the file header — so this source
+  // file's own text never contains one contiguously; only the commit
+  // message WRITTEN AT TEST TIME does.
+  const ISSUE_REF = "#" + "1018";
+  const CLAUDE_TRAILER = ["Claude", "-Session", ":"].join("") + " https://claude.ai/code/session_abc";
+  const PRIVATE_REPO_REF = "rapha-red" + "/curviate" + "#" + "1018";
+
+  it("catches an issue-tracker ref left in a commit message the diff itself stripped", async () => {
+    const dir = await makeCommitFixture([`fix(config): stop the fallthrough\n\nrefs ${ISSUE_REF}`]);
+    const result = await scanCommitMessages(dir, { baseRef: "main" });
+    // One finding per matching line (the scanner reports at most one label
+    // per line, same as the file scanner) — the fixture line has exactly one.
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("issue tracker refs");
+    expect(commitVerdict(result)).toEqual({ ok: false, reason: "leaks" });
+  });
+
+  it("catches a Claude-Session trailer", async () => {
+    const dir = await makeCommitFixture([`fix(dispatch): guard token lookups\n\n${CLAUDE_TRAILER}`]);
+    const result = await scanCommitMessages(dir, { baseRef: "main" });
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.label).toContain("AI-authorship trailer");
+    expect(commitVerdict(result)).toEqual({ ok: false, reason: "leaks" });
+  });
+
+  it("catches a private-repo cross-reference", async () => {
+    const dir = await makeCommitFixture([`fix(x): y\n\nTracked as ${PRIVATE_REPO_REF}.`]);
+    const result = await scanCommitMessages(dir, { baseRef: "main" });
+    expect(result.findings.length).toBeGreaterThan(0);
+    expect(commitVerdict(result)).toEqual({ ok: false, reason: "leaks" });
+  });
+
+  it("scans every commit on the branch, not just the tip", async () => {
+    const dir = await makeCommitFixture(["clean first commit", `clean second commit\n\nrefs #${"1234"}`]);
+    const result = await scanCommitMessages(dir, { baseRef: "main" });
+    expect(result.commitsScanned).toBe(2);
+    expect(result.findings).toHaveLength(1);
+  });
+
+  it("an unresolved baseRef is an error, not a silent zero-commit pass", async () => {
+    const dir = await makeCommitFixture(["fix: whatever"]);
+    const result = await scanCommitMessages(dir, { baseRef: "no-such-branch" });
+    expect(result.commitsScanned).toBe(0);
+    expect(result.error).toBeTruthy();
+    expect(commitVerdict(result)).toEqual({ ok: false, reason: "error" });
   });
 });
 

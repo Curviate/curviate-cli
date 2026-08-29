@@ -139,3 +139,43 @@ describe("resolveLeaf — a real subcommand or valid bare id is UNAFFECTED by th
     expect(leafArgs).toEqual(["john-doe"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The same "user-typed string indexes a plain object" shape fixed in
+// lib/config.ts also lives in dispatch.ts:
+//   - `successorHint`'s `REMOVED_COMMANDS[group]?.[token]` (a token-indexed
+//     plain object literal)
+//   - `resolveLeaf`'s `subCommands[token]` subcommand-keyword match
+// A token of "constructor"/"toString"/"hasOwnProperty"/etc. is an
+// Object.prototype member name, truthy on any plain object regardless of
+// what was actually written to it. Before the `hasOwnProperty.call` guard,
+// `account constructor`/`account toString` silently exited 0 doing nothing
+// (subCommands["constructor"] resolved to the Object constructor, called
+// with no receiver) and `account hasOwnProperty` crashed ("Cannot convert
+// undefined or null to object", Object.prototype.hasOwnProperty invoked
+// with `this` unbound) instead of the correct "unknown command" exit 2.
+// ---------------------------------------------------------------------------
+describe("successorHint — Object.prototype member names never resolve as if written", () => {
+  const PROTO_KEYS = ["constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf", "__proto__"];
+
+  it.each(PROTO_KEYS)("successorHint('inbox', %j) is null -- never a written hint", (token) => {
+    expect(successorHint("inbox", token)).toBeNull();
+  });
+
+  it.each(PROTO_KEYS)("successorHint('account', %j) is null -- never a written hint", (token) => {
+    expect(successorHint("account", token)).toBeNull();
+  });
+});
+
+describe("resolveLeaf — Object.prototype member names as a subcommand token are an unknown command, not a crash or silent no-op", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const PROTO_KEYS = ["constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"];
+
+  it.each(PROTO_KEYS)("account %s -> exit 2 unknown command, same as a genuinely unknown token", async (token) => {
+    vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const exit = mockExit();
+    await expect(resolveLeaf(asCmd(accountCommand), [token])).rejects.toThrow("process.exit(2)");
+    exit.mockRestore();
+  });
+});

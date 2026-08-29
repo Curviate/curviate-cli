@@ -49,8 +49,16 @@ export const configCommand = defineCommand({
         const json = (args.json as boolean | undefined) ?? !process.stdout.isTTY;
 
         if (json) {
-          // Emit redacted profiles, key is never the raw value.
-          const redacted: Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }> = {};
+          // Emit redacted profiles, key is never the raw value. Built with no
+          // prototype: `name` is a value the user (or a prior `config`
+          // subcommand) wrote to disk, and a name of "__proto__" assigned
+          // into a plain `{}` hits the inherited accessor instead of
+          // creating an own key, silently dropping that profile from the
+          // JSON output while text mode (which iterates cfg.profiles
+          // directly) still prints it. Same shape lib/config.ts's
+          // nullProtoProfiles fixes for reads; this fixes it for a write.
+          const redacted: Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }> =
+            Object.create(null) as Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }>;
           for (const [name, profile] of Object.entries(cfg.profiles)) {
             if (!profile) continue;
             redacted[name] = {

@@ -1,6 +1,6 @@
 {
   "name": "@curviate/cli",
-  "version": "0.24.2",
+  "version": "0.24.3",
   "private": false,
   "description": "Official command-line interface for the Curviate API.",
   "license": "MIT",
@@ -37,6 +37,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "check:clean": "node scripts/check-clean.mjs",
+    "check:clean:commits": "node scripts/check-clean.mjs --commits",
     "check:clean:dist": "node scripts/check-clean.mjs --dist",
     "check:copy": "node scripts/check-copy.mjs",
     "check:sdk-pin": "node scripts/check-sdk-pin.mjs",
