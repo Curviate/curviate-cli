@@ -40,12 +40,14 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   `__proto__` hit the inherited accessor on that assignment instead of
   creating an own key, so it silently vanished from `--json` output (exit
   0, no warning) while text mode still printed it. `--fields` (the
-  projection flag on every command) had both the read and the write shape
-  at once in `projectFields`: an inherited member name like `constructor`
-  was treated as a present field on read, and a response field genuinely
-  named `__proto__` was silently dropped on write. All three sites are now
-  built with no prototype (`Object.create(null)`) or guarded with
-  `hasOwnProperty.call`, same as above.
+  projection flag on every command) carried the same shape in
+  `projectFields`: a response field genuinely named `__proto__` was
+  silently dropped from the projected output. An inherited member name
+  like `constructor` was already refused upstream by the available-keys
+  check, so the matching read-side guard is defense in depth rather than
+  a user-visible fix. All three sites are now built with no prototype
+  (`Object.create(null)`) or guarded with `hasOwnProperty.call`, same as
+  above.
 - **`search companies --headcount` indexed its fixed bucket table with the
   user-typed bucket string.** A bucket of `__proto__` or `constructor`
   resolved to the inherited Object.prototype member (both truthy), so the
