@@ -30,6 +30,17 @@
 // rather than silently reporting 0 hits over a directory that isn't there.
 // Chained into `prepack` AFTER the build step so no publish can skip it.
 //
+// --commits[=<baseRef>] mode: scans this branch's own commit MESSAGES
+// (`git log <baseRef>..HEAD`, default baseRef `origin/main`) with the same pattern
+// set, plus an AI-authorship-trailer pattern (Claude-Session, Co-Authored-By:
+// Claude) that only makes sense for commit metadata. Source/--dist never see
+// this: a leaked issue-tracker ref or session trailer can ride into the
+// commit message of a fix that correctly stripped the leak from the diff
+// itself, and once merged that message is public forever even though every
+// other check passed clean. Not chained into `prepack` — publish-time is too
+// late, the history is already public by then — this is meant to be run by
+// hand (or wired into a pre-merge gate) before a PR lands.
+//
 // ── What this guard learned from its own holes ──────────────────────────────
 // Two failure shapes both looked exactly like a clean pass:
 //   1. A citation whose doc reference had been edited away (e.g. "see api/008
@@ -54,6 +65,7 @@
 // empty directory.
 
 import { readdir, readFile, stat } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { join, relative, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -133,6 +145,12 @@ export const PATTERNS = [
   {
     label: "substrate vendor name",
     pattern: new RegExp(vendorName, "i"),
+  },
+  {
+    label: "AI-authorship trailer (Claude-Session, Co-Authored-By: Claude)",
+    // Never a legitimate part of published source or a commit message here —
+    // see CLAUDE.md's Conventions: commits carry no AI-naming trailers.
+    pattern: /claude-session\s*:|co-authored-by:\s*claude/i,
   },
   {
     label: "npm auth token (credential shape)",
@@ -268,6 +286,60 @@ export async function scanDirectory(root, opts = {}) {
 }
 
 /**
+ * Scan this branch's own commit MESSAGES (`git log <baseRef>..HEAD`) with
+ * the same pattern set. A leak here survives even a perfectly clean source
+ * scan: the diff itself can strip every internal reference while the commit
+ * that made that fix still describes it using one.
+ *
+ * `root` must be inside a git worktree. A `baseRef` that doesn't resolve
+ * (typo, shallow clone missing it) is reported as an error rather than
+ * silently scanning zero commits — same "silence is not evidence of clean"
+ * reasoning as the file scanner's unreadable/empty-scan cases.
+ *
+ * @param {string} root
+ * @param {{ patterns?: Pattern[]; baseRef?: string; maxLineLen?: number }} [opts]
+ */
+export async function scanCommitMessages(root, opts = {}) {
+  const { patterns = PATTERNS, baseRef = "origin/main", maxLineLen = 200 } = opts;
+
+  let hashes;
+  try {
+    const out = execFileSync("git", ["rev-list", `${baseRef}..HEAD`], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    hashes = out.split("\n").filter(Boolean);
+  } catch (err) {
+    return { commitsScanned: 0, findings: [], error: `could not resolve ${baseRef}..HEAD: ${err.message}` };
+  }
+
+  const findings = [];
+  for (const hash of hashes) {
+    const message = execFileSync("git", ["show", "-s", "--format=%B", hash], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    const lines = message.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      for (const { label, pattern } of patterns) {
+        if (pattern.test(line)) {
+          findings.push({
+            rel: `commit ${hash.slice(0, 7)}`,
+            line: i + 1,
+            label,
+            text: line.trim().slice(0, maxLineLen),
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  return { commitsScanned: hashes.length, findings, error: null };
+}
+
+/**
  * @typedef {{ ok: true; reason: "clean" } | { ok: false; reason: "empty-scan" | "unreadable" | "leaks" }} Verdict
  */
 
@@ -291,6 +363,25 @@ export function verdict(result) {
 }
 
 /**
+ * @typedef {{ ok: true; reason: "clean" } | { ok: false; reason: "error" | "leaks" }} CommitVerdict
+ */
+
+/**
+ * Turn a {@link scanCommitMessages} result into a pass/fail verdict. Unlike
+ * the file scanner, zero commits scanned is not itself a failure (a branch
+ * with no commits yet, or already fast-forwarded, is legitimately clean) —
+ * only an unresolved `baseRef` (`result.error`) is.
+ *
+ * @param {{ error: string | null; findings: Finding[] }} result
+ * @returns {CommitVerdict}
+ */
+export function commitVerdict(result) {
+  if (result.error) return { ok: false, reason: "error" };
+  if (result.findings.length > 0) return { ok: false, reason: "leaks" };
+  return { ok: true, reason: "clean" };
+}
+
+/**
  * The CLI entry point: resolve the scan root from argv, run the scan, print
  * the same messages the original script printed, and exit with the same
  * codes. Only invoked when this file is run directly (see the guard at the
@@ -298,6 +389,35 @@ export function verdict(result) {
  * must never print anything or call process.exit.
  */
 async function main() {
+  const commitsArg = process.argv.find((a) => a === "--commits" || a.startsWith("--commits="));
+  if (commitsArg) {
+    const baseRef = commitsArg.includes("=") ? commitsArg.split("=")[1] : "origin/main";
+    const result = await scanCommitMessages(pkgRoot, { baseRef });
+
+    for (const f of result.findings) {
+      console.error(`LEAK  ${f.rel}:${f.line}  [${f.label}]`);
+      console.error(`      ${f.text}`);
+    }
+
+    const v = commitVerdict(result);
+    if (!v.ok) {
+      if (v.reason === "error") {
+        console.error(`\ncheck:clean [--commits] FAIL — ${result.error}`);
+      } else {
+        console.error(
+          `\ncheck:clean [--commits] FAIL — ${result.findings.length} leak(s) found across ` +
+            `${result.commitsScanned} commit message(s) (${baseRef}..HEAD). Reword before this branch merges.`,
+        );
+      }
+      process.exit(1);
+    }
+
+    console.error(
+      `check:clean [--commits] OK — no internal references found in ${result.commitsScanned} commit message(s) (${baseRef}..HEAD).`,
+    );
+    return;
+  }
+
   const distMode = process.argv.includes("--dist");
   const scanRoot = distMode ? join(pkgRoot, "dist") : pkgRoot;
   const modeLabel = distMode ? "--dist" : "source";

@@ -37,6 +37,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "check:clean": "node scripts/check-clean.mjs",
+    "check:clean:commits": "node scripts/check-clean.mjs --commits",
     "check:clean:dist": "node scripts/check-clean.mjs --dist",
     "check:copy": "node scripts/check-copy.mjs",
     "check:sdk-pin": "node scripts/check-sdk-pin.mjs",
