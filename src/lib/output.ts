@@ -358,6 +358,17 @@ export function renderError(
     if (errJson.requiredTier) {
       msg += `\nRequired tier: ${errJson.requiredTier}`;
     }
+    // A 429 can mean one account-safety budget row is PAUSED: LinkedIn refused a
+    // recent call on it, so this one was never sent. Read through a cast because
+    // this package pins a PUBLISHED @curviate/sdk (see scripts/check-sdk-pin.mjs)
+    // and `budgetRow` lands in the SDK's own types only when that pin is bumped
+    // after the next publish. Until then the field is absent and this line simply
+    // does not print, so no build ordering is forced and nothing has to be
+    // remembered when the pin moves.
+    const budgetRow = (errJson as { budgetRow?: string }).budgetRow;
+    if (budgetRow) {
+      msg += `\nPaused budget row: ${budgetRow} (other rows on this account still work)`;
+    }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
     }
