@@ -635,9 +635,19 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  * on this command (previously slim and verbose were byte-identical).
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
- * seat_id, connected_at, last_checked_at, quotas. `seat_id` is a slim field
- * here (unlike the six enrichment fields), core identity/troubleshooting
- * data, not part of the enrichment cache.
+ * seat_id, connected_at, last_checked_at, quotas, account_states. `seat_id`
+ * is a slim field here (unlike the six enrichment fields), core
+ * identity/troubleshooting data, not part of the enrichment cache.
+ *
+ * `account_states` is slim for the same reason `status` is: it is the answer
+ * to "why is this account behaving oddly". It carries platform conditions the
+ * account is in right now that `status` cannot express, because `status` holds
+ * one value and these are concurrent — a connected, `active` account can be in
+ * all of them. Two of the three are read on responses that SUCCEEDED (search
+ * returning a handful of results, profile views coming back empty), so an
+ * operator who does not see them concludes the CLI is returning bad data.
+ * Projecting it away would hide the field precisely when it matters, which is
+ * the failure this projection would otherwise make at exactly that moment.
  */
 export function slimAccountGet(data: unknown): Record<string, unknown> {
   const d = (data !== null && data !== undefined && typeof data === "object"
@@ -654,6 +664,7 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     connected_at: d["connected_at"] ?? null,
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
+    account_states: d["account_states"] ?? [],
   };
 }
 

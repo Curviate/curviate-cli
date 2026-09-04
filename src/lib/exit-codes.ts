@@ -117,6 +117,19 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   ACCOUNT_RESTRICTED: 8,
   RESOURCE_ACCESS_RESTRICTED: 8,
   LINKEDIN_AUTH_FAILED: 8,
+  // 8, not 3 (auth) and not 1 (the unmapped default): LinkedIn allows only one
+  // session at a time for some accounts, and a person signing in elsewhere
+  // breaks the connected one. It is the account's connection state, not the
+  // CLI's own credentials, and the remedy is closing the other session — so it
+  // belongs with LINKEDIN_AUTH_FAILED and LINKEDIN_COOKIE_INVALID rather than
+  // in the "your API key is wrong" bucket. Without this it fell to 1, which
+  // reads as an internal failure and tells a scripted caller nothing.
+  //
+  // Cast because this package pins a PUBLISHED @curviate/sdk
+  // (scripts/check-sdk-pin.mjs) and the code reaches `ErrorCode` only when the
+  // pin is bumped after curviate-sdk#28 publishes. The cast keeps the typecheck
+  // green today, forces no build ordering, and drops out on the pin bump.
+  ["LINKEDIN_SESSION_EVICTED" as ErrorCode]: 8,
   LINKEDIN_COOKIE_INVALID: 8,
   CONNECTION_IN_PROGRESS: 8,
   ACCOUNT_ALREADY_LINKED: 8,
