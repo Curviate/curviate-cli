@@ -327,8 +327,13 @@ describe("account list — slim/verbose split", () => {
 describe("account get — slim/verbose split (first-ever on this command)", () => {
   let client: Client;
 
-  const GET_FIXTURE = { ...ENRICHED_ITEM, last_checked_at: "2026-06-08T09:00:00Z", quotas: [] };
-  const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas"];
+  const GET_FIXTURE = {
+    ...ENRICHED_ITEM,
+    last_checked_at: "2026-06-08T09:00:00Z",
+    quotas: [],
+    account_states: ["commercial_use_limited"],
+  };
+  const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas", "account_states"];
 
   beforeEach(() => {
     client = makeClient();
@@ -337,7 +342,7 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: exactly the 9 slim keys, seat_id present, no enrichment fields", async () => {
+  it("slim mode: exactly the 10 slim keys, seat_id present, no enrichment fields", async () => {
     const { runAccountGet } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
@@ -345,6 +350,10 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
     const parsed = JSON.parse(written);
     expect(Object.keys(parsed).sort()).toEqual([...SLIM_GET_KEYS].sort());
     expect(parsed.seat_id).toBe("seat_1");
+    // The value survives, not just the key. Two of the three states are read
+    // on responses that SUCCEEDED, so an operator who does not see them
+    // concludes the CLI is returning bad data.
+    expect(parsed.account_states).toEqual(["commercial_use_limited"]);
     for (const key of ENRICHMENT_KEYS) {
       expect(parsed).not.toHaveProperty(key);
     }
@@ -364,6 +373,18 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
       signatures: [{ title: "Default", content: "Best, Ada" }],
       groups: ["Alumni Network"],
     });
+  });
+
+  it("an account in no platform condition still carries the key, as an empty array", async () => {
+    // A field that appears only when non-empty changes a scripted caller's
+    // parse the first time something goes wrong, which is the worst moment.
+    (client.accounts.get as Mock).mockResolvedValue({ ...GET_FIXTURE, account_states: undefined });
+    const { runAccountGet } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
+    const parsed = JSON.parse((out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
+    expect(parsed).toHaveProperty("account_states");
+    expect(parsed.account_states).toEqual([]);
   });
 
   it("admin seatless account: slim seat_id === null in both modes", async () => {
