@@ -365,9 +365,10 @@ export function renderError(
     // after the next publish. Until then the field is absent and this line simply
     // does not print, so no build ordering is forced and nothing has to be
     // remembered when the pin moves.
-    const budgetRow = (errJson as { budgetRow?: string }).budgetRow;
-    if (budgetRow) {
-      msg += `\nPaused budget row: ${budgetRow} (other rows on this account still work)`;
+    const paused = errJson as { budgetRow?: string; retryAfterSeconds?: number };
+    if (paused.budgetRow) {
+      const wait = paused.retryAfterSeconds ? ` for ${paused.retryAfterSeconds}s` : "";
+      msg += `\nPaused budget row: ${paused.budgetRow}${wait} (other rows on this account still work)`;
     }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
