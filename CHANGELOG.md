@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
-## [Unreleased]
+## [0.26.0] - 2026-09-05
 
 ### Added
 
@@ -49,26 +49,31 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   re-send with a chosen id, which is the exit-2 contract exactly. Found by the
   new SDK-pin gate on its first run.
 
-### Notes
+### Changed
 
-- **Exit 13 is not live until the `@curviate/sdk` pin is bumped.** The pin is
-  still `0.24.3`, an SDK published before `BUDGET_EXHAUSTED` existed, so the
-  wire code decodes to `INTERNAL`, `INTERNAL` is retryable on a GET, and the
-  binary answers exit `1` after four requests with every payload field dropped.
-  The CLI's own logic is correct and unchanged by this; the dependency is.
+- **`@curviate/sdk` pin bumped `0.24.3` -> `0.25.0`, which is what makes exit
+  `13` live.** The previous pin predated `BUDGET_EXHAUSTED`, so the wire code
+  decoded to `INTERNAL`, `INTERNAL` is retryable on a GET, and the binary
+  answered exit `1` after four requests with every payload field dropped. The
+  CLI's own logic was correct throughout; the dependency was the defect. The
+  vendored OpenAPI fixture (`test/fixtures/openapi.json`) was re-copied from
+  the SDK at that version and `VENDORED_FROM.json` re-recorded with it, as the
+  fixture-pin guard requires.
 
-  Two test blocks now hold that promise instead of asserting it, and **both are
-  red on purpose until the pin moves**: `test/lib/exit-codes.test.ts`'s
-  SDK-pin gate reads the INSTALLED package's `ERROR_CODES`, and
-  `test/commands/budget-exhausted-wire.test.ts` drives a real-shaped
-  `BUDGET_EXHAUSTED` `429` through a real client over an injected `fetch` and
-  reads the two facts a scripted caller observes, the exit code and the request
-  count. Both go green on the pin bump with nothing else to change; verified
-  against a locally packed SDK.
+### Removed
 
-  Everything new is still read through a cast, so until the pin moves the
-  fields are simply absent and the new lines do not print. Nothing here forces
-  a build order.
+- **The casts that stood in for the unpublished taxonomy are gone**, on
+  schedule and with nothing left to remember: `["BUDGET_EXHAUSTED" as
+  ErrorCode]` and `["LINKEDIN_SESSION_EVICTED" as ErrorCode]` in
+  `src/lib/exit-codes.ts`, and the `errJson as {...}` widening plus
+  `(errJson.code as string)` in `src/lib/output.ts`. `CurviateErrorJSON` now
+  declares all six safety fields natively.
+- **The hand-copied `ALL_ERROR_CODES` array in `test/lib/exit-codes.test.ts`**,
+  replaced by the SDK's exported `ERROR_CODES`. The copy could not fail for the
+  case it existed to catch: a code the SDK added and nobody copied across was
+  invisible to a loop that iterated the copy. The taxonomy is now derived from
+  the same tuple `ErrorCode` is built from, so the two cannot drift. The
+  SDK-pin block that made this possible remains as the pin-REGRESSION gate.
 
 ## [0.25.0] - 2026-08-29
 

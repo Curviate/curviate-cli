@@ -361,24 +361,11 @@ export function renderError(
     // Two different 429s name an account-safety budget row, and the right
     // action differs, so the human line has to say WHICH.
     //
-    // Read through a cast because this package pins a PUBLISHED @curviate/sdk
-    // (scripts/check-sdk-pin.mjs) and these fields land in the SDK's own types
-    // only when that pin is bumped after the next publish. Until then they are
-    // absent and these lines simply do not print, so no build ordering is
-    // forced and nothing has to be remembered when the pin moves.
-    const safety = errJson as {
-      budgetRow?: string;
-      retryAfterSeconds?: number;
-      resetAt?: string | null;
-      safetyHint?: { parameter?: string; message?: string };
-      safetyReason?: string;
-    };
+    const safety = errJson;
     if (safety.budgetRow) {
       // The wire code is the authority on which of the two conditions this is;
-      // the payload alone cannot say. Widened to string for the same
-      // pinned-SDK reason as the cast above: the code is not in this pin's
-      // `ErrorCode` union yet.
-      if ((errJson.code as string) === "BUDGET_EXHAUSTED") {
+      // the payload alone cannot say.
+      if (errJson.code === "BUDGET_EXHAUSTED") {
         // Curviate's own ceiling. Nothing reached LinkedIn, nothing was spent,
         // and backing off is the wrong move: name the instant it frees and the
         // parameter that lifts it now.

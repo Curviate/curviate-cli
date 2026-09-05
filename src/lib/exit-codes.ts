@@ -145,12 +145,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   ACCOUNT_RESTRICTED: 8,
   RESOURCE_ACCESS_RESTRICTED: 8,
   LINKEDIN_AUTH_FAILED: 8,
-  // Cast because this package pins a PUBLISHED @curviate/sdk
-  // (scripts/check-sdk-pin.mjs), and both codes below reach `ErrorCode` only
-  // when that pin is bumped after the SDK publishes. The cast keeps the
-  // typecheck green today, forces no build ordering, and drops out on the pin
-  // bump with nothing to remember.
-  ["LINKEDIN_SESSION_EVICTED" as ErrorCode]: 8,
+  LINKEDIN_SESSION_EVICTED: 8,
   LINKEDIN_COOKIE_INVALID: 8,
   CONNECTION_IN_PROGRESS: 8,
   ACCOUNT_ALREADY_LINKED: 8,
@@ -178,7 +173,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   SEAT_CANCELLED: 11,
 
   // Account-safety budget (13), see the note above for why this is not 6
-  ["BUDGET_EXHAUSTED" as ErrorCode]: 13,
+  BUDGET_EXHAUSTED: 13,
 
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,
