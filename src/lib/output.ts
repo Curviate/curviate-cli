@@ -387,10 +387,20 @@ export function renderError(
             ? "outside its activity window"
             : "at its ceiling";
         msg += `\nSafety budget: ${safety.budgetRow} is ${why}`;
-        // `resetAt` is null-bearing: null is the invitation backlog, which no
-        // clock frees, and that is a different sentence from "unknown".
+        // `resetAt` is null-bearing, and null has TWO causes, not one: the
+        // invitation backlog and an InMail credit exhaustion. Saying "the
+        // backlog clears" on a spent credit pool sends the operator to look at
+        // invitations, which is the wrong place entirely. Both are "no clock
+        // frees this", which is the sentence they share and the one that is
+        // never wrong.
         if (safety.resetAt === null) {
-          msg += `\nFrees when the backlog clears, not on a schedule`;
+          const frees =
+            safety.budgetRow === "inmail"
+              ? "when LinkedIn regrants credits"
+              : safety.budgetRow === "pending_invites"
+                ? "when the backlog clears"
+                : "on its own";
+          msg += `\nNo reset instant: this frees ${frees}, not on a schedule`;
         } else if (safety.resetAt) {
           msg += `\nResets at: ${safety.resetAt}`;
         }

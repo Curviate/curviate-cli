@@ -438,16 +438,42 @@ describe("lib/output — renderError", () => {
     expect(stderr).toContain("Change: activity_window_start");
   });
 
-  // The gauge: `resetAt: null` is "no clock frees this", which is a different
-  // sentence from an unknown reset, and must not render as the string "null".
-  it("human mode: a null resetAt says the backlog clears, not a bogus instant", () => {
+  // `resetAt: null` is "no clock frees this", a different sentence from an
+  // unknown reset, and it must not render as the string "null".
+  //
+  // NULL HAS TWO CAUSES (core/019 FR-013 as amended): the invitation gauge and
+  // an InMail credit exhaustion. The first pass named only the gauge, so a
+  // spent credit pool told the operator the invitation backlog would clear --
+  // the wrong place entirely. One arm each, and each asserts it does NOT get
+  // the other's sentence.
+  it("human mode: a null resetAt on the gauge names the backlog, not a bogus instant", () => {
     renderError(
       stubError({ ...BREACH, budgetRow: "pending_invites", resetAt: null }),
       { json: false, isTTY: true },
       mockOut as never,
     );
     const stderr = stderrLines.join("");
-    expect(stderr).toContain("Frees when the backlog clears");
+    expect(stderr).toContain("frees when the backlog clears");
+    expect(stderr).not.toContain("regrants credits");
+    expect(stderr).not.toContain("Resets at");
+    expect(stderr).not.toContain("null");
+  });
+
+  it("human mode: a null resetAt on InMail credits names the credits, not the backlog", () => {
+    renderError(
+      stubError({
+        ...BREACH,
+        budgetRow: "inmail",
+        resetAt: null,
+        safetyHint: { parameter: "posture", message: "The credit pool is spent." },
+      }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    const stderr = stderrLines.join("");
+    expect(stderr).toContain("frees when LinkedIn regrants credits");
+    // The bug this arm exists for: it used to say the backlog would clear.
+    expect(stderr).not.toContain("backlog");
     expect(stderr).not.toContain("Resets at");
     expect(stderr).not.toContain("null");
   });

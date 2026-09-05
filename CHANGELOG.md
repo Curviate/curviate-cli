@@ -18,9 +18,10 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   fell to `1`, which reads as an internal failure. `13` is a new bucket for
   a genuinely new condition. Nothing that used to exit `6` changes.
 - **The refusal is rendered as data, not prose.** Human mode names the row,
-  whether the cause was the ceiling or the activity window, when it frees
-  (or that a backlog frees on its own, for the invitation gauge), and the
-  exact parameter to change. `--json` carries `budgetRow`, `resetAt`,
+  whether the cause was the ceiling or the activity window, when it frees (and
+  where no clock frees it, which of the two causes that is: the invitation
+  backlog, or an InMail credit pool LinkedIn regrants on its own schedule), and
+  the exact parameter to change. `--json` carries `budgetRow`, `resetAt`,
   `safetyHint`, `safetyReason` and `blocked` through untouched.
 - **A `429` naming a PAUSED row says so, and says the other rows still work.**
   `PLATFORM_RATE_LIMIT` with a `budgetRow` means LinkedIn refused a recent

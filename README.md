@@ -491,8 +491,10 @@ rather than parsing the message:
 - `safetyReason` is `ceiling` (the row's limit is spent) or `activity_window`
   (the account is outside its working hours). The fixes differ.
 - `resetAt` is an absolute instant, so it stays true however long you hold it.
-  It is `null` on the invitation backlog, which falls when invitations are
-  accepted or withdrawn rather than at any window edge.
+  It is `null` in the two cases where no clock frees the account: the
+  invitation backlog, which falls when invitations are accepted or withdrawn
+  rather than at any window edge, and an InMail credit exhaustion, which
+  LinkedIn regrants on its own schedule. Null-check it before scheduling on it.
 - `safetyHint.parameter` is addressable on the safety policy, so an agent can
   choose between waiting, escalating and reconfiguring without reading prose.
 - On the default posture nothing is refused at all: the action goes through and
