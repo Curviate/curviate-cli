@@ -389,12 +389,11 @@ export function renderError(
         msg += `\nSafety budget: ${safety.budgetRow} is ${why}`;
         // `resetAt` is null-bearing: null is the invitation backlog, which no
         // clock frees, and that is a different sentence from "unknown".
-        msg +=
-          safety.resetAt === null
-            ? `\nFrees when the backlog clears, not on a schedule`
-            : safety.resetAt
-              ? `\nResets at: ${safety.resetAt}`
-              : "";
+        if (safety.resetAt === null) {
+          msg += `\nFrees when the backlog clears, not on a schedule`;
+        } else if (safety.resetAt) {
+          msg += `\nResets at: ${safety.resetAt}`;
+        }
         if (safety.safetyHint?.parameter) {
           msg += `\nChange: ${safety.safetyHint.parameter}`;
         }
@@ -404,10 +403,8 @@ export function renderError(
       } else {
         // A row LinkedIn paused. Every other row on the account still works, so
         // the recovery is to switch work rather than back off across the board.
-        const wait =
-          safety.retryAfterSeconds === undefined
-            ? ""
-            : ` for ${safety.retryAfterSeconds}s`;
+        // Truthiness, not an undefined check: a zero-second pause is not one.
+        const wait = safety.retryAfterSeconds ? ` for ${safety.retryAfterSeconds}s` : "";
         msg += `\nPaused budget row: ${safety.budgetRow}${wait} (other rows on this account still work)`;
       }
     }
