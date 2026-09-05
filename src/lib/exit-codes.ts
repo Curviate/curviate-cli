@@ -111,6 +111,14 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   INVALID_REQUEST: 2,
   UNSUPPORTED_MEDIA_TYPE: 2,
   PAYLOAD_TOO_LARGE: 2,
+  // 2, found by the SDK-pin gate at the bottom of test/lib/exit-codes.test.ts
+  // on its first run. It has been in the SDK's taxonomy and absent from this
+  // table, so it fell to the unmapped 1 and read as an internal failure. It is
+  // a 422 saying a plain-string search filter matched several LinkedIn
+  // taxonomy options: `unresolved[]` names the fields and their candidate ids,
+  // it is user_fixable, and it is never retryable AS SENT. Re-send with a
+  // chosen id, which is the exit-2 contract exactly.
+  FILTER_CANDIDATES_REQUIRED: 2,
 
   // Not found (4)
   RESOURCE_NOT_FOUND: 4,

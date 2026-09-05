@@ -38,12 +38,36 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   It used to fall to the unmapped `1`.
 - README documents exit `13` beside `6` and shows the refusal envelope.
 
+### Fixed
+
+- **`FILTER_CANDIDATES_REQUIRED` now exits `2` instead of `1`.** It has been in
+  the SDK's taxonomy and absent from the exit-code table, so it fell to the
+  unmapped `1` and read as an internal failure. It is a `422` saying a
+  plain-string search filter matched several LinkedIn taxonomy options;
+  `unresolved[]` names the fields and their candidate ids, and the fix is to
+  re-send with a chosen id, which is the exit-2 contract exactly. Found by the
+  new SDK-pin gate on its first run.
+
 ### Notes
 
-- The `@curviate/sdk` pin is still `0.24.3`, so the new error fields and
-  error codes are read through a cast until the pin is bumped after the SDK
-  publishes. Until then the fields are simply absent and the new lines do not
-  print; nothing about this release depends on build ordering.
+- **Exit 13 is not live until the `@curviate/sdk` pin is bumped.** The pin is
+  still `0.24.3`, an SDK published before `BUDGET_EXHAUSTED` existed, so the
+  wire code decodes to `INTERNAL`, `INTERNAL` is retryable on a GET, and the
+  binary answers exit `1` after four requests with every payload field dropped.
+  The CLI's own logic is correct and unchanged by this; the dependency is.
+
+  Two test blocks now hold that promise instead of asserting it, and **both are
+  red on purpose until the pin moves**: `test/lib/exit-codes.test.ts`'s
+  SDK-pin gate reads the INSTALLED package's `ERROR_CODES`, and
+  `test/commands/budget-exhausted-wire.test.ts` drives a real-shaped
+  `BUDGET_EXHAUSTED` `429` through a real client over an injected `fetch` and
+  reads the two facts a scripted caller observes, the exit code and the request
+  count. Both go green on the pin bump with nothing else to change; verified
+  against a locally packed SDK.
+
+  Everything new is still read through a cast, so until the pin moves the
+  fields are simply absent and the new lines do not print. Nothing here forces
+  a build order.
 
 ## [0.25.0] - 2026-08-29
 

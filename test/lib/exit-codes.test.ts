@@ -16,15 +16,17 @@ import { AUTH_NEEDED, EXIT_CODE_MAP, getExitCode } from "../../src/lib/exit-code
 // isCurviateError]` — no `ERROR_CODES`. If a future SDK release adds it to
 // the export map, this list can switch to importing it directly.
 //
-// THAT RELEASE IS COMING and this comment is the standing order: the SDK now
-// exports `ERROR_CODES` on `feat/1202-safety-campaign-surfaces`. The moment
-// the @curviate/sdk pin in package.json is bumped past that publish, DELETE
-// this array and write `import { ERROR_CODES } from "@curviate/sdk"`, then
-// `const ALL_ERROR_CODES = [...ERROR_CODES]`. Until then this list is an
-// instrument that cannot fail for the case it was written for: a code the SDK
-// added and nobody copied here is invisible to the loop below, which iterates
-// this array rather than the taxonomy. The two codes cast below are exactly
-// that case, added by hand because there is no other way today.
+// THAT RELEASE IS COMING, and the standing order is no longer a comment. The
+// SDK exports `ERROR_CODES` on curviate-sdk#29, and the "SDK pin" block at the
+// bottom of this file is a GATE that reads the INSTALLED package: it reds
+// today, and once the pin moves it derives the taxonomy and checks every
+// member against `EXIT_CODE_MAP`, which is what makes this hand-copied array
+// redundant rather than merely deprecated. Delete it then.
+//
+// Until the pin moves this list cannot fail for the case it was written for:
+// a code the SDK added and nobody copied here is invisible to the loop below,
+// which iterates this array rather than the taxonomy. The two codes cast at
+// the end are exactly that case. The gate is what covers them.
 const ALL_ERROR_CODES: ErrorCode[] = [
   "UNAUTHORIZED",
   "INVALID_REQUEST",
@@ -35,6 +37,7 @@ const ALL_ERROR_CODES: ErrorCode[] = [
   "ACCOUNT_ALREADY_LINKED",
   "RESOURCE_NOT_FOUND",
   "RESOURCE_ACCESS_RESTRICTED",
+  "FILTER_CANDIDATES_REQUIRED",
   "TIER_NOT_ACTIVE",
   "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
   "RATE_LIMIT_ACCOUNT",
@@ -146,6 +149,7 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["PAYMENT_FAILED", 11],
     ["SUBSCRIPTION_BUSY", 11],
     ["INTERNAL", 1],
+    ["FILTER_CANDIDATES_REQUIRED", 2],
     ["BUDGET_EXHAUSTED" as ErrorCode, 13],
     ["LINKEDIN_SESSION_EVICTED" as ErrorCode, 8],
   ] as [ErrorCode, number][])(
@@ -197,5 +201,61 @@ describe("lib/exit-codes — getExitCode", () => {
 
   it("returns 1 for an unmapped/unknown code", () => {
     expect(getExitCode("__UNKNOWN__" as ErrorCode)).toBe(1);
+  });
+});
+
+// ── The SDK pin gate ───────────────────────────────────────────────────────
+//
+// `EXIT_CODE_MAP` maps `BUDGET_EXHAUSTED` to 13, README.md documents exit 13
+// with a copy-paste `case $?` branch, and none of that reaches a caller unless
+// the INSTALLED `@curviate/sdk` knows the code. It does not today: the pin is
+// an SDK published before the code existed, so the wire `code` decodes to
+// `INTERNAL`, `INTERNAL` is retryable on a GET, and the binary answers exit 1
+// after four requests. `test/commands/budget-exhausted-wire.test.ts` drives
+// that end to end; this block names the cause.
+//
+// SO THIS BLOCK IS RED ON PURPOSE until `package.json` pins an `@curviate/sdk`
+// that ships the code (curviate-sdk#29). It is the release gate, not a broken
+// test, and it goes green on the pin bump with nothing else to change.
+//
+// Read through a dynamic import and a cast rather than `import { ERROR_CODES }`:
+// a static import of an export the pinned .d.ts does not declare is a `tsc`
+// error, which would take the whole typecheck down instead of failing the one
+// assertion that should fail. The gate has to red HERE, loudly, not in the
+// build.
+async function installedSdk(): Promise<{ ERROR_CODES?: readonly string[] }> {
+  return (await import("@curviate/sdk")) as unknown as { ERROR_CODES?: readonly string[] };
+}
+
+describe("lib/exit-codes — the installed SDK carries the codes this table maps", () => {
+  it("the installed @curviate/sdk exports ERROR_CODES", async () => {
+    const sdk = await installedSdk();
+    expect(
+      sdk.ERROR_CODES,
+      "the pinned @curviate/sdk predates the exported taxonomy; bump the pin",
+    ).toBeDefined();
+    expect(Array.isArray(sdk.ERROR_CODES)).toBe(true);
+  });
+
+  it.each(["BUDGET_EXHAUSTED", "LINKEDIN_SESSION_EVICTED"])(
+    "the installed @curviate/sdk knows %s, so it decodes to itself rather than INTERNAL",
+    async (code) => {
+      const sdk = await installedSdk();
+      expect(
+        sdk.ERROR_CODES ?? [],
+        `${code} is mapped in EXIT_CODE_MAP but the pinned SDK cannot decode it`,
+      ).toContain(code);
+    },
+  );
+
+  it("every code the installed SDK declares is mapped here", async () => {
+    const sdk = await installedSdk();
+    const codes = sdk.ERROR_CODES ?? [];
+    // Control on the derivation: an empty read would make the filter below
+    // vacuous, and this is the assertion that replaces ALL_ERROR_CODES once
+    // the pin moves.
+    expect(codes.length).toBeGreaterThan(0);
+    const unmapped = codes.filter((c) => EXIT_CODE_MAP[c as ErrorCode] === undefined);
+    expect(unmapped, `SDK codes with no exit code: ${unmapped.join(", ")}`).toEqual([]);
   });
 });
