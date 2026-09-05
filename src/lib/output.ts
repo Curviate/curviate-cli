@@ -358,6 +358,59 @@ export function renderError(
     if (errJson.requiredTier) {
       msg += `\nRequired tier: ${errJson.requiredTier}`;
     }
+    // Two different 429s name an account-safety budget row, and the right
+    // action differs, so the human line has to say WHICH.
+    //
+    // Read through a cast because this package pins a PUBLISHED @curviate/sdk
+    // (scripts/check-sdk-pin.mjs) and these fields land in the SDK's own types
+    // only when that pin is bumped after the next publish. Until then they are
+    // absent and these lines simply do not print, so no build ordering is
+    // forced and nothing has to be remembered when the pin moves.
+    const safety = errJson as {
+      budgetRow?: string;
+      retryAfterSeconds?: number;
+      resetAt?: string | null;
+      safetyHint?: { parameter?: string; message?: string };
+      safetyReason?: string;
+    };
+    if (safety.budgetRow) {
+      // The wire code is the authority on which of the two conditions this is;
+      // the payload alone cannot say. Widened to string for the same
+      // pinned-SDK reason as the cast above: the code is not in this pin's
+      // `ErrorCode` union yet.
+      if ((errJson.code as string) === "BUDGET_EXHAUSTED") {
+        // Curviate's own ceiling. Nothing reached LinkedIn, nothing was spent,
+        // and backing off is the wrong move: name the instant it frees and the
+        // parameter that lifts it now.
+        const why =
+          safety.safetyReason === "activity_window"
+            ? "outside its activity window"
+            : "at its ceiling";
+        msg += `\nSafety budget: ${safety.budgetRow} is ${why}`;
+        // `resetAt` is null-bearing: null is the invitation backlog, which no
+        // clock frees, and that is a different sentence from "unknown".
+        msg +=
+          safety.resetAt === null
+            ? `\nFrees when the backlog clears, not on a schedule`
+            : safety.resetAt
+              ? `\nResets at: ${safety.resetAt}`
+              : "";
+        if (safety.safetyHint?.parameter) {
+          msg += `\nChange: ${safety.safetyHint.parameter}`;
+        }
+        if (safety.safetyHint?.message) {
+          msg += `\n${safety.safetyHint.message}`;
+        }
+      } else {
+        // A row LinkedIn paused. Every other row on the account still works, so
+        // the recovery is to switch work rather than back off across the board.
+        const wait =
+          safety.retryAfterSeconds === undefined
+            ? ""
+            : ` for ${safety.retryAfterSeconds}s`;
+        msg += `\nPaused budget row: ${safety.budgetRow}${wait} (other rows on this account still work)`;
+      }
+    }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
     }

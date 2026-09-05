@@ -8,6 +8,43 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Added
+
+- **Exit code `13`, account-safety budget.** `BUDGET_EXHAUSTED` is a `429`,
+  but it is not a rate limit: it is Curviate's OWN ceiling, on a number you
+  configured, and nothing reached LinkedIn. Exit `6` tells a scripted caller
+  to back off and retry, which is the wrong action here (the reset can be a
+  month out, and raising the limit lifts it now), and leaving it unmapped
+  fell to `1`, which reads as an internal failure. `13` is a new bucket for
+  a genuinely new condition. Nothing that used to exit `6` changes.
+- **The refusal is rendered as data, not prose.** Human mode names the row,
+  whether the cause was the ceiling or the activity window, when it frees
+  (or that a backlog frees on its own, for the invitation gauge), and the
+  exact parameter to change. `--json` carries `budgetRow`, `resetAt`,
+  `safetyHint`, `safetyReason` and `blocked` through untouched.
+- **A `429` naming a PAUSED row says so, and says the other rows still work.**
+  `PLATFORM_RATE_LIMIT` with a `budgetRow` means LinkedIn refused a recent
+  call on that one row. The pause is scoped to `(account, row)`, so the
+  recovery is to switch work rather than back off across the account.
+- **`account_states` is a slim field on `account get`.** Platform conditions
+  the account is in right now, concurrent with and independent of `status`.
+  Two of the three are read on calls that SUCCEEDED (thin search results,
+  empty profile views), so projecting them away would hide them exactly when
+  they explain what you are looking at.
+- **Exit code `8` for `LINKEDIN_SESSION_EVICTED`.** LinkedIn allows one
+  session at a time for some accounts; a person signing in elsewhere breaks
+  the connected one. It is the account's connection state, not your
+  credentials, and reconnecting does nothing while the other session is open.
+  It used to fall to the unmapped `1`.
+- README documents exit `13` beside `6` and shows the refusal envelope.
+
+### Notes
+
+- The `@curviate/sdk` pin is still `0.24.3`, so the new error fields and
+  error codes are read through a cast until the pin is bumped after the SDK
+  publishes. Until then the fields are simply absent and the new lines do not
+  print; nothing about this release depends on build ordering.
+
 ## [0.25.0] - 2026-08-29
 
 ### Added

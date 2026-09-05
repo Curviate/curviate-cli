@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ErrorCode } from "@curviate/sdk";
-import { EXIT_CODE_MAP, getExitCode } from "../../src/lib/exit-codes.js";
+import { AUTH_NEEDED, EXIT_CODE_MAP, getExitCode } from "../../src/lib/exit-codes.js";
 
 // The complete set of ErrorCode values — copied from the SDK's type definition.
 // This list must exactly match the SDK's ErrorCode union. If the SDK adds a
@@ -15,6 +15,16 @@ import { EXIT_CODE_MAP, getExitCode } from "../../src/lib/exit-codes.js";
 // `[Curviate, CurviateError, WebhookSignatureError, constructEvent,
 // isCurviateError]` — no `ERROR_CODES`. If a future SDK release adds it to
 // the export map, this list can switch to importing it directly.
+//
+// THAT RELEASE IS COMING and this comment is the standing order: the SDK now
+// exports `ERROR_CODES` on `feat/1202-safety-campaign-surfaces`. The moment
+// the @curviate/sdk pin in package.json is bumped past that publish, DELETE
+// this array and write `import { ERROR_CODES } from "@curviate/sdk"`, then
+// `const ALL_ERROR_CODES = [...ERROR_CODES]`. Until then this list is an
+// instrument that cannot fail for the case it was written for: a code the SDK
+// added and nobody copied here is invisible to the loop below, which iterates
+// this array rather than the taxonomy. The two codes cast below are exactly
+// that case, added by hand because there is no other way today.
 const ALL_ERROR_CODES: ErrorCode[] = [
   "UNAUTHORIZED",
   "INVALID_REQUEST",
@@ -57,7 +67,24 @@ const ALL_ERROR_CODES: ErrorCode[] = [
   "SEAT_NOT_FOUND",
   "SEAT_CANCELLED",
   "INTERNAL",
+  // Not in the pinned SDK's `ErrorCode` union yet; they reach it on the pin
+  // bump after the SDK publishes. Cast for the same reason `EXIT_CODE_MAP`
+  // casts them.
+  "BUDGET_EXHAUSTED" as ErrorCode,
+  "LINKEDIN_SESSION_EVICTED" as ErrorCode,
 ];
+
+/**
+ * Every exit code `EXIT_CODE_MAP` is allowed to produce.
+ *
+ * An explicit set rather than a numeric range, because the range this replaced
+ * (1-11) had to be widened every time a bucket was added, and a widened bound
+ * silently permits everything below it: after adding 13 as a range, a typo
+ * mapping something to 12 would have passed. 12 is `AUTH_NEEDED`, which is a
+ * SUCCESS path (a pending checkpoint) and is deliberately not in the map, so
+ * an entry claiming it would be a real bug that a range check could not see.
+ */
+const VALID_EXIT_CODES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]);
 
 describe("lib/exit-codes — exhaustiveness", () => {
   it("every ErrorCode maps to a number in EXIT_CODE_MAP", () => {
@@ -75,13 +102,22 @@ describe("lib/exit-codes — exhaustiveness", () => {
     expect(EXIT_CODE_MAP[fakeCode]).toBeUndefined();
   });
 
-  it("all mapped values are valid exit codes (integers 1–11)", () => {
+  it("every mapped value is a code the contract defines", () => {
     for (const code of ALL_ERROR_CODES) {
       const exitCode = EXIT_CODE_MAP[code];
-      expect(exitCode).toBeGreaterThanOrEqual(1);
-      expect(exitCode).toBeLessThanOrEqual(11);
-      expect(Number.isInteger(exitCode)).toBe(true);
+      expect(
+        VALID_EXIT_CODES.has(exitCode as number),
+        `ErrorCode "${code}" maps to ${exitCode}, which is not a defined exit code`,
+      ).toBe(true);
     }
+  });
+
+  it("never maps anything to 12, which is the AUTH_NEEDED success path", () => {
+    expect(Object.values(EXIT_CODE_MAP)).not.toContain(AUTH_NEEDED);
+    // Control: the constant is what the assertion above thinks it is, so this
+    // cannot pass by AUTH_NEEDED quietly becoming a value nothing maps to
+    // anyway.
+    expect(AUTH_NEEDED).toBe(12);
   });
 });
 
@@ -110,12 +146,47 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["PAYMENT_FAILED", 11],
     ["SUBSCRIPTION_BUSY", 11],
     ["INTERNAL", 1],
+    ["BUDGET_EXHAUSTED" as ErrorCode, 13],
+    ["LINKEDIN_SESSION_EVICTED" as ErrorCode, 8],
   ] as [ErrorCode, number][])(
     "ErrorCode %s → exit %i",
     (code, expectedExit) => {
       expect(EXIT_CODE_MAP[code]).toBe(expectedExit);
     },
   );
+});
+
+// The whole reason 13 exists. Exit 6 tells an agent "back off and retry
+// later", and that is the wrong action for a ceiling the caller configured:
+// the reset can be a month out, and raising the limit lifts it now. If
+// BUDGET_EXHAUSTED ever collapses into 6, every agent branching on the exit
+// code silently starts sleeping against a wall.
+describe("lib/exit-codes — BUDGET_EXHAUSTED is not a rate limit", () => {
+  const BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED" as ErrorCode;
+
+  it("does not share the rate-limited bucket", () => {
+    expect(getExitCode(BUDGET_EXHAUSTED)).not.toBe(6);
+  });
+
+  it("is distinct from every code that IS rate-limited", () => {
+    const rateLimited: ErrorCode[] = [
+      "RATE_LIMIT_ACCOUNT",
+      "RATE_LIMIT_TENANT",
+      "PLATFORM_RATE_LIMIT",
+      "LINKEDIN_RATE_LIMITED",
+      "RATE_LIMITED",
+    ];
+    // Control arm: those five really are all 6, so "distinct from them" is a
+    // statement about BUDGET_EXHAUSTED rather than about a bucket that drifted.
+    for (const code of rateLimited) expect(getExitCode(code)).toBe(6);
+    expect(rateLimited.map(getExitCode)).not.toContain(getExitCode(BUDGET_EXHAUSTED));
+  });
+
+  it("is not the unmapped default either", () => {
+    // Before the mapping it fell to 1, which reads as an internal failure.
+    expect(getExitCode(BUDGET_EXHAUSTED)).not.toBe(getExitCode("__UNKNOWN__" as ErrorCode));
+    expect(getExitCode(BUDGET_EXHAUSTED)).toBe(13);
+  });
 });
 
 describe("lib/exit-codes — getExitCode", () => {

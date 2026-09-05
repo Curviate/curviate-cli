@@ -459,6 +459,50 @@ curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --acc
 | 10 | Messaging window expired or recipient unreachable |
 | 11 | Billing issue (payment required, failed, or seat cancelled) |
 | 12 | Auth action needed (a pending checkpoint; not an error) |
+| 13 | Account-safety budget: Curviate's own ceiling refused the action |
+
+### 6 and 13 are both `429`, and they need different actions
+
+Exit `6` means LinkedIn or Curviate's request limiter refused you: back off and
+retry later.
+
+Exit `13` means an account-safety ceiling YOU configured is spent, or the
+account is outside the hours it works in. Nothing reached LinkedIn and nothing
+was spent, so backing off is the wrong move: the reset can be a month out, and
+you can lift it now. The error body names what to do, so branch on the fields
+rather than parsing the message:
+
+```json
+{
+  "error": {
+    "code": "BUDGET_EXHAUSTED",
+    "budgetRow": "profile_views",
+    "resetAt": "2026-09-06T00:00:00.000Z",
+    "safetyReason": "ceiling",
+    "safetyHint": {
+      "parameter": "profile_views.ceiling",
+      "message": "effective ceiling 15 = 100 x warm-up 0.15 (week 0, account_age)."
+    },
+    "blocked": true
+  }
+}
+```
+
+- `safetyReason` is `ceiling` (the row's limit is spent) or `activity_window`
+  (the account is outside its working hours). The fixes differ.
+- `resetAt` is an absolute instant, so it stays true however long you hold it.
+  It is `null` on the invitation backlog, which falls when invitations are
+  accepted or withdrawn rather than at any window edge.
+- `safetyHint.parameter` is addressable on the safety policy, so an agent can
+  choose between waiting, escalating and reconfiguring without reading prose.
+- On the default posture nothing is refused at all: the action goes through and
+  the same payload rides the SUCCESS body under `safety_warning` with
+  `blocked: false`.
+
+A `429` that carries `budgetRow` under `PLATFORM_RATE_LIMIT` is a third thing:
+that row is PAUSED because LinkedIn refused a recent call on it. The pause is
+scoped to that one row, so every other row on the account still works and the
+recovery is to switch work, not to wait out the account.
 
 ## License
 

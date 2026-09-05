@@ -382,6 +382,141 @@ describe("lib/output — renderError", () => {
     expect(stderr).toContain("RATE_LIMIT_ACCOUNT");
   });
 
+  // ── Account-safety refusals ──────────────────────────────────────────────
+  //
+  // The SDK pin is still on a version whose `CurviateError` has none of these
+  // fields, so the error is stubbed at the one seam `renderError` actually
+  // uses: it calls `err.toJSON()` and prints from the result. The stubbed JSON
+  // is the exact shape the SDK emits, pinned on the other side by
+  // curviate-sdk's own `carries the payload on toJSON()` test. On the pin bump
+  // these become real `new CurviateError(...)` calls and the cast goes.
+  function stubError(json: Record<string, unknown>): CurviateError {
+    return { toJSON: () => json } as unknown as CurviateError;
+  }
+
+  const BREACH = {
+    code: "BUDGET_EXHAUSTED",
+    message: "The profile_views budget for this account is spent.",
+    retryHint: null,
+    userFixable: true,
+    retryLikelyToSucceed: false,
+    budgetRow: "profile_views",
+    resetAt: "2026-09-06T00:00:00.000Z",
+    safetyHint: {
+      parameter: "profile_views.ceiling",
+      message: "Raising the ceiling raises the effective ceiling by the same factor.",
+    },
+    safetyReason: "ceiling",
+    blocked: true,
+  };
+
+  it("human mode: a budget breach names the row, the reset and the parameter", () => {
+    renderError(stubError({ ...BREACH }), { json: false, isTTY: true }, mockOut as never);
+    const stderr = stderrLines.join("");
+    expect(stderr).toContain("Safety budget: profile_views is at its ceiling");
+    expect(stderr).toContain("Resets at: 2026-09-06T00:00:00.000Z");
+    expect(stderr).toContain("Change: profile_views.ceiling");
+    expect(stderr).toContain("Raising the ceiling raises the effective ceiling");
+    // NOT the paused-row sentence: same wire field, different condition, and
+    // "other rows still work" is false advice for a ceiling you configured.
+    expect(stderr).not.toContain("Paused budget row");
+  });
+
+  it("human mode: an activity-window refusal says so rather than 'at its ceiling'", () => {
+    renderError(
+      stubError({
+        ...BREACH,
+        safetyReason: "activity_window",
+        safetyHint: { parameter: "activity_window_start", message: "The account works 07:00-22:00." },
+      }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    const stderr = stderrLines.join("");
+    expect(stderr).toContain("outside its activity window");
+    expect(stderr).not.toContain("at its ceiling");
+    expect(stderr).toContain("Change: activity_window_start");
+  });
+
+  // The gauge: `resetAt: null` is "no clock frees this", which is a different
+  // sentence from an unknown reset, and must not render as the string "null".
+  it("human mode: a null resetAt says the backlog clears, not a bogus instant", () => {
+    renderError(
+      stubError({ ...BREACH, budgetRow: "pending_invites", resetAt: null }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    const stderr = stderrLines.join("");
+    expect(stderr).toContain("Frees when the backlog clears");
+    expect(stderr).not.toContain("Resets at");
+    expect(stderr).not.toContain("null");
+  });
+
+  it("human mode: a PAUSED row gets the switch-work sentence, not the budget one", () => {
+    renderError(
+      stubError({
+        code: "PLATFORM_RATE_LIMIT",
+        message: "paused",
+        retryHint: null,
+        userFixable: false,
+        retryLikelyToSucceed: false,
+        budgetRow: "connection_requests_no_note",
+        retryAfterSeconds: 3600,
+      }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    const stderr = stderrLines.join("");
+    expect(stderr).toContain("Paused budget row: connection_requests_no_note for 3600s");
+    expect(stderr).toContain("other rows on this account still work");
+    expect(stderr).not.toContain("Safety budget");
+  });
+
+  // CONTROL. Without this, every "not.toContain" above could pass because the
+  // safety block never runs at all.
+  it("human mode: an error with no budget row prints neither safety sentence", () => {
+    renderError(
+      stubError({
+        code: "RATE_LIMIT_ACCOUNT",
+        message: "slow down",
+        retryHint: null,
+        userFixable: false,
+        retryLikelyToSucceed: true,
+        retryAfterMs: 2000,
+      }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    const stderr = stderrLines.join("");
+    expect(stderr).not.toContain("Safety budget");
+    expect(stderr).not.toContain("Paused budget row");
+    // Positive control on the same path: the renderer did run and did print.
+    expect(stderr).toContain("Retry after: 2000ms");
+  });
+
+  it("JSON mode: the whole safety payload rides the envelope untouched", () => {
+    renderError(stubError({ ...BREACH }), { json: true, isTTY: false }, mockOut as never);
+    const parsed = JSON.parse(stdoutLines.join("")) as { error: Record<string, unknown> };
+    expect(parsed.error).toMatchObject({
+      code: "BUDGET_EXHAUSTED",
+      budgetRow: "profile_views",
+      resetAt: "2026-09-06T00:00:00.000Z",
+      safetyReason: "ceiling",
+      blocked: true,
+    });
+    expect(parsed.error["safetyHint"]).toEqual(BREACH.safetyHint);
+  });
+
+  it("JSON mode: a null resetAt survives as null, not as an absent key", () => {
+    renderError(
+      stubError({ ...BREACH, budgetRow: "pending_invites", resetAt: null }),
+      { json: true, isTTY: false },
+      mockOut as never,
+    );
+    const parsed = JSON.parse(stdoutLines.join("")) as { error: Record<string, unknown> };
+    expect(parsed.error).toHaveProperty("resetAt", null);
+  });
+
   it("JSON mode: rate limit error carries retryAfterMs in envelope", () => {
     const err = new CurviateError({
       code: "RATE_LIMIT_ACCOUNT",
