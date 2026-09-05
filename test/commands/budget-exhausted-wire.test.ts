@@ -53,7 +53,10 @@ const RATE_LIMIT_BODY = {
   retry_likely_to_succeed: true,
 };
 
-describe("BUDGET_EXHAUSTED over the wire: exit code and retry count", () => {
+// 20s: a retrying arm serves real backoff, and a gate arm that TIMES OUT
+// instead of asserting reports "test timed out" rather than "expected 1 to be
+// 13", which is the one thing this file exists to say.
+describe("BUDGET_EXHAUSTED over the wire: exit code and retry count", { timeout: 20_000 }, () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let stdout: string[];
   let stderr: string[];
@@ -93,8 +96,15 @@ describe("BUDGET_EXHAUSTED over the wire: exit code and retry count", () => {
     const client = new Curviate({
       apiKey: "cvt_live_test",
       baseUrl: BASE,
-      // No sleeping: a retryable arm would otherwise wait out real backoff.
+      // Per-REQUEST abort, not a sleep budget: the SDK exposes no sleep seam
+      // through its public config, so a retrying arm serves real backoff. Hence
+      // `maxRetries` below and the explicit test timeout on the describe.
       timeout: 5_000,
+      // 1, not the default 3. A retrying arm sleeps 500 + 1000 + 2000 ms of
+      // real backoff, which sat ~1.2s under vitest's 5s default and would have
+      // turned a red gate arm into a timeout that says nothing about WHY. One
+      // retry still proves "retried"; the assertion is `> 1`, never `=== 4`.
+      maxRetries: 1,
       fetch: (async () => {
         fetches += 1;
         return new Response(JSON.stringify(body), {
@@ -104,7 +114,10 @@ describe("BUDGET_EXHAUSTED over the wire: exit code and retry count", () => {
       }) as typeof fetch,
     });
 
-    let exit = 0;
+    // -1, not 0. Initialising to the success value makes "exits 0" unfalsifiable:
+    // nothing writes it on the success path, so the assertion would pass even
+    // if the runner never ran. 0 is set explicitly when the call returns.
+    let exit = -1;
     try {
       await runAccountGet(
         client,
@@ -113,6 +126,7 @@ describe("BUDGET_EXHAUSTED over the wire: exit code and retry count", () => {
         { "account-id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC", json: true } as never,
         out as never,
       );
+      exit = 0;
     } catch (e) {
       const m = /process\.exit\((\d+)\)/.exec((e as Error).message);
       exit = m ? Number(m[1]) : -1;
