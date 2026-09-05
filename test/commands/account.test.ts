@@ -327,8 +327,13 @@ describe("account list — slim/verbose split", () => {
 describe("account get — slim/verbose split (first-ever on this command)", () => {
   let client: Client;
 
-  const GET_FIXTURE = { ...ENRICHED_ITEM, last_checked_at: "2026-06-08T09:00:00Z", quotas: [] };
-  const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas"];
+  const GET_FIXTURE = {
+    ...ENRICHED_ITEM,
+    last_checked_at: "2026-06-08T09:00:00Z",
+    quotas: [],
+    account_states: [],
+  };
+  const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas", "account_states"];
 
   beforeEach(() => {
     client = makeClient();
@@ -337,7 +342,7 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: exactly the 9 slim keys, seat_id present, no enrichment fields", async () => {
+  it("slim mode: exactly the 10 slim keys, seat_id present, no enrichment fields", async () => {
     const { runAccountGet } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);

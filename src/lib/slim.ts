@@ -635,9 +635,26 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  * on this command (previously slim and verbose were byte-identical).
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
- * seat_id, connected_at, last_checked_at, quotas. `seat_id` is a slim field
- * here (unlike the six enrichment fields), core identity/troubleshooting
- * data, not part of the enrichment cache.
+ * seat_id, connected_at, last_checked_at, quotas, account_states. `seat_id`
+ * is a slim field here (unlike the six enrichment fields), core
+ * identity/troubleshooting data, not part of the enrichment cache.
+ *
+ * `quotas` is passed through whole and this projector never names a field
+ * inside it, deliberately: it is the account-safety view and the API owns its
+ * shape. Each row now reports where the account stands (`used`), what it is
+ * held to (`effective_ceiling`, which is `ceiling` with the warm-up ramp
+ * already applied and the one to compare against), which band that puts it
+ * in, and what happens at the ceiling (`posture`, default `warn`, which
+ * reports rather than refuses).
+ *
+ * `account_states` is slim for the same reason `status` is: it is the answer
+ * to "why is this account behaving oddly". It carries platform conditions the
+ * account is in right now that `status` cannot express, because `status` holds
+ * one value and these are concurrent, so a connected, `active` account can be
+ * in all of them. Two of the three are read on responses that SUCCEEDED
+ * (search returning a handful of results, profile views coming back empty), so
+ * an operator who does not see them concludes the CLI is returning bad data.
+ * Projecting it away would hide the field precisely when it matters.
  */
 export function slimAccountGet(data: unknown): Record<string, unknown> {
   const d = (data !== null && data !== undefined && typeof data === "object"
@@ -654,6 +671,7 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     connected_at: d["connected_at"] ?? null,
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
+    account_states: d["account_states"] ?? [],
   };
 }
 

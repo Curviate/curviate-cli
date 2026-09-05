@@ -6,7 +6,74 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
-## [Unreleased]
+## [0.26.0] - 2026-09-05
+
+### Added
+
+- **Exit code `13`, account-safety budget.** `BUDGET_EXHAUSTED` is a `429`,
+  but it is not a rate limit: it is Curviate's OWN ceiling, on a number you
+  configured, and nothing reached LinkedIn. Exit `6` tells a scripted caller
+  to back off and retry, which is the wrong action here (the reset can be a
+  month out, and raising the limit lifts it now), and leaving it unmapped
+  fell to `1`, which reads as an internal failure. `13` is a new bucket for
+  a genuinely new condition. Nothing that used to exit `6` changes.
+- **The refusal is rendered as data, not prose.** Human mode names the row,
+  whether the cause was the ceiling or the activity window, when it frees (and
+  where no clock frees it, which of the two causes that is: the invitation
+  backlog, or an InMail credit pool LinkedIn regrants on its own schedule), and
+  the exact parameter to change. `--json` carries `budgetRow`, `resetAt`,
+  `safetyHint`, `safetyReason` and `blocked` through untouched.
+- **A `429` naming a PAUSED row says so, and says the other rows still work.**
+  `PLATFORM_RATE_LIMIT` with a `budgetRow` means LinkedIn refused a recent
+  call on that one row. The pause is scoped to `(account, row)`, so the
+  recovery is to switch work rather than back off across the account.
+- **`account_states` is a slim field on `account get`.** Platform conditions
+  the account is in right now, concurrent with and independent of `status`.
+  Two of the three are read on calls that SUCCEEDED (thin search results,
+  empty profile views), so projecting them away would hide them exactly when
+  they explain what you are looking at.
+- **Exit code `8` for `LINKEDIN_SESSION_EVICTED`.** LinkedIn allows one
+  session at a time for some accounts; a person signing in elsewhere breaks
+  the connected one. It is the account's connection state, not your
+  credentials, and reconnecting does nothing while the other session is open.
+  It used to fall to the unmapped `1`.
+- README documents exit `13` beside `6` and shows the refusal envelope.
+
+### Fixed
+
+- **`FILTER_CANDIDATES_REQUIRED` now exits `2` instead of `1`.** It has been in
+  the SDK's taxonomy and absent from the exit-code table, so it fell to the
+  unmapped `1` and read as an internal failure. It is a `422` saying a
+  plain-string search filter matched several LinkedIn taxonomy options;
+  `unresolved[]` names the fields and their candidate ids, and the fix is to
+  re-send with a chosen id, which is the exit-2 contract exactly. Found by the
+  new SDK-pin gate on its first run.
+
+### Changed
+
+- **`@curviate/sdk` pin bumped `0.24.3` -> `0.25.0`, which is what makes exit
+  `13` live.** The previous pin predated `BUDGET_EXHAUSTED`, so the wire code
+  decoded to `INTERNAL`, `INTERNAL` is retryable on a GET, and the binary
+  answered exit `1` after four requests with every payload field dropped. The
+  CLI's own logic was correct throughout; the dependency was the defect. The
+  vendored OpenAPI fixture (`test/fixtures/openapi.json`) was re-copied from
+  the SDK at that version and `VENDORED_FROM.json` re-recorded with it, as the
+  fixture-pin guard requires.
+
+### Removed
+
+- **The casts that stood in for the unpublished taxonomy are gone**, on
+  schedule and with nothing left to remember: `["BUDGET_EXHAUSTED" as
+  ErrorCode]` and `["LINKEDIN_SESSION_EVICTED" as ErrorCode]` in
+  `src/lib/exit-codes.ts`, and the `errJson as {...}` widening plus
+  `(errJson.code as string)` in `src/lib/output.ts`. `CurviateErrorJSON` now
+  declares all six safety fields natively.
+- **The hand-copied `ALL_ERROR_CODES` array in `test/lib/exit-codes.test.ts`**,
+  replaced by the SDK's exported `ERROR_CODES`. The copy could not fail for the
+  case it existed to catch: a code the SDK added and nobody copied across was
+  invisible to a loop that iterated the copy. The taxonomy is now derived from
+  the same tuple `ErrorCode` is built from, so the two cannot drift. The
+  SDK-pin block that made this possible remains as the pin-REGRESSION gate.
 
 ## [0.25.0] - 2026-08-29
 

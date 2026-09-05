@@ -20,6 +20,7 @@
  *  10: messaging window / recipient
  *  11: billing
  *  12: auth action needed (a pending checkpoint; not an error)
+ *  13: account-safety budget (Curviate's own ceiling refused the action)
  */
 
 import type { ErrorCode } from "@curviate/sdk";
@@ -73,6 +74,25 @@ import type { ErrorCode } from "@curviate/sdk";
  * profile), the same "this account/seat is in a state that blocks the
  * request" shape as `ACCOUNT_RESTRICTED`; user_fixable, not retryable.
  *
+ * Note: `BUDGET_EXHAUSTED` -> 13, A NEW BUCKET, deliberately not 6.
+ * Exit 6 means "back off and retry later", and that is the wrong action here:
+ * this is Curviate's OWN account-safety ceiling, on a number the caller set.
+ * Nothing reached LinkedIn and nothing was spent, the reset can be a month
+ * out, and a caller may lift it immediately by raising the limit the error's
+ * hint names, or by waiting for its reset instant. An agent branching on 6
+ * would sleep and re-fire against a wall that does not move on that timescale.
+ * It is not 8 either: nothing is wrong with the account or its connection.
+ * The error body carries `budgetRow`, `resetAt`, `safetyHint`, `safetyReason`
+ * and `blocked` for the caller that wants the specifics.
+ *
+ * Note: `LINKEDIN_SESSION_EVICTED` -> 8, not 3 (auth) and not 1 (the unmapped
+ * default). LinkedIn allows only one session at a time for some accounts, and
+ * a person signing in elsewhere breaks the connected one. It is the account's
+ * connection state, not the CLI's own credentials, and the remedy is closing
+ * the other session, so it belongs with `LINKEDIN_AUTH_FAILED` and
+ * `LINKEDIN_COOKIE_INVALID`. Left unmapped it fell to 1, which reads as an
+ * internal failure and tells a scripted caller nothing.
+ *
  * Note: `REAUTH_REQUIRED` -> 8 (account / connection state). A scope-changing
  * reconnect attempted with a cookie instead of credentials, grouped with
  * `CONNECTION_IN_PROGRESS` / `ACCOUNT_ALREADY_LINKED` (the connect/reconnect
@@ -91,6 +111,14 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   INVALID_REQUEST: 2,
   UNSUPPORTED_MEDIA_TYPE: 2,
   PAYLOAD_TOO_LARGE: 2,
+  // 2, found by the SDK-pin gate at the bottom of test/lib/exit-codes.test.ts
+  // on its first run. It has been in the SDK's taxonomy and absent from this
+  // table, so it fell to the unmapped 1 and read as an internal failure. It is
+  // a 422 saying a plain-string search filter matched several LinkedIn
+  // taxonomy options: `unresolved[]` names the fields and their candidate ids,
+  // it is user_fixable, and it is never retryable AS SENT. Re-send with a
+  // chosen id, which is the exit-2 contract exactly.
+  FILTER_CANDIDATES_REQUIRED: 2,
 
   // Not found (4)
   RESOURCE_NOT_FOUND: 4,
@@ -117,6 +145,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   ACCOUNT_RESTRICTED: 8,
   RESOURCE_ACCESS_RESTRICTED: 8,
   LINKEDIN_AUTH_FAILED: 8,
+  LINKEDIN_SESSION_EVICTED: 8,
   LINKEDIN_COOKIE_INVALID: 8,
   CONNECTION_IN_PROGRESS: 8,
   ACCOUNT_ALREADY_LINKED: 8,
@@ -142,6 +171,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   PAYMENT_FAILED: 11,
   SUBSCRIPTION_BUSY: 11,
   SEAT_CANCELLED: 11,
+
+  // Account-safety budget (13), see the note above for why this is not 6
+  BUDGET_EXHAUSTED: 13,
 
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,

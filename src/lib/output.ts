@@ -358,6 +358,53 @@ export function renderError(
     if (errJson.requiredTier) {
       msg += `\nRequired tier: ${errJson.requiredTier}`;
     }
+    // Two different 429s name an account-safety budget row, and the right
+    // action differs, so the human line has to say WHICH.
+    //
+    const safety = errJson;
+    if (safety.budgetRow) {
+      // The wire code is the authority on which of the two conditions this is;
+      // the payload alone cannot say.
+      if (errJson.code === "BUDGET_EXHAUSTED") {
+        // Curviate's own ceiling. Nothing reached LinkedIn, nothing was spent,
+        // and backing off is the wrong move: name the instant it frees and the
+        // parameter that lifts it now.
+        const why =
+          safety.safetyReason === "activity_window"
+            ? "outside its activity window"
+            : "at its ceiling";
+        msg += `\nSafety budget: ${safety.budgetRow} is ${why}`;
+        // `resetAt` is null-bearing, and null has TWO causes, not one: the
+        // invitation backlog and an InMail credit exhaustion. Saying "the
+        // backlog clears" on a spent credit pool sends the operator to look at
+        // invitations, which is the wrong place entirely. Both are "no clock
+        // frees this", which is the sentence they share and the one that is
+        // never wrong.
+        if (safety.resetAt === null) {
+          const frees =
+            safety.budgetRow === "inmail"
+              ? "when LinkedIn regrants credits"
+              : safety.budgetRow === "pending_invites"
+                ? "when the backlog clears"
+                : "on its own";
+          msg += `\nNo reset instant: this frees ${frees}, not on a schedule`;
+        } else if (safety.resetAt) {
+          msg += `\nResets at: ${safety.resetAt}`;
+        }
+        if (safety.safetyHint?.parameter) {
+          msg += `\nChange: ${safety.safetyHint.parameter}`;
+        }
+        if (safety.safetyHint?.message) {
+          msg += `\n${safety.safetyHint.message}`;
+        }
+      } else {
+        // A row LinkedIn paused. Every other row on the account still works, so
+        // the recovery is to switch work rather than back off across the board.
+        // Truthiness, not an undefined check: a zero-second pause is not one.
+        const wait = safety.retryAfterSeconds ? ` for ${safety.retryAfterSeconds}s` : "";
+        msg += `\nPaused budget row: ${safety.budgetRow}${wait} (other rows on this account still work)`;
+      }
+    }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
     }
