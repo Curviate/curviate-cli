@@ -441,7 +441,7 @@ describe("lib/output — renderError", () => {
   // `resetAt: null` is "no clock frees this", a different sentence from an
   // unknown reset, and it must not render as the string "null".
   //
-  // NULL HAS TWO CAUSES (core/019 FR-013 as amended): the invitation gauge and
+  // NULL HAS TWO CAUSES, per the amended safety contract: the invitation gauge and
   // an InMail credit exhaustion. The first pass named only the gauge, so a
   // spent credit pool told the operator the invitation backlog would clear --
   // the wrong place entirely. One arm each, and each asserts it does NOT get
