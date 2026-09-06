@@ -50,7 +50,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   with a slug resolves the slug to a provider id with a first read before the
   enriched one. That pre-call now carries `mode`/`max_age`; previously it went
   out with neither, so `--mode cache_only` reached LinkedIn once before the
-  read it was meant to prevent — the mode's only guarantee, broken under a
+  read it was meant to prevent: the mode's only guarantee, broken under a
   `200` with nothing to notice.
 
 ### Known gaps
