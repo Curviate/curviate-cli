@@ -140,10 +140,87 @@ function withPreservedNotices(original: unknown, rendered: unknown): unknown {
   const isPlain = (v: unknown): v is Record<string, unknown> =>
     typeof v === "object" && v !== null && !Array.isArray(v);
   if (!isPlain(original) || !isPlain(rendered)) return rendered;
+  let out = rendered;
   const notices = original["notices"];
-  if (!Array.isArray(notices) || notices.length === 0) return rendered;
-  if (rendered["notices"] === notices) return rendered;
-  return { ...rendered, notices };
+  if (Array.isArray(notices) && notices.length > 0 && rendered["notices"] !== notices) {
+    out = { ...out, notices };
+  }
+  return withPreservedProvenance(original, out);
+}
+
+/**
+ * The keys of the retrieval envelope, in the order a reader wants them.
+ *
+ * `withdrawn` is in the list even though it is a plain boolean: the API
+ * always sends it, and it must never be inferred from a field's absence, so
+ * a projection that dropped it would turn "this resource is still live" into
+ * "this API does not say", which are different facts.
+ */
+const PROVENANCE_KEYS = ["source", "observed_at", "withdrawn", "withdrawn_at"] as const;
+
+/**
+ * Carry the retrieval envelope across projection, for the same reason
+ * `notices` is carried: it is not a data field, it is the provenance OF the
+ * data, and it is dropped by both projection layers (the slim projectors
+ * rebuild from a fixed allowlist; `--fields` is a strict allowlist).
+ *
+ * Reattached here, at the one point every command's output passes through, so
+ * a projector cannot forget and a new one inherits it for free. A response
+ * without `source` reattaches nothing and renders exactly as it always has.
+ */
+function withPreservedProvenance(original: unknown, rendered: unknown): unknown {
+  const isPlain = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
+  if (!isPlain(original) || !isPlain(rendered)) return rendered;
+  // `source` is the anchor: the envelope is present as a unit or not at all,
+  // and keying off it stops a response that merely happens to carry an
+  // `observed_at` from acquiring a half-envelope.
+  if (!isRetrievalSource(original["source"])) return rendered;
+  const carried: Record<string, unknown> = { ...rendered };
+  for (const key of PROVENANCE_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(original, key)) carried[key] = original[key];
+  }
+  return carried;
+}
+
+/** `source` is a two-value enum; anything else is not an envelope. */
+function isRetrievalSource(v: unknown): v is "store" | "live" {
+  return v === "store" || v === "live";
+}
+
+/**
+ * The one-line provenance note for human mode, or null when the response
+ * carries no envelope.
+ *
+ * Human mode only. In `--json` the same facts are on the payload, where a
+ * caller parses them; repeating them on stderr there would be noise on the
+ * channel scripts read for real diagnostics.
+ *
+ * `withdrawn` is mentioned only when true. A timestamp for a thing that never
+ * happened has no value to report, and a note that says "withdrawn=false" on
+ * every read trains the reader to stop reading it.
+ */
+export function renderProvenanceNote(data: unknown): string | null {
+  if (typeof data !== "object" || data === null || Array.isArray(data)) return null;
+  const d = data as Record<string, unknown>;
+  const source = d["source"];
+  if (!isRetrievalSource(source)) return null;
+
+  let line = `provenance: source=${source}`;
+  const observedAt = d["observed_at"];
+  if (typeof observedAt === "string" && observedAt !== "") line += ` observed_at=${observedAt}`;
+  if (d["withdrawn"] === true) {
+    const withdrawnAt = d["withdrawn_at"];
+    line +=
+      typeof withdrawnAt === "string" && withdrawnAt !== ""
+        ? ` withdrawn=true withdrawn_at=${withdrawnAt}`
+        : " withdrawn=true";
+  }
+  // `store` is the case a caller acts on: a stored copy can be missing content
+  // a live read would carry, because message bodies and contact fields are
+  // stripped before anything is stored, so it names the way out.
+  if (source === "store") line += " (re-read with --mode live to fetch)";
+  return line + "\n";
 }
 
 /**
@@ -235,6 +312,11 @@ export function renderSuccess(
   if (json) {
     out.stdout.write(JSON.stringify(projected) + "\n");
   } else {
+    // The retrieval envelope goes to the DIAGNOSTICS channel in human mode, so
+    // a caller can tell a served copy from a fetch without the two keys
+    // cluttering the rendered body. In --json it rides the payload instead.
+    const provenance = renderProvenanceNote(data);
+    if (provenance) out.stderr.write(provenance);
     // Human-readable output: best-effort, not a stability contract.
     out.stdout.write(renderHuman(projected) + "\n");
   }

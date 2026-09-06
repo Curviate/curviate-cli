@@ -6,6 +6,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [Unreleased]
+
+### Added
+
+- **`--mode` and `--max-age` on the reads that can be served from a stored
+  copy.** `--mode auto|live|refill|cache_only` says how willing a read is to
+  reach LinkedIn; `--max-age <seconds>` sets the oldest stored copy it will
+  accept and overrides the `auto`, `live` and `refill` presets in both
+  directions. Available on `profile <id>`, `profile me` and `inbox messages`,
+  the reads the API declares them on. The activity listings on the profile
+  commands (`--posts`, `--comments`, `--reactions`, `--followers`) reject them
+  with exit `2` rather than sending a parameter their endpoints answer with a
+  `400`.
+- **Client-side validation, before any request is sent.** An unknown `--mode`,
+  a `--max-age` that is not a whole number from `0` to `31536000`, or
+  `--mode cache_only` combined with `--max-age` is a usage error (exit `2`)
+  with nothing transmitted. The last of those mirrors the API: `cache_only`
+  never reaches LinkedIn at any age, so a freshness threshold cannot change
+  its answer, and the pair is refused rather than one of the two being
+  silently ignored.
+- **Provenance on the response.** These reads carry `source` (`store` or
+  `live`) and `observed_at`, plus `withdrawn`/`withdrawn_at` when the platform
+  says the resource is gone. All of them now survive `--fields` and the slim
+  projection, which previously dropped them (both layers rebuild output from an
+  allowlist). In human mode the same facts go to stderr as a one-line
+  `provenance:` note, leaving stdout parseable. A stored copy can carry less
+  than a live one, so `source: "store"` is the signal to re-read with
+  `--mode live` when message bodies or contact fields matter.
+- **Exit code `14`, nothing stored.** `NOT_STORED` answers a
+  `--mode cache_only` read the store cannot satisfy. It is deliberately not
+  `4`: the resource may exist perfectly well on LinkedIn and this API simply
+  holds no copy, so re-checking the id is the wrong move; the fix is another
+  mode. A `502` under `cache_only` keeps its existing mapping, because "we
+  could not look" and "we hold nothing" are different answers and only one is
+  worth retrying.
+
+### Known gaps
+
+- `inbox get` does not take the two flags yet. The endpoint accepts them, but
+  the pinned `@curviate/sdk` exposes no query argument on that call; it lands
+  with the next SDK regen.
+- Exit `14` is mapped but not yet reachable: the pinned SDK's error taxonomy
+  has no `NOT_STORED`, so the wire code decodes to `INTERNAL` and the binary
+  still answers `1`. Both gaps are held by tests that fail the moment the SDK
+  ships the missing pieces.
+
 ## [0.26.0] - 2026-09-05
 
 ### Added

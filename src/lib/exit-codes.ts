@@ -21,6 +21,7 @@
  *  11: billing
  *  12: auth action needed (a pending checkpoint; not an error)
  *  13: account-safety budget (Curviate's own ceiling refused the action)
+ *  14: nothing stored (a `--mode cache_only` read the store cannot answer)
  */
 
 import type { ErrorCode } from "@curviate/sdk";
@@ -99,7 +100,22 @@ import type { ErrorCode } from "@curviate/sdk";
  * flow hitting a state it cannot resolve without a different input);
  * user_fixable (retry with `auth_method: "credentials"`), not retryable as-is.
  */
-export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
+/**
+ * Codes the SERVER already returns that the pinned `@curviate/sdk` taxonomy
+ * does not carry yet.
+ *
+ * `ErrorCode` is generated from the SDK, so a code that ships on the wire
+ * before the SDK regen has no member to key on and cannot be written into the
+ * table below without widening it here. This is the same lag
+ * `BUDGET_EXHAUSTED` sat in before the 0.25.0 pin bump: the mapping lands
+ * first, the SDK pin activates it, and `test/commands/retrieval-sdk-gap.test.ts`
+ * is the gate that says which side of that we are on today.
+ *
+ * Empty this back to `never` once every member is in the SDK's `ERROR_CODES`.
+ */
+type PendingSdkErrorCode = "NOT_STORED";
+
+export const EXIT_CODE_MAP: Partial<Record<ErrorCode | PendingSdkErrorCode, number>> & {
   // Make the shape explicit so TypeScript catches literal errors in the values
   // while still allowing the test to probe for absent keys.
   [K in ErrorCode]?: number;
@@ -175,6 +191,18 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Account-safety budget (13), see the note above for why this is not 6
   BUDGET_EXHAUSTED: 13,
 
+  // Nothing stored (14), A NEW BUCKET, and deliberately not 4.
+  // `NOT_STORED` is a 422 answering a `--mode cache_only` read: the resource
+  // may exist perfectly well on LinkedIn, and this API simply holds no copy of
+  // it, so it is NOT "not found" and re-checking the id is the wrong move. It
+  // is not 1 either: nothing failed. It is user_fixable and not retryable AS
+  // SENT — the fix is another mode (`refill` fetches it once, `auto` fetches
+  // now), which is the same shape as exit 2 but reached without a malformed
+  // request, so it earns its own number rather than muddying either.
+  // A 502 under cache_only stays 7: "we could not look" and "we hold nothing"
+  // are different answers and only one of them is worth retrying.
+  NOT_STORED: 14,
+
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,
   PLATFORM_NOT_IMPLEMENTED: 1,
@@ -184,7 +212,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
  * Return the process exit code for a given ErrorCode.
  * Returns `1` for any unmapped or unknown code (safe default).
  */
-export function getExitCode(code: ErrorCode): number {
+export function getExitCode(code: ErrorCode | PendingSdkErrorCode): number {
   return EXIT_CODE_MAP[code] ?? 1;
 }
 
