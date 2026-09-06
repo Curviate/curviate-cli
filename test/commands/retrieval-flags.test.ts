@@ -10,13 +10,14 @@
  *   profile me     → users.get("me", …)
  *   profile <id>   → users.get(id, …)
  *   inbox messages → messaging.listMessages(chatId, …)
+ *   inbox get      → messaging.getChat(chatId, …)
  *
  * and must NOT be offered on the activity/list branches of the same commands
  * (`--posts`/`--comments`/`--reactions`/`--followers`), which call different
- * endpoints that would 400. `inbox get` maps to a servable endpoint but the
- * pinned SDK's `getChat(chatId)` accepts no query argument at all, so the
- * flags cannot be plumbed there yet; that gap is asserted in
- * `retrieval-sdk-gap.test.ts` rather than papered over here.
+ * endpoints that would 400. `inbox get` was the fourth from the day the
+ * endpoint declared the pair; it could not be plumbed until `@curviate/sdk`
+ * 0.26.0 gave `getChat` a second argument, and
+ * `retrieval-sdk-surface.test.ts` asserts that argument is really forwarded.
  *
  * The exit-2 arms assert the SDK was NEVER CALLED. That is the actual
  * contract ("a misuse pre-check before any network call"); asserting only the
@@ -179,6 +180,83 @@ describe("inbox messages — the retrieval pair reaches listMessages", () => {
       "c1",
       expect.objectContaining({ max_age: 120, limit: 5 }),
     );
+  });
+});
+
+describe("inbox get — the retrieval pair reaches getChat", () => {
+  let ns: ReturnType<typeof makeMessagingNs>;
+  let client: ReturnType<typeof makeClient>;
+  beforeEach(() => {
+    ns = makeMessagingNs();
+    client = makeClient(ns);
+  });
+
+  it.each(["live", "auto", "refill", "cache_only"])("--mode %s is forwarded", async (mode) => {
+    const { runInboxGet } = await import("../../src/commands/inbox.js");
+    await runInboxGet(client as never, { ...(ACC as object), chatId: "c1", mode } as never, makeOut());
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("c1", expect.objectContaining({ mode }));
+  });
+
+  it("--max-age is forwarded as the wire's max_age, a number", async () => {
+    const { runInboxGet } = await import("../../src/commands/inbox.js");
+    await runInboxGet(
+      client as never,
+      { ...(ACC as object), chatId: "c1", "max-age": "120" } as never,
+      makeOut(),
+    );
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("c1", expect.objectContaining({ max_age: 120 }));
+  });
+
+  // EDGE: `--max-age 0` is the value a truthiness check silently drops, and
+  // dropping it means `auto` instead of the always-fetch the caller asked for.
+  it("--max-age 0 survives as 0", async () => {
+    const { runInboxGet } = await import("../../src/commands/inbox.js");
+    await runInboxGet(
+      client as never,
+      { ...(ACC as object), chatId: "c1", "max-age": "0" } as never,
+      makeOut(),
+    );
+    const params = (ns.messaging.getChat as Mock).mock.calls[0]![1] as Record<string, unknown>;
+    expect(params["max_age"]).toBe(0);
+  });
+
+  // EDGE: omitted flags must not become keys. `{mode: undefined}` is a
+  // parameter the caller never typed, and the URL builder would still see it.
+  it("omitting both sends neither key", async () => {
+    const { runInboxGet } = await import("../../src/commands/inbox.js");
+    await runInboxGet(client as never, { ...(ACC as object), chatId: "c1" } as never, makeOut());
+    const params = (ns.messaging.getChat as Mock).mock.calls[0]![1] as Record<string, unknown>;
+    expect(Object.keys(params)).toEqual([]);
+  });
+
+  // The chat-id normalization still runs, so the pair rides the BARE provider
+  // id rather than resurrecting the thread URL.
+  it("the pair rides the normalized chat id, not the raw thread URL", async () => {
+    const { runInboxGet } = await import("../../src/commands/inbox.js");
+    await runInboxGet(
+      client as never,
+      {
+        ...(ACC as object),
+        chatId: "https://www.linkedin.com/messaging/thread/2-AbCdEf==/",
+        mode: "refill",
+      } as never,
+      makeOut(),
+    );
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEf==", { mode: "refill" });
+  });
+
+  it("cache_only + --max-age exits 2 and calls nothing", async () => {
+    const code = await captureExit(() =>
+      import("../../src/commands/inbox.js").then(({ runInboxGet }) =>
+        runInboxGet(
+          client as never,
+          { ...(ACC as object), chatId: "c1", mode: "cache_only", "max-age": "60" } as never,
+          makeOut(),
+        ),
+      ),
+    );
+    expect(code).toBe(2);
+    expect(ns.messaging.getChat).not.toHaveBeenCalled();
   });
 });
 

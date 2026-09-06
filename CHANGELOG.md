@@ -6,7 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
-## [Unreleased]
+## [0.27.0] - 2026-09-06
+
+Pins `@curviate/sdk` at `0.26.0`, which is what makes the last two items of
+this release possible: `inbox get` can carry the retrieval pair, and exit `14`
+is reachable. No command, flag or exit code changes meaning.
 
 ### Added
 
@@ -14,8 +18,8 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   copy.** `--mode auto|live|refill|cache_only` says how willing a read is to
   reach LinkedIn; `--max-age <seconds>` sets the oldest stored copy it will
   accept and overrides the `auto`, `live` and `refill` presets in both
-  directions. Available on `profile <id>`, `profile me` and `inbox messages`,
-  the reads the API declares them on. The activity listings on the profile
+  directions. Available on `profile <id>`, `profile me`, `inbox get` and
+  `inbox messages`, the four reads the API declares them on. The activity listings on the profile
   commands (`--posts`, `--comments`, `--reactions`, `--followers`) reject them
   with exit `2` rather than sending a parameter their endpoints answer with a
   `400`.
@@ -53,16 +57,24 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   read it was meant to prevent: the mode's only guarantee, broken under a
   `200` with nothing to notice.
 
-### Known gaps
+### Changed
 
-- `inbox get` does not take the two flags yet. The endpoint accepts them, but
-  the pinned `@curviate/sdk` exposes no query argument on that call; it lands
-  with the next SDK regen.
-- Exit `14` is mapped but not yet reachable: the pinned SDK's error taxonomy
-  has no `NOT_STORED`, so the wire code decodes to `INTERNAL` and the binary
-  still answers `1`. `--help` and the README say so rather than advertising a
-  code the binary cannot produce. Both gaps are held by tests that fail the
-  moment the SDK ships the missing pieces.
+- **`@curviate/sdk` pinned at `0.26.0`** (was `0.25.0`), an exact pin as
+  always. Two things this release needed shipped there, and both were held
+  open by tests written to fail on the day the wait ended:
+  - `messaging.getChat(chatId, params?)` takes the retrieval query, so
+    **`inbox get` now carries `--mode`/`--max-age`** like the other three
+    store-served reads. The chat-id normalization still runs first, so the
+    pair rides the bare provider id rather than a thread URL.
+  - `NOT_STORED` is in the SDK's error taxonomy, so **exit `14` is now
+    reachable**. It previously decoded to `INTERNAL` and the binary answered
+    `1`; a `--mode cache_only` read the store cannot satisfy now exits `14`,
+    and, because the code is deliberately not retryable, on the first reply
+    rather than after a retry loop against an answer that cannot change.
+  Nothing else in the SDK bump reaches this binary: the SDK's own type-level
+  breaking change (`row` is `string | null` on errors and safety warnings) is
+  absorbed by the CLI's existing `typeof === "string"` guard, and the widened
+  response enums are read, never exhaustively switched.
 
 ## [0.26.0] - 2026-09-05
 

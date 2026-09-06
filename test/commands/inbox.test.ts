@@ -210,7 +210,7 @@ describe("inbox get", () => {
 
     await runInboxGet(client as never, { chatId: "chat_abc", account: "acc_1", json: true } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("chat_abc");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("chat_abc", {});
   });
 
   it("inbox get — rejects --preview (read command)", async () => {

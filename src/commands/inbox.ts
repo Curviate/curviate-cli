@@ -54,7 +54,7 @@ type InboxFlags = {
   wait?: boolean;
   // inbox search
   query?: string;
-  // The retrieval pair — inbox messages only (see lib/retrieval.ts).
+  // The retrieval pair — inbox get and inbox messages (see lib/retrieval.ts).
   mode?: string;
   "max-age"?: string;
 };
@@ -227,13 +227,23 @@ export async function runInboxGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
+  // Same pre-flight as `inbox messages`: the API refuses `cache_only` with
+  // `max_age` (400), so a caller who typed both gets the usage error instead
+  // of a spent round trip.
+  const retrieval = parseRetrievalFlags(flags);
+  if (!retrieval.ok) {
+    out.stderr.write(retrieval.error);
+    process.exit(2);
+    return;
+  }
+
   const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
   try {
-    const result = await ns.messaging.getChat(chatId);
+    const result = await ns.messaging.getChat(chatId, retrieval.query);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -423,6 +433,7 @@ const inboxGetCommand = defineCommand({
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
+    ...RETRIEVAL_FLAGS,
     chatId: { type: "positional", description: "Chat ID." },
   },
   async run({ args }) {

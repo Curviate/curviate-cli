@@ -83,8 +83,9 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["FILTER_CANDIDATES_REQUIRED", 2],
     ["BUDGET_EXHAUSTED" as ErrorCode, 13],
     ["LINKEDIN_SESSION_EVICTED" as ErrorCode, 8],
-    // Ahead of the SDK taxonomy: see test/commands/retrieval-sdk-gap.test.ts
-    // for the gate that says whether the wire can reach this yet.
+    // In the SDK taxonomy since 0.26.0: see
+    // test/commands/retrieval-sdk-surface.test.ts for the arm that proves a
+    // NOT_STORED 422 actually reaches this row on the wire.
     ["NOT_STORED" as ErrorCode, 14],
   ] as [ErrorCode, number][])(
     "ErrorCode %s → exit %i",

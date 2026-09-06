@@ -50,18 +50,17 @@ describe("the retrieval flags are advertised on exactly the store-served reads",
     expect(a["mode"]).toBeDefined();
     expect(a["max-age"]).toBeDefined();
   });
+
+  // The fourth, from `@curviate/sdk` 0.26.0: `getChat` gained the query
+  // argument, so the binary can finally send what this help text advertises.
+  it("inbox get declares both", async () => {
+    const a = args((await tree()).inbox.subCommands?.["get"]);
+    expect(a["mode"]).toBeDefined();
+    expect(a["max-age"]).toBeDefined();
+  });
 });
 
 describe("the flags are NOT advertised where the endpoint would refuse them", () => {
-  // The pinned SDK's getChat takes no query argument, so the flags cannot be
-  // plumbed here yet even though the endpoint itself accepts them. Advertising
-  // them would promise something the binary cannot send.
-  it("inbox get does not declare them", async () => {
-    const a = args((await tree()).inbox.subCommands?.["get"]);
-    expect(a["mode"]).toBeUndefined();
-    expect(a["max-age"]).toBeUndefined();
-  });
-
   it("inbox list does not declare them", async () => {
     const a = args((await tree()).inbox.subCommands?.["list"]);
     expect(a["mode"]).toBeUndefined();
@@ -82,7 +81,6 @@ describe("the flags are NOT advertised where the endpoint would refuse them", ()
   it("control: the negative-arm commands exist and declare other flags", async () => {
     const t = await tree();
     for (const cmd of [
-      t.inbox.subCommands?.["get"],
       t.inbox.subCommands?.["list"],
       t.post.subCommands?.["get"],
     ]) {
@@ -146,7 +144,6 @@ describe("the flags are REFUSED, not ignored, on commands that do not declare th
   }
 
   it.each([
-    ["inbox get", "inbox", ["get", "c1", "--account", "acc_1", "--mode", "cache_only"], "--mode"],
     ["inbox list", "inbox", ["list", "--account", "acc_1", "--mode", "cache_only"], "--mode"],
     ["profile followers", "profile", ["followers", "ada", "--account", "acc_1", "--max-age", "300"], "--max-age"],
   ])("%s refuses %s as an unknown flag", async (_label, group, argv, flag) => {
@@ -162,12 +159,18 @@ describe("the flags are REFUSED, not ignored, on commands that do not declare th
   // CONTROL: the same dispatcher does NOT call the pair unknown where it IS
   // declared, so the refusals above are about the undeclared flag and not
   // about a dispatcher that rejects these two names everywhere.
-  it("control: inbox messages is not told --mode is unknown", async () => {
-    const { inboxCommand } = await import("../../src/commands/inbox.js");
-    const err = await dispatchStderr(inboxCommand, [
-      "messages", "c1", "--account", "acc_1", "--mode", "cache_only",
-      "--base-url", "http://127.0.0.1:9",
-    ]);
-    expect(err).not.toContain("unknown flag");
-  });
+  it.each([["messages"], ["get"]])(
+    "control: inbox %s is not told --mode is unknown",
+    async (sub) => {
+      const { inboxCommand } = await import("../../src/commands/inbox.js");
+      // `--base-url` is pinned at a dead local port on purpose: without it the
+      // dispatcher reaches production, so the arm would be exercising the live
+      // API instead of the flag table.
+      const err = await dispatchStderr(inboxCommand, [
+        sub, "c1", "--account", "acc_1", "--mode", "cache_only",
+        "--base-url", "http://127.0.0.1:9",
+      ]);
+      expect(err).not.toContain("unknown flag");
+    },
+  );
 });

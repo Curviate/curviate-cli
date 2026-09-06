@@ -25,7 +25,7 @@
  *
  *   GET /v1/{account_id}/users/{user_id}                  → profile me, profile <id>
  *   GET /v1/{account_id}/chats/{chat_id}/messages         → inbox messages
- *   GET /v1/{account_id}/chats/{chat_id}                  → inbox get (SDK gap, see README)
+ *   GET /v1/{account_id}/chats/{chat_id}                  → inbox get
  *
  * The entity reads that carry the response envelope but do NOT accept the
  * parameters (company, post, job, group) must not offer the flags: the request

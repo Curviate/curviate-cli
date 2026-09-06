@@ -461,11 +461,10 @@ be combined with `--mode cache_only`, whose guarantee is not a freshness
 threshold: that combination is a usage error (exit `2`) before any request is
 sent.
 
-Available on the reads that can be served from a stored copy: `profile <id>`,
-`profile me`, and `inbox messages`. The activity listings on the profile
-commands (`--posts`, `--comments`, `--reactions`, `--followers`) do not accept
-them and reject them with exit `2`. `inbox get` will gain them once the SDK
-exposes a query argument on that call.
+Available on the four reads that can be served from a stored copy:
+`profile <id>`, `profile me`, `inbox get` and `inbox messages`. The activity
+listings on the profile commands (`--posts`, `--comments`, `--reactions`,
+`--followers`) do not accept them and reject them with exit `2`.
 
 ### Telling a served copy from a fetch
 
@@ -478,13 +477,13 @@ A stored copy can carry less than a live one: message bodies and contact fields
 are stripped before anything is stored, so `source: "store"` is the signal to
 re-read with `--mode live` when you need them.
 
-### Exit `14` is reserved, not yet reachable
+### Exit `14`: nothing stored
 
-A `--mode cache_only` read the store cannot answer is mapped to exit `14`, but
-the pinned SDK's error taxonomy does not carry that code yet, so it currently
-decodes to an internal error and the binary exits `1`. Branch on `14` if you
-want to be ready for it, but do not treat a `1` here as a different condition
-until the SDK pin moves.
+A `--mode cache_only` read the store cannot answer exits `14`. It is not
+"not found" (exit `4`): the resource may exist perfectly well on LinkedIn and
+this API simply holds no copy, so re-checking the id is the wrong move. It is
+not a failure either. The fix is another mode, and it is never worth retrying
+as sent, because the answer cannot change until you change the mode.
 
 ```bash
 # The default: a fresh stored copy if there is one, otherwise fetch
@@ -495,6 +494,9 @@ curviate profile me --account acc_1 --mode refill --json
 
 # Accept a stored copy up to five minutes old, otherwise fetch
 curviate profile me --account acc_1 --max-age 300 --fields first_name,source,observed_at --json
+
+# A single chat from the store, never LinkedIn. Exit 14 if nothing is stored.
+curviate inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 ```
 
 ## Exit codes
@@ -515,7 +517,7 @@ curviate profile me --account acc_1 --max-age 300 --fields first_name,source,obs
 | 11 | Billing issue (payment required, failed, or seat cancelled) |
 | 12 | Auth action needed (a pending checkpoint; not an error) |
 | 13 | Account-safety budget: Curviate's own ceiling refused the action |
-| 14 | Nothing stored: a `--mode cache_only` read the store cannot answer (not yet reachable, see below) |
+| 14 | Nothing stored: a `--mode cache_only` read the store cannot answer. Retry with another mode, not with the same request |
 
 ### 6 and 13 are both `429`, and they need different actions
 
