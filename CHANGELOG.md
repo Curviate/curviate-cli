@@ -6,6 +6,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.28.0] - 2026-09-06
+
+Pins `@curviate/sdk` at `0.27.0` and re-vendors the OpenAPI fixture from it
+(`server_git_sha 2a86542f...`). No command, flag or exit code changes meaning,
+and no source change was needed: everything below is a consequence of the API
+the CLI talks to, surfaced here because it changes what some calls answer.
+
+### Changed
+
+- **`message.delivered` is no longer a subscribable webhook event.** The
+  platform never emitted it. `curviate webhook events` now lists 27 events,
+  7 of them messaging, where it listed 28 and 8.
+
+  `--events` on `webhook create` and `webhook update` is a free-form
+  comma-separated string that the CLI passes through unvalidated, so this is
+  not a client-side usage error (exit `2`): sending `message.delivered` now
+  gets a `400` from the API and exits on the request-error path like any other
+  rejected value. Drop it from the list.
+
+  **Reading an existing subscription is unaffected.** `events` on
+  `webhook list` and `webhook get` is a plain string array, not the create
+  enum. A subscription created before 2026-09-06 may still echo
+  `message.delivered` in its stored `events` until the server-side cleanup
+  migration lands; it was never delivered. It renders as an ordinary value and
+  nothing throws.
+
+  The read-path replacement is `is_delivered` on the message resource.
+- **`notices[]` can now carry `EXPANSION_WITHHELD_CEILING`** on the reads that
+  accept `--expand public_identifier`, alongside `EXPANSION_LIMIT_REACHED` and
+  `EXPANSION_WITHHELD_ACTIVITY_WINDOW`: the expansion was withheld because the
+  account is at an account-safety ceiling. It renders through the same
+  `notice [CODE] message` line as its two siblings, on stderr in human mode and
+  carried on the response in `--json`, so no output shape changes and no
+  branch on the existing codes breaks.
+- **The warn-posture safety hint reads differently.** On a `2xx` that carries
+  `safety_warning`, `hint.message` now says the action went through and how far
+  past the ceiling the row stands, rather than restating the ceiling. The CLI
+  prints the server's string verbatim, in both human and `--json` output, so
+  this is prose only: no field moved and nothing needs re-parsing. An agent
+  matching on the old sentence should match on `safety_warning.blocked` or
+  `hint.parameter` instead.
+- **A `502` whose upstream response could not be interpreted is not worth
+  retrying.** The API documents `retry_likely_to_succeed` as the field that
+  separates the two `502` cases, and the do-not-retry one carries
+  `retry_hint: {"kind": "never"}`. Both fields were already on the wire and the
+  CLI already surfaces them; nothing about its own behaviour changes here.
+
 ## [0.27.0] - 2026-09-06
 
 Pins `@curviate/sdk` at `0.26.0`, which is what makes the last two items of
