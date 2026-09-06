@@ -182,3 +182,53 @@ describe("renderSuccess — where the note goes", () => {
     expect(err).not.toContain("source=");
   });
 });
+
+/**
+ * `--all` never reaches `renderSuccess`: it writes raw items as NDJSON. So the
+ * envelope, which sits on the PAGE beside `items`, has no route to the caller
+ * on the highest-volume read path unless the streamer surfaces it — exactly
+ * the argument that already puts per-page `notices` on stderr there.
+ *
+ * Without this, `inbox messages --all --mode refill` tells a caller nothing
+ * about whether the pages it just consumed were served or fetched, which is
+ * the single fact the flag exists to expose.
+ */
+describe("--all surfaces each page's provenance on stderr", () => {
+  it("writes a provenance note per page, keeping stdout pure NDJSON", async () => {
+    const { streamAll } = await import("../../src/lib/paginate.js");
+    const out = makeOut();
+    const pages = [
+      { items: [{ id: "m1" }], cursor: "c2", source: "store", observed_at: OBSERVED, withdrawn: false },
+      { items: [{ id: "m2" }], cursor: null, source: "live", observed_at: OBSERVED, withdrawn: false },
+    ];
+    let i = 0;
+    const fn = async () => pages[i++]!;
+
+    const seen: unknown[] = [];
+    for await (const item of streamAll(fn, {}, { out, maxPages: 5, pageDelayMs: 0 })) {
+      seen.push(item);
+    }
+
+    const err = out.stderr.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(err).toContain("source=store");
+    expect(err).toContain("source=live");
+    // CONTROL: the items really did stream, so the stderr assertions are not
+    // about a loop that never ran.
+    expect(seen).toHaveLength(2);
+    const stdout = out.stdout.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(stdout).not.toContain("source=");
+  });
+
+  it("writes nothing extra for pages that carry no envelope", async () => {
+    const { streamAll } = await import("../../src/lib/paginate.js");
+    const out = makeOut();
+    const pages = [{ items: [{ id: "m1" }], cursor: null }];
+    let i = 0;
+    const fn = async () => pages[i++]!;
+    for await (const _item of streamAll(fn, {}, { out, maxPages: 5, pageDelayMs: 0 })) {
+      void _item;
+    }
+    const err = out.stderr.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(err).not.toContain("provenance:");
+  });
+});

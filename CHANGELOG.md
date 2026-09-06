@@ -31,9 +31,13 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   says the resource is gone. All of them now survive `--fields` and the slim
   projection, which previously dropped them (both layers rebuild output from an
   allowlist). In human mode the same facts go to stderr as a one-line
-  `provenance:` note, leaving stdout parseable. A stored copy can carry less
-  than a live one, so `source: "store"` is the signal to re-read with
-  `--mode live` when message bodies or contact fields matter.
+  `provenance:` note, leaving stdout parseable. Under `--all`, where items
+  stream as raw NDJSON and never pass through the single-response renderer,
+  each page's note goes to stderr the same way page-scoped `notices` already
+  do, so the highest-volume read path is not the one that cannot say where its
+  data came from. A stored copy can carry less than a live one, so
+  `source: "store"` is the signal to re-read with `--mode live` when message
+  bodies or contact fields matter.
 - **Exit code `14`, nothing stored.** `NOT_STORED` answers a
   `--mode cache_only` read the store cannot satisfy. It is deliberately not
   `4`: the resource may exist perfectly well on LinkedIn and this API simply
