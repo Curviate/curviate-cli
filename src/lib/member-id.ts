@@ -32,6 +32,7 @@
 
 import type { Curviate } from "@curviate/sdk";
 import { resolveIdentifier } from "./identifier.js";
+import type { RetrievalQuery } from "./retrieval.js";
 
 type AccountNamespaces = ReturnType<Curviate["account"]>;
 
@@ -68,9 +69,16 @@ export async function resolveMemberProviderId(
 export async function resolveMemberOrMeProviderId(
   ns: AccountNamespaces,
   raw: string,
+  query: RetrievalQuery = {},
 ): Promise<string> {
   const normalized = resolveIdentifier(raw);
   if (normalized === "me" || MEMBER_PROVIDER_ID_RE.test(normalized)) return normalized;
-  const profile = await ns.users.get(normalized, {});
+  // THE RESOLVE IS A READ, AND IT OBEYS THE SAME MODE. Under `cache_only` a
+  // pre-call that fetched would break the one guarantee that mode makes —
+  // before the real read ever ran, under a 200, with nothing to notice. Under
+  // an explicit `max_age` it would also ignore the caller's freshness bound.
+  // Callers with no retrieval flags pass nothing and get the previous
+  // behaviour exactly.
+  const profile = await ns.users.get(normalized, query);
   return profile.id;
 }

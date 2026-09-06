@@ -449,7 +449,7 @@ describe("chat ID normalization on inbox get", () => {
       json: true,
     } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==", {});
   });
 
   it("thread URL with trailing slash strips both prefix and slash", async () => {
@@ -462,7 +462,7 @@ describe("chat ID normalization on inbox get", () => {
       json: true,
     } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==", {});
   });
 
   it("thread URL with query string strips prefix and query string", async () => {
@@ -475,7 +475,7 @@ describe("chat ID normalization on inbox get", () => {
       json: true,
     } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==", {});
   });
 
   it("bare provider ID passes through verbatim without transformation", async () => {
@@ -488,7 +488,7 @@ describe("chat ID normalization on inbox get", () => {
       json: true,
     } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEfGhIjKlMnOpQ==", {});
   });
 
   it("internal chat ID passes through verbatim", async () => {
@@ -501,7 +501,7 @@ describe("chat ID normalization on inbox get", () => {
       json: true,
     } as InboxArgs, out);
 
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("chat_internal_123");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("chat_internal_123", {});
   });
 });
 
@@ -593,6 +593,6 @@ describe("normalization makes zero network calls on all chat commands", () => {
 
     // Only one call: getChat — no users.get or any other lookup
     expect(ns.messaging.getChat).toHaveBeenCalledTimes(1);
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-XY==");
+    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-XY==", {});
   });
 });

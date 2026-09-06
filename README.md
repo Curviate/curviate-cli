@@ -442,6 +442,63 @@ curviate recruiter jobs --account acc_1 --limit 10 --json \
 curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1 --json
 ```
 
+## Retrieval modes
+
+Some reads can be answered from the copy Curviate already holds instead of
+calling LinkedIn. `--mode` says how willing a read is to fetch, and `--max-age`
+sets the oldest stored copy it will accept.
+
+| `--mode` | Behaviour |
+|------|---------|
+| `auto` | Default. Serve a stored copy while it is within the resource's freshness threshold, otherwise fetch. |
+| `live` | Always fetch. Same as `--max-age 0`. |
+| `refill` | Serve a stored copy at any age; fetch only when nothing is stored yet. |
+| `cache_only` | Never fetch. A store miss is refused rather than fetched (see the exit-`14` note below). |
+
+`--max-age <seconds>` is a whole number from `0` to `31536000` (one year). It
+overrides the `auto`, `live` and `refill` presets in both directions. It cannot
+be combined with `--mode cache_only`, whose guarantee is not a freshness
+threshold: that combination is a usage error (exit `2`) before any request is
+sent.
+
+Available on the four reads that can be served from a stored copy:
+`profile <id>`, `profile me`, `inbox get` and `inbox messages`. The activity
+listings on the profile commands (`--posts`, `--comments`, `--reactions`,
+`--followers`) do not accept them and reject them with exit `2`.
+
+### Telling a served copy from a fetch
+
+Every response from these reads carries `source` (`store` or `live`) and
+`observed_at`, and they survive `--fields` and the slim projection. In human
+mode the same facts go to stderr as a one-line `provenance:` note, so stdout
+stays parseable.
+
+A stored copy can carry less than a live one: message bodies and contact fields
+are stripped before anything is stored, so `source: "store"` is the signal to
+re-read with `--mode live` when you need them.
+
+### Exit `14`: nothing stored
+
+A `--mode cache_only` read the store cannot answer exits `14`. It is not
+"not found" (exit `4`): the resource may exist perfectly well on LinkedIn and
+this API simply holds no copy, so re-checking the id is the wrong move. It is
+not a failure either. The fix is another mode, and it is never worth retrying
+as sent, because the answer cannot change until you change the mode.
+
+```bash
+# The default: a fresh stored copy if there is one, otherwise fetch
+curviate profile me --account acc_1 --json
+
+# Serve whatever is stored at any age, and fetch only if nothing is
+curviate profile me --account acc_1 --mode refill --json
+
+# Accept a stored copy up to five minutes old, otherwise fetch
+curviate profile me --account acc_1 --max-age 300 --fields first_name,source,observed_at --json
+
+# A single chat from the store, never LinkedIn. Exit 14 if nothing is stored.
+curviate inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
+```
+
 ## Exit codes
 
 | Code | Meaning |
@@ -460,6 +517,7 @@ curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --acc
 | 11 | Billing issue (payment required, failed, or seat cancelled) |
 | 12 | Auth action needed (a pending checkpoint; not an error) |
 | 13 | Account-safety budget: Curviate's own ceiling refused the action |
+| 14 | Nothing stored: a `--mode cache_only` read the store cannot answer. Retry with another mode, not with the same request |
 
 ### 6 and 13 are both `429`, and they need different actions
 

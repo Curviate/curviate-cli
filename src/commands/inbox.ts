@@ -26,6 +26,7 @@ import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { RETRIEVAL_FLAGS, parseRetrievalFlags } from "../lib/retrieval.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type InboxFlags = {
@@ -53,6 +54,9 @@ type InboxFlags = {
   wait?: boolean;
   // inbox search
   query?: string;
+  // The retrieval pair — inbox get and inbox messages (see lib/retrieval.ts).
+  mode?: string;
+  "max-age"?: string;
 };
 
 type OutputStreams = {
@@ -223,13 +227,23 @@ export async function runInboxGet(
   rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
+  // Same pre-flight as `inbox messages`: the API refuses `cache_only` with
+  // `max_age` (400), so a caller who typed both gets the usage error instead
+  // of a spent round trip.
+  const retrieval = parseRetrievalFlags(flags);
+  if (!retrieval.ok) {
+    out.stderr.write(retrieval.error);
+    process.exit(2);
+    return;
+  }
+
   const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
 
   try {
-    const result = await ns.messaging.getChat(chatId);
+    const result = await ns.messaging.getChat(chatId, retrieval.query);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -280,13 +294,23 @@ export async function runInboxMessages(
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
 
+  // The retrieval pair, validated BEFORE any network call: the API refuses
+  // `cache_only` + `max_age` with a 400, and a caller who typed both deserves
+  // the usage error rather than a spent round trip.
+  const retrieval = parseRetrievalFlags(flags);
+  if (!retrieval.ok) {
+    out.stderr.write(retrieval.error);
+    process.exit(2);
+    return;
+  }
+
   const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
   const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const params = buildPaginationParams(flags);
+  const params: Record<string, unknown> = { ...buildPaginationParams(flags), ...retrieval.query };
   validateLimitRange(flags.limit, out);
 
   // Validate and apply date filters, validation exits 2 before any SDK call
@@ -409,6 +433,7 @@ const inboxGetCommand = defineCommand({
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
+    ...RETRIEVAL_FLAGS,
     chatId: { type: "positional", description: "Chat ID." },
   },
   async run({ args }) {
@@ -460,6 +485,7 @@ const inboxMessagesCommand = defineCommand({
   meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately." },
   args: {
     ...GLOBAL_FLAGS,
+    ...RETRIEVAL_FLAGS,
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     chatId: { type: "positional", description: "Chat ID." },
     before: {

@@ -18,7 +18,7 @@ import { AUTH_NEEDED, EXIT_CODE_MAP, getExitCode } from "../../src/lib/exit-code
  * SUCCESS path (a pending checkpoint) and is deliberately not in the map, so
  * an entry claiming it would be a real bug that a range check could not see.
  */
-const VALID_EXIT_CODES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]);
+const VALID_EXIT_CODES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14]);
 
 describe("lib/exit-codes — exhaustiveness", () => {
   it("every ErrorCode maps to a number in EXIT_CODE_MAP", () => {
@@ -83,6 +83,10 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["FILTER_CANDIDATES_REQUIRED", 2],
     ["BUDGET_EXHAUSTED" as ErrorCode, 13],
     ["LINKEDIN_SESSION_EVICTED" as ErrorCode, 8],
+    // In the SDK taxonomy since 0.26.0: see
+    // test/commands/retrieval-sdk-surface.test.ts for the arm that proves a
+    // NOT_STORED 422 actually reaches this row on the wire.
+    ["NOT_STORED" as ErrorCode, 14],
   ] as [ErrorCode, number][])(
     "ErrorCode %s → exit %i",
     (code, expectedExit) => {

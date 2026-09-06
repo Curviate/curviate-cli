@@ -38,7 +38,7 @@
  * modes.
  */
 
-import { renderNotices } from "./output.js";
+import { renderNotices, renderProvenanceNote } from "./output.js";
 
 /** Usage error for non-paginated commands. */
 export class PaginateError extends Error {
@@ -206,6 +206,13 @@ export async function* streamAll<P extends Record<string, unknown>>(
     if (opts.out) {
       const pageNotices = renderNotices(page.notices);
       if (pageNotices) opts.out.stderr.write(pageNotices + "\n");
+      // Same argument, same channel: the retrieval envelope sits on the PAGE,
+      // beside `items`, so raw NDJSON items carry no trace of whether the page
+      // was served from the stored copy or fetched. `renderSuccess` puts that
+      // on stderr for a single read; a stream has to do it per page or the
+      // highest-volume read path is the one that cannot answer the question.
+      const pageProvenance = renderProvenanceNote(page);
+      if (pageProvenance) opts.out.stderr.write(pageProvenance);
     }
 
     if (Array.isArray(items)) {

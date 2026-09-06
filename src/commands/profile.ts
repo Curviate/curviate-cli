@@ -41,6 +41,7 @@ import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS } from "../lib/glob
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { parseSectionsFlag } from "../lib/sections.js";
+import { RETRIEVAL_FLAGS, hasRetrievalFlags, parseRetrievalFlags, type RetrievalQuery } from "../lib/retrieval.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
@@ -81,6 +82,9 @@ type ProfileFlags = {
   profile?: string;
   sections?: string;
   verbose?: boolean;
+  // The retrieval pair — valid on the base users.get read only.
+  mode?: string;
+  "max-age"?: string;
 };
 
 type SubFlags = {
@@ -130,6 +134,41 @@ function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): 
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
   }
+}
+
+/**
+ * The retrieval pair is valid on the base profile read and nowhere else in
+ * this command group.
+ *
+ * The activity branches call listPosts / listComments / listReactions /
+ * listFollowers, and the API REFUSES `mode`/`max_age` with a 400 on any
+ * endpoint that does not declare them: a read that accepted
+ * mode=cache_only and then called LinkedIn anyway would break the one
+ * guarantee that parameter makes. Refusing here turns that into a usage
+ * error before the request, instead of a 400 after it.
+ *
+ * Returns the query to merge, or exits 2. `null` means the process is exiting.
+ */
+function retrievalQueryOrExit(
+  flags: { mode?: string; "max-age"?: string },
+  branchTakesRetrieval: boolean,
+  out: OutputStreams,
+): RetrievalQuery | null {
+  if (!branchTakesRetrieval && hasRetrievalFlags(flags)) {
+    out.stderr.write(
+      "error: --mode/--max-age apply to the profile read itself, not to " +
+        "--posts/--comments/--reactions/--followers. Those list endpoints do not accept them.\n",
+    );
+    process.exit(2);
+    return null;
+  }
+  const parsed = parseRetrievalFlags(flags);
+  if (!parsed.ok) {
+    out.stderr.write(parsed.error);
+    process.exit(2);
+    return null;
+  }
+  return parsed.query;
 }
 
 function buildOutputStreams(): OutputStreams {
@@ -183,6 +222,9 @@ export async function runProfileMe(
     process.exit(2);
     return;
   }
+
+  const retrievalQuery = retrievalQueryOrExit(flags, !hasActivityFlag, out);
+  if (retrievalQuery === null) return;
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -272,7 +314,7 @@ export async function runProfileMe(
   // D9: auto-prefix bare section values (skills -> linkedin_skills) and
   // validate against the served vocabulary, an unknown section is a usage
   // error (exit 2) here, before any network call, not a raw 400 from the API.
-  const params: { linkedin_sections?: string[] } = {};
+  const params: { linkedin_sections?: string[] } & RetrievalQuery = { ...retrievalQuery };
   if (flags.sections) {
     const parsedSections = parseSectionsFlag(flags.sections);
     if (!parsedSections.ok) {
@@ -332,6 +374,9 @@ export async function runProfileGet(
     }
     parsedSections = result.sections;
   }
+
+  const retrievalQuery = retrievalQueryOrExit(flags, !isListCommand, out);
+  if (retrievalQuery === null) return;
 
   const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
@@ -438,7 +483,7 @@ export async function runProfileGet(
       // v2 users.get exposes only `linkedin_sections`; the pre-v2 signal-a-view
       // request has no home on this op, so the command carries no such flag.
       // D9: parsedSections is already auto-prefixed and validated above.
-      const params: { linkedin_sections?: string[] } = {};
+      const params: { linkedin_sections?: string[] } & RetrievalQuery = { ...retrievalQuery };
       if (parsedSections) {
         params.linkedin_sections = parsedSections;
       }
@@ -448,7 +493,9 @@ export async function runProfileGet(
       // when --sections is set. "me"/provider-id inputs pass straight
       // through with zero extra calls; the plain (no-sections) fetch is
       // untouched (resolvedId, as before) since that form already works.
-      const getId = flags.sections ? await resolveMemberOrMeProviderId(ns, rawId) : resolvedId;
+      const getId = flags.sections
+        ? await resolveMemberOrMeProviderId(ns, rawId, retrievalQuery)
+        : resolvedId;
 
       const result = await ns.users.get(getId, params);
       const getOutOpts = { ...outOpts, slim: slimProfile };
@@ -915,6 +962,7 @@ const profileMeCommand = defineCommand({
   meta: { name: "me", description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers." },
   args: {
     ...GLOBAL_FLAGS,
+    ...RETRIEVAL_FLAGS,
     sections: {
       type: "string",
       description:
@@ -1139,6 +1187,7 @@ export const profileCommand = defineCommand({
     reactions: { type: "boolean", description: "List the profile's reactions.", default: false },
     followers: { type: "boolean", description: "List the profile's followers.", default: false },
     "is-company": { type: "boolean", description: "When listing posts, treat the profile as a company page.", default: false },
+    ...RETRIEVAL_FLAGS,
     sections: {
       type: "string",
       description:

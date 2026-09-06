@@ -21,6 +21,7 @@
  *  11: billing
  *  12: auth action needed (a pending checkpoint; not an error)
  *  13: account-safety budget (Curviate's own ceiling refused the action)
+ *  14: nothing stored (a `--mode cache_only` read the store cannot answer)
  */
 
 import type { ErrorCode } from "@curviate/sdk";
@@ -174,6 +175,18 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
 
   // Account-safety budget (13), see the note above for why this is not 6
   BUDGET_EXHAUSTED: 13,
+
+  // Nothing stored (14), A NEW BUCKET, and deliberately not 4.
+  // `NOT_STORED` is a 422 answering a `--mode cache_only` read: the resource
+  // may exist perfectly well on LinkedIn, and this API simply holds no copy of
+  // it, so it is NOT "not found" and re-checking the id is the wrong move. It
+  // is not 1 either: nothing failed. It is user_fixable and not retryable AS
+  // SENT — the fix is another mode (`refill` fetches it once, `auto` fetches
+  // now), which is the same shape as exit 2 but reached without a malformed
+  // request, so it earns its own number rather than muddying either.
+  // A 502 under cache_only stays 7: "we could not look" and "we hold nothing"
+  // are different answers and only one of them is worth retrying.
+  NOT_STORED: 14,
 
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,
