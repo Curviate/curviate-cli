@@ -296,10 +296,16 @@ export function renderSuccess(
   const slimmed = (!opts.verbose && opts.slim) ? opts.slim(data) : data;
 
   // Warn (diagnostics channel) when a requested field matches nothing on the
-  // response the projection actually runs over (the slim output, if any).
-  // Output is unaffected, the known fields still project; this only saves an
-  // agent from silently receiving {} and guessing why.
-  const unknownFields = detectUnknownFields(slimmed, fields);
+  // response the caller actually RECEIVES. Output is unaffected, the known
+  // fields still project; this only saves an agent from silently receiving {}
+  // and guessing why.
+  //
+  // Checked against the reattached view, not the bare slim output: `notices`
+  // and the retrieval envelope are added back AFTER projection, so measuring
+  // before that made `--fields source,observed_at` warn about two fields the
+  // very same call then delivered — a warning an agent branching on stderr
+  // would have to disbelieve.
+  const unknownFields = detectUnknownFields(withPreservedNotices(data, slimmed), fields);
   if (unknownFields) {
     out.stderr.write(
       `warning: --fields not present on the response: ${unknownFields.unknown.join(", ")}. ` +
@@ -312,9 +318,11 @@ export function renderSuccess(
   if (json) {
     out.stdout.write(JSON.stringify(projected) + "\n");
   } else {
-    // The retrieval envelope goes to the DIAGNOSTICS channel in human mode, so
-    // a caller can tell a served copy from a fetch without the two keys
-    // cluttering the rendered body. In --json it rides the payload instead.
+    // The retrieval envelope ALSO goes to the diagnostics channel in human
+    // mode, as one grep-able line: the rendered body spells it `source: store`
+    // across several key/value lines, which is fine to read and awkward to
+    // branch on. The keys stay on the body in both modes; this is a copy for
+    // the reader, not a move. In --json the payload alone carries it.
     const provenance = renderProvenanceNote(data);
     if (provenance) out.stderr.write(provenance);
     // Human-readable output: best-effort, not a stability contract.

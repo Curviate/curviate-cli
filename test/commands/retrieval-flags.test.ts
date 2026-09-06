@@ -273,3 +273,71 @@ describe("the flags are refused where the endpoint would 400", () => {
     expect(ns.users.listFollowers).toHaveBeenCalled();
   });
 });
+
+/**
+ * The id-resolution pre-call must obey the retrieval mode too.
+ *
+ * `profile <id> --sections` cannot send a raw slug (the sections-enriched read
+ * rejects it), so the command resolves the slug to a provider id with a FIRST
+ * `users.get`. That pre-call is a read like any other, and under
+ * `--mode cache_only` it must not reach LinkedIn: a mode whose entire purpose
+ * is "never fetch" that fetches once before the real read has broken its only
+ * guarantee, and it would do so under a 200 with nothing to notice.
+ *
+ * Needs BOTH `--sections` and a slug to trigger: a provider id or `me`
+ * short-circuits the resolve entirely.
+ */
+describe("profile <id> --sections — the resolve pre-call carries the mode", () => {
+  it("sends cache_only on the resolve call, not just the enriched read", async () => {
+    const ns = makeUsersNs();
+    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
+    const client = makeClient(ns);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+
+    await runProfileGet(
+      client as never,
+      { ...(ACC as object), id: "ada-slug", sections: "skills", mode: "cache_only" } as never,
+      makeOut(),
+    );
+
+    const calls = (ns.users.get as Mock).mock.calls;
+    // Two calls: the slug resolve, then the enriched read.
+    expect(calls.length).toBe(2);
+    for (const [, params] of calls) {
+      expect((params as Record<string, unknown>)["mode"]).toBe("cache_only");
+    }
+  });
+
+  it("carries --max-age onto the resolve call as well", async () => {
+    const ns = makeUsersNs();
+    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
+    const client = makeClient(ns);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+
+    await runProfileGet(
+      client as never,
+      { ...(ACC as object), id: "ada-slug", sections: "skills", "max-age": "300" } as never,
+      makeOut(),
+    );
+    for (const [, params] of (ns.users.get as Mock).mock.calls) {
+      expect((params as Record<string, unknown>)["max_age"]).toBe(300);
+    }
+  });
+
+  // CONTROL: a provider id needs no resolve, so exactly one call is made —
+  // proving the two-call arm above is about the resolve and not about a
+  // command that always calls twice.
+  it("control: a provider id short-circuits the resolve (one call)", async () => {
+    const ns = makeUsersNs();
+    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
+    const client = makeClient(ns);
+    const { runProfileGet } = await import("../../src/commands/profile.js");
+
+    await runProfileGet(
+      client as never,
+      { ...(ACC as object), id: "ACoAAA_x", sections: "skills", mode: "cache_only" } as never,
+      makeOut(),
+    );
+    expect((ns.users.get as Mock).mock.calls.length).toBe(1);
+  });
+});

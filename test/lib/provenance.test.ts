@@ -122,6 +122,38 @@ describe("provenance survives the slim projection", () => {
   });
 });
 
+describe("--fields does not warn about the envelope keys it does receive", () => {
+  // `detectUnknownFields` runs over the SLIM output, which by construction
+  // never carries the envelope — it is reattached afterwards. Checking there
+  // makes the README's own documented invocation scold the caller for asking
+  // for two fields it then delivers, and an agent branching on stderr sees a
+  // warning contradicted by the payload.
+  it("stays silent for --fields first_name,source,observed_at", () => {
+    const out = makeOut();
+    renderSuccess(
+      storeServed(),
+      { json: true, isTTY: false, fields: "first_name,source,observed_at", slim: slimAllowlist },
+      out,
+    );
+    const err = out.stderr.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(err).not.toContain("--fields not present");
+    // CONTROL on the delivery: the keys really are on the payload, so
+    // "no warning" is correct rather than merely quiet.
+    const json = stdoutJson(out);
+    expect(json["source"]).toBe("store");
+    expect(json["observed_at"]).toBe(OBSERVED);
+  });
+
+  // CONTROL on the warning itself: a genuinely absent field still warns, so
+  // the silence above is about the envelope and not a disabled warning.
+  it("control: a genuinely unknown field still warns", () => {
+    const out = makeOut();
+    renderSuccess(storeServed(), { json: true, isTTY: false, fields: "not_a_field", slim: slimAllowlist }, out);
+    const err = out.stderr.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(err).toContain("--fields not present");
+  });
+});
+
 describe("renderProvenanceNote — the one-line human-mode note", () => {
   it("names the source and the observation time", () => {
     const note = renderProvenanceNote(storeServed());
@@ -158,14 +190,26 @@ describe("renderProvenanceNote — the one-line human-mode note", () => {
 });
 
 describe("renderSuccess — where the note goes", () => {
-  it("writes the note to stderr in human mode, never to stdout", () => {
+  it("writes the note to stderr in human mode", () => {
     const out = makeOut();
     renderSuccess(storeServed(), { json: false, isTTY: true, slim: slimAllowlist }, out);
 
     const err = out.stderr.write.mock.calls.map((c) => c[0] as string).join("");
-    const stdout = out.stdout.write.mock.calls.map((c) => c[0] as string).join("");
     expect(err).toContain("source=store");
-    expect(stdout).not.toContain("source=store");
+  });
+
+  // The note is the DIAGNOSTICS copy, not a move: the keys stay on the body in
+  // human mode too, so `--fields source` works there and the two modes agree
+  // on the payload. Asserted explicitly because the obvious negative
+  // ("stdout has no source=store") is an instrument that cannot fail —
+  // renderHuman writes `source: store`, with a colon, so the `=` form never
+  // appears on stdout no matter what the code does.
+  it("keeps the keys on the human-mode body as well, in renderHuman's spelling", () => {
+    const out = makeOut();
+    renderSuccess(storeServed(), { json: false, isTTY: true, slim: slimAllowlist }, out);
+    const stdout = out.stdout.write.mock.calls.map((c) => c[0] as string).join("");
+    expect(stdout).toMatch(/source[:=]\s*store/);
+    expect(stdout).toMatch(/observed_at[:=]/);
   });
 
   it("does NOT write the note in --json mode (the fields are in the payload)", () => {

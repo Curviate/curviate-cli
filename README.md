@@ -453,7 +453,7 @@ sets the oldest stored copy it will accept.
 | `auto` | Default. Serve a stored copy while it is within the resource's freshness threshold, otherwise fetch. |
 | `live` | Always fetch. Same as `--max-age 0`. |
 | `refill` | Serve a stored copy at any age; fetch only when nothing is stored yet. |
-| `cache_only` | Never fetch. Exits `14` when nothing is stored. |
+| `cache_only` | Never fetch. A store miss is refused rather than fetched (see the exit-`14` note below). |
 
 `--max-age <seconds>` is a whole number from `0` to `31536000` (one year). It
 overrides the `auto`, `live` and `refill` presets in both directions. It cannot
@@ -477,6 +477,14 @@ stays parseable.
 A stored copy can carry less than a live one: message bodies and contact fields
 are stripped before anything is stored, so `source: "store"` is the signal to
 re-read with `--mode live` when you need them.
+
+### Exit `14` is reserved, not yet reachable
+
+A `--mode cache_only` read the store cannot answer is mapped to exit `14`, but
+the pinned SDK's error taxonomy does not carry that code yet, so it currently
+decodes to an internal error and the binary exits `1`. Branch on `14` if you
+want to be ready for it, but do not treat a `1` here as a different condition
+until the SDK pin moves.
 
 ```bash
 # The default: a fresh stored copy if there is one, otherwise fetch
@@ -507,7 +515,7 @@ curviate profile me --account acc_1 --max-age 300 --fields first_name,source,obs
 | 11 | Billing issue (payment required, failed, or seat cancelled) |
 | 12 | Auth action needed (a pending checkpoint; not an error) |
 | 13 | Account-safety budget: Curviate's own ceiling refused the action |
-| 14 | Nothing stored: a `--mode cache_only` read the store cannot answer |
+| 14 | Nothing stored: a `--mode cache_only` read the store cannot answer (not yet reachable, see below) |
 
 ### 6 and 13 are both `429`, and they need different actions
 

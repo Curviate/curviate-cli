@@ -493,7 +493,9 @@ export async function runProfileGet(
       // when --sections is set. "me"/provider-id inputs pass straight
       // through with zero extra calls; the plain (no-sections) fetch is
       // untouched (resolvedId, as before) since that form already works.
-      const getId = flags.sections ? await resolveMemberOrMeProviderId(ns, rawId) : resolvedId;
+      const getId = flags.sections
+        ? await resolveMemberOrMeProviderId(ns, rawId, retrievalQuery)
+        : resolvedId;
 
       const result = await ns.users.get(getId, params);
       const getOutOpts = { ...outOpts, slim: slimProfile };

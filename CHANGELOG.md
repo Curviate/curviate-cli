@@ -46,6 +46,13 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   could not look" and "we hold nothing" are different answers and only one is
   worth retrying.
 
+- **The id-resolution pre-call obeys the mode too.** `profile <id> --sections`
+  with a slug resolves the slug to a provider id with a first read before the
+  enriched one. That pre-call now carries `mode`/`max_age`; previously it went
+  out with neither, so `--mode cache_only` reached LinkedIn once before the
+  read it was meant to prevent — the mode's only guarantee, broken under a
+  `200` with nothing to notice.
+
 ### Known gaps
 
 - `inbox get` does not take the two flags yet. The endpoint accepts them, but
@@ -53,8 +60,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   with the next SDK regen.
 - Exit `14` is mapped but not yet reachable: the pinned SDK's error taxonomy
   has no `NOT_STORED`, so the wire code decodes to `INTERNAL` and the binary
-  still answers `1`. Both gaps are held by tests that fail the moment the SDK
-  ships the missing pieces.
+  still answers `1`. `--help` and the README say so rather than advertising a
+  code the binary cannot produce. Both gaps are held by tests that fail the
+  moment the SDK ships the missing pieces.
 
 ## [0.26.0] - 2026-09-05
 

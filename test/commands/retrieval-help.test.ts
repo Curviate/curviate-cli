@@ -9,7 +9,7 @@
  * load-bearing, and both are asserted against the live command tree rather
  * than a transcription of it.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { RETRIEVAL_MODES, MAX_AGE_CEILING_SECONDS } from "../../src/lib/retrieval.js";
 
 type ArgDef = { description?: string };
@@ -107,5 +107,67 @@ describe("the help text states the vocabulary a caller has to type", () => {
   it("--mode warns that cache_only and --max-age do not combine", async () => {
     const desc = args((await tree()).profile)["mode"]?.description ?? "";
     expect(desc).toMatch(/max-age/);
+  });
+});
+
+/**
+ * Not advertising the flags is not the same property as REFUSING them.
+ *
+ * The API refuses undeclared `mode`/`max_age` with a 400 rather than ignoring
+ * them, precisely because ignoring turns the `cache_only` guarantee into a 200
+ * with nothing to notice. A CLI that parsed the flag and dropped it would
+ * reproduce that failure one layer earlier, so the refusal is asserted through
+ * the real dispatcher rather than inferred from the args table. (The check
+ * lives in `dispatch`, not `resolveLeaf` — routing resolves such a call
+ * happily; it is the dispatcher that rejects the undeclared flag.)
+ */
+describe("the flags are REFUSED, not ignored, on commands that do not declare them", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Dispatch a route and report what the user is told on stderr. */
+  async function dispatchStderr(root: unknown, argv: string[]): Promise<string> {
+    const chunks: string[] = [];
+    vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`__exit__${code ?? 0}`);
+    }) as never);
+    vi.spyOn(process.stderr, "write").mockImplementation(((c: string) => {
+      chunks.push(String(c));
+      return true;
+    }) as never);
+    vi.spyOn(process.stdout, "write").mockImplementation((() => true) as never);
+    try {
+      const { dispatch } = await import("../../src/dispatch.js");
+      await dispatch(root as never, argv);
+    } catch {
+      // A usage error or a downstream network failure both land here; the
+      // assertion is on what was written, not on how the process ended.
+    }
+    return chunks.join("");
+  }
+
+  it.each([
+    ["inbox get", "inbox", ["get", "c1", "--account", "acc_1", "--mode", "cache_only"], "--mode"],
+    ["inbox list", "inbox", ["list", "--account", "acc_1", "--mode", "cache_only"], "--mode"],
+    ["profile followers", "profile", ["followers", "ada", "--account", "acc_1", "--max-age", "300"], "--max-age"],
+  ])("%s refuses %s as an unknown flag", async (_label, group, argv, flag) => {
+    const mod =
+      group === "inbox"
+        ? (await import("../../src/commands/inbox.js")).inboxCommand
+        : (await import("../../src/commands/profile.js")).profileCommand;
+    const err = await dispatchStderr(mod, argv as string[]);
+    expect(err).toContain("unknown flag");
+    expect(err).toContain(flag as string);
+  });
+
+  // CONTROL: the same dispatcher does NOT call the pair unknown where it IS
+  // declared, so the refusals above are about the undeclared flag and not
+  // about a dispatcher that rejects these two names everywhere.
+  it("control: inbox messages is not told --mode is unknown", async () => {
+    const { inboxCommand } = await import("../../src/commands/inbox.js");
+    const err = await dispatchStderr(inboxCommand, [
+      "messages", "c1", "--account", "acc_1", "--mode", "cache_only",
+      "--base-url", "http://127.0.0.1:9",
+    ]);
+    expect(err).not.toContain("unknown flag");
   });
 });
