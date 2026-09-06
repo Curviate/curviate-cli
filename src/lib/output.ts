@@ -116,6 +116,10 @@ function applyProjection(
   return data;
 }
 
+/** A plain object: the only shape either preservation pass can reattach onto. */
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
 /**
  * Carry a response's top-level `notices[]` across projection.
  *
@@ -137,8 +141,6 @@ function applyProjection(
  * without one renders byte-identically to how it always has.
  */
 function withPreservedNotices(original: unknown, rendered: unknown): unknown {
-  const isPlain = (v: unknown): v is Record<string, unknown> =>
-    typeof v === "object" && v !== null && !Array.isArray(v);
   if (!isPlain(original) || !isPlain(rendered)) return rendered;
   let out = rendered;
   const notices = original["notices"];
@@ -169,8 +171,6 @@ const PROVENANCE_KEYS = ["source", "observed_at", "withdrawn", "withdrawn_at"] a
  * without `source` reattaches nothing and renders exactly as it always has.
  */
 function withPreservedProvenance(original: unknown, rendered: unknown): unknown {
-  const isPlain = (v: unknown): v is Record<string, unknown> =>
-    typeof v === "object" && v !== null && !Array.isArray(v);
   if (!isPlain(original) || !isPlain(rendered)) return rendered;
   // `source` is the anchor: the envelope is present as a unit or not at all,
   // and keying off it stops a response that merely happens to carry an
