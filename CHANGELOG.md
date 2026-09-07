@@ -6,6 +6,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.29.0] - 2026-09-07
+
+Pins `@curviate/sdk@0.28.0`. **BREAKING**: `inbox search <query>` requires a term
+of at least 3 characters.
+
+### BREAKING
+
+- **`inbox search` refuses a term shorter than 3 characters, before the request
+  is sent.** Exit code 2, with the same sentence the API returns. The search is
+  served from an index built out of overlapping 3-character sequences, so a
+  shorter term cannot use it; the server now refuses such a term with
+  `INVALID_REQUEST`, and the CLI refuses it a step earlier so a typo costs no
+  round trip and no rate-limit budget.
+
+  A 1-2 character search previously returned results, slowly. If you script
+  against this, debounce to 3 characters rather than catching the exit code.
+
+### Changed
+
+- `curviate account get` reports `event_log` (`retained`, `row_cap`,
+  `at_row_cap`) alongside `quotas` and `account_states`, from the SDK bump. While
+  `at_row_cap` is true, retained events are being dropped for that account;
+  delivery to a registered webhook is unaffected.
+
 ## [0.28.0] - 2026-09-06
 
 Pins `@curviate/sdk` at `0.27.0` and re-vendors the OpenAPI fixture from it

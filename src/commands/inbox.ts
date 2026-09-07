@@ -129,6 +129,16 @@ function validateLimitRange(raw: string | undefined, out: OutputStreams): void {
   }
 }
 
+/**
+ * The wire minimum for `inbox search <query>`.
+ *
+ * The served OpenAPI carries it as `minLength: 3`, but TypeScript cannot express
+ * a string minimum length, so the SDK's generated type is plain `string` and the
+ * compiler will not catch a short term. This constant is the client-side half of
+ * that gap.
+ */
+const MIN_SEARCH_QUERY_CHARS = 3;
+
 /** The six folders the API's `inbox` param accepts. Default (unset): primary. */
 const INBOX_FOLDERS = ["primary", "inmail", "archived", "spam", "jobs", "starred"] as const;
 
@@ -360,6 +370,17 @@ export async function runInboxSearch(
   const query = flags.query ?? "";
   if (!query) {
     out.stderr.write("error: <query> is required.\n");
+    process.exit(2);
+  }
+  // The server refuses a term under 3 characters, because the
+  // search index is built from overlapping 3-character sequences and a shorter
+  // term cannot probe it. Refused HERE, before the request, so a typo costs no
+  // round trip and no rate-limit budget. Same sentence the server sends back, so
+  // the two surfaces cannot drift into telling a user different numbers.
+  if (query.length < MIN_SEARCH_QUERY_CHARS) {
+    out.stderr.write(
+      `error: query must be at least ${MIN_SEARCH_QUERY_CHARS} characters. Shorter terms cannot use the search index.\n`,
+    );
     process.exit(2);
   }
 

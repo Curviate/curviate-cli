@@ -728,7 +728,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             },
             "description": "Which profile sections to fetch (repeatable, flat). Pass one or more of: linkedin_experience, linkedin_education, linkedin_languages, linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, linkedin_interests (or linkedin_* for all), plus each value's _preview variant. Omit for base fields only."
@@ -2441,10 +2442,12 @@
                 "properties": {
                   "first_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "New first name."
                   },
                   "last_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "New last name."
                   },
                   "bio": {
@@ -2462,6 +2465,7 @@
                       "properties": {
                         "name": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "The skill name to add."
                         },
                         "id": {
@@ -2481,14 +2485,17 @@
                     "properties": {
                       "content": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Base64-encoded file bytes."
                       },
                       "content_type": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "File MIME type (e.g. image/png, image/jpeg)."
                       },
                       "filename": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "File name."
                       }
                     },
@@ -2505,14 +2512,17 @@
                     "properties": {
                       "content": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Base64-encoded file bytes."
                       },
                       "content_type": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "File MIME type (e.g. image/png, image/jpeg)."
                       },
                       "filename": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "File name."
                       }
                     },
@@ -2568,7 +2578,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -3576,6 +3587,7 @@
                 "properties": {
                   "endorsement_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The endorsement ID for the specific skill to endorse. Obtain it from the `endorsement_id` field on a skill in the target's skills section, via GET /v1/{account_id}/users/{user_id}?linkedin_sections=linkedin_skills."
                   }
                 },
@@ -3637,7 +3649,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           }
@@ -5706,7 +5719,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -6093,7 +6107,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -7749,7 +7764,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -8251,7 +8267,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           }
@@ -8770,7 +8787,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -9711,7 +9729,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           }
@@ -10136,7 +10155,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           }
@@ -10519,7 +10539,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           },
@@ -11554,7 +11575,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           },
@@ -12387,6 +12409,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied."
                   },
                   "quote_id": {
@@ -12400,14 +12424,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, application/pdf)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -12953,7 +12980,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           },
@@ -13531,7 +13559,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page."
           }
@@ -14565,7 +14594,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page. Scoped to the `name` value it was minted under, replaying it alongside a different `name` is rejected."
           }
@@ -15397,7 +15427,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -16116,7 +16147,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -16693,7 +16725,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -17412,7 +17445,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -18224,7 +18258,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -19003,7 +19038,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Search terms for LinkedIn groups (multi-word supported, e.g. 'gtm engineering')."
           },
@@ -19024,7 +19060,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -19410,7 +19447,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           }
@@ -20018,7 +20056,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "The typed text to resolve (e.g. 'marke')."
           },
@@ -20039,7 +20078,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor returned from a previous response."
           },
@@ -20469,7 +20509,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "An opaque cursor for pagination. Pass the `cursor` from the preceding response to fetch the next page."
           },
@@ -21476,16 +21517,20 @@
                   "attendees_ids": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "LinkedIn member provider IDs for the chat recipients (>= 1, e.g. ACo...)."
                   },
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Opening message text (1-8000 chars)."
                   },
                   "subject": {
                     "type": "string",
+                    "maxLength": 200,
                     "description": "Optional conversation name / subject line (<= 200 chars)."
                   },
                   "attachments": {
@@ -21495,14 +21540,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, application/pdf)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -22720,7 +22768,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "An opaque cursor for pagination. Pass the `cursor` from the preceding response to fetch the next page."
           },
@@ -23656,6 +23705,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied."
                   },
                   "quote_id": {
@@ -23669,14 +23720,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, application/pdf)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -24507,6 +24561,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Replacement message text (1-8000 chars)."
                   }
                 },
@@ -25113,6 +25169,7 @@
                 "properties": {
                   "reaction": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Native emoji reaction value (e.g. a thumbs-up emoji). Must be a valid LinkedIn reaction emoji."
                   }
                 },
@@ -25431,9 +25488,10 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 3
             },
-            "description": "The search term: matches both participant names and message content (e.g. 'sophie keller'). Terms of 3 or more characters are fast; a 1-2 character term is slower."
+            "description": "The search term: matches both participant names and message content (e.g. 'sophie keller'). Minimum 3 characters. A shorter term cannot use the search index and is rejected with INVALID_REQUEST."
           },
           {
             "name": "limit",
@@ -25452,7 +25510,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response; decodable, wraps a zero-based item offset, pass it back verbatim."
           }
@@ -26250,10 +26309,14 @@
                   },
                   "subject": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
                     "description": "InMail subject line (1-200 chars)."
                   },
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "InMail body text (1-8000 chars)."
                   }
                 },
@@ -26719,7 +26782,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "An opaque cursor for pagination. Pass the `cursor` from the preceding response to fetch the next page."
           },
@@ -27424,7 +27488,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Self-describing of its sort: when present, the sort is taken from the cursor. Pass it back verbatim; the `relevant` cursor expires (~1h). Page until `cursor` is null."
           }
@@ -28004,7 +28069,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Pass it back verbatim. This feed throttles hard under fast polling: poll `unread_count` rather than deep-paging."
           }
@@ -29062,7 +29128,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -30063,6 +30130,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1250,
                     "description": "Comment body text (1-1250 chars). Inline @mentions live in the text (e.g. \"@ACoAA...\"). Not stored or logged."
                   },
                   "comment_as": {
@@ -30076,14 +30145,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -31057,6 +31129,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1250,
                     "description": "Updated comment body text (1-1250 chars). Inline @mentions live in the text."
                   }
                 },
@@ -31819,6 +31893,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1250,
                     "description": "Comment body text (1-1250 chars). Inline @mentions live in the text (e.g. \"@ACoAA...\"). Not stored or logged."
                   },
                   "comment_as": {
@@ -31832,14 +31908,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -31929,7 +32008,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -32393,7 +32473,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -33847,10 +33928,12 @@
                 "properties": {
                   "recipient_identifier": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "LinkedIn public identifier (vanity slug) or member URN of the recipient."
                   },
                   "message": {
                     "type": "string",
+                    "maxLength": 300,
                     "description": "Optional connect-request note (up to 300 characters). Passed to the platform and immediately discarded, never stored."
                   }
                 },
@@ -33907,7 +33990,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from the previous response. Omit for the first page."
           },
@@ -34298,7 +34382,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from the previous response. Omit for the first page."
           },
@@ -35645,7 +35730,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response."
           }
@@ -36512,10 +36598,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "description": "The job title, reference an existing LinkedIn job title by id, or supply a free-text name."
@@ -36524,10 +36612,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "description": "The hiring company, reference an existing company by id, or supply a free-text name."
@@ -36543,6 +36633,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A LOCATION parameter id from GET /v1/{account_id}/search/parameters."
                   },
                   "employment_status": {
@@ -36560,6 +36651,7 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 200,
                     "description": "Full job description (minimum 200 characters). Content passes through verbatim, never stored."
                   },
                   "apply_method": {
@@ -36573,6 +36665,7 @@
                           },
                           "notification_email": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "Email address notified of new applicants."
                           }
                         },
@@ -36591,6 +36684,7 @@
                           },
                           "website_url": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "External URL candidates apply through."
                           }
                         },
@@ -36613,7 +36707,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Optional skill parameter ids from GET /v1/{account_id}/search/parameters."
                   },
@@ -36707,7 +36802,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             },
             "description": "Which additional sections to include on the response (e.g. hiring_team, salary, benefits). The exact set of accepted values is not finalized, supply the section names you need, comma-separated for more than one, and they are forwarded verbatim. Omit for the base fields only."
@@ -37758,10 +37854,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "description": "The job title, reference an existing LinkedIn job title by id, or supply a free-text name."
@@ -37770,10 +37868,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "description": "The hiring company, reference an existing company by id, or supply a free-text name."
@@ -37789,6 +37889,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A LOCATION parameter id from GET /v1/{account_id}/search/parameters."
                   },
                   "employment_status": {
@@ -37806,6 +37907,7 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 200,
                     "description": "Full job description (minimum 200 characters). Content passes through verbatim, never stored."
                   },
                   "apply_method": {
@@ -37819,6 +37921,7 @@
                           },
                           "notification_email": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "Email address notified of new applicants."
                           }
                         },
@@ -37837,6 +37940,7 @@
                           },
                           "website_url": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "External URL candidates apply through."
                           }
                         },
@@ -37859,7 +37963,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Optional skill parameter ids from GET /v1/{account_id}/search/parameters."
                   },
@@ -38680,6 +38785,7 @@
                         "properties": {
                           "currency": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "ISO-4217 currency code, e.g. EUR."
                           },
                           "amount": {
@@ -38725,6 +38831,7 @@
                         "properties": {
                           "currency": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "ISO-4217 currency code, e.g. EUR."
                           },
                           "amount": {
@@ -39182,7 +39289,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response."
           }
@@ -39691,7 +39799,8 @@
                   "location": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Location parameter ids from GET /v1/{account_id}/search/parameters."
                   },
@@ -39715,7 +39824,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Skill parameter ids from GET /v1/{account_id}/search/parameters."
                   }
@@ -41651,6 +41761,8 @@
                 "properties": {
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 3000,
                     "description": "Post body text (1-3000 chars). Inline @mentions live in the text (e.g. \"@ACoAA...\"). Not stored or logged."
                   },
                   "attachments": {
@@ -41660,14 +41772,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, application/pdf)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         }
                       },
@@ -41788,7 +41903,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -43466,7 +43582,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -44639,6 +44756,7 @@
                 "properties": {
                   "post_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
                   }
                 },
@@ -46500,20 +46618,26 @@
                   "attendees_ids": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "One or more Recruiter member IDs (AE... format) to include in the chat."
                   },
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Opening message text (1-8000 chars). Passed to the platform and discarded; never stored or logged."
                   },
                   "subject": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
                     "description": "Subject line; REQUIRED for Recruiter (InMail-based messaging), unlike the classic surface (<= 200 chars)."
                   },
                   "signature": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Sender signature; REQUIRED for Recruiter. Not stored or logged."
                   },
                   "visibility": {
@@ -46543,6 +46667,7 @@
                   },
                   "channel_type": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Sourcing channel for tracking purposes (e.g. CAREER_SITE, MANUAL_IMPORT, INTERNAL_CANDIDATES, RECRUITER_SEARCH, REFERRAL; the vendor's own vocabulary is broader than this illustrative set, so any non-empty value is accepted rather than a closed enum)."
                   },
                   "follow_up": {
@@ -46550,10 +46675,12 @@
                     "properties": {
                       "subject": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Follow-up message subject. Not stored or logged."
                       },
                       "text": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Follow-up message body. Not stored or logged."
                       },
                       "attachments": {
@@ -46563,14 +46690,17 @@
                           "properties": {
                             "content": {
                               "type": "string",
+                              "minLength": 1,
                               "description": "Base64-encoded file bytes."
                             },
                             "content_type": {
                               "type": "string",
+                              "minLength": 1,
                               "description": "Attachment MIME type (e.g. image/png, audio/mp4)."
                             },
                             "filename": {
                               "type": "string",
+                              "minLength": 1,
                               "description": "File name for the attachment."
                             },
                             "send_mode": {
@@ -46617,6 +46747,7 @@
                               },
                               "timezone": {
                                 "type": "string",
+                                "minLength": 1,
                                 "description": "IANA timezone string, e.g. 'Europe/Paris'."
                               }
                             },
@@ -46636,6 +46767,7 @@
                               },
                               "timezone": {
                                 "type": "string",
+                                "minLength": 1,
                                 "description": "IANA timezone string, e.g. 'Europe/Paris'."
                               }
                             },
@@ -46663,14 +46795,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, audio/mp4)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         },
                         "send_mode": {
@@ -46798,7 +46933,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -47320,47 +47456,56 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
                   },
                   "spotlights": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by candidate spotlight tags."
                   },
                   "load_saved_search": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Load filters from a saved search id."
                   },
                   "load_custom_filter": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Load filters from a saved custom-filter id."
                   },
                   "save_search": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Persist this search under a name on the LinkedIn side."
                   },
                   "save_custom_filter": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Persist this filter set under a name on the LinkedIn side."
                   },
                   "network_distance": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by network distance."
                   },
                   "location": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved LOCATION parameter ids."
                   },
                   "postal_code": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A postal code to search around."
                   },
                   "postal_code_radius": {
@@ -47371,49 +47516,56 @@
                   "job_title": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_TITLE parameter ids."
                   },
                   "occupation": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved OCCUPATION parameter ids."
                   },
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SKILL parameter ids."
                   },
                   "company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved COMPANY parameter ids."
                   },
                   "current_company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved CURRENT_COMPANY parameter ids."
                   },
                   "past_company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved company parameter ids for past employers."
                   },
                   "company_size": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by company size bucket."
                   },
@@ -47474,35 +47626,40 @@
                   "degree": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved DEGREE parameter ids."
                   },
                   "workplace_type": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by workplace type (e.g. ON_SITE, REMOTE, HYBRID)."
                   },
                   "school": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SCHOOL parameter ids."
                   },
                   "field_of_study": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved FIELD_OF_STUDY parameter ids."
                   },
                   "employment_type": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by employment type."
                   },
@@ -47516,48 +47673,56 @@
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved INDUSTRY parameter ids."
                   },
                   "seniority": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by seniority level."
                   },
                   "spoken_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SPOKEN_LANGUAGE parameter ids."
                   },
                   "profile_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by the profile's display language."
                   },
                   "project": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Resolved PROJECT parameter id."
                   },
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_FUNCTION parameter ids."
                   },
                   "first_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "last_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "recently_joined": {
@@ -47575,12 +47740,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -47590,12 +47757,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -47612,7 +47781,8 @@
                   "group": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved GROUP parameter ids."
                   },
@@ -47622,12 +47792,14 @@
                   },
                   "notes": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved TAG parameter ids."
                   }
@@ -48111,6 +48283,7 @@
                       },
                       "project_id": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "The Recruiter project whose applicant filters are resolved."
                       },
                       "type": {
@@ -48130,7 +48303,8 @@
                         ]
                       },
                       "keywords": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -48150,6 +48324,7 @@
                       },
                       "project_id": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "The Recruiter project whose pipeline filters are resolved."
                       },
                       "type": {
@@ -48164,10 +48339,12 @@
                       },
                       "stage_id": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter to a single pipeline stage id."
                       },
                       "keywords": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -48210,7 +48387,8 @@
                         ]
                       },
                       "keywords": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -48236,7 +48414,8 @@
                         ]
                       },
                       "keywords": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -48360,7 +48539,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Filter by project name (content, forwarded verbatim, never persisted)."
           },
@@ -48381,7 +48561,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           }
@@ -49913,6 +50094,7 @@
                 "properties": {
                   "name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "New project name. Content; not stored."
                   },
                   "visibility": {
@@ -49925,16 +50107,19 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "New project description. Content; not stored."
                   },
                   "company": {
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "additionalProperties": false,
@@ -49944,10 +50129,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -49959,6 +50146,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A LOCATION parameter id (resolve via search/parameters)."
                   },
                   "seniority_level": {
@@ -50049,7 +50237,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           }
@@ -50610,10 +50799,12 @@
                 "type": "object",
                 "properties": {
                   "keywords": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "stage_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Filter to a single pipeline stage id."
                   },
                   "sort_by": {
@@ -50643,12 +50834,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -50658,12 +50851,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -50676,14 +50871,16 @@
                   "added_by": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by the recruiter(s) who added the candidate."
                   },
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by resolved skill parameter ids."
                   },
@@ -50708,21 +50905,24 @@
                   "job_title": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by resolved job-title parameter ids."
                   },
                   "current_company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by resolved company parameter ids."
                   },
                   "current_location": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by resolved location parameter ids."
                   }
@@ -50787,7 +50987,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -51318,47 +51519,56 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
                   },
                   "spotlights": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by candidate spotlight tags."
                   },
                   "load_saved_search": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Load filters from a saved search id."
                   },
                   "load_custom_filter": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Load filters from a saved custom-filter id."
                   },
                   "save_search": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Persist this search under a name on the LinkedIn side."
                   },
                   "save_custom_filter": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Persist this filter set under a name on the LinkedIn side."
                   },
                   "network_distance": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by network distance."
                   },
                   "location": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved LOCATION parameter ids."
                   },
                   "postal_code": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A postal code to search around."
                   },
                   "postal_code_radius": {
@@ -51369,49 +51579,56 @@
                   "job_title": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_TITLE parameter ids."
                   },
                   "occupation": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved OCCUPATION parameter ids."
                   },
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SKILL parameter ids."
                   },
                   "company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved COMPANY parameter ids."
                   },
                   "current_company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved CURRENT_COMPANY parameter ids."
                   },
                   "past_company": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved company parameter ids for past employers."
                   },
                   "company_size": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by company size bucket."
                   },
@@ -51472,35 +51689,40 @@
                   "degree": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved DEGREE parameter ids."
                   },
                   "workplace_type": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by workplace type (e.g. ON_SITE, REMOTE, HYBRID)."
                   },
                   "school": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SCHOOL parameter ids."
                   },
                   "field_of_study": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved FIELD_OF_STUDY parameter ids."
                   },
                   "employment_type": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by employment type."
                   },
@@ -51514,48 +51736,56 @@
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved INDUSTRY parameter ids."
                   },
                   "seniority": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by seniority level."
                   },
                   "spoken_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SPOKEN_LANGUAGE parameter ids."
                   },
                   "profile_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by the profile's display language."
                   },
                   "project": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Resolved PROJECT parameter id."
                   },
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_FUNCTION parameter ids."
                   },
                   "first_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "last_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "recently_joined": {
@@ -51573,12 +51803,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -51588,12 +51820,14 @@
                         "type": "object",
                         "properties": {
                           "timespan": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           },
                           "activity_types": {
                             "type": "array",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             }
                           }
                         },
@@ -51610,7 +51844,8 @@
                   "group": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved GROUP parameter ids."
                   },
@@ -51620,17 +51855,20 @@
                   },
                   "notes": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content, forwarded verbatim, never persisted."
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved TAG parameter ids."
                   },
                   "channel_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The project's RECRUITER_SEARCH talent-pool channel id. Read it off talent_pool.channels[] of GET .../recruiter/projects/{project_id}."
                   }
                 },
@@ -51681,7 +51919,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -53588,10 +53827,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -53607,7 +53848,8 @@
                         "type": "object",
                         "properties": {
                           "id": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -53619,7 +53861,8 @@
                         "type": "object",
                         "properties": {
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -53640,6 +53883,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A resolved LOCATION parameter id."
                   },
                   "employment_status": {
@@ -53668,19 +53912,22 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 200,
                     "description": "Content; minimum 200 characters, forwarded verbatim, never persisted."
                   },
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved industry parameter ids."
                   },
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved job-function parameter ids."
                   },
@@ -53717,6 +53964,7 @@
                           },
                           "website_url": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "The external URL applicants are routed to."
                           }
                         },
@@ -53740,7 +53988,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Up to 10 resolved skill parameter ids."
                   },
@@ -53749,10 +53998,12 @@
                     "description": "Whether to show the posting recruiter's info. Defaults to true."
                   },
                   "tracking_pixel_url": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "company_job_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Your own external job-requisition id, for reference."
                   },
                   "screening_questions": {
@@ -53762,10 +54013,12 @@
                       "properties": {
                         "question": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Content, forwarded verbatim, never persisted."
                         },
                         "answer_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "The substrate's own screening-question answer-type discriminator."
                         },
                         "qualification_required": {
@@ -53784,6 +54037,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -53816,6 +54070,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -53850,7 +54105,8 @@
                         "type": "boolean"
                       },
                       "rejection_template": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "reject_unqualified_applicants": {
                         "type": "boolean"
@@ -54682,10 +54938,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -54701,7 +54959,8 @@
                         "type": "object",
                         "properties": {
                           "id": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -54713,7 +54972,8 @@
                         "type": "object",
                         "properties": {
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -54734,6 +54994,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A resolved LOCATION parameter id."
                   },
                   "employment_status": {
@@ -54762,19 +55023,22 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 200,
                     "description": "Content; minimum 200 characters, forwarded verbatim, never persisted."
                   },
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved industry parameter ids."
                   },
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved job-function parameter ids."
                   },
@@ -54811,6 +55075,7 @@
                           },
                           "website_url": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "The external URL applicants are routed to."
                           }
                         },
@@ -54834,7 +55099,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Up to 10 resolved skill parameter ids."
                   },
@@ -54843,10 +55109,12 @@
                     "description": "Whether to show the posting recruiter's info. Defaults to true."
                   },
                   "tracking_pixel_url": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "company_job_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Your own external job-requisition id, for reference."
                   },
                   "screening_questions": {
@@ -54856,10 +55124,12 @@
                       "properties": {
                         "question": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Content, forwarded verbatim, never persisted."
                         },
                         "answer_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "The substrate's own screening-question answer-type discriminator."
                         },
                         "qualification_required": {
@@ -54878,6 +55148,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -54910,6 +55181,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -54944,7 +55216,8 @@
                         "type": "boolean"
                       },
                       "rejection_template": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "reject_unqualified_applicants": {
                         "type": "boolean"
@@ -54960,6 +55233,7 @@
                   },
                   "project_name": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Content; the new project's name, forwarded verbatim, never persisted."
                   }
                 },
@@ -55074,7 +55348,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             },
             "description": "Resolved LOCATION parameter ids (repeatable, flat)."
@@ -55086,7 +55361,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             },
             "description": "Resolved job-poster (SEAT) parameter ids (repeatable, flat)."
@@ -55098,7 +55374,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               }
             },
             "description": "Resolved CONTRACT parameter ids (repeatable, flat)."
@@ -55137,7 +55414,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           }
@@ -56437,10 +56715,12 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -56456,7 +56736,8 @@
                         "type": "object",
                         "properties": {
                           "id": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -56468,7 +56749,8 @@
                         "type": "object",
                         "properties": {
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
@@ -56489,6 +56771,7 @@
                   },
                   "location": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "A resolved LOCATION parameter id."
                   },
                   "employment_status": {
@@ -56517,19 +56800,22 @@
                   },
                   "description": {
                     "type": "string",
+                    "minLength": 200,
                     "description": "Content; minimum 200 characters, forwarded verbatim, never persisted."
                   },
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved industry parameter ids."
                   },
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "1-3 resolved job-function parameter ids."
                   },
@@ -56566,6 +56852,7 @@
                           },
                           "website_url": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "The external URL applicants are routed to."
                           }
                         },
@@ -56589,7 +56876,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Up to 10 resolved skill parameter ids."
                   },
@@ -56598,10 +56886,12 @@
                     "description": "Whether to show the posting recruiter's info. Defaults to true."
                   },
                   "tracking_pixel_url": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "company_job_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Your own external job-requisition id, for reference."
                   },
                   "screening_questions": {
@@ -56611,10 +56901,12 @@
                       "properties": {
                         "question": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Content, forwarded verbatim, never persisted."
                         },
                         "answer_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "The substrate's own screening-question answer-type discriminator."
                         },
                         "qualification_required": {
@@ -56633,6 +56925,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -56665,6 +56958,7 @@
                     "properties": {
                       "currency": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "ISO-4217 currency code."
                       },
                       "pay_frequency": {
@@ -56699,7 +56993,8 @@
                         "type": "boolean"
                       },
                       "rejection_template": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "reject_unqualified_applicants": {
                         "type": "boolean"
@@ -57147,6 +57442,7 @@
                         "properties": {
                           "currency": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "ISO-4217 currency code, e.g. EUR."
                           },
                           "amount": {
@@ -57196,6 +57492,7 @@
                         "properties": {
                           "currency": {
                             "type": "string",
+                            "minLength": 1,
                             "description": "ISO-4217 currency code, e.g. EUR."
                           },
                           "amount": {
@@ -57987,10 +58284,12 @@
                 "properties": {
                   "stage_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The pipeline stage id to save the candidate into."
                   },
                   "candidate_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The candidate id or user-profile id to save to the pipeline."
                   }
                 },
@@ -58051,7 +58350,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response. Omit for the first page."
           },
@@ -58672,10 +58972,12 @@
                 "properties": {
                   "channel_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The ID of the JOB_POSTING channel from the Talent Pool. SDK-confirmed REQUIRED."
                   },
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
                   },
                   "sort_by": {
@@ -58699,7 +59001,8 @@
                   "location": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved LOCATION parameter ids."
                   },
@@ -58709,14 +59012,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -58727,7 +59032,8 @@
                   "skills": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved SKILL parameter ids."
                   },
@@ -58737,14 +59043,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -58755,14 +59063,16 @@
                   "industry": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved INDUSTRY parameter ids."
                   },
                   "job_title": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_TITLE parameter ids."
                   },
@@ -58773,6 +59083,7 @@
                       "properties": {
                         "id": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "A resolved SPOKEN_LANGUAGE parameter id."
                         },
                         "priority": {
@@ -58892,14 +59203,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -58913,14 +59226,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -58950,7 +59265,8 @@
                   "job_function": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Resolved JOB_FUNCTION parameter ids."
                   },
@@ -58960,14 +59276,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -59015,14 +59333,16 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to include."
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         },
                         "description": "Resolved parameter ids to exclude."
                       }
@@ -60343,16 +60663,21 @@
                   "attendees_ids": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Sales Navigator member IDs for the chat recipients (>= 1, e.g. ACw...)."
                   },
                   "text": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
                     "description": "Opening message text (1-8000 chars). Not stored or logged."
                   },
                   "subject": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
                     "description": "Subject line; REQUIRED for Sales Navigator (InMail-based messaging), unlike the classic surface where it is optional (<= 200 chars). Maps into the SN-only specifics branch."
                   },
                   "attachments": {
@@ -60362,14 +60687,17 @@
                       "properties": {
                         "content": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Base64-encoded file bytes."
                         },
                         "content_type": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, audio/mp4)."
                         },
                         "filename": {
                           "type": "string",
+                          "minLength": 1,
                           "description": "File name for the attachment."
                         },
                         "send_mode": {
@@ -61232,7 +61560,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response. Omit for the first page."
           }
@@ -61643,7 +61972,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response. Omit for the first page."
           }
@@ -62063,7 +62393,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response. Omit for the first page."
           }
@@ -62666,7 +62997,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response. Omit for the first page."
           }
@@ -63993,6 +64325,7 @@
                 "properties": {
                   "company_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The LinkedIn company id to save into the account list."
                   }
                 },
@@ -64362,6 +64695,7 @@
                 "properties": {
                   "user_id": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "The LinkedIn member id to save into the lead list."
                   }
                 },
@@ -64459,7 +64793,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response. Omit for the first page."
           }
@@ -64864,7 +65199,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response."
           }
@@ -66148,7 +66484,8 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -66306,7 +66643,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response."
           }
@@ -66764,6 +67102,8 @@
                       },
                       "currency": {
                         "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3,
                         "description": "ISO 4217 three-character currency code (e.g. 'USD')."
                       }
                     },
@@ -66980,7 +67320,8 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -67096,7 +67437,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a previous response."
           }
@@ -68112,7 +68454,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior page's `cursor` field. Omit for the first page."
           }
@@ -68423,7 +68766,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The account's metadata and current state, including the quotas[] budget view (one entry per counted action row for this account, for the current window of that row's grain) account_states[], the platform conditions the account is currently in, and activity_window, the hours in which live writes are reported or refused.",
+            "description": "The account's metadata and current state, including the quotas[] budget view (one entry per counted action row for this account, for the current window of that row's grain) account_states[], the platform conditions the account is currently in, activity_window, the hours in which live writes are reported or refused, and event_log, where the account stands against the retained event log's row budget.",
             "content": {
               "application/json": {
                 "schema": {
@@ -68633,7 +68976,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "An active pause on this row because the platform refused a recent request on it, or `null`. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires.",
+                            "description": "An active pause on this row because the platform refused a recent request on it, or `null`. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
                             "properties": {
                               "reason": {
                                 "type": "string",
@@ -68708,6 +69051,24 @@
                         "timezone_unset": {
                           "type": "boolean",
                           "description": "True when no zone is set, which DISABLES the activity window. Curviate never guesses a zone: a guess eight hours wrong inverts the window, refusing every daytime write and permitting every nocturnal one. If you configured a window and it never fires, this is why."
+                        }
+                      }
+                    },
+                    "event_log": {
+                      "type": "object",
+                      "description": "Where this account stands against the retained event log's row budget. Events are retained for 24 hours so you can read what the platform sent without running a listener; an account may hold at most row_cap of them at once. While at_row_cap is true, further events for this account are still delivered to any webhook you registered but are NOT retained, so the events resource stops being a complete record of what arrived. The budget is a backstop against a misbehaving upstream, sized so ordinary use never approaches it.",
+                      "properties": {
+                        "retained": {
+                          "type": "integer",
+                          "description": "Events currently held for this account. A level, not a total: retention is 24 hours, so this falls on its own as events age out."
+                        },
+                        "row_cap": {
+                          "type": "integer",
+                          "description": "The maximum this account may hold at once."
+                        },
+                        "at_row_cap": {
+                          "type": "boolean",
+                          "description": "True while the cap is biting and incoming events are not being retained. Delivery to a registered webhook is unaffected."
                         }
                       }
                     },
@@ -69065,6 +69426,11 @@
                       "activity_window": {
                         "timezone": "Europe/Berlin",
                         "timezone_unset": false
+                      },
+                      "event_log": {
+                        "retained": 128,
+                        "row_cap": 50000,
+                        "at_row_cap": false
                       }
                     }
                   },
@@ -69418,6 +69784,11 @@
                       "activity_window": {
                         "timezone": null,
                         "timezone_unset": true
+                      },
+                      "event_log": {
+                        "retained": 50000,
+                        "row_cap": 50000,
+                        "at_row_cap": true
                       }
                     }
                   }
@@ -69885,6 +70256,7 @@
                       },
                       "host": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Proxy host or IP."
                       },
                       "port": {
@@ -70740,6 +71112,7 @@
                       },
                       "password": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "LinkedIn account password. Encrypted at rest, never logged."
                       }
                     },
@@ -70754,6 +71127,7 @@
                     "properties": {
                       "li_at": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "LinkedIn session cookie (li_at). Encrypted at rest, never logged."
                       },
                       "li_a": {
@@ -70801,6 +71175,7 @@
                       },
                       "host": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Proxy host or IP."
                       },
                       "port": {
@@ -71312,6 +71687,8 @@
                   },
                   "code": {
                     "type": "string",
+                    "minLength": 3,
+                    "maxLength": 20,
                     "description": "The OTP / 2FA verification code. Special value TRY_ANOTHER_WAY switches the challenge type (e.g. in-app -> 2FA)."
                   }
                 },
@@ -72353,7 +72730,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response; decodable, pass it back verbatim"
           },
@@ -73035,7 +73413,9 @@
                 "type": "object",
                 "properties": {
                   "consumer": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
                   },
                   "limit": {
                     "type": "integer",
@@ -73547,7 +73927,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response; decodable, pass it back verbatim"
           },
@@ -74148,6 +74529,8 @@
                       },
                       "name": {
                         "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
                         "description": "Human-readable name for this webhook (1-100 chars)"
                       },
                       "account_ids": {
@@ -74227,6 +74610,8 @@
                       },
                       "name": {
                         "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
                         "description": "Human-readable name for this webhook (1-100 chars)"
                       },
                       "account_ids": {
@@ -74308,6 +74693,8 @@
                       },
                       "name": {
                         "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
                         "description": "Human-readable name for this webhook (1-100 chars)"
                       },
                       "account_ids": {
@@ -75695,6 +76082,8 @@
                   },
                   "name": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
                     "description": "Replace the human-readable name (1-100 chars), or null to clear it.",
                     "nullable": true
                   },
@@ -76012,7 +76401,7 @@
                               "writes",
                               "all"
                             ],
-                            "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads as well, which is the setting for a persona that should not be seen browsing at 03:00. It is broader than it sounds: `all` covers every live read, including the ones about the account itself, so a nightly analytics or invitation-backlog poll is refused at 03:00 too. A read Curviate answers from its own store never reaches LinkedIn, so it is never subject to the window under either setting, at any hour; the same read IS covered when the store cannot answer it, or when you ask for it live. Inbound events are never subject to it either."
+                            "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads as well, which is the setting for a persona that should not be seen browsing at 03:00. It is broader than it sounds: `all` covers every live read, including the ones about the account itself, so a nightly analytics or invitation-backlog poll is refused at 03:00 too. A read Curviate answers from its own store never reaches LinkedIn, so it is never subject to the window under either setting, at any hour; the same read IS covered when the store cannot answer it, or when you ask for it live. Inbound events are never subject to it either. One action set to `all` reaches the whole account's live reads that spend no budget of their own (notifications, profile analytics, SSI, profile visitors, the invitation and saved-list listings): those calls debit no action type, so they have none to read this setting from and take the account-wide answer instead. Reads that DO debit an action type read that action type's own setting."
                           },
                           "warm_up_state": {
                             "type": "string",
@@ -76637,7 +77026,7 @@
                               "writes",
                               "all"
                             ],
-                            "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads as well, which is the setting for a persona that should not be seen browsing at 03:00. It is broader than it sounds: `all` covers every live read, including the ones about the account itself, so a nightly analytics or invitation-backlog poll is refused at 03:00 too. A read Curviate answers from its own store never reaches LinkedIn, so it is never subject to the window under either setting, at any hour; the same read IS covered when the store cannot answer it, or when you ask for it live. Inbound events are never subject to it either."
+                            "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads as well, which is the setting for a persona that should not be seen browsing at 03:00. It is broader than it sounds: `all` covers every live read, including the ones about the account itself, so a nightly analytics or invitation-backlog poll is refused at 03:00 too. A read Curviate answers from its own store never reaches LinkedIn, so it is never subject to the window under either setting, at any hour; the same read IS covered when the store cannot answer it, or when you ask for it live. Inbound events are never subject to it either. One action set to `all` reaches the whole account's live reads that spend no budget of their own (notifications, profile analytics, SSI, profile visitors, the invitation and saved-list listings): those calls debit no action type, so they have none to read this setting from and take the account-wide answer instead. Reads that DO debit an action type read that action type's own setting."
                           },
                           "warm_up_state": {
                             "type": "string",
@@ -76954,7 +77343,7 @@
             "color": "#A1A1AA"
           }
         ],
-        "description": "The single safety-policy write. Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the Curviate default. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result, and it holds until the next connect. When the seat and the detected product disagree, the detected product wins the numbers and the read reports the disagreement as `seat_tier_mismatch`.",
+        "description": "The single safety-policy write. Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the Curviate default. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result, and it holds until the next connect. When the seat and the detected product disagree, the detected product wins the numbers and the read reports the disagreement as `seat_tier_mismatch`. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
         "requestBody": {
           "required": true,
           "content": {
@@ -76974,6 +77363,7 @@
                   },
                   "timezone": {
                     "type": "string",
+                    "maxLength": 64,
                     "description": "The IANA zone this account's ACTIVITY window is read in, e.g. `Europe/Berlin`. Must be a real zone; anything else is a 400. Null clears it, which DISABLES the activity window for every row that has not set its own: a guessed zone inverts the window, which is worse than not having one.",
                     "nullable": true
                   },
@@ -76985,6 +77375,31 @@
                     ],
                     "description": "The tenant-wide posture default, which every account inherits unless it overrides it. Set it once for a whole workspace of personas. Null clears it back to `warn`.",
                     "nullable": true
+                  },
+                  "clear_halts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "connection_requests_with_note",
+                        "connection_requests_no_note",
+                        "messages_first_degree",
+                        "inmail",
+                        "open_profile_inmail",
+                        "profile_views",
+                        "search",
+                        "comments",
+                        "post_likes",
+                        "follows",
+                        "content_poll",
+                        "job_poll",
+                        "posts",
+                        "endorsements",
+                        "invite_responses",
+                        "withdrawal_sweep"
+                      ]
+                    },
+                    "description": "Lift the platform pause on these action types now, instead of waiting for it to expire. When the platform refuses a call on an account (a rate limit, a server error on a budgeted route, an invitation resend cooldown), Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform. Naming an action type here clears that pause: the next call goes out. Read `quotas[].halt` on the account to see which action types are paused and for how long. A type with no active pause is accepted and does nothing, so this is safe to send for a set you have not checked. Clearing is recorded in the account's ledger with the expiry it cut short, who cleared it and when, and it appears on the safety-events surface. It does not disarm anything: if the platform refuses the account again, the pause comes straight back, longer than the one you cleared where the platform says so. Clear a pause when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account; clearing one and calling straight back into a real rate limit is itself how accounts get restricted."
                   },
                   "posture": {
                     "type": "string",
@@ -77064,6 +77479,7 @@
                         },
                         "window_timezone": {
                           "type": "string",
+                          "maxLength": 64,
                           "description": "IANA zone name the counting window is aligned to, e.g. `Europe/Berlin` or `UTC`. Must be a real zone; anything else is a 400. Null counts in UTC.",
                           "nullable": true
                         },
@@ -77088,6 +77504,7 @@
                         },
                         "activity_window_timezone": {
                           "type": "string",
+                          "maxLength": 64,
                           "description": "IANA zone name the activity window is read in, e.g. `Europe/Berlin`. Must be a real zone; anything else is a 400. Null DISABLES the activity window: a guessed zone inverts it, which is worse than not having one.",
                           "nullable": true
                         },
@@ -77097,7 +77514,7 @@
                             "writes",
                             "all"
                           ],
-                          "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads. A read Curviate answers from its own store never reaches LinkedIn and so is never covered; the same read IS covered when the store cannot answer it, or when you ask for it live. Stored reads and inbound events are never subject to the window under either setting, at any hour.",
+                          "description": "What the activity window governs. `writes` (the default) covers live writes to LinkedIn; `all` widens it to live reads. A read Curviate answers from its own store never reaches LinkedIn and so is never covered; the same read IS covered when the store cannot answer it, or when you ask for it live. Stored reads and inbound events are never subject to the window under either setting, at any hour. One action set to `all` reaches the whole account's live reads that spend no budget of their own (notifications, profile analytics, SSI, profile visitors, the invitation and saved-list listings): those calls debit no action type, so they have none to read this setting from and take the account-wide answer instead. Reads that DO debit an action type read that action type's own setting.",
                           "nullable": true
                         },
                         "warm_up_state": {
@@ -77245,6 +77662,14 @@
                     ]
                   }
                 },
+                "clearHalt": {
+                  "summary": "Lift the platform pause on one action type now, instead of waiting it out",
+                  "value": {
+                    "clear_halts": [
+                      "profile_views"
+                    ]
+                  }
+                },
                 "activityWindowHours": {
                   "summary": "Narrow one row's activity window to office hours",
                   "value": {
@@ -77291,7 +77716,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response; decodable, pass it back verbatim."
           },
@@ -77429,13 +77855,14 @@
                             "enum": [
                               "budget_exhausted",
                               "activity_window",
-                              "rate_limited"
+                              "rate_limited",
+                              "halt_cleared"
                             ],
-                            "description": "Which rule flagged it, and each one calls for a different response. `budget_exhausted`: the account reached the ceiling configured for that row, which you can raise on the safety policy. `activity_window`: the account was acting outside its configured activity window, so no ceiling was the constraint. Wait for the window to open, move `activity_window_start` or `activity_window_end`, or check `activity_window_timezone` is the zone you meant. `rate_limited`: the platform itself refused this account on that row recently and Curviate is holding the row until the pause expires, which no configuration change lifts."
+                            "description": "Which rule flagged it, and each one calls for a different response. `budget_exhausted`: the account reached the ceiling configured for that row, which you can raise on the safety policy. `activity_window`: the account was acting outside its configured activity window, so no ceiling was the constraint. Wait for the window to open, move `activity_window_start` or `activity_window_end`, or check `activity_window_timezone` is the zone you meant. `rate_limited`: the platform itself refused this account on that row recently and Curviate is holding the row until the pause expires. No ceiling you raise lifts it; the one thing that does is `clear_halts` on the safety policy, which lifts it deliberately and records that it was lifted. `halt_cleared` is the odd one out and the only entry that is not a refusal: somebody lifted one of those platform pauses early through `clear_halts` on the safety policy, so the row was open again from that instant. It carries `blocked: false` and its `method` is `update_safety_policy` rather than the operation that breached. Read it beside the `rate_limited` entry it lifts: the pause and its lifting are one thread, and an entry list that showed only the first would report a row as still paused."
                           },
                           "blocked": {
                             "type": "boolean",
-                            "description": "Whether the action was stopped. `false` is a warning: the action went through, and this record is the only lasting trace that it crossed a limit. Under the default `warn` posture every event is a warning, which is what makes reading this surface the point of running it."
+                            "description": "Whether the action was stopped. `false` is a warning: the action went through, and this record is the only lasting trace that it crossed a limit. Under the default `warn` posture every event is a warning, which is what makes reading this surface the point of running it. A `halt_cleared` entry is also `false`, for a different reason: it stopped nothing, it lifted a stop."
                           },
                           "method": {
                             "type": "string",
@@ -77462,7 +77889,7 @@
                 },
                 "examples": {
                   "default": {
-                    "summary": "A warning that let the action through, and two refusals that did not, one per rule",
+                    "summary": "A warning that let the action through, two refusals that did not, one per rule, and an operator lifting an earlier platform pause",
                     "value": {
                       "object": "safety_event_list",
                       "items": [
@@ -77492,6 +77919,15 @@
                           "blocked": true,
                           "method": "sendInvitation",
                           "occurred_at": "2026-09-04T08:02:11.400Z"
+                        },
+                        {
+                          "object": "safety_event",
+                          "id": "aln_01JQZ8P0Z9Y8X7W6V5U4T3S2R1",
+                          "budget_row": "connection_requests_no_note",
+                          "reason": "halt_cleared",
+                          "blocked": false,
+                          "method": "update_safety_policy",
+                          "occurred_at": "2026-09-04T07:58:44.100Z"
                         }
                       ],
                       "cursor": null
@@ -77600,7 +78036,7 @@
             "color": "#A1A1AA"
           }
         ],
-        "description": "Returns this account's safety events, newest first: every action Curviate refused, and every action it let through while flagging that a limit had been crossed. Under the default posture nothing is refused, so everything here is a warning and `blocked` is how you tell the two apart. Each event names the budget row that breached, why, the operation that hit it and when. Filter by `budget_row` for one action type and by `since` / `until` for a period, and page until `cursor` is null. This is a read of what already happened, so it never changes a limit or a count: to change what is refused, update the safety policy. The account resource is the other half of the picture, reporting where each row stands right now rather than what has already been flagged.",
+        "description": "Returns this account's safety events, newest first: every action Curviate refused, and every action it let through while flagging that a limit had been crossed. Under the default posture nothing is refused, so everything here is a warning and `blocked` is how you tell the two apart. Each event names the budget row that breached, why, the operation that hit it and when. Filter by `budget_row` for one action type and by `since` / `until` for a period, and page until `cursor` is null. This is a read of what already happened, so it never changes a limit or a count: to change what is refused, update the safety policy. The account resource is the other half of the picture, reporting where each row stands right now rather than what has already been flagged. One entry here is not a refusal: `reason: \"halt_cleared\"` with `blocked: false` records somebody lifting a platform pause early through `clear_halts` on the safety policy, and it sits beside the `rate_limited` entry it lifted so the pause and its end read as one thread.",
         "x-order": 3
       }
     }
