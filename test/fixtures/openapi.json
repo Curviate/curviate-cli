@@ -76214,6 +76214,23 @@
                       ],
                       "description": "The Curviate seat tier attached to this account when it disagrees with `limit_profile`, and null when the two agree or the account holds no seat. A seat records what you bought from Curviate; `limit_profile` records what LinkedIn currently grants, and a lapsed subscription moves one and not the other. The detected product always wins the numbers, so this is a report, not a refusal: a `recruiter` seat here means you are paying for Recruiter on an account LinkedIn does not currently grant it to. `core` alongside `basic` or `premium` is agreement, not a mismatch: Premium is a LinkedIn product, not a Curviate tier. A free-trial seat never reports here, because a trial is not a purchase, and neither does a seat whose entitlement has not started yet or has already lapsed."
                     },
+                    "limit_profile_source": {
+                      "type": "string",
+                      "enum": [
+                        "default",
+                        "detected",
+                        "operator"
+                      ],
+                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until the account next connects, or until you send `limit_profile_source: \"default\"` on this operation, which releases it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
+                    },
+                    "limit_profile_detected_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect."
+                    },
                     "posture": {
                       "type": "string",
                       "enum": [
@@ -76527,6 +76544,8 @@
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
                       "seat_tier_mismatch": null,
+                      "limit_profile_source": "detected",
+                      "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
                       "posture_source": "default",
                       "tenant_default_posture": null,
@@ -76623,6 +76642,8 @@
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
                       "seat_tier_mismatch": null,
+                      "limit_profile_source": "detected",
+                      "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
                       "posture_source": "default",
                       "tenant_default_posture": null,
@@ -76838,6 +76859,23 @@
                         null
                       ],
                       "description": "The Curviate seat tier attached to this account when it disagrees with `limit_profile`, and null when the two agree or the account holds no seat. A seat records what you bought from Curviate; `limit_profile` records what LinkedIn currently grants, and a lapsed subscription moves one and not the other. The detected product always wins the numbers, so this is a report, not a refusal: a `recruiter` seat here means you are paying for Recruiter on an account LinkedIn does not currently grant it to. `core` alongside `basic` or `premium` is agreement, not a mismatch: Premium is a LinkedIn product, not a Curviate tier. A free-trial seat never reports here, because a trial is not a purchase, and neither does a seat whose entitlement has not started yet or has already lapsed."
+                    },
+                    "limit_profile_source": {
+                      "type": "string",
+                      "enum": [
+                        "default",
+                        "detected",
+                        "operator"
+                      ],
+                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until the account next connects, or until you send `limit_profile_source: \"default\"` on this operation, which releases it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
+                    },
+                    "limit_profile_detected_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect."
                     },
                     "posture": {
                       "type": "string",
@@ -77152,6 +77190,8 @@
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
                       "seat_tier_mismatch": null,
+                      "limit_profile_source": "detected",
+                      "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
                       "posture_source": "default",
                       "tenant_default_posture": null,
@@ -77359,7 +77399,7 @@
                       "sales_navigator",
                       "recruiter"
                     ],
-                    "description": "Which set of Curviate defaults this account's rows resolve from: `basic`, `premium`, `sales_navigator` or `recruiter`. Each inherits the one before it and raises a few rows. This is the platform product active on the account, NOT the Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it from the platform when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result and holds until the next connect. Set it back to `basic` to undo. The change is recorded in the ledger and it moves the defaults under every row at once, so any row you have configured explicitly keeps your value. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the `/v1/{account_id}/sales-navigator/...` and `/v1/{account_id}/recruiter/...` operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
+                    "description": "Which set of Curviate defaults this account's rows resolve from: `basic`, `premium`, `sales_navigator` or `recruiter`. Each inherits the one before it and raises a few rows. This is the platform product active on the account, NOT the Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it from the platform when the account connects, re-detects it on every reconnect and, at most once a day, on an account read; setting it here is an operator override of that result and holds until the next connect. To undo the override, send `limit_profile_source: \"default\"`: the pin is released, and Curviate re-reads the value from LinkedIn on the account's next read or connect. Sending the value the account already holds changes nothing and pins nothing. The change is recorded in the ledger and it moves the defaults under every row at once, so any row you have configured explicitly keeps your value. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the `/v1/{account_id}/sales-navigator/...` and `/v1/{account_id}/recruiter/...` operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
                   },
                   "timezone": {
                     "type": "string",
@@ -77597,6 +77637,18 @@
                   },
                   "seat_tier_mismatch": {
                     "description": "READ-ONLY. The Curviate seat tier that disagrees with `limit_profile`. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                  },
+                  "limit_profile_source": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "detected",
+                      "operator"
+                    ],
+                    "description": "Where `limit_profile` came from: `default` (never observed), `detected` (read from LinkedIn) or `operator` (set through this operation). Sending `default` releases an operator override: the value is re-read from LinkedIn on the account's next read or connect. Sending `detected` or `operator` is accepted and ignored, so the whole document round-trips."
+                  },
+                  "limit_profile_detected_at": {
+                    "description": "READ-ONLY. When `limit_profile` was last read from LinkedIn, or null if it never has been. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                   },
                   "posture_source": {
                     "description": "READ-ONLY. Which scope supplied this account's effective `posture`. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."

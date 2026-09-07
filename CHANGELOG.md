@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.30.0] - 2026-09-07
+
+Pins `@curviate/sdk` at `0.29.0` and re-vendors the OpenAPI fixture from it
+(`server_git_sha 1447ffd4...`, 125 paths). No command, flag or exit code changes
+meaning, and no source change was needed: the release exists so the CLI's SDK
+dependency resolves the current published contract.
+
+### Changed
+
+- **`safety-policy` now reports where `limit_profile` came from.** The API's
+  `GET`/`PATCH /v1/{account_id}/safety-policy` responses gained
+  `limit_profile_source` (`default`, `detected` or `operator`) and
+  `limit_profile_detected_at` (ISO date-time, or null until the value has been
+  read at least once), and the `PATCH` accepts `limit_profile_source: "default"`
+  to release an operator override. The CLI has no `safety-policy` command, so
+  nothing it prints changes; the fields are reachable through `@curviate/sdk`
+  for anyone building on the same pin.
+
+- `POST /v1/billing/seats/:seat_id/tier` was removed from the API in the same
+  wave. Billing has never been part of the published REST surface and the CLI
+  never called it, so no command is affected.
+
 ## [0.29.0] - 2026-09-07
 
 Pins `@curviate/sdk@0.28.0`. **BREAKING**: `inbox search <query>` requires a term
