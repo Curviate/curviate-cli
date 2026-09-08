@@ -17,6 +17,18 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import type { paths } from "@curviate/sdk";
+
+// The generated OpenAPI type is the contract: a hand-written fixture can mint
+// a field the real accounts response can never send, and a pass-through
+// assertion against that fixture would then be unfalsifiable. `satisfies`
+// makes resurrecting a field the server no longer emits — or asserting one
+// that never existed on the response — a compile error, not a silently-green
+// test.
+type AccountListItem = NonNullable<
+  paths["/v1/accounts"]["get"]["responses"][200]["content"]["application/json"]["items"]
+>[number];
+type AccountGetResponse = paths["/v1/accounts/{account_id}"]["get"]["responses"][200]["content"]["application/json"];
 
 // ---------------------------------------------------------------------------
 // Client mock factory
@@ -212,13 +224,8 @@ const ENRICHED_ITEM = {
   headline: "Engineer",
   seat_id: "seat_1",
   connected_at: "2026-06-01T09:00:00Z",
-  username: "ada.lovelace",
-  premium_id: "prem_1",
-  public_identifier: "ada-lovelace",
   substrate_created_at: "2020-01-01T00:00:00Z",
-  signatures: [{ title: "Default", content: "Best, Ada" }],
-  groups: ["Alumni Network"],
-};
+} satisfies AccountListItem;
 
 const NEVER_ENRICHED_ITEM = {
   account_id: "acc_2",
@@ -228,16 +235,16 @@ const NEVER_ENRICHED_ITEM = {
   headline: null,
   seat_id: "seat_2",
   connected_at: "2026-06-02T09:00:00Z",
-  username: null,
-  premium_id: null,
-  public_identifier: null,
   substrate_created_at: null,
-  signatures: [],
-  groups: [],
-};
+} satisfies AccountListItem;
 
 const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at"];
-const ENRICHMENT_KEYS = ["username", "premium_id", "public_identifier", "substrate_created_at", "signatures", "groups"];
+// Real set, per the generated type above and the vendored OpenAPI fixture
+// (test/fixtures/openapi.json): username/premium_id/public_identifier/
+// signatures/groups are DEAD — the columns backing them were dropped
+// server-side and the endpoint can no longer emit them.
+// substrate_created_at is the only cached enrichment field left.
+const ENRICHMENT_KEYS = ["substrate_created_at"];
 
 describe("account list — slim/verbose split", () => {
   let client: Client;
@@ -265,23 +272,18 @@ describe("account list — slim/verbose split", () => {
     }
   });
 
-  it("--verbose: item additionally has all six enrichment fields matching the fixture", async () => {
+  it("--verbose: item additionally has the surviving enrichment field (substrate_created_at) matching the fixture", async () => {
     const { runAccountList } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountList(client as never, { json: true, verbose: true } as AccountFlags, out);
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
     expect(parsed.items[0]).toMatchObject({
-      username: "ada.lovelace",
-      premium_id: "prem_1",
-      public_identifier: "ada-lovelace",
       substrate_created_at: "2020-01-01T00:00:00Z",
-      signatures: [{ title: "Default", content: "Best, Ada" }],
-      groups: ["Alumni Network"],
     });
   });
 
-  it("--verbose on a never-enriched item shows explicit null/[] — not undefined, not a missing key", async () => {
+  it("--verbose on a never-enriched item shows explicit null — not undefined, not a missing key", async () => {
     (client.accounts.list as Mock).mockResolvedValue({
       object: "account_list",
       items: [NEVER_ENRICHED_ITEM],
@@ -293,12 +295,10 @@ describe("account list — slim/verbose split", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
     const item = parsed.items[0];
-    for (const key of ["username", "premium_id", "public_identifier", "substrate_created_at"]) {
+    for (const key of ENRICHMENT_KEYS) {
       expect(item).toHaveProperty(key);
       expect(item[key]).toBeNull();
     }
-    expect(item.signatures).toEqual([]);
-    expect(item.groups).toEqual([]);
   });
 
   it("--all NDJSON stream applies slim projection per item unless --verbose", async () => {
@@ -320,7 +320,7 @@ describe("account list — slim/verbose split", () => {
     await runAccountList(client as never, { all: true, verbose: true } as AccountFlags, out);
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
     const item = JSON.parse(lines[0]!);
-    expect(item.username).toBe("ada.lovelace");
+    expect(item.substrate_created_at).toBe("2020-01-01T00:00:00Z");
   });
 });
 
@@ -332,7 +332,7 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
     last_checked_at: "2026-06-08T09:00:00Z",
     quotas: [],
     account_states: [],
-  };
+  } satisfies AccountGetResponse;
   const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas", "account_states"];
 
   beforeEach(() => {
@@ -355,19 +355,14 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
     }
   });
 
-  it("--verbose: all six enrichment fields present and matching", async () => {
+  it("--verbose: the surviving enrichment field (substrate_created_at) present and matching", async () => {
     const { runAccountGet } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountGet(client as never, { "account-id": "acc_1", json: true, verbose: true } as AccountFlags, out);
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
     expect(parsed).toMatchObject({
-      username: "ada.lovelace",
-      premium_id: "prem_1",
-      public_identifier: "ada-lovelace",
       substrate_created_at: "2020-01-01T00:00:00Z",
-      signatures: [{ title: "Default", content: "Best, Ada" }],
-      groups: ["Alumni Network"],
     });
   });
 
