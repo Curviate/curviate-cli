@@ -29,6 +29,10 @@ const main = defineCommand({
   // Subcommand registry, names and descriptions are static for help rendering;
   // the handler implementation is loaded lazily on first invocation.
   subCommands: {
+    setup: () =>
+      import("./commands/setup.js").then((m) => m.setupCommand),
+    doctor: () =>
+      import("./commands/doctor.js").then((m) => m.doctorCommand),
     login: () =>
       import("./commands/login.js").then((m) => m.loginCommand),
     config: () =>

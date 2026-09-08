@@ -30,6 +30,8 @@ async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>)): Promi
 }
 
 const GROUPS: Record<string, () => Promise<CommandDef>> = {
+  setup: () => import("../src/commands/setup.js").then((m) => asCmd(m.setupCommand)),
+  doctor: () => import("../src/commands/doctor.js").then((m) => asCmd(m.doctorCommand)),
   login: () => import("../src/commands/login.js").then((m) => asCmd(m.loginCommand)),
   config: () => import("../src/commands/config.js").then((m) => asCmd(m.configCommand)),
   profile: () => import("../src/commands/profile.js").then((m) => asCmd(m.profileCommand)),

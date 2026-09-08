@@ -23,6 +23,31 @@ Requires Node.js 18 or later.
 
 ## Authentication
 
+**Option 0: `curviate setup`** (the one-command path). It prints a link, opens
+it if there is a browser here, and waits. Sign in, press Authorize, paste the
+code it shows you back into the terminal, and the key lands in a local profile:
+
+```
+curviate setup
+```
+
+There is no browser on the machine, or you are on a remote shell? Nothing
+changes: the link is printed either way, and the code can be opened on a phone
+and pasted back. `--no-browser` forces that shape.
+
+Agents run the same flow in two steps, because an agent cannot read a browser:
+
+```
+curviate setup --json     # prints {"authorize_url": ..., "next_step": "curviate setup --code -"}
+curviate setup --code -   # the code arrives on stdin, so it stays out of argv and shell history
+```
+
+Then `curviate doctor` answers "can I run?" in one call: version, config path,
+active profile, base URL, which precedence tier the credential came from
+(never its value), the workspace it belongs to, whether the API is reachable
+and the key valid, and the connected accounts with their status. It exits `0`
+when every check passes and with the first failing check's code otherwise.
+
 **Option 1: interactive login** (stores a profile in `~/.config/curviate/`):
 
 ```bash
