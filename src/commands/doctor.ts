@@ -15,7 +15,10 @@
  */
 
 import { defineCommand } from "citty";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getConfigPath, readConfig } from "../lib/config.js";
 import { createClient } from "../lib/client.js";
 import { getExitCode } from "../lib/exit-codes.js";
@@ -62,10 +65,25 @@ export interface DoctorIO {
   version: () => string;
 }
 
+/**
+ * The declared version, found by walking up from this module.
+ *
+ * NOT a fixed relative path. This module sits at `src/commands/` in the tree
+ * and at the bundle root in `dist/`, so any single `../` count is wrong in
+ * one of the two layouts. It was wrong in the one that ships: the built bin
+ * died with `Cannot find module` on every invocation, while the suite stayed
+ * green because every case injected this function away.
+ */
 function defaultVersion(): string {
   const require = createRequire(import.meta.url);
-  const pkg = require("../../package.json") as { version: string };
-  return pkg.version;
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (;;) {
+    const candidate = join(dir, "package.json");
+    if (existsSync(candidate)) return (require(candidate) as { version: string }).version;
+    const parent = dirname(dir);
+    if (parent === dir) throw new Error("could not locate the package manifest");
+    dir = parent;
+  }
 }
 
 async function defaultListAccounts(
@@ -182,7 +200,14 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
     }
   }
 
-  const tenant = cfg?.profiles[profileName]?.tenant ?? null;
+  // ONLY when the profile tier is the one that actually won.
+  //
+  // The workspace is recorded next to the key `setup` wrote. A credential
+  // that came from a flag or the environment is a DIFFERENT key, quite
+  // possibly a different workspace, and naming the profile's workspace beside
+  // it is worse than naming none: it reads as an answer.
+  const tenant =
+    effective.apiKeySource === "profile" ? (cfg?.profiles[profileName]?.tenant ?? null) : null;
 
   const firstFailure = checks.find((c) => !c.ok);
   const report: DoctorReport = {
@@ -210,7 +235,7 @@ function renderHuman(report: DoctorReport, io: DoctorIO): void {
     `profile           ${report.profile}`,
     `base url          ${report.base_url}`,
     `credential        ${report.credential_resolved ? `resolved from ${report.credential_source}` : "not found"}`,
-    `workspace         ${report.tenant ?? "unknown (run `curviate setup` to record it)"}`,
+    `workspace         ${report.tenant ?? "unknown (only a key `curviate setup` wrote carries it)"}`,
   ];
   for (const check of report.checks) {
     lines.push(`${check.ok ? "PASS" : "FAIL"}  ${check.name}: ${check.detail}`);

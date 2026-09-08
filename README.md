@@ -42,11 +42,20 @@ curviate setup --json     # prints {"authorize_url": ..., "next_step": "curviate
 curviate setup --code -   # the code arrives on stdin, so it stays out of argv and shell history
 ```
 
+Self-hosting, or serving the dashboard somewhere unusual? Set
+`CURVIATE_APP_URL` to the host that serves the authorize page. Otherwise the
+link is derived from the API base URL.
+
 Then `curviate doctor` answers "can I run?" in one call: version, config path,
 active profile, base URL, which precedence tier the credential came from
-(never its value), the workspace it belongs to, whether the API is reachable
-and the key valid, and the connected accounts with their status. It exits `0`
-when every check passes and with the first failing check's code otherwise.
+(never its value), whether the API is reachable and the key valid, and the
+connected accounts with their status. It exits `0` when every check passes and
+with the first failing check's code otherwise.
+
+`doctor` also names the workspace the credential belongs to, but only when the
+key it resolved is one `curviate setup` wrote to a profile. A key from
+`CURVIATE_API_KEY` or `--api-key` may belong to another workspace entirely, so
+it is reported as unknown rather than guessed at.
 
 **Option 1: interactive login** (stores a profile in `~/.config/curviate/`):
 

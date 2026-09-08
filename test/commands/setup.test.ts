@@ -257,6 +257,62 @@ describe("the authorize URL", () => {
       "https://example.test/cli?sid=S&pk=P",
     );
   });
+
+  /**
+   * The page and the API are different hosts, and the dashboard session
+   * cookie lives on the page's host. Deriving the page from the API origin
+   * printed a link that lands somewhere with no session, so the flow could
+   * not complete anywhere it is actually deployed. Nothing asserted the host
+   * before, which is why that shipped.
+   */
+  it("points at the app host, not the api host, on the default base url", () => {
+    expect(new URL(authorizeUrl("https://api.curviate.com", "S", "P")).host).toBe(
+      "app.curviate.com",
+    );
+  });
+
+  it("keeps the rest of the labels when swapping the first one", () => {
+    expect(new URL(authorizeUrl("https://api.staging.curviate.com", "S", "P")).host).toBe(
+      "app.staging.curviate.com",
+    );
+  });
+
+  it("leaves a host with no api label alone, port and all", () => {
+    // One origin serves both surfaces on a local run, an IP, or a custom base.
+    expect(new URL(authorizeUrl("http://localhost:3000", "S", "P")).host).toBe("localhost:3000");
+    expect(new URL(authorizeUrl("http://127.0.0.1:8080/api", "S", "P")).host).toBe(
+      "127.0.0.1:8080",
+    );
+    // Bare "api" with no domain after it is a hostname, not a first label to swap.
+    expect(new URL(authorizeUrl("http://api:3000", "S", "P")).host).toBe("api:3000");
+  });
+
+  it("an explicit override wins over both rules", () => {
+    expect(authorizeUrl("https://api.curviate.com", "S", "P", "https://dash.example.test")).toBe(
+      "https://dash.example.test/cli?sid=S&pk=P",
+    );
+    // A path on the override is kept, so a surface mounted under a prefix works.
+    expect(
+      authorizeUrl("https://api.curviate.com", "S", "P", "https://example.test/console/"),
+    ).toBe("https://example.test/console/cli?sid=S&pk=P");
+  });
+});
+
+describe("the override reaches the command, not just the helper", () => {
+  it("a run with the override set prints the overridden host", async () => {
+    const h = harness({
+      answers: [CODE],
+      env: { CI: "1", CURVIATE_APP_URL: "https://dash.example.test" },
+    });
+    await runSetup({ "base-url": "https://api.curviate.com" }, h.io);
+    expect(h.stdout.join("")).toContain("https://dash.example.test/cli?sid=");
+  });
+
+  it("a run without it derives the app host from the api host", async () => {
+    const h = harness({ answers: [CODE], env: { CI: "1" } });
+    await runSetup({ "base-url": "https://api.curviate.com" }, h.io);
+    expect(h.stdout.join("")).toContain("https://app.curviate.com/cli?sid=");
+  });
 });
 
 describe("unsealing round-trips against an independently built ciphertext", () => {
@@ -663,5 +719,35 @@ describe("the credential is proven, not assumed", () => {
     const h = harness({ answers: [CODE], verifyFails: true });
     expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(3);
     expect(h.stderr.join("")).toMatch(/verifying call/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fully piped is the agent path, deliberately
+// ---------------------------------------------------------------------------
+
+describe("a fully piped invocation is the agent path, not the non-terminal refusal", () => {
+  /**
+   * Both streams non-TTY and no `--json`: the agent object is emitted and the
+   * run exits 0, rather than falling into the fail-fast that names
+   * CURVIATE_API_KEY. That is a deliberate product ruling, not an accident of
+   * branch order, so it is pinned here. The fail-fast still owns the case a
+   * human hits: a terminal for output, nothing on stdin.
+   */
+  it("emits the agent object and exits 0 with both streams piped", async () => {
+    const h = harness({ answers: [], isTTY: false, isOutputTTY: false, stdin: CODE });
+    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
+
+    expect(exit).toBe(0);
+    const emitted = JSON.parse(h.stdout.join("")) as Record<string, unknown>;
+    expect(emitted["next_step"]).toBe("curviate setup --code -");
+    expect(h.stdinReads).toBe(0);
+    expect(h.stderr.join("")).not.toContain("CURVIATE_API_KEY");
+  });
+
+  it("but a terminal for output with nothing on stdin still fails fast", async () => {
+    const h = harness({ answers: [], isTTY: false, isOutputTTY: true, stdin: CODE });
+    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(2);
+    expect(h.stderr.join("")).toContain("CURVIATE_API_KEY");
   });
 });

@@ -75,17 +75,46 @@ export function normaliseCode(raw: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The authorize URL the user opens: the base URL's origin, with a trailing
- * `/api` path segment removed, plus `/cli` and the two query values.
+ * Environment override for the host serving the authorize page. For a
+ * deployment that fits neither shape `appRoot` recognises.
  */
+export const APP_URL_ENV = "CURVIATE_APP_URL";
+
+/**
+ * Where the authorize page lives, derived from the API base URL.
+ *
+ * The page and the API are DIFFERENT hosts in every hosted environment, and
+ * the dashboard session cookie lives on the page's host, so deriving the page
+ * from the API origin printed a link that lands somewhere with no session and
+ * a flow that cannot complete. The server routes by first DNS label, so the
+ * rule here mirrors that exactly: swap a leading `api` label for `app`.
+ *
+ * A host with no `api` label is a deployment where one origin serves both
+ * surfaces (a local run, an IP, a custom base), so its origin is used
+ * unchanged, minus a trailing `/api` path segment.
+ */
+function appRoot(baseUrl: string, override?: string): string {
+  if (override !== undefined && override !== "") {
+    const explicit = new URL(override);
+    return `${explicit.origin}${explicit.pathname.replace(/\/$/, "")}`;
+  }
+  const parsed = new URL(baseUrl);
+  const labels = parsed.hostname.split(".");
+  if (labels[0] === "api" && labels.length > 1) {
+    labels[0] = "app";
+    return `${parsed.protocol}//${labels.join(".")}${parsed.port ? `:${parsed.port}` : ""}`;
+  }
+  return `${parsed.origin}${parsed.pathname.replace(/\/?api\/?$/, "").replace(/\/$/, "")}`;
+}
+
+/** The authorize URL the user opens, carrying the two public values. */
 export function authorizeUrl(
   baseUrl: string,
   sessionId: string,
   publicKey: string,
+  appUrlOverride?: string,
 ): string {
-  const parsed = new URL(baseUrl);
-  const prefix = parsed.pathname.replace(/\/?api\/?$/, "").replace(/\/$/, "");
-  const url = new URL(`${parsed.origin}${prefix}/cli`);
+  const url = new URL(`${appRoot(baseUrl, appUrlOverride)}/cli`);
   url.searchParams.set("sid", sessionId);
   url.searchParams.set("pk", publicKey);
   return url.toString();
@@ -490,7 +519,12 @@ export async function runSetup(args: SetupArgs, io: SetupIO): Promise<number> {
 
   // ---- Fresh flow ----
   const material = io.generate();
-  const url = authorizeUrl(baseUrl, material.sessionId, material.publicKey);
+  const url = authorizeUrl(
+    baseUrl,
+    material.sessionId,
+    material.publicKey,
+    io.env[APP_URL_ENV],
+  );
 
   if (json) {
     // The agent path. One object, and neither the code nor the key is ever a
