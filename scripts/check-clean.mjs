@@ -41,6 +41,16 @@
 // late, the history is already public by then — this is meant to be run by
 // hand (or wired into a pre-merge gate) before a PR lands.
 //
+// --root <dir> / --patterns=public-doc / --full-history: gate ANOTHER checkout
+// with this same scanner instead of a second copy that would drift. --root
+// redirects every mode at that directory; --patterns=public-doc adds the
+// entries that only make sense where the WHOLE tree is customer-facing (a
+// non-production hostname, a real-shaped customer key, the private tracker
+// name) and would red this package's own fixtures if they were global;
+// --full-history makes --commits walk every commit reachable from HEAD rather
+// than a branch range, because a range structurally cannot see the base commit
+// and that is the one commit a published history can never reword.
+//
 // ── What this guard learned from its own holes ──────────────────────────────
 // Two failure shapes both looked exactly like a clean pass:
 //   1. A citation whose doc reference had been edited away (e.g. "see api/008
@@ -170,6 +180,32 @@ export const PATTERNS = [
   },
 ];
 
+// Extra patterns for a tree that is public in its ENTIRETY — a sibling repo of
+// published documentation, where there is no internal half to exempt. They are
+// deliberately not in PATTERNS: this package's own source and tests legitimately
+// contain non-production hostnames and key-shaped fixtures, so switching these
+// on globally would red a clean tree. Opt in with `--patterns=public-doc`.
+/** @type {Array<{ label: string; pattern: RegExp }>} */
+export const PUBLIC_DOC_PATTERNS = [
+  ...PATTERNS,
+  {
+    label: "non-production hostname / environment name",
+    // A published doc names the production API only; a pre-production host
+    // reaching a customer is both a leak and an instruction that will not work.
+    pattern: /\bstaging\b/i,
+  },
+  {
+    label: "customer API key (credential shape)",
+    // Real keys are long; a short placeholder (cvt_live_xxx) stays usable in
+    // prose. 16+ base62 characters is past any placeholder and into a real key.
+    pattern: /\bcvt_(?:live|test)_[A-Za-z0-9]{16,}/,
+  },
+  {
+    label: "private tracker / product names (rapha-red, RedHire)",
+    pattern: /rapha-red|redhire/i,
+  },
+];
+
 /**
  * Recursively collect files under `dir`, skipping `skipDirs` and keeping only
  * `scanExts`/`scanDotfiles` members.
@@ -296,21 +332,35 @@ export async function scanDirectory(root, opts = {}) {
  * silently scanning zero commits — same "silence is not evidence of clean"
  * reasoning as the file scanner's unreadable/empty-scan cases.
  *
+ * `fullHistory` walks every commit reachable from HEAD instead of a branch
+ * range. That is the mode a whole-tree-public repository needs: a range scan
+ * structurally cannot see its base commit, which is the one commit that is
+ * always in the published history and can never be reworded after a push.
+ * An empty repository is reported as an error there rather than a clean pass —
+ * zero commits scanned is the same "the guard never ran" shape as an empty
+ * file scan.
+ *
  * @param {string} root
- * @param {{ patterns?: Pattern[]; baseRef?: string; maxLineLen?: number }} [opts]
+ * @param {{ patterns?: Pattern[]; baseRef?: string; fullHistory?: boolean; maxLineLen?: number }} [opts]
  */
 export async function scanCommitMessages(root, opts = {}) {
-  const { patterns = PATTERNS, baseRef = "origin/main", maxLineLen = 200 } = opts;
+  const { patterns = PATTERNS, baseRef = "origin/main", fullHistory = false, maxLineLen = 200 } = opts;
+  const range = fullHistory ? "HEAD" : `${baseRef}..HEAD`;
 
   let hashes;
   try {
-    const out = execFileSync("git", ["rev-list", `${baseRef}..HEAD`], {
+    const out = execFileSync("git", ["rev-list", range], {
       cwd: root,
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
     });
     hashes = out.split("\n").filter(Boolean);
   } catch (err) {
-    return { commitsScanned: 0, findings: [], error: `could not resolve ${baseRef}..HEAD: ${err.message}` };
+    return { commitsScanned: 0, findings: [], error: `could not resolve ${range}: ${err.message}` };
+  }
+
+  if (fullHistory && hashes.length === 0) {
+    return { commitsScanned: 0, findings: [], error: `no commits reachable from HEAD in ${root}` };
   }
 
   const findings = [];
@@ -389,10 +439,25 @@ export function commitVerdict(result) {
  * must never print anything or call process.exit.
  */
 async function main() {
+  // --root <dir> points every mode at another checkout (the published skills
+  // repository), so that tree is gated by THIS scanner rather than by a second
+  // copy of it that would drift.
+  const rootIdx = process.argv.indexOf("--root");
+  const scanTarget = rootIdx !== -1 ? resolve(process.argv[rootIdx + 1] ?? "") : pkgRoot;
+  const strict = process.argv.includes("--patterns=public-doc");
+  const patterns = strict ? PUBLIC_DOC_PATTERNS : PATTERNS;
+  const patternLabel = strict ? "public-doc" : "default";
+
+  if (rootIdx !== -1 && !process.argv[rootIdx + 1]) {
+    console.error("check:clean FAIL — --root needs a directory argument.");
+    process.exit(1);
+  }
+
   const commitsArg = process.argv.find((a) => a === "--commits" || a.startsWith("--commits="));
   if (commitsArg) {
+    const fullHistory = process.argv.includes("--full-history");
     const baseRef = commitsArg.includes("=") ? commitsArg.split("=")[1] : "origin/main";
-    const result = await scanCommitMessages(pkgRoot, { baseRef });
+    const result = await scanCommitMessages(scanTarget, { patterns, baseRef, fullHistory });
 
     for (const f of result.findings) {
       console.error(`LEAK  ${f.rel}:${f.line}  [${f.label}]`);
@@ -406,20 +471,22 @@ async function main() {
       } else {
         console.error(
           `\ncheck:clean [--commits] FAIL — ${result.findings.length} leak(s) found across ` +
-            `${result.commitsScanned} commit message(s) (${baseRef}..HEAD). Reword before this branch merges.`,
+            `${result.commitsScanned} commit message(s) (${fullHistory ? "full history" : `${baseRef}..HEAD`}). ` +
+            `Reword before this branch merges.`,
         );
       }
       process.exit(1);
     }
 
     console.error(
-      `check:clean [--commits] OK — no internal references found in ${result.commitsScanned} commit message(s) (${baseRef}..HEAD).`,
+      `check:clean [--commits/${patternLabel}] OK — no internal references found in ${result.commitsScanned} ` +
+        `commit message(s) (${fullHistory ? "full history" : `${baseRef}..HEAD`}) under ${scanTarget}.`,
     );
     return;
   }
 
   const distMode = process.argv.includes("--dist");
-  const scanRoot = distMode ? join(pkgRoot, "dist") : pkgRoot;
+  const scanRoot = distMode ? join(scanTarget, "dist") : scanTarget;
   const modeLabel = distMode ? "--dist" : "source";
 
   if (distMode) {
@@ -436,7 +503,7 @@ async function main() {
     }
   }
 
-  const result = await scanDirectory(scanRoot);
+  const result = await scanDirectory(scanRoot, { patterns });
 
   for (const rel of result.unreadable) {
     console.error(`UNREAD  ${rel}  — could not be read, so it was NOT scanned`);
@@ -450,17 +517,17 @@ async function main() {
   if (!v.ok) {
     if (v.reason === "empty-scan") {
       console.error(
-        `\ncheck:clean [${modeLabel}] FAIL — scanned ZERO files under ${scanRoot}. ` +
+        `\ncheck:clean [${modeLabel}/${patternLabel}] FAIL — scanned ZERO files under ${scanRoot}. ` +
           `An empty scan is not a clean verdict; check the path and the SCAN_EXTS filter.`,
       );
     } else if (v.reason === "unreadable") {
       console.error(
-        `\ncheck:clean [${modeLabel}] FAIL — ${result.unreadable.length} file(s) could not be read. ` +
+        `\ncheck:clean [${modeLabel}/${patternLabel}] FAIL — ${result.unreadable.length} file(s) could not be read. ` +
           `An unreadable file was not scanned, so this is not a clean verdict either.`,
       );
     } else {
       console.error(
-        `\ncheck:clean [${modeLabel}] FAIL — ${result.findings.length} leak(s) found in ${result.filesScanned} files ` +
+        `\ncheck:clean [${modeLabel}/${patternLabel}] FAIL — ${result.findings.length} leak(s) found in ${result.filesScanned} files ` +
           `(${result.linesScanned} lines). Strip the references above before publishing.`,
       );
     }
@@ -468,7 +535,8 @@ async function main() {
   }
 
   console.error(
-    `check:clean [${modeLabel}] OK — no internal references found in ${result.filesScanned} files (${result.linesScanned} lines).`,
+    `check:clean [${modeLabel}/${patternLabel}] OK — no internal references found in ${result.filesScanned} files ` +
+      `(${result.linesScanned} lines) under ${scanRoot}.`,
   );
 }
 

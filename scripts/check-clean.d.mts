@@ -66,8 +66,10 @@ export type CommitVerdict =
 
 export interface ScanCommitMessagesOptions {
   patterns?: LeakPattern[];
-  /** Defaults to "origin/main". */
+  /** Defaults to "origin/main". Ignored when `fullHistory` is set. */
   baseRef?: string;
+  /** Walk every commit reachable from HEAD instead of a branch range. */
+  fullHistory?: boolean;
   maxLineLen?: number;
 }
 
@@ -76,6 +78,8 @@ export const SKIP_DIRS: Set<string>;
 export const SCAN_EXTS: Set<string>;
 export const SCAN_DOTFILES: Set<string>;
 export const PATTERNS: LeakPattern[];
+/** PATTERNS plus the entries that only apply to a wholly-public tree. */
+export const PUBLIC_DOC_PATTERNS: LeakPattern[];
 
 export function collectFiles(dir: string, opts?: CollectFilesOptions): Promise<string[]>;
 export function scanDirectory(root: string, opts?: ScanDirectoryOptions): Promise<ScanResult>;
