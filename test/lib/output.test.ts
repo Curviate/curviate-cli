@@ -339,20 +339,46 @@ describe("lib/output — renderError", () => {
 
   it("JSON mode: prints {error: <toJSON()>} to stdout, one-liner to stderr", () => {
     const err = new CurviateError({
-      code: "TIER_NOT_ACTIVE",
-      message: "Tier not active",
+      code: "NO_ACTIVE_SEAT",
+      message: "This account is not on an active seat.",
       userFixable: true,
       retryLikelyToSucceed: false,
-      requiredTier: "sn",
     });
     renderError(err, { json: true, isTTY: false }, mockOut as never);
     const parsed = JSON.parse(stdoutLines.join("")) as { error: unknown };
     expect(parsed).toHaveProperty("error");
     const errJson = parsed.error as Record<string, unknown>;
-    expect(errJson["code"]).toBe("TIER_NOT_ACTIVE");
-    expect(errJson["requiredTier"]).toBe("sn");
+    expect(errJson["code"]).toBe("NO_ACTIVE_SEAT");
+    // The retired tier field must not reappear on the envelope in any form.
+    // Agents branch on the JSON body, so a resurrected key is a contract
+    // change nothing else here would catch.
+    expect(errJson).not.toHaveProperty("requiredTier");
     // stderr has one-liner
     expect(stderrLines.join("").length).toBeGreaterThan(0);
+  });
+
+  // The "Required tier: <tier>" line is gone from human mode along with the
+  // field that fed it. Nothing asserted that line while it existed, which is
+  // why it could have been left behind silently; this covers both directions
+  // so it cannot come back unnoticed.
+  it("human mode: renders the code and message, and no tier line", () => {
+    const err = new CurviateError({
+      code: "NO_ACTIVE_SEAT",
+      message: "This account is not on an active seat.",
+      httpStatus: 403,
+      userFixable: true,
+      retryLikelyToSucceed: false,
+    });
+    renderError(err, { json: false, isTTY: true }, mockOut as never);
+    const stderr = stderrLines.join("");
+    // Positive control first: the renderer really did run and really did write
+    // the line this case is about, so the absence claim below means absence
+    // rather than an empty stream.
+    expect(stderr).toContain("[NO_ACTIVE_SEAT]");
+    expect(stderr).toContain("This account is not on an active seat.");
+    expect(stderr).not.toMatch(/required tier/i);
+    // Human mode writes nothing to stdout.
+    expect(stdoutLines.join("")).toBe("");
   });
 
   it("JSON mode: error envelope never contains the API key", () => {

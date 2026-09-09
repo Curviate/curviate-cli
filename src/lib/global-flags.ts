@@ -9,6 +9,7 @@
  *   --account / --api-key / --profile  -> lib/resolve.ts (auth & config)
  *   --json / --fields / --limit / --cursor / --all / --max-pages -> lib/output.ts
  *   --preview                           -> lib/preview.ts
+ *   --beta                              -> lib/beta.ts
  *   --base-url / --timeout              -> lib/resolve.ts
  */
 
@@ -78,6 +79,15 @@ export const GLOBAL_FLAGS = {
     description: "Output the full SDK response instead of the slim default.",
     default: false,
   },
+  // Declared here so `--help` renders it and the dispatcher's routing scan
+  // recognises it, but its VALUE is never read from citty: the dispatcher
+  // parses and strips the token first (see lib/beta.ts for why citty 0.1.6
+  // cannot express an optional-valued boolean without silently opting in).
+  beta: {
+    type: "boolean" as const,
+    description:
+      "Allow beta operations for THIS call only (--beta, --beta=false). A gated operation refuses BETA_NOT_ENABLED (exit 5) until a human enables beta in Settings, or you pass --beta for this call. Persists nothing.",
+  },
 } as const;
 
 export type GlobalFlags = {
@@ -95,10 +105,17 @@ export type GlobalFlags = {
   "page-delay"?: string;
   preview?: boolean;
   verbose?: boolean;
+  beta?: boolean;
 };
 
 /**
  * WRITE_FLAGS: GLOBAL_FLAGS minus pagination/projection flags.
+ *
+ * NOTE: the three narrowed sets below hand-list their keys, so a flag that is
+ * meaningful on EVERY command has to be added to each of them by hand and is
+ * easy to forget. `test/lib/global-flags-invariant.test.ts` pins that set
+ * (auth, transport and `--beta`) so a new variant, or a new global flag,
+ * cannot silently be missing from one of them.
  *
  * Spread into write (mutating) commands so `--limit`, `--cursor`, `--all`,
  * `--max-pages`, and `--fields` do NOT appear in their `--help` output.
@@ -113,6 +130,7 @@ export const WRITE_FLAGS = {
   json: GLOBAL_FLAGS.json,
   preview: GLOBAL_FLAGS.preview,
   verbose: GLOBAL_FLAGS.verbose,
+  beta: GLOBAL_FLAGS.beta,
 };
 
 export type WriteFlags = Omit<GlobalFlags, "limit" | "cursor" | "all" | "max-pages" | "page-delay" | "fields">;
@@ -135,6 +153,7 @@ export const READ_SINGLE_FLAGS = {
   fields: GLOBAL_FLAGS.fields,
   preview: GLOBAL_FLAGS.preview,
   verbose: GLOBAL_FLAGS.verbose,
+  beta: GLOBAL_FLAGS.beta,
 };
 
 export type ReadSingleFlags = Omit<GlobalFlags, "limit" | "cursor" | "all" | "max-pages" | "page-delay">;

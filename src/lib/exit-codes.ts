@@ -12,7 +12,7 @@
  *   2: invalid input / usage (also used for CLI-side usage errors)
  *   3: auth
  *   4: not found
- *   5: tier / entitlement
+ *   5: entitlement (no seat, no LinkedIn subscription, or no beta consent)
  *   6: rate-limited
  *   7: transient platform (retry-likely)
  *   8: account / connection state
@@ -64,16 +64,18 @@ import type { ErrorCode } from "@curviate/sdk";
  * "this pair is already in that state" shape); not retryable by resending,
  * the caller should check current status instead.
  *
- * Note: `RATE_LIMITED` -> 6 (rate-limited), alongside `RATE_LIMIT_ACCOUNT`,
- * `RATE_LIMIT_TENANT`, `PLATFORM_RATE_LIMIT`, and `LINKEDIN_RATE_LIMITED`.
- * A general/unscoped rate-limit signal distinct from the account-, tenant-,
- * and platform-scoped variants above, but the same "back off and retry"
- * contract, same exit bucket.
- *
- * Note: `PREMIUM_CONFLICT` -> 8 (account / connection state). A seat resolving
- * to both individual-Premium tiers at once (LinkedIn permits only one per
- * profile), the same "this account/seat is in a state that blocks the
- * request" shape as `ACCOUNT_RESTRICTED`; user_fixable, not retryable.
+ * Note: EXIT 5 CARRIES THREE CODES, and they are fixed in three different
+ * systems. `NO_ACTIVE_SEAT` is Curviate-side (buy or attach a seat),
+ * `LINKEDIN_FEATURE_NOT_SUBSCRIBED` is LinkedIn-side (the account needs its
+ * own Sales Navigator or Recruiter subscription), and `BETA_NOT_ENABLED` is
+ * consent-side (a human enables beta in Settings, or pass --beta for this
+ * call). They share exit 5 because the remedy is the same SHAPE, a human
+ * changes something and retries, and a scripted caller branching on the exit
+ * code alone wants one bucket for that. It does NOT mean they are
+ * interchangeable: read the `code` in the `--json` envelope to know which
+ * system to go to. Reusing 5 for the beta refusal rather than minting a new
+ * number is deliberate, because an exit code is a public contract and a new
+ * one is a breaking change for every caller's case statement.
  *
  * Note: `BUDGET_EXHAUSTED` -> 13, A NEW BUCKET, deliberately not 6.
  * Exit 6 means "back off and retry later", and that is the wrong action here:
@@ -127,16 +129,24 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   SUBSCRIPTION_NOT_FOUND: 4,
   SEAT_NOT_FOUND: 4,
 
-  // Tier / entitlement (5)
-  TIER_NOT_ACTIVE: 5,
+  // Entitlement (5), three independent refusals, see the note above
+  NO_ACTIVE_SEAT: 5,
   LINKEDIN_FEATURE_NOT_SUBSCRIBED: 5,
+  BETA_NOT_ENABLED: 5,
+  // DEPRECATED, and mapped anyway. `TIER_NOT_ACTIVE` is what a deployment
+  // predating the seat-based entitlement rollout answers instead of
+  // `NO_ACTIVE_SEAT`, and this CLI is pointed at whichever deployment the
+  // caller configured. Unmapped it would fall to exit 1 and read as "the tool
+  // broke" for a plain billing refusal, on exactly the deployments most likely
+  // to send it. Same bucket as its replacement, because the caller's remedy is
+  // identical. Removed once every deployment carries the new contract.
+  TIER_NOT_ACTIVE: 5,
 
   // Rate-limited (6)
   RATE_LIMIT_ACCOUNT: 6,
   RATE_LIMIT_TENANT: 6,
   PLATFORM_RATE_LIMIT: 6,
   LINKEDIN_RATE_LIMITED: 6,
-  RATE_LIMITED: 6,
 
   // Transient platform (7)
   PLATFORM_ERROR: 7,
@@ -152,8 +162,13 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   ACCOUNT_ALREADY_LINKED: 8,
   LINKEDIN_OPERATION_NOT_SUPPORTED: 8,
   CONNECTION_REQUEST_CONFLICT: 8,
-  PREMIUM_CONFLICT: 8,
   REAUTH_REQUIRED: 8,
+  // DEPRECATED, mapped for the same reason as `TIER_NOT_ACTIVE` above: the
+  // connect rework made it unreachable on current deployments, and an older one
+  // can still send it. A seat resolving to both individual-Premium products at
+  // once, which is the same "this account/seat is in a state that blocks the
+  // request" shape as `ACCOUNT_RESTRICTED`.
+  PREMIUM_CONFLICT: 8,
 
   // Checkpoint flow (9)
   CHECKPOINT_NOT_FOUND: 9,
@@ -187,6 +202,60 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // A 502 under cache_only stays 7: "we could not look" and "we hold nothing"
   // are different answers and only one of them is worth retrying.
   NOT_STORED: 14,
+
+  // ── Codes that used to fall through to 1 ─────────────────────────────────
+  //
+  // Each of these is returned by a `/v1` route, the `/v1` catch-all, or a
+  // shared handler one of them calls, and each was absent from the SDK's
+  // exported union until 0.30.0 — so it decoded to `INTERNAL` and landed here
+  // on exit 1, which reads as "the tool broke" for a refusal that is usually
+  // the caller's to fix. They are bucketed by what the caller does next, taken
+  // from each code's own HTTP status and retry contract rather than by name.
+
+  // Not found (4). `NOT_FOUND` is the catch-all's answer to a path this API
+  // does not serve, which is also what a MISTYPED path returns, so check the
+  // URL shape before the ids. `REACTION_NOT_FOUND` is a 422 rather than a 404,
+  // and is still a not-found in the only sense that matters to a caller: the
+  // reaction you asked to remove is not on that post.
+  NOT_FOUND: 4,
+  REACTION_NOT_FOUND: 4,
+
+  // Transient platform (7). All four are a dependency failing, not the request
+  // being wrong: 502 from the connect path and from Stripe checkout, 503 from
+  // the substrate capacity ceiling and the billing portal. Backing off and
+  // retrying is the right move, which is what 7 means.
+  SUBSTRATE_LINK_FAILED: 7,
+  SUBSTRATE_CAP_REACHED: 7,
+  BILLING_CHECKOUT_FAILED: 7,
+  BILLING_PORTAL_UNAVAILABLE: 7,
+
+  // Invalid input / usage (2). Both are the REQUEST being inapplicable rather
+  // than a state to wait out: `ADMIN_BYPASS` is a 400 saying an admin
+  // workspace has no Stripe billing, so the billing operations do not apply to
+  // it at all; `INVALID_CANCELLATION_SOURCE` is a rejected field VALUE. Note
+  // the neighbours below are also 400s and are NOT 2, because they describe a
+  // state the caller has to resolve, not an argument to correct.
+  ADMIN_BYPASS: 2,
+  INVALID_CANCELLATION_SOURCE: 2,
+
+  // Billing (11). Tenant standing, seat and subscription state, and the
+  // free-trial limits. Every one is user_fixable and none clears on an
+  // identical retry: the fix is in billing, in the dashboard, or in choosing a
+  // different target. Grouped with `PAYMENT_REQUIRED` / `SEAT_CANCELLED`
+  // above, which are the same shape.
+  ACCOUNT_DISPUTED: 11,
+  ACCOUNT_LINKING_DISABLED: 11,
+  PERIOD_LOCKED: 11,
+  SEAT_NOT_EMPTY: 11,
+  SEAT_PROVISIONAL: 11,
+  SUBSCRIPTION_ALREADY_EXISTS: 11,
+  ALREADY_CANCELLED: 11,
+  CANCELLATION_ALREADY_EFFECTIVE: 11,
+  TRIAL_EXPIRED: 11,
+  TRIAL_SEAT_LIMIT: 11,
+  TRIAL_ACTIVE_SEAT_LIMIT: 11,
+  TRIAL_IDENTITY_ALREADY_USED: 11,
+  TRIAL_IDENTITY_UNRESOLVED: 11,
 
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,

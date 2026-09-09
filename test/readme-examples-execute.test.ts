@@ -24,8 +24,8 @@
  *     account_id, full_name, job_urn, last_message, user, ...), wrapped in
  *     BOTH a flat single-object shape and an {items:[...],cursor:null}
  *     envelope - a caller reading either shape finds real, non-null data.
- *     One request pattern (the Sales Navigator tier-check example) is
- *     special-cased to a 403 TIER_NOT_ACTIVE envelope instead, because that
+ *     One request pattern (the Sales Navigator entitlement-check example) is
+ *     special-cased to a 403 NO_ACTIVE_SEAT envelope instead, because that
  *     example exists specifically to demonstrate exit-code-5 branching.
  *   - `webhook verify` (the one fully-offline example) gets a real payload
  *     signed at test-setup time with a fresh timestamp, so the documented
@@ -98,10 +98,15 @@ const FIXTURE_BODY = {
   cursor: null,
 };
 
-const TIER_NOT_ACTIVE_BODY = {
-  code: "TIER_NOT_ACTIVE",
-  message: "This account does not have the sales_nav add-on tier.",
-  required_tier: "sales_nav",
+/**
+ * The 403 the entitlement-check example is written against. `NO_ACTIVE_SEAT`
+ * specifically, and with NO tier field: there is no product tier any more, so
+ * a fixture carrying `required_tier` would let the example keep passing
+ * against a body the API can no longer produce.
+ */
+const NO_ACTIVE_SEAT_BODY = {
+  code: "NO_ACTIVE_SEAT",
+  message: "This account is not on an active seat.",
   user_fixable: true,
   retry_likely_to_succeed: false,
 };
@@ -155,7 +160,7 @@ function extractBashExamples(readme: string): Example[] {
 let cliPath: string;
 let server: Server;
 let baseUrl: string;
-let tierCheckMode = false;
+let entitlementCheckMode = false;
 let workDir: string;
 let shimDir: string;
 let webhookSecret: string;
@@ -167,9 +172,9 @@ beforeAll(async () => {
   server = createServer((req: IncomingMessage, res: ServerResponse) => {
     req.resume();
     req.on("end", () => {
-      if (tierCheckMode) {
+      if (entitlementCheckMode) {
         res.writeHead(403, { "content-type": "application/json" });
-        res.end(JSON.stringify(TIER_NOT_ACTIVE_BODY));
+        res.end(JSON.stringify(NO_ACTIVE_SEAT_BODY));
         return;
       }
       // The one binary-response example (resume download): the SDK's
@@ -314,12 +319,12 @@ describe("README examples execute against the built binary (non-empty, non-error
   });
 
   for (const { heading, code } of examples) {
-    const isTierCheck = heading.includes("Check tier entitlement");
+    const isEntitlementCheck = heading.includes("Check entitlement");
     const isCsvExport = heading.includes("Export all accounts to a CSV");
     const isResumeDownload = heading.includes("Download an applicant's resume");
 
     it(`${heading || "(untitled)"}: ${code.split("\n")[0]!.trim()}…`, async () => {
-      tierCheckMode = isTierCheck;
+      entitlementCheckMode = isEntitlementCheck;
       try {
         const { stdout } = await runExample(code);
 
@@ -335,7 +340,7 @@ describe("README examples execute against the built binary (non-empty, non-error
           expect(stdout.length, `expected non-empty stdout; got:\n${stdout}`).toBeGreaterThan(0);
         }
       } finally {
-        tierCheckMode = false;
+        entitlementCheckMode = false;
       }
     }, 15_000);
   }
@@ -349,10 +354,10 @@ describe("README examples execute against the built binary (non-empty, non-error
 describe("extractBashExamples", () => {
   it("attributes a block to its nearest preceding heading", () => {
     const found = extractBashExamples(
-      "## Usage\n\n### 4. Check tier entitlement before a sweep\n\n```bash\ncurviate account list\n```\n",
+      "## Usage\n\n### 4. Check entitlement before a sweep\n\n```bash\ncurviate account list\n```\n",
     );
     expect(found).toHaveLength(1);
-    expect(found[0]!.heading).toContain("Check tier entitlement");
+    expect(found[0]!.heading).toContain("Check entitlement");
   });
 
   it("skips a fenced block with no curviate-first line (the Install section)", () => {

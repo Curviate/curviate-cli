@@ -445,9 +445,6 @@ export function renderError(
   } else {
     // Human mode: stderr only; stdout stays empty.
     let msg = `Error: [${errJson.code}] ${errJson.message}`;
-    if (errJson.requiredTier) {
-      msg += `\nRequired tier: ${errJson.requiredTier}`;
-    }
     // Two different 429s name an account-safety budget row, and the right
     // action differs, so the human line has to say WHICH.
     //

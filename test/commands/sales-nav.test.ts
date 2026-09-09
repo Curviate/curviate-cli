@@ -9,9 +9,11 @@
  *   sales-nav profile <identifier>                                      → salesNavigator.getProfile (resolveIdentifier)
  *   sales-nav save-lead <user_id> [--list-id <id>]                     → salesNavigator.saveLead
  *
- * Tier-gate:
- *   TIER_NOT_ACTIVE → exit 5 + JSON requiredTier
+ * Entitlement gate (three codes, one exit):
+ *   NO_ACTIVE_SEAT → exit 5 + JSON code
  *   LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5 + JSON code
+ *   BETA_NOT_ENABLED → exit 5 + JSON code
+ * The code is the whole structured signal; no tier field rides the envelope.
  *
  * --preview on writes: renders preview, no SDK call.
  * --preview on reads: exit 2.
@@ -64,13 +66,17 @@ function mockExit() {
   });
 }
 
-function makeTierError(code: string, requiredTier?: string) {
-  return Object.assign(new Error(`Tier error: ${code}`), {
+/**
+ * A 403 entitlement refusal as the SDK surfaces it. There is no tier field any
+ * more: the code IS the whole structured signal, so a fixture that still
+ * carried a `requiredTier` would be exhibiting a shape the API cannot produce.
+ */
+function makeEntitlementError(code: string) {
+  return Object.assign(new Error(`Entitlement error: ${code}`), {
     code,
-    requiredTier,
     userFixable: true,
     retryLikelyToSucceed: false,
-    toJSON: () => ({ code, requiredTier, message: `Tier error: ${code}` }),
+    toJSON: () => ({ code, message: `Entitlement error: ${code}` }),
   });
 }
 
@@ -90,12 +96,12 @@ describe("sales-nav tier gate", () => {
     vi.restoreAllMocks();
   });
 
-  it("sales-nav search people — TIER_NOT_ACTIVE → exit 5, JSON contains requiredTier", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "sn");
-    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(tierErr);
+  it("sales-nav search people — NO_ACTIVE_SEAT → exit 5, JSON carries the code and no tier field", async () => {
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
     const out = makeOut();
@@ -111,16 +117,15 @@ describe("sales-nav tier gate", () => {
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("TIER_NOT_ACTIVE");
-    expect(parsed.error.requiredTier).toBe("sn");
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 
-  it("stderr diagnostic: sales-nav search people — TIER_NOT_ACTIVE → stderr contains error code, no vendor name", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "sn");
-    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(tierErr);
+  it("stderr diagnostic: sales-nav search people — NO_ACTIVE_SEAT → stderr contains error code, no vendor name", async () => {
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
     const out = makeOut();
@@ -138,17 +143,17 @@ describe("sales-nav tier gate", () => {
     const stderrWritten = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     expect(stderrWritten).toBeTruthy();
     // The stderr diagnostic must contain the error code so agents can read it.
-    expect(stderrWritten).toContain("TIER_NOT_ACTIVE");
+    expect(stderrWritten).toContain("NO_ACTIVE_SEAT");
     // Confirm the error output is a short diagnostic line (not a raw dump that could contain opaque internals).
     expect(stderrWritten.split("\n").filter(Boolean).length).toBeLessThanOrEqual(3);
   });
 
   it("sales-nav profile — LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5, JSON code distinct", async () => {
-    const tierErr = makeTierError("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
-    (ns.salesNavigator.getProfile as Mock).mockRejectedValue(tierErr);
+    const entitlementErr = makeEntitlementError("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
+    (ns.salesNavigator.getProfile as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runSalesNavProfile } = await import("../../src/commands/sales-nav.js");
     const out = makeOut();
@@ -167,12 +172,12 @@ describe("sales-nav tier gate", () => {
     expect(parsed.error.code).toBe("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
   });
 
-  it("per-command gate independence — salesNavigator.saveLead stubbed independently → exit 5, requiredTier:sn", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "sn");
-    (ns.salesNavigator.saveLead as Mock).mockRejectedValue(tierErr);
+  it("per-command gate independence — salesNavigator.saveLead stubbed independently → exit 5, no tier field", async () => {
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.salesNavigator.saveLead as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runSalesNavSaveLead } = await import("../../src/commands/sales-nav.js");
     const out = makeOut();
@@ -188,8 +193,7 @@ describe("sales-nav tier gate", () => {
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("TIER_NOT_ACTIVE");
-    expect(parsed.error.requiredTier).toBe("sn");
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 });
 

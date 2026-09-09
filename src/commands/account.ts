@@ -102,6 +102,7 @@ type AccountFlags = {
   "proxy-password"?: string;
   "user-agent"?: string;
   "recruiter-contract-id"?: string;
+  "linkedin-premium"?: string;
   // update body fields
   metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
@@ -319,6 +320,32 @@ async function buildAuthBody(
   if (flags["auth-method"]) body["auth_method"] = flags["auth-method"];
   if (flags["user-agent"]) body["user_agent"] = flags["user-agent"];
   if (flags["recruiter-contract-id"]) body["recruiter_contract_id"] = flags["recruiter-contract-id"];
+  // Validated here rather than left to the API, because the two accepted
+  // values are a closed set the served document declares and a typo is a
+  // silent WIDENING: an unrecognised value would be rejected as
+  // INVALID_REQUEST by the API today, but the failure mode this guards is the
+  // caller who meant `recruiter` and gets the default "ask for everything",
+  // where Sales Navigator wins and the Recruiter surface they wanted is not
+  // the one that got activated.
+  // `!== undefined`, NOT truthiness: `--linkedin-premium=` (what an unset shell
+  // variable expands to) is falsy, and letting it through would take exactly
+  // the silent-widening path this guard exists to close.
+  if (flags["linkedin-premium"] !== undefined) {
+    const value = flags["linkedin-premium"];
+    if (value !== "sales_navigator" && value !== "recruiter") {
+      ctx.out.stderr.write(
+        `error: --linkedin-premium must be one of: sales_navigator, recruiter. Got "${value}".\n`,
+      );
+      // Never exit under --preview: this function's contract is that a
+      // client-side render prompts nothing and exits nowhere, and the sibling
+      // user-agent guard in runAccountLink carries the same carve-out. The
+      // render then simply omits the field, which is honest about what would
+      // be sent.
+      if (!ctx.previewMode) process.exit(2);
+    } else {
+      body["linkedin_premium"] = value;
+    }
+  }
 
   // credentials object (auth-method === "credentials")
   if (flags["auth-method"] === "credentials") {
@@ -1334,7 +1361,8 @@ const accountLinkCommand = defineCommand({
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
     "user-agent": { type: "string", description: "Browser User-Agent to pin for this account." },
-    "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to (Recruiter tier only)." },
+    "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
+    "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",
