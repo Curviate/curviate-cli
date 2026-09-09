@@ -28,6 +28,14 @@ export interface ProfileEntry {
   account?: string;
   baseUrl?: string;
   timeout?: number;
+  /**
+   * Display name of the workspace this key authenticates as, recorded by
+   * `curviate setup` from the exchange response. Not a credential and not
+   * used for auth: it exists so `doctor` can answer "whose key is this?"
+   * without a round trip. Absent on a profile written by `login`, which
+   * never learns it.
+   */
+  tenant?: string;
 }
 
 /** The on-disk config shape. */
@@ -238,6 +246,8 @@ export async function updateProfileField(
       profile.account = value !== undefined ? String(value) : undefined;
     } else if (field === "baseUrl") {
       profile.baseUrl = value !== undefined ? String(value) : undefined;
+    } else if (field === "tenant") {
+      profile.tenant = value !== undefined ? String(value) : undefined;
     }
   }
   await writeConfig(cfg);

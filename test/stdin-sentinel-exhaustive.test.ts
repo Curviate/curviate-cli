@@ -142,7 +142,7 @@ async function discoverSites(): Promise<Site[]> {
  * campaign exists to catch. Raise it when arguments are added; never lower it
  * without deleting the corresponding argument.
  */
-const KNOWN_SITE_COUNT = 23;
+const KNOWN_SITE_COUNT = 24;
 
 // ---------------------------------------------------------------------------
 // Harness

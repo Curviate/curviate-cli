@@ -20,6 +20,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { readlineSync, type ReadlineStdin } from "../../src/lib/readline.js";
 
 /** Race a promise against a short timer; reports which one settled first. */
@@ -142,5 +143,25 @@ describe("readlineSync — raw-mode chunk-safe terminator scan (regression ancho
     } finally {
       stderrSpy.mockRestore();
     }
+  });
+  /**
+   * The plain (unmasked) branch, which the raw-mode cases above never touch.
+   *
+   * It closed the interface BEFORE settling, and `close()` emits its event
+   * synchronously, so the "close" listener resolved the empty string first
+   * and every visible read returned "". Unreachable while the only caller
+   * asked for masking; reached the moment a caller wanted a visible prompt,
+   * which is what a pasted value needs. The suite above stayed green through
+   * all of it, because none of it drives this branch.
+   */
+  it("the unmasked branch returns the line, not the empty string", async () => {
+    const stream = new PassThrough();
+    stream.write("PASTED-VALUE\n");
+    stream.end();
+    const got = await raceAgainstTimeout(
+      readlineSync("prompt: ", { stdin: stream as unknown as ReadlineStdin }),
+      500,
+    );
+    expect(got).toEqual({ settled: true, value: "PASTED-VALUE" });
   });
 });
