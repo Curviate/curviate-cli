@@ -42,7 +42,15 @@ import { mkdtemp, mkdir, writeFile, chmod, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
-import { scanDirectory, verdict, scanCommitMessages, commitVerdict, PATTERNS, pkgRoot } from "../scripts/check-clean.mjs";
+import {
+  scanDirectory,
+  verdict,
+  scanCommitMessages,
+  commitVerdict,
+  PATTERNS,
+  PUBLIC_DOC_PATTERNS,
+  pkgRoot,
+} from "../scripts/check-clean.mjs";
 
 // Section-marker character, held one hop away from any digit/letter literal
 // so no line in this file itself reads as "§" immediately followed by alnum.
@@ -444,6 +452,98 @@ describe("check:clean guard — scanCommitMessages / commitVerdict (--commits mo
     expect(result.commitsScanned).toBe(0);
     expect(result.error).toBeTruthy();
     expect(commitVerdict(result)).toEqual({ ok: false, reason: "error" });
+  });
+});
+
+// Full-history commit scanning + the public-doc pattern set. Both exist for
+// a sibling public repository whose whole tree is customer-facing: there is
+// no "internal half" to exempt, and its FIRST commit is exactly the one a
+// `<baseRef>..HEAD` range cannot see — a leak in it survives every push
+// forever.
+// ---------------------------------------------------------------------------
+
+describe("check:clean guard — full-history commit scanning", () => {
+  const CLAUDE_TRAILER = ["Claude", "-Session", ":"].join("") + " https://claude.ai/code/session_abc";
+
+  it("a branch-range scan cannot see a leak in the base commit; full history can", async () => {
+    // The fixture's BASE commit carries the trailer, so `main..HEAD` (which
+    // excludes everything reachable from main, base included) reports clean.
+    const dir = await mkdtemp(join(tmpdir(), "check-clean-git-fixture-"));
+    tmpDirs.push(dir);
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    git("commit", "-q", "--allow-empty", "-m", `initial commit\n\n${CLAUDE_TRAILER}`);
+    git("branch", "-f", "main", "HEAD");
+    git("commit", "-q", "--allow-empty", "-m", "second commit, clean");
+
+    const ranged = await scanCommitMessages(dir, { baseRef: "main" });
+    expect(ranged.findings).toEqual([]);
+    expect(commitVerdict(ranged)).toEqual({ ok: true, reason: "clean" });
+
+    const full = await scanCommitMessages(dir, { fullHistory: true });
+    expect(full.commitsScanned).toBe(2);
+    expect(full.findings).toHaveLength(1);
+    expect(full.findings[0]!.label).toContain("AI-authorship trailer");
+    expect(commitVerdict(full)).toEqual({ ok: false, reason: "leaks" });
+  });
+
+  it("full history needs no resolvable baseRef (a repo with no remote still scans)", async () => {
+    const dir = await makeCommitFixture(["fix: whatever"]);
+    // The default baseRef does not exist in this fixture at all.
+    expect((await scanCommitMessages(dir, {})).error).toBeTruthy();
+    const full = await scanCommitMessages(dir, { fullHistory: true });
+    expect(full.error).toBeNull();
+    expect(full.commitsScanned).toBe(2);
+  });
+
+  it("a repository with no commits at all is an error, not a silent clean pass", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "check-clean-git-empty-"));
+    tmpDirs.push(dir);
+    execFileSync("git", ["init", "-q"], { cwd: dir, encoding: "utf8" });
+    const full = await scanCommitMessages(dir, { fullHistory: true });
+    expect(full.error).toBeTruthy();
+    expect(commitVerdict(full)).toEqual({ ok: false, reason: "error" });
+  });
+});
+
+describe("check:clean guard — PUBLIC_DOC_PATTERNS (whole-tree-public scan)", () => {
+  const cases: Array<[string, string]> = [
+    ["a non-production hostname", "curviate config set-base-url https://api." + "staging" + ".curviate.com"],
+    ["a real-shaped customer API key", "export CURVIATE_API_KEY=" + "cvt_live_" + "8fJ2kQ0zXbR7pW4mNvT1sYuA"],
+    ["the private tracker org", "filed on " + "rapha-red" + "/curviate"],
+  ];
+
+  for (const [what, payload] of cases) {
+    it(`flags ${what} that the base pattern set lets through`, async () => {
+      const dir = await makeFixtureDir({ "skills/x/SKILL.md": `# x\n\n${payload}\n` });
+
+      // Control arm: the base set is genuinely blind to it, so the finding
+      // below depends on the added pattern and not on some other entry.
+      const base = await scanDirectory(dir, { patterns: PATTERNS });
+      expect(base.findings).toEqual([]);
+      expect(verdict(base)).toEqual({ ok: true, reason: "clean" });
+
+      const strict = await scanDirectory(dir, { patterns: PUBLIC_DOC_PATTERNS });
+      expect(strict.findings).toHaveLength(1);
+      expect(verdict(strict)).toEqual({ ok: false, reason: "leaks" });
+    });
+  }
+
+  it("keeps every base pattern (it is a superset, not a replacement)", () => {
+    for (const base of PATTERNS) {
+      expect(PUBLIC_DOC_PATTERNS.some((p) => p.label === base.label)).toBe(true);
+    }
+  });
+
+  it("passes ordinary published skill prose", async () => {
+    const dir = await makeFixtureDir({
+      "skills/x/SKILL.md": "# curviate-profile\n\nRun `curviate profile me --mode live --json`.\n",
+    });
+    const result = await scanDirectory(dir, { patterns: PUBLIC_DOC_PATTERNS });
+    expect(result.findings).toEqual([]);
+    expect(verdict(result)).toEqual({ ok: true, reason: "clean" });
   });
 });
 
