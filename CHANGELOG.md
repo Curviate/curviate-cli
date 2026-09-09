@@ -14,8 +14,17 @@ retirement, the connect rework and the beta consent gate.
 **Breaking for anyone matching on error codes, not on exit codes.** Exit 5 still
 means the same thing and still fires in the same situations, so a script that
 branches on `$?` needs no change. A script that reads `.error.code` out of
-`--json` sees `NO_ACTIVE_SEAT` where it used to see `TIER_NOT_ACTIVE`, and no
-longer sees `.error.requiredTier` at all.
+`--json` sees `NO_ACTIVE_SEAT` where a current deployment used to answer
+`TIER_NOT_ACTIVE`, and no longer sees `.error.requiredTier` at all.
+
+**`TIER_NOT_ACTIVE` and `PREMIUM_CONFLICT` still exit 5 and 8.** They are
+deprecated rather than dropped, because this CLI is pointed at whichever
+deployment you configure, and one that predates the seat-based entitlement
+rollout still answers them. Unmapped they would fall to exit 1, which reads as
+"the tool broke" for a plain billing refusal. Each shares its successor's exit
+code, so branching on `$?` is deployment-independent: `TIER_NOT_ACTIVE` and
+`NO_ACTIVE_SEAT` both exit 5, and you need no logic to tell which deployment
+answered.
 
 Ripple: this release rides the same wave as the SDK it pins, and the wire
 contract moved before either of them. It is one release rather than three
@@ -38,10 +47,10 @@ because the CLI had two unpublished pin bumps waiting behind it.
   the beta refusal rather than minting a new number is deliberate; an exit code
   is a public contract and a new one breaks every existing case statement.
 
-- **`PREMIUM_CONFLICT` is gone from the exit table.** The connect rework made
-  it unreachable. Exit 8 is unaffected and still has eleven other codes; the
-  documented exit codes are now checked for reachability, so removing the last
-  code from a bucket reds instead of leaving a dead row in the README table.
+- **The documented exit codes are now checked for reachability**, so removing
+  the last code from a bucket reds instead of leaving a dead row in the README
+  table. That check is what will catch `PREMIUM_CONFLICT`'s eventual removal
+  from exit 8, when the deprecation ends.
 
 - **The `Required tier: <tier>` line is gone from human-mode error output**,
   along with the SDK field that fed it. Nothing ever asserted that line while

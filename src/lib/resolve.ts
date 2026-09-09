@@ -32,7 +32,16 @@ export interface EffectiveConfig {
   timeout: number;
   /** Resolved account id. `undefined` when not set. */
   account: string | undefined;
+  /**
+   * Which precedence tier the API key came from. `"none"` when no key was
+   * found anywhere. Reported by `doctor` so an operator can see WHICH source
+   * is in play without the value itself ever being displayed.
+   */
+  apiKeySource: CredentialSource;
 }
+
+/** The precedence tier a credential resolved from. */
+export type CredentialSource = "flag" | "env" | "profile" | "none";
 
 const DEFAULT_BASE_URL = "https://api.curviate.com";
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -57,6 +66,17 @@ export async function resolveEffectiveConfig(
     profile?.apiKey ??
     undefined;
 
+  // Derived from the same expression above, in the same order, so the two can
+  // never disagree about which tier won.
+  const apiKeySource: CredentialSource =
+    flags.apiKey !== undefined
+      ? "flag"
+      : process.env["CURVIATE_API_KEY"] !== undefined
+        ? "env"
+        : profile?.apiKey !== undefined
+          ? "profile"
+          : "none";
+
   // Base URL: flag > env > profile > SDK default
   const baseUrl =
     flags.baseUrl ??
@@ -76,5 +96,5 @@ export async function resolveEffectiveConfig(
     profile?.account ??
     undefined;
 
-  return { apiKey, baseUrl, timeout, account };
+  return { apiKey, baseUrl, timeout, account, apiKeySource };
 }

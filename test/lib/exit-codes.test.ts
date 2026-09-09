@@ -276,18 +276,33 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
     // they mean the same thing. If a future change splits one out, this reds
     // and the README's row 5 has to be rewritten with it.
     const five = ERROR_CODES.filter((c) => EXIT_CODE_MAP[c] === 5).sort();
-    expect(five).toEqual(["BETA_NOT_ENABLED", "LINKEDIN_FEATURE_NOT_SUBSCRIBED", "NO_ACTIVE_SEAT"]);
+    expect(five).toEqual([
+      "BETA_NOT_ENABLED",
+      "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
+      "NO_ACTIVE_SEAT",
+      // Deprecated, and deliberately in this bucket: it is what a
+      // pre-rollout deployment answers instead of NO_ACTIVE_SEAT, and the
+      // caller's remedy is the same. It leaves the list when the SDK drops it.
+      "TIER_NOT_ACTIVE",
+    ]);
   });
 
-  it("carries neither retired code", () => {
-    for (const retired of ["TIER_NOT_ACTIVE", "PREMIUM_CONFLICT"]) {
-      expect(
-        EXIT_CODE_MAP[retired as ErrorCode],
-        `${retired} is retired from the API and must not be in the exit table`,
-      ).toBeUndefined();
-      expect(ERROR_CODES as readonly string[]).not.toContain(retired);
-    }
-    // Control on the same probe: a present code really is found by it.
+  it("still maps both deprecated codes, because older deployments send them", () => {
+    // This case used to assert the opposite. Leaving a deprecated-but-still-
+    // emitted code unmapped is not neutral: `getExitCode` answers 1, so a
+    // caller pointed at a pre-rollout deployment reads a billing refusal as an
+    // internal failure. Mapped to the same bucket as its replacement, so a
+    // script branching on the exit code needs no deployment-specific logic.
+    expect(EXIT_CODE_MAP["TIER_NOT_ACTIVE" as ErrorCode]).toBe(5);
+    expect(EXIT_CODE_MAP["PREMIUM_CONFLICT" as ErrorCode]).toBe(8);
     expect(EXIT_CODE_MAP["NO_ACTIVE_SEAT"]).toBe(5);
+    // Each shares its successor's bucket, which is the property that makes the
+    // exit code deployment-independent.
+    expect(EXIT_CODE_MAP["TIER_NOT_ACTIVE" as ErrorCode]).toBe(
+      EXIT_CODE_MAP["NO_ACTIVE_SEAT"],
+    );
+    expect(EXIT_CODE_MAP["PREMIUM_CONFLICT" as ErrorCode]).toBe(
+      EXIT_CODE_MAP["ACCOUNT_RESTRICTED"],
+    );
   });
 });

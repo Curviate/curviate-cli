@@ -109,8 +109,14 @@ export async function readlineSync(
         terminal: false,
       });
       rl.once("line", (line) => {
-        rl.close();
+        // Resolve BEFORE closing. `rl.close()` emits "close" SYNCHRONOUSLY,
+        // and the "close" listener below settles the same promise with the
+        // empty string, so closing first meant this branch returned "" for
+        // every input it ever read. Unreachable while the only caller asked
+        // for masked input on a real terminal; reached the moment a caller
+        // wanted a visible prompt, which is what a pasted value needs.
         resolve(line.trim());
+        rl.close();
       });
       rl.once("error", reject);
       rl.once("close", () => resolve(""));
