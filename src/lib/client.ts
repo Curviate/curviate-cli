@@ -10,6 +10,7 @@
 
 import { Curviate } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
+import { betaOverrideHeader } from "./beta.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -36,13 +37,31 @@ function headerStrings(headers: RequestInit["headers"]): string[] {
  * scanned; the placeholder only ever originates as an argument value.
  */
 const guardedFetch: typeof fetch = (input, init) => {
+  // `--beta` rides here rather than through the SDK's config, because the SDK
+  // exposes no custom-header option and this is the seam the CLI already owns.
+  // Merged as ADDITIONAL headers only: the SDK's own `authorization` and
+  // `content-type` are copied through untouched, so this can never drop the
+  // credential or break a multipart boundary.
+  // `new Headers(init?.headers)` does the shape normalisation: the SDK builds a
+  // plain object today, and this keeps working unchanged if it ever hands over
+  // a Headers or an array of pairs. Everything already set, `authorization`
+  // included, is carried across, so this can never drop the credential.
+  const beta = betaOverrideHeader();
+  let merged = init;
+  if (Object.keys(beta).length > 0) {
+    const headers = new Headers(init?.headers);
+    for (const [name, value] of Object.entries(beta)) headers.set(name, value);
+    merged = { ...init, headers };
+  }
+
   assertNoStdinPlaceholder("the request about to be sent", [
     String(input instanceof Request ? input.url : input),
-    ...headerStrings(init?.headers),
-    typeof init?.body === "string" ? init.body : undefined,
+    ...headerStrings(merged?.headers),
+    typeof merged?.body === "string" ? merged.body : undefined,
   ]);
-  return fetch(input, init);
+  return fetch(input, merged);
 };
+
 
 /**
  * ## Why there is no path-segment guard here

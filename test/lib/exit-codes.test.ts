@@ -60,11 +60,11 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["UNAUTHORIZED", 3],
     ["RESOURCE_NOT_FOUND", 4],
     ["ACCOUNT_NOT_FOUND", 4],
-    ["TIER_NOT_ACTIVE", 5],
+    ["NO_ACTIVE_SEAT", 5],
     ["LINKEDIN_FEATURE_NOT_SUBSCRIBED", 5],
+    ["BETA_NOT_ENABLED", 5],
     ["RATE_LIMIT_ACCOUNT", 6],
     ["LINKEDIN_RATE_LIMITED", 6],
-    ["RATE_LIMITED", 6],
     ["PLATFORM_ERROR", 7],
     ["PLATFORM_NOT_IMPLEMENTED", 1],
     ["ACCOUNT_RESTRICTED", 8],
@@ -72,7 +72,6 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["ACCOUNT_ALREADY_LINKED", 8],
     ["LINKEDIN_OPERATION_NOT_SUPPORTED", 8],
     ["CONNECTION_REQUEST_CONFLICT", 8],
-    ["PREMIUM_CONFLICT", 8],
     ["REAUTH_REQUIRED", 8],
     ["CHECKPOINT_EXPIRED", 9],
     ["MESSAGE_WINDOW_EXPIRED", 10],
@@ -113,7 +112,6 @@ describe("lib/exit-codes — BUDGET_EXHAUSTED is not a rate limit", () => {
       "RATE_LIMIT_TENANT",
       "PLATFORM_RATE_LIMIT",
       "LINKEDIN_RATE_LIMITED",
-      "RATE_LIMITED",
     ];
     // Control arm: those five really are all 6, so "distinct from them" is a
     // statement about BUDGET_EXHAUSTED rather than about a bucket that drifted.
@@ -131,7 +129,7 @@ describe("lib/exit-codes — BUDGET_EXHAUSTED is not a rate limit", () => {
 describe("lib/exit-codes — getExitCode", () => {
   it("returns mapped exit code for a CurviateError code", () => {
     expect(getExitCode("UNAUTHORIZED")).toBe(3);
-    expect(getExitCode("TIER_NOT_ACTIVE")).toBe(5);
+    expect(getExitCode("NO_ACTIVE_SEAT")).toBe(5);
   });
 
   it("returns 1 for an unmapped/unknown code", () => {
@@ -194,5 +192,102 @@ describe("lib/exit-codes — the installed SDK carries the codes this table maps
     expect(codes.length).toBeGreaterThan(0);
     const unmapped = codes.filter((c) => EXIT_CODE_MAP[c as ErrorCode] === undefined);
     expect(unmapped, `SDK codes with no exit code: ${unmapped.join(", ")}`).toEqual([]);
+  });
+});
+
+// The tier retirement removed PREMIUM_CONFLICT from bucket 8 and TIER_NOT_ACTIVE
+// from bucket 5, and added BETA_NOT_ENABLED to 5. Removing codes can empty a
+// bucket, and an exit code the contract documents but nothing can ever produce
+// is a lie in the README's table: a caller writes a `case 8)` arm that is dead.
+// So the contract's own numbers are checked against what the map can actually
+// emit, rather than only the other direction.
+describe("lib/exit-codes — every documented exit code is still reachable", () => {
+  it("leaves no gap: each contract code has at least one ErrorCode mapping to it", () => {
+    const reachable = new Set(Object.values(EXIT_CODE_MAP));
+    const unreachable = [...VALID_EXIT_CODES].filter((c) => !reachable.has(c)).sort((a, b) => a - b);
+    expect(
+      unreachable,
+      "these exit codes are in the documented contract but no ErrorCode maps " +
+        "to them any more, so a caller branching on them has a dead arm. " +
+        "Either restore a mapping or retire the number from the contract and " +
+        "the README table.",
+    ).toEqual([]);
+  });
+
+  // POSITIVE CONTROL for the assertion above, which is an empty-set claim: a
+  // `reachable` set built wrongly (from keys instead of values, say) would make
+  // every documented code look unreachable and fail loudly, but a
+  // VALID_EXIT_CODES that parsed to empty would make the filter trivially empty
+  // and pass. Pin both sides as non-empty.
+  it("compares two non-empty sets", () => {
+    expect(VALID_EXIT_CODES.size).toBe(13);
+    expect(new Set(Object.values(EXIT_CODE_MAP)).size).toBeGreaterThan(5);
+  });
+
+  it("every code the 0.30.0 union added is mapped, and none fell to 1 by default", () => {
+    // The exhaustiveness case above proves every ErrorCode has SOME mapping.
+    // It cannot prove the mapping was CHOSEN: `getExitCode` returns 1 for
+    // anything unmapped, so a code left out reads as an internal failure and
+    // the caller learns nothing. These twenty-one arrived in the union together
+    // and every one of them decoded to INTERNAL/exit 1 before, so 1 is exactly
+    // the wrong answer for each and is asserted against by name.
+    const ADDED_IN_030 = [
+      "ACCOUNT_DISPUTED",
+      "ACCOUNT_LINKING_DISABLED",
+      "ADMIN_BYPASS",
+      "ALREADY_CANCELLED",
+      "BILLING_CHECKOUT_FAILED",
+      "BILLING_PORTAL_UNAVAILABLE",
+      "CANCELLATION_ALREADY_EFFECTIVE",
+      "INVALID_CANCELLATION_SOURCE",
+      "NOT_FOUND",
+      "PERIOD_LOCKED",
+      "REACTION_NOT_FOUND",
+      "SEAT_NOT_EMPTY",
+      "SEAT_PROVISIONAL",
+      "SUBSCRIPTION_ALREADY_EXISTS",
+      "SUBSTRATE_CAP_REACHED",
+      "SUBSTRATE_LINK_FAILED",
+      "TRIAL_ACTIVE_SEAT_LIMIT",
+      "TRIAL_EXPIRED",
+      "TRIAL_IDENTITY_ALREADY_USED",
+      "TRIAL_IDENTITY_UNRESOLVED",
+      "TRIAL_SEAT_LIMIT",
+    ] as const;
+
+    // Positive control: they really are in the union the CLI compiles against,
+    // so a stale linked SDK cannot make this block vacuous.
+    const union = new Set<string>(ERROR_CODES as readonly string[]);
+    const notInUnion = ADDED_IN_030.filter((c) => !union.has(c));
+    expect(notInUnion, "the resolved @curviate/sdk does not export these").toEqual([]);
+
+    const fellToDefault = ADDED_IN_030.filter((c) => EXIT_CODE_MAP[c as ErrorCode] === undefined);
+    expect(
+      fellToDefault,
+      "these have no explicit mapping, so getExitCode answers 1 and the caller " +
+        "reads a fixable refusal as an internal failure",
+    ).toEqual([]);
+    const mappedToOne = ADDED_IN_030.filter((c) => EXIT_CODE_MAP[c as ErrorCode] === 1);
+    expect(mappedToOne, "1 is the bucket each of these just came OUT of").toEqual([]);
+  });
+
+  it("the three entitlement codes all share exit 5, and nothing else does", () => {
+    // They share a bucket because the remedy has the same SHAPE, not because
+    // they mean the same thing. If a future change splits one out, this reds
+    // and the README's row 5 has to be rewritten with it.
+    const five = ERROR_CODES.filter((c) => EXIT_CODE_MAP[c] === 5).sort();
+    expect(five).toEqual(["BETA_NOT_ENABLED", "LINKEDIN_FEATURE_NOT_SUBSCRIBED", "NO_ACTIVE_SEAT"]);
+  });
+
+  it("carries neither retired code", () => {
+    for (const retired of ["TIER_NOT_ACTIVE", "PREMIUM_CONFLICT"]) {
+      expect(
+        EXIT_CODE_MAP[retired as ErrorCode],
+        `${retired} is retired from the API and must not be in the exit table`,
+      ).toBeUndefined();
+      expect(ERROR_CODES as readonly string[]).not.toContain(retired);
+    }
+    // Control on the same probe: a present code really is found by it.
+    expect(EXIT_CODE_MAP["NO_ACTIVE_SEAT"]).toBe(5);
   });
 });

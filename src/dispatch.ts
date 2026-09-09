@@ -40,6 +40,7 @@ import {
   type RestorableArgDef,
 } from "./lib/stdin.js";
 import { GLOBAL_FLAGS } from "./lib/global-flags.js";
+import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 
 type AnyCommand = CommandDef;
 
@@ -660,7 +661,13 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     return;
   }
 
-  if (rawArgs.length === 1 && rawArgs[0] === "--version") {
+  // Read AFTER the beta strip, so `curviate --beta --version` still prints the
+  // version instead of falling through to routing. Other global flags share the
+  // old behaviour; this is the one the beta parse sits next to, so it is the one
+  // worth getting right here.
+  const versionProbe = parseBetaFlag(rawArgs);
+  const versionArgs = versionProbe.ok ? versionProbe.rest : rawArgs;
+  if (versionArgs.length === 1 && versionArgs[0] === "--version") {
     const meta = (await resolveValue(root.meta ?? {})) as { version?: string };
     if (meta.version) {
       process.stdout.write(meta.version + "\n");
@@ -668,8 +675,21 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     process.exit(0);
   }
 
+  // `--beta` is consumed HERE, before routing and before citty sees anything:
+  // it is a transport concern rather than any command's argument, and citty
+  // 0.1.6 would read an invalid value as an opt-IN plus a stray positional
+  // (lib/beta.ts documents the measurement). Placed after the --help and
+  // --version paths above so `--beta=typo ... --help` still prints help
+  // instead of refusing: help sends no request, so the flag cannot matter.
+  const beta = parseBetaFlag(rawArgs);
+  if (!beta.ok) {
+    usageError(beta.error);
+  }
+  setBetaOverride(beta.ok ? beta.value : undefined);
+  const argsAfterBeta = beta.ok ? beta.rest : rawArgs;
+
   try {
-    const { leaf, leafArgs } = await resolveLeaf(root, rawArgs);
+    const { leaf, leafArgs } = await resolveLeaf(root, argsAfterBeta);
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).

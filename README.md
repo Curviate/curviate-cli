@@ -69,6 +69,7 @@ Global flags available on every command:
   --page-delay   Milliseconds to pause between pages when --all is used (default 400)
   --preview      Show what would happen without sending any write request
   --verbose      Output the full SDK response instead of the slim default
+  --beta         Allow beta operations for this call only (--beta, --beta=false)
   --base-url     Override the API base URL (for testing)
   --timeout      Request timeout in milliseconds (default: 30000)
 ```
@@ -146,16 +147,20 @@ curviate profile "$PROFILE_URL" --posts --fields id --account acc_1 --json \
   | xargs -I{} curviate post react {} --account acc_1 --reaction like
 ```
 
-### 4. Check tier entitlement before a Sales Navigator sweep
+### 4. Check entitlement before a Sales Navigator sweep
 
-Exit code `5` means the account lacks the required add-on. Branch on it in a script:
+Exit code `5` is the entitlement refusal. Three different things produce it and the
+`code` in the JSON body says which: `NO_ACTIVE_SEAT` (no Curviate seat covers the
+account), `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks its own Sales
+Navigator subscription) or `BETA_NOT_ENABLED` (the workspace has not opted into beta).
+Branch on the exit code for the retry decision and read the code for the remedy:
 
 ```bash
 curviate sales-nav search people --keywords "VP Engineering" --account acc_1 --json \
   || {
     code=$?
     if [ "$code" -eq 5 ]; then
-      echo "Sales Navigator add-on required. Upgrade at https://docs.curviate.com"
+      echo "Entitlement refused. Read .error.code for which of the three it was."
     else
       echo "Search failed with exit code $code"
       exit "$code"
@@ -228,11 +233,18 @@ curviate company jobs 112013061 --all --account acc_1 --json   # streams every p
 
 ## Sales Navigator
 
-Sales Navigator commands (`curviate sales-nav ...`) require an account with the Sales Navigator
-add-on tier attached. A call against an account without it fails with **exit code `5`** and a
-`TIER_NOT_ACTIVE` error body naming the required tier (`sales_nav`); branch on the exit code the
-same way as example 4 above. Write commands (`save-lead`, `save-account`, `message new`) accept
-`--preview` to render the request without sending it.
+Sales Navigator commands (`curviate sales-nav ...`) are **beta**: this surface has not been
+exercised against a real Sales Navigator subscription yet, so its responses may still move.
+
+There is no Sales Navigator add-on to buy from Curviate and no tier on a seat: one ordinary
+paid seat entitles every command here. What these commands do need is the LinkedIn account's
+own Sales Navigator subscription. A refusal is **exit code `5`** with one of three codes in
+the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
+`LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
+LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+call). Branch on the exit code the same way as example 4 above, and read the code for the
+remedy. Write commands (`save-lead`, `save-account`, `message new`) accept `--preview` to
+render the request without sending it.
 
 ### 1. Search Sales Navigator profiles, then get one full profile
 
@@ -321,9 +333,16 @@ curviate sales-nav save-account 112013061 --account acc_1 --list 987654
 
 ## Recruiter
 
-Recruiter commands (`curviate recruiter ...`) require an account with the Recruiter add-on tier
-attached. A call against an account without it fails with **exit code `5`** and a `TIER_NOT_ACTIVE`
-error body naming the required tier (`recruiter`). The surface is project-centric: most
+Recruiter commands (`curviate recruiter ...`) are **beta**: this surface has not been exercised
+against a real Recruiter subscription yet, so its responses may still move.
+
+There is no Recruiter add-on to buy from Curviate and no tier on a seat: one ordinary paid seat
+entitles every command here. What these commands do need is the LinkedIn account's own Recruiter
+subscription. A refusal is **exit code `5`** with one of three codes in the JSON body:
+`NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
+`LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
+LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+call). The surface is project-centric: most
 operations are scoped to a hiring project id. Write commands (`save-candidate`, `project update`,
 `project-job create`/`update`, `job create`/`publish`/`close`, `message new`) accept `--preview`
 to render the request without sending it.
@@ -508,7 +527,7 @@ curviate inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 | 2 | Usage / argument error |
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |
-| 5 | Feature requires an add-on or higher plan |
+| 5 | No active seat, the LinkedIn account lacks the subscription, or beta consent is missing |
 | 6 | Rate limited |
 | 7 | Transient platform error (retry likely to succeed) |
 | 8 | Account or connection state blocks the request |

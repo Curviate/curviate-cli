@@ -1046,7 +1046,7 @@ const companyChatsCommand = defineCommand({
 const companyChatCommand = defineCommand({
   meta: {
     name: "chat",
-    description: "Retrieve one conversation from a company page's admin inbox. Admin-gated. Beta.",
+    description: "Retrieve one conversation from a company page's admin inbox. Admin-gated.",
   },
   args: {
     ...GLOBAL_FLAGS,
@@ -1136,7 +1136,7 @@ const companySearchChatsCommand = defineCommand({
     name: "search-chats",
     description:
       "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
-      "or --unread; mutually exclusive, enforced server-side. Admin-gated.",
+      "or --unread; mutually exclusive, enforced server-side. Admin-gated. Beta.",
   },
   args: {
     ...GLOBAL_FLAGS,

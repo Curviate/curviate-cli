@@ -6,6 +6,128 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.31.0] - 2026-09-09
+
+Follows the SDK to `0.30.0` and catches the CLI up to the server-side tier
+retirement, the connect rework and the beta consent gate.
+
+**Breaking for anyone matching on error codes, not on exit codes.** Exit 5 still
+means the same thing and still fires in the same situations, so a script that
+branches on `$?` needs no change. A script that reads `.error.code` out of
+`--json` sees `NO_ACTIVE_SEAT` where it used to see `TIER_NOT_ACTIVE`, and no
+longer sees `.error.requiredTier` at all.
+
+Ripple: this release rides the same wave as the SDK it pins, and the wire
+contract moved before either of them. It is one release rather than three
+because the CLI had two unpublished pin bumps waiting behind it.
+
+### Changed
+
+- **`@curviate/sdk` pinned at `0.30.0`** (exact, as always), and
+  `test/fixtures/openapi.json` re-vendored from that release
+  (`server_git_sha ebddaea7...`, 125 paths), with `VENDORED_FROM.json`'s
+  `sdkVersion`, salted `sha256`, `vendoredAt` and `sourceServerGitSha`
+  refreshed together so `check:fixture-pin` stays closed.
+
+- **Exit 5 now carries three codes instead of two.** `NO_ACTIVE_SEAT`
+  (replacing `TIER_NOT_ACTIVE`), `LINKEDIN_FEATURE_NOT_SUBSCRIBED`, and the new
+  `BETA_NOT_ENABLED`. They share one exit code because the remedy has the same
+  SHAPE (a human changes something and you retry) and a scripted caller wants
+  one bucket for that. They are not interchangeable: the fixes live in three
+  different systems, so read the `code` in the `--json` envelope. Reusing 5 for
+  the beta refusal rather than minting a new number is deliberate; an exit code
+  is a public contract and a new one breaks every existing case statement.
+
+- **`PREMIUM_CONFLICT` is gone from the exit table.** The connect rework made
+  it unreachable. Exit 8 is unaffected and still has eleven other codes; the
+  documented exit codes are now checked for reachability, so removing the last
+  code from a bucket reds instead of leaving a dead row in the README table.
+
+- **The `Required tier: <tier>` line is gone from human-mode error output**,
+  along with the SDK field that fed it. Nothing ever asserted that line while
+  it existed, which is exactly why it could have been left behind silently;
+  both its absence and the code-and-message line that remains are now asserted.
+
+- **Sales Navigator and Recruiter are marked beta in `--help` and the README**,
+  and neither describes a Curviate-side entitlement any more. There is no
+  add-on to buy and no tier on a seat: one ordinary paid seat entitles every
+  command in both groups. What they need is the LinkedIn account's own Sales
+  Navigator or Recruiter subscription.
+
+- **Exit-code table row 5** now reads "No active seat, the LinkedIn account
+  lacks the subscription, or beta consent is missing".
+
+- **Twenty-one error codes now get a real exit code instead of falling to 1.**
+  `@curviate/sdk` 0.30.0 exports codes it previously did not, each of which the
+  API already returned; until now the SDK decoded every one to `INTERNAL` and
+  this CLI exited 1, which reads as "the tool broke" for a refusal that is
+  usually yours to fix.
+
+  Now: `4` for `NOT_FOUND` and `REACTION_NOT_FOUND`; `7` for
+  `SUBSTRATE_LINK_FAILED`, `SUBSTRATE_CAP_REACHED`, `BILLING_CHECKOUT_FAILED`
+  and `BILLING_PORTAL_UNAVAILABLE`, all of which are a dependency failing
+  rather than a bad request; `2` for `ADMIN_BYPASS` and
+  `INVALID_CANCELLATION_SOURCE`, where the request itself does not apply or a
+  field value is wrong; and `11` for the remaining thirteen, which are tenant
+  standing, seat and subscription state, and the free-trial limits.
+
+  **If you branch on exit 1 to detect any of these, that check needs
+  updating.** Everything else is additive: a case that fell through to 1 now
+  gets a specific number, and `--json` carries the real code where it used to
+  carry `INTERNAL`.
+
+- **`RATE_LIMITED` loses its exit-code entry**, because `@curviate/sdk` 0.30.0
+  withdrew the code: the API never produced it (the substrate's own
+  `RATE_LIMITED` is translated to `PLATFORM_RATE_LIMIT` before any response is
+  written). Nothing changes for any real response. The throttle codes that do
+  arrive, `RATE_LIMIT_ACCOUNT`, `RATE_LIMIT_TENANT`, `PLATFORM_RATE_LIMIT` and
+  `LINKEDIN_RATE_LIMITED`, all still exit 6.
+
+### Fixed
+
+- **`company` inbox beta markers were wrong in both directions.**
+  `company chat` claimed beta for an operation that is stable, promising a gate
+  that cannot fire; `company search-chats` omitted it for one that IS beta, so a
+  caller got no warning the call can be refused for missing beta consent. Both
+  now match the served badge, and the match is checked mechanically per
+  operation rather than by hand, so the two cannot drift apart again.
+
+### Added
+
+- **`--beta`, a global flag.** Allows beta operations for one invocation:
+  `--beta` (or `--beta=true`) opts in, `--beta=false` opts out even where the
+  workspace has consented, and omitting it leaves the workspace setting to
+  decide. It persists nothing, in any profile, config file or environment
+  variable, because durable beta consent is a workspace setting a human owns in
+  the dashboard. Accepts the same value grammar as the API header it sets
+  (`true|false`, `1|0`, `on|off`, `yes|no`), and an unrecognised value is a
+  usage error (exit 2) with no request sent. `--no-beta` is accepted as a
+  synonym for `--beta=false`, and takes no value of its own: `--no-beta=false`
+  is a usage error rather than a guess at which negation was meant.
+
+  Worth knowing if you were relying on the old behaviour: an invalid value used
+  to be impossible to express and now refuses loudly rather than guessing. The
+  argument parser reads `--beta=maybe` as `true`, so guessing would mean opting
+  IN on a typo, which is the one direction a consent flag must not fail in.
+
+- **`account link --linkedin-premium <sales_navigator|recruiter>`.** Narrows a
+  connect to one LinkedIn premium surface. Omit it and the connect asks for
+  every product and LinkedIn activates whichever ones the account holds; set it
+  to `recruiter` for an account that holds both, where Sales Navigator would
+  otherwise win. It applies to THAT call only and is never remembered, so
+  restate it on every connect and reconnect where Recruiter must win. The
+  previous `trial_premium` field is gone from the connect surface, and was
+  never exposed as a CLI flag.
+
+  An unrecognised value is a usage error (exit 2) with no request sent, and so
+  is an EMPTY one: `--linkedin-premium="$PREF"` with `PREF` unset would
+  otherwise take the same path as omitting the flag, which asks for every
+  product and lets Sales Navigator win. Under `--preview` it reports the
+  problem and renders instead of exiting, since a client-side render never
+  exits.
+
+---
+
 ## [0.30.0] - 2026-09-07
 
 Pins `@curviate/sdk` at `0.29.0` and re-vendors the OpenAPI fixture from it

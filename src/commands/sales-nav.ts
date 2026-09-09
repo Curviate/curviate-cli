@@ -1,5 +1,5 @@
 /**
- * `curviate sales-nav`, Sales Navigator operations (tier: sn).
+ * `curviate sales-nav`, Sales Navigator operations (beta).
  *
  * Subcommands:
  *   sales-nav search people [--keywords <k>] [--all] [--limit] [--cursor]: search people (POST)
@@ -17,7 +17,13 @@
  *   sales-nav save-account --list <id> <company_id> --account <id>: save a company into a list (write)
  *
  * All subcommands are account-scoped.
- * Tier-gate: CLI never pre-checks, SDK call goes out; TIER_NOT_ACTIVE / LINKEDIN_FEATURE_NOT_SUBSCRIBED -> exit 5.
+ * Entitlement: the CLI never pre-checks, the call goes out. NO_ACTIVE_SEAT
+ * (no Curviate seat), LINKEDIN_FEATURE_NOT_SUBSCRIBED (the LinkedIn account
+ * lacks its own Sales Navigator subscription) and BETA_NOT_ENABLED (the
+ * workspace has not opted into beta) all exit 5. There is no Sales Navigator
+ * product to buy from Curviate and no tier on a seat: one ordinary paid seat
+ * entitles every subcommand here. Read the code in the --json envelope to know
+ * which of the three refused.
  * Identifier resolution: applied to `profile <identifier>` only; user_id/company_id/list_id pass verbatim.
  *
  * BREAKING (2026-07-04): `save-lead` re-signed for the v2 save-lead surface,
@@ -1107,7 +1113,11 @@ const salesNavSaveAccountCommand = defineCommand({
 });
 
 export const salesNavCommand = defineCommand({
-  meta: { name: "sales-nav", description: "Sales Navigator operations (requires the Sales Navigator add-on)." },
+  meta: {
+      name: "sales-nav",
+      description:
+        "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+    },
   args: { ...GLOBAL_FLAGS },
   subCommands: {
     message: salesNavMessageCommand,

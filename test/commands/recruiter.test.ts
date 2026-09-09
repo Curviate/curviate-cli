@@ -16,9 +16,11 @@
  *   recruiter applicant <project_id> <applicant_id>                            → recruiter.getApplicant (verbatim id)
  *   recruiter applicant resume <project_id> <applicant_id> -o <file>           → recruiter.downloadResume (binary)
  *
- * Tier gate:
- *   TIER_NOT_ACTIVE → exit 5 + JSON requiredTier
+ * Entitlement gate (three codes, one exit):
+ *   NO_ACTIVE_SEAT → exit 5 + JSON code
  *   LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5 + JSON code
+ *   BETA_NOT_ENABLED → exit 5 + JSON code
+ * The code is the whole structured signal; no tier field rides the envelope.
  *
  * --preview on writes: renders preview, no SDK call.
  * --preview on reads: exit 2.
@@ -87,13 +89,17 @@ function mockExit() {
   });
 }
 
-function makeTierError(code: string, requiredTier?: string) {
-  return Object.assign(new Error(`Tier error: ${code}`), {
+/**
+ * A 403 entitlement refusal as the SDK surfaces it. There is no tier field any
+ * more: the code IS the whole structured signal, so a fixture that still
+ * carried a `requiredTier` would be exhibiting a shape the API cannot produce.
+ */
+function makeEntitlementError(code: string) {
+  return Object.assign(new Error(`Entitlement error: ${code}`), {
     code,
-    requiredTier,
     userFixable: true,
     retryLikelyToSucceed: false,
-    toJSON: () => ({ code, requiredTier, message: `Tier error: ${code}` }),
+    toJSON: () => ({ code, message: `Entitlement error: ${code}` }),
   });
 }
 
@@ -113,12 +119,12 @@ describe("recruiter tier gate", () => {
     vi.restoreAllMocks();
   });
 
-  it("recruiter projects — TIER_NOT_ACTIVE → exit 5, requiredTier:recruiter", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "recruiter");
-    (ns.recruiter.listProjects as Mock).mockRejectedValue(tierErr);
+  it("recruiter projects — NO_ACTIVE_SEAT → exit 5, no tier field", async () => {
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.recruiter.listProjects as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runRecruiterListProjects } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -134,16 +140,15 @@ describe("recruiter tier gate", () => {
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("TIER_NOT_ACTIVE");
-    expect(parsed.error.requiredTier).toBe("recruiter");
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 
   it("recruiter search people — LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5, distinct code", async () => {
-    const tierErr = makeTierError("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
-    (ns.recruiter.searchPeople as Mock).mockRejectedValue(tierErr);
+    const entitlementErr = makeEntitlementError("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
+    (ns.recruiter.searchPeople as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runRecruiterSearchPeople } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -163,11 +168,11 @@ describe("recruiter tier gate", () => {
   });
 
   it("per-command gate independence — recruiter jobs stubbed independently → exit 5", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "recruiter");
-    (ns.recruiter.listJobs as Mock).mockRejectedValue(tierErr);
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.recruiter.listJobs as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runRecruiterListJobs } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -183,16 +188,15 @@ describe("recruiter tier gate", () => {
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("TIER_NOT_ACTIVE");
-    expect(parsed.error.requiredTier).toBe("recruiter");
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 
   it("per-command gate independence — recruiter profile stubbed independently → exit 5", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "recruiter");
-    (ns.recruiter.getProfile as Mock).mockRejectedValue(tierErr);
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.recruiter.getProfile as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runRecruiterProfile } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -207,8 +211,10 @@ describe("recruiter tier gate", () => {
     }
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.requiredTier).toBe("recruiter");
+    const parsed = JSON.parse(written) as { error: { code: string } };
+    // The code is the whole structured signal now, so assert it rather than
+    // just parsing the envelope and discarding it.
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 });
 
@@ -1982,12 +1988,12 @@ describe("recruiter job get", () => {
     expect(result).toHaveProperty("created_at");
   });
 
-  it("tier gate: TIER_NOT_ACTIVE → exit 5, requiredTier:recruiter", async () => {
-    const tierErr = makeTierError("TIER_NOT_ACTIVE", "recruiter");
-    (ns.recruiter.getJob as Mock).mockRejectedValue(tierErr);
+  it("tier gate: NO_ACTIVE_SEAT → exit 5, no tier field", async () => {
+    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
+    (ns.recruiter.getJob as Mock).mockRejectedValue(entitlementErr);
 
     const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(tierErr, CurviateError.prototype);
+    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
 
     const { runRecruiterGetJob } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -2003,8 +2009,7 @@ describe("recruiter job get", () => {
 
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("TIER_NOT_ACTIVE");
-    expect(parsed.error.requiredTier).toBe("recruiter");
+    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
   });
 
   it("unknown job exits with the resource-not-found exit code", async () => {
