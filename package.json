@@ -1,6 +1,6 @@
 {
   "name": "@curviate/cli",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "private": false,
   "description": "Official command-line interface for the Curviate API.",
   "license": "MIT",

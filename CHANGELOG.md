@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.31.1] - 2026-09-10
+
+### Fixed
+
+- `doctor` reported an unreachable API as `api reachable: PASS` and blamed the
+  credential instead, at exit `1`. Reachability was decided from the SDK error's
+  **code**, on the premise that a transport failure carries no code; the transport
+  wraps every fetch rejection as `INTERNAL`, so the premise was false and the check
+  was wrong in both directions: a 503 that came back over a working connection was
+  reported unreachable.
+
+  Reachability now follows `httpStatus`, which is what records that a response came
+  back at all. **Exit codes move for these cases, in the direction the documented
+  contract always claimed:** an unreachable API now exits `7` rather than `1`, and a
+  request the client refuses to build before sending (an empty `--api-key`, a
+  malformed base URL) keeps its own exit code rather than being reported as a
+  network fault.
+
+- `doctor` no longer reports `credential valid: rejected: INTERNAL` when no response
+  came back. Nothing asked the credential anything; it now says the check was not
+  made, and why.
+
 ## [0.31.0] - 2026-09-09
 
 Follows the SDK to `0.30.0` and catches the CLI up to the server-side tier
