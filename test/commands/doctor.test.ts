@@ -10,7 +10,50 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CurviateError } from "@curviate/sdk";
 import { runDoctor, resolveDoctorIO, type DoctorIO } from "../../src/commands/doctor.js";
+
+/**
+ * What the SDK's transport ACTUALLY throws when the request never reached the
+ * API: `INTERNAL`, no `httpStatus`, retryable. Not a bare `TypeError` — the
+ * transport wraps every fetch rejection before it leaves the SDK, so a fake
+ * throwing a raw error is testing a path production cannot produce, and it
+ * cannot fail when reachability is decided from the error CODE.
+ */
+function transportFailure(message = "Network error."): CurviateError {
+  return new CurviateError({
+    code: "INTERNAL",
+    message,
+    userFixable: false,
+    retryLikelyToSucceed: true,
+  });
+}
+
+/**
+ * What the SDK throws when the CLIENT refuses to build the request — an empty
+ * `--api-key`, a malformed base URL. Raised before anything leaves this
+ * process, so it carries no `httpStatus` (like a transport failure) but is
+ * NOT retryable (unlike one). That pair is the only thing separating them.
+ */
+function preRequestRefusal(message: string): CurviateError {
+  return new CurviateError({
+    code: "INVALID_REQUEST",
+    message,
+    userFixable: true,
+    retryLikelyToSucceed: false,
+  });
+}
+
+/** What the SDK throws for a refusal the API itself sent back. */
+function apiRefusal(code: string, httpStatus: number, message: string): CurviateError {
+  return new CurviateError({
+    code: code as never,
+    message,
+    httpStatus,
+    userFixable: true,
+    retryLikelyToSucceed: false,
+  });
+}
 
 const ACCOUNTS = {
   items: [
@@ -130,9 +173,7 @@ describe("a credential that the API rejects", () => {
       {},
       io({
         listAccounts: async () => {
-          throw Object.assign(new Error("Invalid or revoked API key."), {
-            code: "UNAUTHORIZED",
-          });
+          throw apiRefusal("UNAUTHORIZED", 401, "Invalid or revoked API key.");
         },
       }),
     );
@@ -152,7 +193,87 @@ describe("a credential that the API rejects", () => {
 });
 
 describe("an API that cannot be reached", () => {
+  beforeEach(() => {
+    writeConfigFile({
+      active: "default",
+      profiles: { default: { apiKey: "rdc_live_X", baseUrl: "https://example.test" } },
+    });
+  });
+
   it("fails the reachability check and exits 7", async () => {
+    const report = await runDoctor(
+      {},
+      io({ listAccounts: async () => Promise.reject(transportFailure()) }),
+    );
+
+    expect(report.api_reachable).toBe(false);
+    expect(report.exit).toBe(7);
+    expect(report.checks.find((c) => c.name === "api reachable")?.ok).toBe(false);
+  });
+
+  it("does not report the credential as rejected when nothing asked it", async () => {
+    // The regression this guards: reachability was decided from the error
+    // CODE, and the SDK collapses a transport failure to `INTERNAL` — never
+    // `undefined`. So an unreachable API reported `api reachable: PASS` and
+    // blamed the credential, sending the caller to re-run `setup` over a
+    // network fault.
+    const report = await runDoctor(
+      {},
+      io({ listAccounts: async () => Promise.reject(transportFailure()) }),
+    );
+
+    expect(report.checks.map((c) => [c.name, c.ok])).toEqual([
+      ["credential", true],
+      ["api reachable", false],
+      ["credential valid", false],
+    ]);
+    const credential = report.checks.find((c) => c.name === "credential valid");
+    expect(credential?.detail).not.toContain("rejected");
+    expect(credential?.detail).toContain("could not be reached");
+  });
+
+  it("still exits 7 when the request timed out", async () => {
+    const report = await runDoctor(
+      {},
+      io({ listAccounts: async () => Promise.reject(transportFailure("Request timed out.")) }),
+    );
+
+    expect(report.api_reachable).toBe(false);
+    expect(report.exit).toBe(7);
+  });
+});
+
+describe("a request the client refuses to send", () => {
+  beforeEach(() => {
+    writeConfigFile({
+      active: "default",
+      profiles: { default: { apiKey: "rdc_live_X", baseUrl: "https://example.test" } },
+    });
+  });
+
+  it("does not blame the network for a usage error", async () => {
+    // The third category. It has no `httpStatus`, exactly like a transport
+    // failure, so deciding reachability on that alone reports "could not
+    // reach" and exit 7 for something that never touched the network — and
+    // exit 7 invites a retry that cannot possibly help.
+    const report = await runDoctor(
+      {},
+      io({
+        listAccounts: async () =>
+          Promise.reject(preRequestRefusal("An apiKey is required to construct a Curviate client.")),
+      }),
+    );
+
+    expect(report.api_reachable).toBe(false);
+    expect(report.exit).toBe(2);
+    const reach = report.checks.find((c) => c.name === "api reachable");
+    expect(reach?.detail).not.toContain("could not reach");
+    expect(reach?.detail).toContain("refused before it was sent");
+  });
+});
+
+describe("an API that answers with a platform fault", () => {
+  it("reports it as reached, because it answered", async () => {
     writeConfigFile({
       active: "default",
       profiles: { default: { apiKey: "rdc_live_X", baseUrl: "https://example.test" } },
@@ -160,15 +281,33 @@ describe("an API that cannot be reached", () => {
     const report = await runDoctor(
       {},
       io({
-        listAccounts: async () => {
-          throw new TypeError("fetch failed");
-        },
+        listAccounts: async () =>
+          Promise.reject(apiRefusal("PLATFORM_ERROR", 503, "Upstream unavailable.")),
       }),
     );
 
-    expect(report.api_reachable).toBe(false);
+    // The inverse of the case above, and the reason code-based detection was
+    // wrong in BOTH directions: a 503 came back over a working connection.
+    expect(report.api_reachable).toBe(true);
+    expect(report.checks.find((c) => c.name === "api reachable")?.ok).toBe(true);
     expect(report.exit).toBe(7);
-    expect(report.checks.find((c) => c.name === "api reachable")?.ok).toBe(false);
+  });
+
+  it("passes a named refusal through to its own exit code", async () => {
+    writeConfigFile({
+      active: "default",
+      profiles: { default: { apiKey: "rdc_live_X", baseUrl: "https://example.test" } },
+    });
+    const report = await runDoctor(
+      {},
+      io({
+        listAccounts: async () =>
+          Promise.reject(apiRefusal("NO_ACTIVE_SEAT", 402, "No active seat.")),
+      }),
+    );
+
+    expect(report.api_reachable).toBe(true);
+    expect(report.exit).toBe(5);
   });
 });
 

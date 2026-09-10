@@ -180,22 +180,57 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
     } catch (err: unknown) {
       const error = err as Partial<CurviateError> & { code?: string; message?: string };
       const code = typeof error.code === "string" ? error.code : undefined;
-      // An error that carries a product error code came BACK from the API, so
-      // the API was reachable; only a transport failure says otherwise.
-      reachable = code !== undefined && code !== "PLATFORM_ERROR";
+      // Reachability is decided by whether a RESPONSE came back, which is
+      // exactly what `httpStatus` records — the SDK sets it from `res.status`
+      // on every error it decodes from a response, and never on one it raises
+      // without a response.
+      //
+      // It cannot be decided from the error CODE. The previous rule here read
+      // `code !== undefined && code !== "PLATFORM_ERROR"` on the premise that
+      // a transport failure carries no code; the SDK collapses an undeclared
+      // or absent code to `INTERNAL`, so the code is NEVER undefined by the
+      // time it arrives. That made the check wrong in both directions: an
+      // unreachable API reported `api reachable: PASS` and blamed the
+      // credential (exit 1, sending the caller to re-run `setup` over a
+      // network fault), while a reachable API answering `PLATFORM_ERROR` —
+      // a 503 that by definition came back over a working connection —
+      // reported it FAIL.
+      const responded = typeof error.httpStatus === "number";
+      // No `httpStatus` covers TWO different answers, and only one of them is
+      // about the network: the transport failed to get a response, or the
+      // client refused to build the request at all (an empty key, a malformed
+      // base URL) so nothing ever left this process. `retryLikelyToSucceed`
+      // is what separates them — the transport sets it true by construction,
+      // every client-side refusal sets it false. Calling the second one
+      // "could not reach" blames the network for a usage error, and exit 7
+      // invites a retry that cannot help.
+      const transportFault = !responded && error.retryLikelyToSucceed === true;
+      const codeExit = code ? getExitCode(code as never) : 3;
+      reachable = responded;
       checks.push({
         name: "api reachable",
         ok: reachable,
         detail: reachable
           ? effective.baseUrl
-          : `could not reach ${effective.baseUrl}: ${error.message ?? "network error"}`,
-        exit: 7,
+          : transportFault
+            ? `could not reach ${effective.baseUrl}: ${error.message ?? "network error"}`
+            : "not checked: the request was refused before it was sent",
+        exit: transportFault ? 7 : codeExit,
       });
       checks.push({
         name: "credential valid",
         ok: false,
-        detail: code ? `rejected: ${code}` : (error.message ?? "the call did not succeed"),
-        exit: code ? getExitCode(code as never) : 3,
+        // Nothing asked the credential anything unless a response came back,
+        // so it was not "rejected". Saying it was is the half of this defect
+        // that actually misdirects: it names the one subsystem that is fine.
+        detail: responded
+          ? code
+            ? `rejected: ${code}`
+            : (error.message ?? "the call did not succeed")
+          : transportFault
+            ? `not checked: ${effective.baseUrl} could not be reached`
+            : (error.message ?? "the request was refused before it was sent"),
+        exit: responded ? codeExit : transportFault ? 3 : codeExit,
       });
     }
   }
