@@ -29,12 +29,21 @@ retired codes**, and no deployment sends either any more.
 
 - **`STRIPE_DRIFT_DETECTED` exits `1`.** Checkout refused closed (503) because
   Curviate's own seat-price configuration disagrees with the price it
-  displays. It is mapped explicitly, and deliberately not to `7` or `11`: it is
-  not retry-likely, so backing off does not help, and it is not fixable by the
-  caller, so there is nothing to change in billing. That is the same shape as
-  `PLATFORM_NOT_IMPLEMENTED`, which already exits `1`. The `--json` envelope
-  carries the real code, so a script can tell it apart from an unexpected
-  failure.
+  displays. It is mapped explicitly, with the same flags and bucket as
+  `PLATFORM_NOT_IMPLEMENTED` (neither `userFixable` nor retry-likely), and
+  deliberately not `7` or `11`: `7` tells you to retry with backoff, and `11`
+  tells you your workspace's billing is at fault, which it is not. The
+  `--json` envelope carries the real code, so a script can tell it apart from
+  an unexpected failure.
+
+### Changed
+
+- **`@curviate/sdk` pinned at `0.31.0`** (exact, as always), and
+  `test/fixtures/openapi.json` re-vendored from that release
+  (`server_git_sha 9696b172...`, 125 paths), with `VENDORED_FROM.json`'s
+  `sdkVersion`, salted `sha256`, `vendoredAt` and `sourceServerGitSha`
+  refreshed together so `check:fixture-pin` stays closed. The re-vendored
+  document no longer carries `seat_tier_mismatch`.
 
 ## [0.31.1] - 2026-09-10
 

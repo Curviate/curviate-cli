@@ -303,10 +303,9 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
 // checkout refused closed because Curviate's own seat-price configuration
 // disagrees with the price it displays, and it stays refused until Curviate
 // fixes the configuration. Each neighbouring bucket would send a script the
-// wrong way. 7 says back off and retry (its 503 siblings are dependencies that
-// recover), 11 says fix it in billing (every 11 is user_fixable). 1 is the
-// bucket PLATFORM_NOT_IMPLEMENTED already uses for exactly this shape: a
-// Curviate-side "not available" the caller can neither retry nor fix.
+// wrong way: 7 says retry with backoff, 11 says the tenant's billing is at
+// fault. 1 is the bucket PLATFORM_NOT_IMPLEMENTED already uses, and it carries
+// the same flags (neither user_fixable nor retry-likely).
 describe("lib/exit-codes — STRIPE_DRIFT_DETECTED", () => {
   const CODE = "STRIPE_DRIFT_DETECTED" as ErrorCode;
 

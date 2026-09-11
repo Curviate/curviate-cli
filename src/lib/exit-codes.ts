@@ -249,11 +249,11 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // 1, chosen rather than defaulted, and deliberately not 7 or 11.
   // `STRIPE_DRIFT_DETECTED` is a 503 on checkout: Curviate's own seat-price
   // configuration disagrees with the price it displays, so it refuses closed
-  // until Curviate corrects it. Not retry-likely, so not 7 (whose 503 siblings
-  // above are dependencies that recover). Not user_fixable, so not 11 (every
-  // 11 is fixed by the caller in billing). That is the shape of
-  // `PLATFORM_NOT_IMPLEMENTED`: a Curviate-side "not available" the caller can
-  // neither retry nor fix. The `--json` envelope still names the real code.
+  // until Curviate corrects it. It carries the same flags as
+  // `PLATFORM_NOT_IMPLEMENTED` (neither user_fixable nor retry-likely), so it
+  // takes the same bucket. Not 7, which tells the caller to retry with
+  // backoff. Not 11, which tells the caller the tenant's billing is at fault,
+  // and here it is not. The `--json` envelope still names the real code.
   STRIPE_DRIFT_DETECTED: 1,
 };
 
