@@ -86,6 +86,7 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     // test/commands/retrieval-sdk-surface.test.ts for the arm that proves a
     // NOT_STORED 422 actually reaches this row on the wire.
     ["NOT_STORED" as ErrorCode, 14],
+    ["STRIPE_DRIFT_DETECTED" as ErrorCode, 1],
   ] as [ErrorCode, number][])(
     "ErrorCode %s → exit %i",
     (code, expectedExit) => {
@@ -172,7 +173,7 @@ describe("lib/exit-codes — the installed SDK carries the codes this table maps
     expect(Array.isArray(sdk.ERROR_CODES)).toBe(true);
   });
 
-  it.each(["BUDGET_EXHAUSTED", "LINKEDIN_SESSION_EVICTED"])(
+  it.each(["BUDGET_EXHAUSTED", "LINKEDIN_SESSION_EVICTED", "STRIPE_DRIFT_DETECTED"])(
     "the installed @curviate/sdk knows %s, so it decodes to itself rather than INTERNAL",
     async (code) => {
       const sdk = await installedSdk();
@@ -196,7 +197,8 @@ describe("lib/exit-codes — the installed SDK carries the codes this table maps
 });
 
 // The tier retirement removed PREMIUM_CONFLICT from bucket 8 and TIER_NOT_ACTIVE
-// from bucket 5, and added BETA_NOT_ENABLED to 5. Removing codes can empty a
+// from bucket 5 (deprecated in 0.31.0, withdrawn in 0.32.0), and added
+// BETA_NOT_ENABLED to 5. Removing codes can empty a
 // bucket, and an exit code the contract documents but nothing can ever produce
 // is a lie in the README's table: a caller writes a `case 8)` arm that is dead.
 // So the contract's own numbers are checked against what the map can actually
@@ -280,29 +282,47 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
       "BETA_NOT_ENABLED",
       "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
       "NO_ACTIVE_SEAT",
-      // Deprecated, and deliberately in this bucket: it is what a
-      // pre-rollout deployment answers instead of NO_ACTIVE_SEAT, and the
-      // caller's remedy is the same. It leaves the list when the SDK drops it.
-      "TIER_NOT_ACTIVE",
     ]);
   });
 
-  it("still maps both deprecated codes, because older deployments send them", () => {
-    // This case used to assert the opposite. Leaving a deprecated-but-still-
-    // emitted code unmapped is not neutral: `getExitCode` answers 1, so a
-    // caller pointed at a pre-rollout deployment reads a billing refusal as an
-    // internal failure. Mapped to the same bucket as its replacement, so a
-    // script branching on the exit code needs no deployment-specific logic.
-    expect(EXIT_CODE_MAP["TIER_NOT_ACTIVE" as ErrorCode]).toBe(5);
-    expect(EXIT_CODE_MAP["PREMIUM_CONFLICT" as ErrorCode]).toBe(8);
+  it("no longer maps either retired code", () => {
+    // Step two of the retirement: the SDK withdrew both from the union once
+    // every deployment stopped sending them, so a row here would be a mapping
+    // for a code that cannot arrive. Absent means getExitCode's default, which
+    // is what any unknown wire code gets.
+    expect(EXIT_CODE_MAP["TIER_NOT_ACTIVE" as ErrorCode]).toBeUndefined();
+    expect(EXIT_CODE_MAP["PREMIUM_CONFLICT" as ErrorCode]).toBeUndefined();
+    // Positive control on the same probe: their successor and old bucket-mate
+    // are still found, so "undefined" above means absent, not a blind lookup.
     expect(EXIT_CODE_MAP["NO_ACTIVE_SEAT"]).toBe(5);
-    // Each shares its successor's bucket, which is the property that makes the
-    // exit code deployment-independent.
-    expect(EXIT_CODE_MAP["TIER_NOT_ACTIVE" as ErrorCode]).toBe(
-      EXIT_CODE_MAP["NO_ACTIVE_SEAT"],
-    );
-    expect(EXIT_CODE_MAP["PREMIUM_CONFLICT" as ErrorCode]).toBe(
-      EXIT_CODE_MAP["ACCOUNT_RESTRICTED"],
-    );
+    expect(EXIT_CODE_MAP["ACCOUNT_RESTRICTED"]).toBe(8);
+  });
+});
+
+// STRIPE_DRIFT_DETECTED is a 503 that is NOT retry-likely and NOT user-fixable:
+// checkout refused closed because Curviate's own seat-price configuration
+// disagrees with the price it displays, and it stays refused until Curviate
+// fixes the configuration. Each neighbouring bucket would send a script the
+// wrong way: 7 says retry with backoff, 11 says the tenant's billing is at
+// fault. 1 is the bucket PLATFORM_NOT_IMPLEMENTED already uses, and it carries
+// the same flags (neither user_fixable nor retry-likely).
+describe("lib/exit-codes — STRIPE_DRIFT_DETECTED", () => {
+  const CODE = "STRIPE_DRIFT_DETECTED" as ErrorCode;
+
+  it("is mapped explicitly, not left to the unmapped default", () => {
+    // getExitCode would also answer 1 for an unmapped code, so the map entry
+    // itself is the instrument.
+    expect(EXIT_CODE_MAP[CODE]).toBe(1);
+    // Control: the same lookup on a code that is not in the map is undefined.
+    expect(EXIT_CODE_MAP["__UNMAPPED__" as ErrorCode]).toBeUndefined();
+  });
+
+  it("shares the bucket of the other can't-retry, can't-fix code, and neither 7 nor 11", () => {
+    expect(getExitCode(CODE)).toBe(getExitCode("PLATFORM_NOT_IMPLEMENTED"));
+    // Control arms: the siblings it was NOT grouped with really sit where the
+    // derivation above says they do.
+    expect(getExitCode("BILLING_PORTAL_UNAVAILABLE")).toBe(7);
+    expect(getExitCode("PAYMENT_REQUIRED")).toBe(11);
+    expect([7, 11]).not.toContain(getExitCode(CODE));
   });
 });

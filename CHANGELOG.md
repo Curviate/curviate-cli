@@ -6,6 +6,45 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.32.0] - 2026-09-11
+
+Follows `@curviate/sdk` `0.31.0`: step two of the tier retirement, and one
+billing refusal mapped on purpose instead of by default.
+
+**Breaking only for a script that still expects exit `5` or `8` from the two
+retired codes**, and no deployment sends either any more.
+
+### Removed
+
+- **`TIER_NOT_ACTIVE` (exit `5`) and `PREMIUM_CONFLICT` (exit `8`) are no
+  longer mapped.** `0.31.0` kept both because a deployment predating the
+  seat-based entitlement rollout could still answer them. Every deployment now
+  carries the new contract and the SDK has withdrawn both codes, so the rows
+  would map codes that cannot arrive. Exit `5` still carries `NO_ACTIVE_SEAT`,
+  `LINKEDIN_FEATURE_NOT_SUBSCRIBED` and `BETA_NOT_ENABLED`; exit `8` keeps
+  every other account and connection-state code. No documented exit code
+  loses its last mapping.
+
+### Added
+
+- **`STRIPE_DRIFT_DETECTED` exits `1`.** Checkout refused closed (503) because
+  Curviate's own seat-price configuration disagrees with the price it
+  displays. It is mapped explicitly, with the same flags and bucket as
+  `PLATFORM_NOT_IMPLEMENTED` (neither `userFixable` nor retry-likely), and
+  deliberately not `7` or `11`: `7` tells you to retry with backoff, and `11`
+  tells you your workspace's billing is at fault, which it is not. The
+  `--json` envelope carries the real code, so a script can tell it apart from
+  an unexpected failure.
+
+### Changed
+
+- **`@curviate/sdk` pinned at `0.31.0`** (exact, as always), and
+  `test/fixtures/openapi.json` re-vendored from that release
+  (`server_git_sha 9696b172...`, 125 paths), with `VENDORED_FROM.json`'s
+  `sdkVersion`, salted `sha256`, `vendoredAt` and `sourceServerGitSha`
+  refreshed together so `check:fixture-pin` stays closed. The re-vendored
+  document no longer carries `seat_tier_mismatch`.
+
 ## [0.31.1] - 2026-09-10
 
 ### Fixed

@@ -133,14 +133,6 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   NO_ACTIVE_SEAT: 5,
   LINKEDIN_FEATURE_NOT_SUBSCRIBED: 5,
   BETA_NOT_ENABLED: 5,
-  // DEPRECATED, and mapped anyway. `TIER_NOT_ACTIVE` is what a deployment
-  // predating the seat-based entitlement rollout answers instead of
-  // `NO_ACTIVE_SEAT`, and this CLI is pointed at whichever deployment the
-  // caller configured. Unmapped it would fall to exit 1 and read as "the tool
-  // broke" for a plain billing refusal, on exactly the deployments most likely
-  // to send it. Same bucket as its replacement, because the caller's remedy is
-  // identical. Removed once every deployment carries the new contract.
-  TIER_NOT_ACTIVE: 5,
 
   // Rate-limited (6)
   RATE_LIMIT_ACCOUNT: 6,
@@ -163,12 +155,6 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   LINKEDIN_OPERATION_NOT_SUPPORTED: 8,
   CONNECTION_REQUEST_CONFLICT: 8,
   REAUTH_REQUIRED: 8,
-  // DEPRECATED, mapped for the same reason as `TIER_NOT_ACTIVE` above: the
-  // connect rework made it unreachable on current deployments, and an older one
-  // can still send it. A seat resolving to both individual-Premium products at
-  // once, which is the same "this account/seat is in a state that blocks the
-  // request" shape as `ACCOUNT_RESTRICTED`.
-  PREMIUM_CONFLICT: 8,
 
   // Checkpoint flow (9)
   CHECKPOINT_NOT_FOUND: 9,
@@ -260,6 +246,15 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Internal / uncaught (1), last resort bucket
   INTERNAL: 1,
   PLATFORM_NOT_IMPLEMENTED: 1,
+  // 1, chosen rather than defaulted, and deliberately not 7 or 11.
+  // `STRIPE_DRIFT_DETECTED` is a 503 on checkout: Curviate's own seat-price
+  // configuration disagrees with the price it displays, so it refuses closed
+  // until Curviate corrects it. It carries the same flags as
+  // `PLATFORM_NOT_IMPLEMENTED` (neither user_fixable nor retry-likely), so it
+  // takes the same bucket. Not 7, which tells the caller to retry with
+  // backoff. Not 11, which tells the caller the tenant's billing is at fault,
+  // and here it is not. The `--json` envelope still names the real code.
+  STRIPE_DRIFT_DETECTED: 1,
 };
 
 /**

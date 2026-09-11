@@ -17358,7 +17358,7 @@
                             "number",
                             "null"
                           ],
-                          "description": "Total matching result count."
+                          "description": "Total number of matching job postings, including 0 on an empty page."
                         }
                       },
                       "required": [
@@ -70582,7 +70582,7 @@
                   },
                   "recruiter_contract_id": {
                     "type": "string",
-                    "description": "Which Recruiter contract to bind this account to (Recruiter tier only)."
+                    "description": "Which Recruiter contract to bind this account to. Only meaningful when the LinkedIn account holds a Recruiter subscription."
                   }
                 },
                 "required": [
@@ -75518,19 +75518,6 @@
                       ],
                       "description": "Which set of Curviate defaults every row below is resolved from. Each profile inherits the one before it and raises a few rows: `premium` adds a daily invitation band and open-profile InMail, `sales_navigator` raises profile views and search, `recruiter` raises profile views again. This is the platform product active on the account, not the Curviate seat entitlement. The two can disagree, and this is the one that governs the numbers. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the `/v1/{account_id}/sales-navigator/...` and `/v1/{account_id}/recruiter/...` operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
                     },
-                    "seat_tier_mismatch": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "enum": [
-                        "core",
-                        "sn",
-                        "recruiter",
-                        null
-                      ],
-                      "description": "The Curviate seat tier attached to this account when it disagrees with `limit_profile`, and null when the two agree or the account holds no seat. A seat records what you bought from Curviate; `limit_profile` records what LinkedIn currently grants, and a lapsed subscription moves one and not the other. The detected product always wins the numbers, so this is a report, not a refusal: a `recruiter` seat here means you are paying for Recruiter on an account LinkedIn does not currently grant it to. `core` alongside `basic` or `premium` is agreement, not a mismatch: Premium is a LinkedIn product, not a Curviate tier. A free-trial seat never reports here, because a trial is not a purchase, and neither does a seat whose entitlement has not started yet or has already lapsed."
-                    },
                     "limit_profile_source": {
                       "type": "string",
                       "enum": [
@@ -75860,7 +75847,6 @@
                       "object": "safety_policy",
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
-                      "seat_tier_mismatch": null,
                       "limit_profile_source": "detected",
                       "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
@@ -75958,7 +75944,6 @@
                       "object": "safety_policy",
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
-                      "seat_tier_mismatch": null,
                       "limit_profile_source": "detected",
                       "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
@@ -76102,7 +76087,7 @@
             }
           }
         },
-        "description": "Returns every configurable safety field for every budget row of one account, in a single response: the ceiling, the green and amber bands, the counting window, the enforcement posture and where it was inherited from, the activity window, warm-up state, the per-row character caps and search per-query cap, and how well calibrated each row's number is. Every value is seeded configuration and every one of them is settable. Where a configured value is above the Curviate default, the row carries an `over_default` entry naming the value, the default and the source class of that default. The response also carries `tenant_default_posture`, the workspace-wide default every account inherits, separately from this account's own effective `posture`, and `limit_profile`, which says which of the four Curviate default sets (`basic`, `premium`, `sales_navigator`, `recruiter`) every row below was resolved from, detected from the platform when the account connected. When the Curviate seat attached to this account disagrees with that, `seat_tier_mismatch` names the seat tier; the detected product wins the numbers either way.",
+        "description": "Returns every configurable safety field for every budget row of one account, in a single response: the ceiling, the green and amber bands, the counting window, the enforcement posture and where it was inherited from, the activity window, warm-up state, the per-row character caps and search per-query cap, and how well calibrated each row's number is. Every value is seeded configuration and every one of them is settable. Where a configured value is above the Curviate default, the row carries an `over_default` entry naming the value, the default and the source class of that default. The response also carries `tenant_default_posture`, the workspace-wide default every account inherits, separately from this account's own effective `posture`, and `limit_profile`, which says which of the four Curviate default sets (`basic`, `premium`, `sales_navigator`, `recruiter`) every row below was resolved from, detected from the platform when the account connected.",
         "x-order": 1
       },
       "patch": {
@@ -76155,19 +76140,6 @@
                         "recruiter"
                       ],
                       "description": "Which set of Curviate defaults every row below is resolved from. Each profile inherits the one before it and raises a few rows: `premium` adds a daily invitation band and open-profile InMail, `sales_navigator` raises profile views and search, `recruiter` raises profile views again. This is the platform product active on the account, not the Curviate seat entitlement. The two can disagree, and this is the one that governs the numbers. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the `/v1/{account_id}/sales-navigator/...` and `/v1/{account_id}/recruiter/...` operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
-                    },
-                    "seat_tier_mismatch": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "enum": [
-                        "core",
-                        "sn",
-                        "recruiter",
-                        null
-                      ],
-                      "description": "The Curviate seat tier attached to this account when it disagrees with `limit_profile`, and null when the two agree or the account holds no seat. A seat records what you bought from Curviate; `limit_profile` records what LinkedIn currently grants, and a lapsed subscription moves one and not the other. The detected product always wins the numbers, so this is a report, not a refusal: a `recruiter` seat here means you are paying for Recruiter on an account LinkedIn does not currently grant it to. `core` alongside `basic` or `premium` is agreement, not a mismatch: Premium is a LinkedIn product, not a Curviate tier. A free-trial seat never reports here, because a trial is not a purchase, and neither does a seat whose entitlement has not started yet or has already lapsed."
                     },
                     "limit_profile_source": {
                       "type": "string",
@@ -76498,7 +76470,6 @@
                       "object": "safety_policy",
                       "account_id": "acc_01JQZK8N3XV4RTYWB2M6D5F0AC",
                       "limit_profile": "basic",
-                      "seat_tier_mismatch": null,
                       "limit_profile_source": "detected",
                       "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "posture": "warn",
@@ -76684,7 +76655,7 @@
             }
           }
         },
-        "description": "The single safety-policy write. Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the Curviate default. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result, and it holds until the next connect. When the seat and the detected product disagree, the detected product wins the numbers and the read reports the disagreement as `seat_tier_mismatch`. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
+        "description": "The single safety-policy write. Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the Curviate default. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result, and it holds until the next connect. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
         "requestBody": {
           "required": true,
           "content": {
@@ -76935,9 +76906,6 @@
                   },
                   "account_id": {
                     "description": "READ-ONLY. The account this document describes; the path names it. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
-                  },
-                  "seat_tier_mismatch": {
-                    "description": "READ-ONLY. The Curviate seat tier that disagrees with `limit_profile`. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                   },
                   "limit_profile_source": {
                     "type": "string",
