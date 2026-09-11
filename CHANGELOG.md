@@ -6,6 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.32.0] - 2026-09-11
+
+Follows `@curviate/sdk` `0.31.0`: step two of the tier retirement, and one
+billing refusal mapped on purpose instead of by default.
+
+**Breaking only for a script that still expects exit `5` or `8` from the two
+retired codes**, and no deployment sends either any more.
+
+### Removed
+
+- **`TIER_NOT_ACTIVE` (exit `5`) and `PREMIUM_CONFLICT` (exit `8`) are no
+  longer mapped.** `0.31.0` kept both because a deployment predating the
+  seat-based entitlement rollout could still answer them. Every deployment now
+  carries the new contract and the SDK has withdrawn both codes, so the rows
+  would map codes that cannot arrive. Exit `5` still carries `NO_ACTIVE_SEAT`,
+  `LINKEDIN_FEATURE_NOT_SUBSCRIBED` and `BETA_NOT_ENABLED`; exit `8` keeps
+  every other account and connection-state code. No documented exit code
+  loses its last mapping.
+
+### Added
+
+- **`STRIPE_DRIFT_DETECTED` exits `1`.** Checkout refused closed (503) because
+  Curviate's own seat-price configuration disagrees with the price it
+  displays. It is mapped explicitly, and deliberately not to `7` or `11`: it is
+  not retry-likely, so backing off does not help, and it is not fixable by the
+  caller, so there is nothing to change in billing. That is the same shape as
+  `PLATFORM_NOT_IMPLEMENTED`, which already exits `1`. The `--json` envelope
+  carries the real code, so a script can tell it apart from an unexpected
+  failure.
+
 ## [0.31.1] - 2026-09-10
 
 ### Fixed
