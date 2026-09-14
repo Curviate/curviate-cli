@@ -70,10 +70,40 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
  * Flags whose value is a secret. Their values are never echoed in a
  * diagnostic, and neither is anything that may be one: a positional right
  * after `--api-key=` (a stray space), or the tail of a flag name that starts
- * with one (`--api-key-<key>`, a missing `=`). Repeating one is a usage error.
+ * with one (`--api-key-<key>`, a missing `=`).
  */
 export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
 const REDACTED = "<redacted>";
+
+/**
+ * The only flags that accumulate when repeated (`--attach a --attach b`).
+ * Their commands read the value as `string | string[]`; every other flag
+ * reads a single value, and citty hands it an array on a repeat, which
+ * crashes a string consumer or silently flips a boolean to "not set".
+ */
+export const REPEATABLE_FLAGS = ["attach", "invitee"];
+
+/**
+ * The canonical name of the first non-repeatable flag given more than once
+ * on `leaf`, or null. An alias counts as its flag (`-o x --output y`).
+ */
+export async function repeatedFlag(leaf: AnyCommand, rawArgs: string[]): Promise<string | null> {
+  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { alias?: string | string[] }>;
+  const canonical = new Map<string, string>();
+  for (const [name, def] of Object.entries(defs)) {
+    canonical.set(name, name);
+    for (const a of ([] as string[]).concat(def?.alias ?? [])) canonical.set(a, name);
+  }
+  const walk = walkTokens(rawArgs, await booleanFlagNames(leaf), await declaredArgNames(leaf));
+  const seen = new Set<string>();
+  for (const { name } of walk.flags) {
+    const flag = canonical.get(name);
+    if (flag === undefined || REPEATABLE_FLAGS.includes(flag)) continue;
+    if (seen.has(flag)) return flag;
+    seen.add(flag);
+  }
+  return null;
+}
 
 /** `rawArgs[index]` as a diagnostic may show it: redacted when a secret flag precedes it. */
 function shownToken(rawArgs: string[], index: number): string {
@@ -774,12 +804,10 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     if (unknown !== null) {
       usageError(`unknown flag \`${unknown}\`.`);
     }
-    // citty turns a repeated string flag into an array, which a secret's
-    // consumer then crashes on. Refused by name, never by value.
-    for (const secret of SECRET_FLAGS) {
-      if (walk.flags.filter((f) => f.name === secret).length > 1) {
-        usageError(`--${secret} was given more than once. Pass it once.`);
-      }
+    // Refused by name, never by value: the value may be a secret.
+    const repeated = await repeatedFlag(leaf, leafArgs);
+    if (repeated !== null) {
+      usageError(`--${repeated} was given more than once. Pass it once.`);
     }
 
     // Rewrite `--flag -value` pairs the SAME walk already proved are a known

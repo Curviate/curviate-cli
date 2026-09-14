@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-Nine fixes. Two of them refuse flags that used to be accepted, and three
+Ten fixes. Three of them refuse flags that used to be accepted, and three
 change an exit code, so it ships as a minor.
 
 **Behavior change for a script that passes an inert flag to a local
@@ -73,6 +73,11 @@ being silently accepted. None of those flags did anything.
   --fields account_id` streamed full items. Every NDJSON line now carries only
   the requested keys, plus `notices`, `safety_warning` and the provenance
   keys when the item has them. Without `--fields` the stream is unchanged.
+- **A repeated flag exits `2`.** `--account a --account b` crashed with
+  `account.trim is not a function`, and `--json --json` silently turned JSON
+  output off. Any flag given more than once, by name or alias (`-o x
+  --output y`), now exits `2` with `--<flag> was given more than once`. The
+  two repeatable flags, `--attach` and `--invitee`, still accumulate.
 - **Credential flags are handled strictly and never echoed.**
   - A repeated secret flag (`--api-key`, `--password`, `--proxy-password`,
     `--li-at`, `--li-a`, `--code`, `--secret`, `--signature`) exits `2` with

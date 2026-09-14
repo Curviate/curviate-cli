@@ -483,16 +483,16 @@ const WIRE_SHAPE_CASES: WireCase[] = [
     },
   },
   {
-    // mri accumulates a REPEATED flag into an array regardless of the citty
-    // argument's declared type, so `--keywords` typed twice reaches
-    // restoreLiteralDashes as an array and hits its Array.isArray branch,
-    // which no other case here exercises.
+    // mri accumulates a REPEATED flag into an array, so a flag declared
+    // repeatable (`--invitee`) reaches restoreLiteralDashes as an array and
+    // hits its Array.isArray branch, which no other case here exercises. Only
+    // repeatable flags can carry an array: any other repeat is refused first.
     shape: "array",
-    label: "search people --keywords x --keywords - (array element)",
-    argv: ["search", "people", "--keywords", "x", "--keywords", "-"],
+    label: "company follow-invite 12345 --invitee x --invitee - (array element)",
+    argv: ["company", "follow-invite", "12345", "--invitee", "x", "--invitee", "-"],
     assertBody: (body) => {
       expect(
-        body["keywords"],
+        body["invitee_ids"],
         `expected the array element to come back as a literal dash, not the placeholder: ${JSON.stringify(body)}`,
       ).toEqual(["x", "-"]);
     },
