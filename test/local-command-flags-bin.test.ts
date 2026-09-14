@@ -12,23 +12,15 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderUsage, type CommandDef } from "citty";
-import { cliPath } from "./helpers/built-cli.js";
+import { runBin } from "./helpers/run-bin.js";
 
 let xdgHome: string;
 
-function run(args: string[]) {
-  const env: NodeJS.ProcessEnv = { ...process.env, XDG_CONFIG_HOME: xdgHome, NODE_ENV: "production" };
-  delete env["CURVIATE_API_KEY"];
-  delete env["CURVIATE_ACCOUNT"];
-  delete env["CURVIATE_BASE_URL"];
-  const r = spawnSync(process.execPath, [cliPath, ...args], { env, encoding: "utf8", input: "" });
-  return { status: r.status, stdout: r.stdout, stderr: r.stderr };
-}
+const run = (args: string[]) => runBin(args, xdgHome);
 
 /** Flags that only mean something on an API request. */
 const INERT = [
@@ -82,9 +74,9 @@ describe("login", () => {
 
 const CONFIG_CASES: Array<[string, string[]]> = [
   ["list", ["config", "list", "--json"]],
-  ["set-account", ["config", "set-account", "acc_9", "--profile", "p1"]],
-  ["set-base-url", ["config", "set-base-url", "https://api.example.test", "--profile", "p1"]],
-  ["reset", ["config", "reset", "--profile", "nonexistent-profile", "--yes"]],
+  ["set-account", ["config", "set-account", "acc_9", "--profile", "p1", "--json"]],
+  ["set-base-url", ["config", "set-base-url", "https://api.example.test", "--profile", "p1", "--json"]],
+  ["reset", ["config", "reset", "--profile", "nonexistent-profile", "--yes", "--json"]],
 ];
 
 describe.each(CONFIG_CASES)("config %s", (_name, ok) => {

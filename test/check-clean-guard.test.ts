@@ -49,6 +49,7 @@ import {
   commitVerdict,
   PATTERNS,
   PUBLIC_DOC_PATTERNS,
+  SCAN_EXTS,
   pkgRoot,
 } from "../scripts/check-clean.mjs";
 
@@ -401,7 +402,8 @@ describe("check:clean guard — YAML (workflow files) is scanned", () => {
 
   it("mutation check: without .yml/.yaml in the scanned extensions, the identical file is invisible", async () => {
     const dir = await makeFixtureDir({ [join(".github", "workflows", "gate.yml")]: `# ${REF}\n` });
-    const exts = new Set([".ts", ".mts", ".cts", ".mjs", ".cjs", ".js", ".md", ".json", ".map"]);
+    const exts = new Set([...SCAN_EXTS].filter((e) => e !== ".yml" && e !== ".yaml"));
+    expect(exts.size).toBe(SCAN_EXTS.size - 2);
     expect((await scanDirectory(dir, { scanExts: exts })).filesScanned).toBe(0);
     expect((await scanDirectory(dir)).findings.map((f) => f.rel)).toEqual([join(".github", "workflows", "gate.yml")]);
   });

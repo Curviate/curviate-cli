@@ -136,6 +136,7 @@ export const configCommand = defineCommand({
       },
       args: {
         profile: GLOBAL_FLAGS.profile,
+        json: GLOBAL_FLAGS.json,
         account: {
           type: "positional",
           description: "Account id to set as default.",
@@ -168,6 +169,7 @@ export const configCommand = defineCommand({
       },
       args: {
         profile: GLOBAL_FLAGS.profile,
+        json: GLOBAL_FLAGS.json,
         url: {
           type: "positional",
           description: 'Base URL to set, or "" to clear.',
@@ -219,6 +221,7 @@ export const configCommand = defineCommand({
         description: "Remove the config file (or a single profile).",
       },
       args: {
+        json: GLOBAL_FLAGS.json,
         profile: {
           type: "string",
           description: "Remove only this profile instead of the whole file.",
