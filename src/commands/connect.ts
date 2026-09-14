@@ -28,7 +28,7 @@ import { slimInviteSent, slimInviteReceived, slimInviteSentItem, slimInviteRecei
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -165,7 +165,7 @@ export async function runConnectSent(
         // projector slimInviteSent expects a { items } wrapper and would erase
         // a bare item to an empty envelope).
         const projected = !flags.verbose ? slimInviteSentItem(item as Record<string, unknown>) : item;
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.invites.listSent(params);
@@ -217,7 +217,7 @@ export async function runConnectReceived(
         // projector slimInviteReceived expects a { items } wrapper and would
         // erase a bare item to an empty envelope).
         const projected = !flags.verbose ? slimInviteReceivedItem(item as Record<string, unknown>) : item;
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.invites.listReceived(params);

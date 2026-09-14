@@ -60,7 +60,7 @@ import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
@@ -258,7 +258,7 @@ export async function runCompanyEmployees(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -300,7 +300,7 @@ export async function runCompanyPosts(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -343,7 +343,7 @@ export async function runCompanyJobs(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -389,7 +389,7 @@ export async function runCompanyInvitableFollowers(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(reencodeInviteTokenItem(item as Record<string, unknown>)) + "\n");
+        writeNdjsonItem(out, reencodeInviteTokenItem(item as Record<string, unknown>), outOpts.fields);
       }
       return;
     }
@@ -480,7 +480,7 @@ export async function runCompanyManaged(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -523,7 +523,7 @@ export async function runCompanyFollowers(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -566,7 +566,7 @@ export async function runCompanyChats(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -640,7 +640,7 @@ export async function runCompanyMessages(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -724,7 +724,7 @@ export async function runCompanySearchChats(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }

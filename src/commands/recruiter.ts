@@ -37,7 +37,7 @@ import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
@@ -543,7 +543,7 @@ export async function runRecruiterSearchPeople(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
@@ -645,7 +645,7 @@ export async function runRecruiterSearchFromUrl(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
@@ -687,7 +687,7 @@ export async function runRecruiterListProjects(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listProjects(Object.keys(params).length > 0 ? params : undefined);
@@ -818,7 +818,7 @@ export async function runRecruiterListPipeline(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listPipeline(
@@ -959,7 +959,7 @@ export async function runRecruiterListJobs(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listJobs(Object.keys(params).length > 0 ? params : undefined);
@@ -1298,7 +1298,7 @@ export async function runRecruiterSearchTalentPool(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchTalentPool(projectId, body as RecruiterSearchTalentPoolBody, Object.keys(params).length > 0 ? params : undefined);

@@ -64,6 +64,10 @@ being silently accepted. None of those flags did anything.
   an empty 5xx decoded as `INTERNAL`, exit `1`. It now surfaces as
   `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error envelope keeps its
   declared code.
+- **`--fields` narrows each item of an `--all` stream.** `account list --all
+  --fields account_id` streamed full items. Every NDJSON line now carries only
+  the requested keys, plus `notices`, `safety_warning` and the provenance
+  keys when the item has them. Without `--fields` the stream is unchanged.
 
 ## [0.32.0] - 2026-09-11
 

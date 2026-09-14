@@ -32,7 +32,7 @@ import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS } from "../lib/glob
 import { resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
@@ -314,7 +314,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.jobs.list(base as JobListQuery);
@@ -391,7 +391,7 @@ async function runJobListAllStates(
           const id = jobItemId(item);
           if (id !== undefined && seen.has(id)) continue;
           if (id !== undefined) seen.add(id);
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
         if (i < JOB_STATES.length - 1) await pace(betweenStatesDelay);
       }
@@ -464,7 +464,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.jobs.listApplicants(jobId, base as ListApplicantsParams);

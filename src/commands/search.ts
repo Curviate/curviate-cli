@@ -26,7 +26,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import {
   assembleFilters,
@@ -399,7 +399,7 @@ export async function runSearchPeople(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchPeopleItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.people(body);
@@ -451,7 +451,7 @@ export async function runSearchCompanies(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchCompaniesItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.companies(body);
@@ -503,7 +503,7 @@ export async function runSearchPosts(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchPostsItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.posts(body);
@@ -555,7 +555,7 @@ export async function runSearchJobs(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchJobsItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.jobs(body);
@@ -667,7 +667,7 @@ export async function runSearchGroups(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.groups(query);
@@ -725,7 +725,7 @@ export async function runSearchServices(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.services(body as SearchServicesBody);
@@ -821,7 +821,7 @@ export async function runSearchFromUrl(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.fromUrl(body as SearchFromUrlBody);

@@ -40,7 +40,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
@@ -214,7 +214,7 @@ export async function runAccountList(
       })) {
         // Slim mode (default) projects each NDJSON item too; --verbose emits raw items.
         const projected = outOpts.verbose ? item : slimAccountListItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await client.accounts.list(params);

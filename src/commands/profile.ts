@@ -44,7 +44,7 @@ import { parseSectionsFlag } from "../lib/sections.js";
 import { RETRIEVAL_FLAGS, hasRetrievalFlags, parseRetrievalFlags, type RetrievalQuery } from "../lib/retrieval.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
@@ -248,7 +248,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.posts.listUserPosts("me", params);
@@ -262,7 +262,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.comments.listUserComments("me", params);
@@ -276,7 +276,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.posts.listUserReactions("me", params);
@@ -290,7 +290,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.users.listFollowers("me", params);
@@ -416,7 +416,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.posts.listUserPosts(postId, params);
@@ -434,7 +434,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.comments.listUserComments(resolvedId, params);
@@ -452,7 +452,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.posts.listUserReactions(resolvedId, params);
@@ -470,7 +470,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.users.listFollowers(resolvedId, params);
@@ -543,7 +543,7 @@ export async function runProfileRelations(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listRelations(params);
@@ -705,7 +705,7 @@ export async function runProfileVisitors(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.profile.visitors(params);
@@ -907,7 +907,7 @@ export async function runProfileFollowers(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listFollowers(resolvedId, params);
@@ -943,7 +943,7 @@ export async function runProfileFollowing(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listFollowing(resolvedId, params);

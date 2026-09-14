@@ -335,6 +335,24 @@ export function renderSuccess(
 }
 
 /**
+ * Write one `--all` NDJSON item, projected by `--fields` like any other output
+ * (the per-item rule), with the preserved keys carried across. `item` is the
+ * already-slimmed item when the command has a slim default; without
+ * `--fields` it is written exactly as given. `original` is the raw item the
+ * preserved keys are read from.
+ */
+export function writeNdjsonItem(
+  out: OutputStreams,
+  item: unknown,
+  fields: string | undefined,
+  original: unknown = item,
+): void {
+  const list = fields ? fields.split(",").map((f) => f.trim()).filter(Boolean) : [];
+  const projected = list.length > 0 ? withPreservedNotices(original, applyProjection(item, list)) : item;
+  out.stdout.write(JSON.stringify(projected) + "\n");
+}
+
+/**
  * Format one response notice (`{code, message, field?, value?}`) as a single
  * readable line. Defensive against a malformed entry (missing `code`/
  * `message`) so a bad server payload degrades to a plain line rather than
