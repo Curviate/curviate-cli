@@ -169,6 +169,14 @@ export interface ClientConfig {
  */
 export function createClient(config: ClientConfig): Curviate {
   if (config.baseUrl !== undefined) assertSendableBaseUrl(config.baseUrl);
+  if (config.timeout !== undefined && !(Number.isInteger(config.timeout) && config.timeout > 0)) {
+    throw new CurviateError({
+      code: "INVALID_REQUEST",
+      message: "Invalid timeout: expected a positive whole number of milliseconds. Check --timeout or the profile's timeout.",
+      userFixable: true,
+      retryLikelyToSucceed: false,
+    });
+  }
   return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,

@@ -67,6 +67,29 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
 );
 
 /**
+ * Flags whose value is a secret. Their values are never echoed in a
+ * diagnostic, and neither is anything that may be one: a positional right
+ * after `--api-key=` (a stray space), or the tail of a flag name that starts
+ * with one (`--api-key-<key>`, a missing `=`). Repeating one is a usage error.
+ */
+export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
+const REDACTED = "<redacted>";
+
+/** `rawArgs[index]` as a diagnostic may show it: redacted when a secret flag precedes it. */
+function shownToken(rawArgs: string[], index: number): string {
+  const prev = index > 0 ? stripFlagName(rawArgs[index - 1]!) : null;
+  return prev !== null && SECRET_FLAGS.includes(prev) ? REDACTED : rawArgs[index]!;
+}
+
+/** A flag token (value already dropped) as a diagnostic may show it. */
+function shownFlag(flag: string): string {
+  const dashes = /^-*/.exec(flag)![0];
+  const name = flag.slice(dashes.length);
+  const secret = SECRET_FLAGS.find((s) => name.startsWith(s) && name !== s);
+  return secret ? `${dashes}${secret}${REDACTED}` : flag;
+}
+
+/**
  * Removed/renamed commands -> a one-line "did you mean" successor hint.
  *
  * Keyed by `<group>` -> `<removed subcommand token>` -> hint text. Consulted at
@@ -423,6 +446,7 @@ async function assertLeafConsumesPositionals(
   if (extras.length === 0) return;
 
   const token = extras[0]!.token;
+  const shown = shownToken(leafArgs, extras[0]!.index);
   const form = renderPath(path);
   const arity = arityPhrase(await nodePositionalCount(leaf));
 
@@ -432,7 +456,7 @@ async function assertLeafConsumesPositionals(
       : undefined;
 
   usageError(
-    `unexpected argument \`${token}\` after \`${form}\`. ` +
+    `unexpected argument \`${shown}\` after \`${form}\`. ` +
       `\`${form}\` takes ${arity}. ` +
       `Run \`${form} --help\` for its usage.`,
     hint,
@@ -471,17 +495,28 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
  * fix for a value like `--api-key -something`: the old version scanned every
  * dash-led token unconditionally and had no notion of "already spoken for".
  */
-function findUnknownFlag(flags: TokenWalk["flags"], declared: Set<string>): string | null {
+function findUnknownFlag(
+  flags: TokenWalk["flags"],
+  declared: Set<string>,
+  booleans: Set<string>,
+): string | null {
   for (const { token, name } of flags) {
+    // Exactly `--name`, or `-x` for a one-letter alias. `stripFlagName` strips
+    // every dash, so without this `---api-key=K` and `-api-key=K` bound as
+    // `--api-key`.
+    const dashes = /^-*/.exec(token)![0].length;
+    if (dashes === 2 || (dashes === 1 && name.length === 1)) {
     // Match the full declared name FIRST, a flag may be literally declared
     // with a "no-" prefix (e.g. "no-interactive"), and that declaration must
     // win. Only fall back to stripping "no-" for citty's implicit negation
     // (e.g. "--no-json" negating a declared "json") when the full name isn't
     // itself declared.
-    if (declared.has(name)) continue;
-    if (name.startsWith("no-") && declared.has(name.slice(3))) continue;
+      if (declared.has(name)) continue;
+      // Negation exists for booleans only: `--no-api-key=K` is not a spelling.
+      if (name.startsWith("no-") && booleans.has(name.slice(3))) continue;
+    }
     // The name only: an inline `=value` may be a credential (`--api-key=...`).
-    return token.split("=")[0]!;
+    return shownFlag(token.split("=")[0]!);
   }
   return null;
 }
@@ -616,7 +651,7 @@ export async function resolveLeaf(
     if (token !== undefined) {
       const hint = successorHint(await nodeName(cmd), token);
       if (hint) {
-        usageError(`unknown command \`${token}\``, hint);
+        usageError(`unknown command \`${shownToken(rawArgs, idx)}\``, hint);
       }
     }
 
@@ -649,7 +684,7 @@ export async function resolveLeaf(
         // a silent swallow of the extra token.
         const name = await nodeName(cmd);
         usageError(
-          `unexpected argument \`${first.token}\` after \`${name}\`. ` +
+          `unexpected argument \`${shownToken(rawArgs, first.index)}\` after \`${name}\`. ` +
             `It is neither a positional \`${name}\` accepts nor one of its subcommands. ` +
             `Run \`curviate ${name} --help\` for the available subcommands.`,
         );
@@ -660,7 +695,7 @@ export async function resolveLeaf(
 
     // No bare-positional intent. A token here is an unknown subcommand keyword.
     if (token !== undefined) {
-      usageError(`unknown command \`${token}\``);
+      usageError(`unknown command \`${shownToken(rawArgs, idx)}\``);
     }
     // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
@@ -735,9 +770,16 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
-    const unknown = findUnknownFlag(walk.flags, declared);
+    const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
       usageError(`unknown flag \`${unknown}\`.`);
+    }
+    // citty turns a repeated string flag into an array, which a secret's
+    // consumer then crashes on. Refused by name, never by value.
+    for (const secret of SECRET_FLAGS) {
+      if (walk.flags.filter((f) => f.name === secret).length > 1) {
+        usageError(`--${secret} was given more than once. Pass it once.`);
+      }
     }
 
     // Rewrite `--flag -value` pairs the SAME walk already proved are a known

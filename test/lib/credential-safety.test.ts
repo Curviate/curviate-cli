@@ -107,17 +107,14 @@ describe("credential-safety — key never leaks to output", () => {
 });
 
 describe("credential-safety — config list redacts key", () => {
-  it("redactKeyForDisplay hides all but first 8 chars and last 4", async () => {
+  it("redactKeyForDisplay shows the last 4 chars only", async () => {
     const { redactKeyForDisplay } = await import("../../src/lib/config-display.js");
-    const key = "rdc_live_ABCDEFGHIJ1234";
-    const redacted = redactKeyForDisplay(key);
-    expect(redacted).not.toBe(key);
-    expect(redacted).not.toContain("ABCDEFGHIJ1234");
-    // Should start with the first 8 chars of the key.
-    const prefix = key.slice(0, 8);
-    expect(redacted.startsWith(prefix)).toBe(true);
-    // Should contain the last 4 chars.
-    expect(redacted).toContain("1234");
+    expect(redactKeyForDisplay("rdc_live_ABCDEFGHIJ1234")).toBe("••••1234");
+  });
+
+  it("redactKeyForDisplay shows nothing of a key under 16 chars", async () => {
+    const { redactKeyForDisplay } = await import("../../src/lib/config-display.js");
+    expect(redactKeyForDisplay("rdc_live_ABC123")).toBe("••••••••");
   });
 
   it("redactKeyForDisplay handles short keys safely", async () => {

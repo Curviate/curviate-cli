@@ -8,8 +8,8 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-Four fixes. One of them refuses flags that used to be accepted, so it ships
-as a minor.
+Eight fixes. Two of them refuse flags that used to be accepted, and two
+change an exit code, so it ships as a minor.
 
 **Behavior change for a script that passes an inert flag to a local
 command**: `curviate login --cursor abc` and the like now exit `2` instead of
@@ -68,6 +68,22 @@ being silently accepted. None of those flags did anything.
   --fields account_id` streamed full items. Every NDJSON line now carries only
   the requested keys, plus `notices`, `safety_warning` and the provenance
   keys when the item has them. Without `--fields` the stream is unchanged.
+- **Credential flags are handled strictly and never echoed.**
+  - A repeated secret flag (`--api-key`, `--password`, `--proxy-password`,
+    `--li-at`, `--li-a`, `--code`, `--secret`, `--signature`) exits `2` with
+    a clear message. `login --api-key=X --api-key=X` crashed with exit `1`.
+  - A value after `--api-key=` with a stray space, and the tail of a flag
+    written without its `=` (`--api-key-<key>`), are shown as `<redacted>`
+    in the error instead of printed. This applies to every secret flag.
+  - `---api-key=X`, `-api-key=X` and `--no-api-key=X` are unknown flags
+    (exit `2`). They were bound as `--api-key`. `--no-<flag>` stays valid
+    for boolean flags.
+  - `config list` shows only the last 4 characters of a key (`••••1234`),
+    and none of a key shorter than 16 characters. It showed the first 8 and
+    last 4, most of a short key.
+  - `--timeout` must be a positive whole number of milliseconds. `abc`,
+    `10abc`, `0` or `1.5` now exit `2`; they surfaced as a timeout or a
+    silently truncated value.
 
 ## [0.32.0] - 2026-09-11
 

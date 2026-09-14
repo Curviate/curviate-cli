@@ -22,13 +22,8 @@ import {
   type ProfileEntry,
 } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { redactKeyForDisplay } from "../lib/config-display.js";
 
-/** Redact an API key for display. Shows prefix + last 4 chars. */
-function redactKey(key: string | undefined): string {
-  if (!key) return "<unset>";
-  if (key.length <= 8) return "••••••••";
-  return key.slice(0, 8) + "••••" + key.slice(-4);
-}
 
 export const configCommand = defineCommand({
   meta: {
@@ -63,7 +58,7 @@ export const configCommand = defineCommand({
             if (!profile) continue;
             redacted[name] = {
               ...profile,
-              apiKey: redactKey(profile.apiKey),
+              apiKey: redactKeyForDisplay(profile.apiKey),
               ...(name === cfg.active ? { active: true } : {}),
             };
           }
@@ -73,7 +68,7 @@ export const configCommand = defineCommand({
             if (!profile) continue;
             const marker = name === cfg.active ? " (active)" : "";
             process.stdout.write(`${name}${marker}\n`);
-            process.stdout.write(`  apiKey: ${redactKey(profile.apiKey)}\n`);
+            process.stdout.write(`  apiKey: ${redactKeyForDisplay(profile.apiKey)}\n`);
             if (profile.account) process.stdout.write(`  account: ${profile.account}\n`);
             if (profile.baseUrl) process.stdout.write(`  baseUrl: ${profile.baseUrl}\n`);
             if (profile.timeout) process.stdout.write(`  timeout: ${profile.timeout}\n`);
