@@ -373,6 +373,40 @@ describe("check:clean guard — LICENSE is scanned (security-auditor F2)", () =>
   });
 });
 
+describe("check:clean guard — YAML (workflow files) is scanned", () => {
+  // Tracker ref assembled from parts so this file never contains it contiguously.
+  const REF = "#" + "1234";
+  const script = join(pkgRoot, "scripts", "check-clean.mjs");
+  const runGate = (root: string) => {
+    try {
+      execFileSync(process.execPath, [script, "--root", root], { encoding: "utf8", stdio: "pipe" });
+      return { status: 0, stderr: "" };
+    } catch (e) {
+      const err = e as { status: number; stderr: string };
+      return { status: err.status, stderr: err.stderr };
+    }
+  };
+
+  it.each([".yml", ".yaml"])("a planted ref in .github/workflows/*%s is a LEAK with non-zero exit; removed, green", async (ext) => {
+    const rel = join(".github", "workflows", `gate${ext}`);
+    const dir = await makeFixtureDir({ "README.md": "clean\n", [rel]: `name: gate\n# see ${REF}\n` });
+    const leaked = runGate(dir);
+    expect(leaked.status).not.toBe(0);
+    expect(leaked.stderr).toContain(`LEAK  ${rel}:2`);
+
+    await writeFile(join(dir, rel), "name: gate\n", "utf8");
+    const clean = runGate(dir);
+    expect(clean.status, clean.stderr).toBe(0);
+  });
+
+  it("mutation check: without .yml/.yaml in the scanned extensions, the identical file is invisible", async () => {
+    const dir = await makeFixtureDir({ [join(".github", "workflows", "gate.yml")]: `# ${REF}\n` });
+    const exts = new Set([".ts", ".mts", ".cts", ".mjs", ".cjs", ".js", ".md", ".json", ".map"]);
+    expect((await scanDirectory(dir, { scanExts: exts })).filesScanned).toBe(0);
+    expect((await scanDirectory(dir)).findings.map((f) => f.rel)).toEqual([join(".github", "workflows", "gate.yml")]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // scanCommitMessages / commitVerdict — the --commits mode (M4: a leak in a
 // commit MESSAGE survives even a perfectly clean source scan, because the
