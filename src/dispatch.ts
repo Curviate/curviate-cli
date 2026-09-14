@@ -504,12 +504,31 @@ function hasEmptyFields(rawArgs: string[]): boolean {
 
 /**
  * A flag description cut to a one-line hint: its first sentence, with the
- * "(required)" marker dropped (the error line already says so).
+ * "(required)" marker dropped (the error line already says so). A sentence
+ * ends at . ! or ? followed by whitespace or the end, outside parentheses,
+ * and not right after a common abbreviation (e.g. / i.e. / incl. / etc. / vs.).
  */
+const HINT_ABBREVIATIONS = /(?:^|[\s(])(?:e\.g|i\.e|incl|etc|vs)$/i;
+
 export function firstSentenceHint(description: string | undefined): string {
   if (!description) return "";
-  const first = /^.*?[.!?](?=\s|$)/.exec(description)?.[0] ?? description;
-  return first.replace(/\s*\(required\)/g, "").trim();
+  let depth = 0;
+  let end = description.length;
+  for (let i = 0; i < description.length; i++) {
+    const ch = description[i]!;
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (
+      depth === 0 &&
+      (ch === "." || ch === "!" || ch === "?") &&
+      (i + 1 === description.length || /\s/.test(description[i + 1]!)) &&
+      !HINT_ABBREVIATIONS.test(description.slice(0, i))
+    ) {
+      end = i + 1;
+      break;
+    }
+  }
+  return description.slice(0, end).replace(/\s*\(required\)/g, "").trim();
 }
 
 /**
