@@ -112,3 +112,23 @@ describe("webhook verify (offline)", () => {
     },
   );
 });
+
+describe("an unknown flag's value is never echoed", () => {
+  // Assembled so this source never holds the sentinel contiguously.
+  const SECRET = "sk_" + "SENTINEL_9f3a";
+  const cases: string[][] = [
+    ["config", "list", `--api-key=${SECRET}`],
+    ["config", "list", "--api-key", SECRET],
+    ["login", "--api-key", "cvt_test_key", `--timeout=${SECRET}`],
+    ["webhook", "verify", "--secret", "s", "--header", "t=1,v1=0", "--body", "{}", `--api-key=${SECRET}`],
+    ["profile", "me", `--no-such-flag=${SECRET}`],
+  ];
+
+  it.each(cases)("%s %s %s: refused, names the flag, secret absent from both streams", (...args) => {
+    const r = run(args);
+    expect(r.status).toBe(2);
+    const flag = (args.find((a) => a.startsWith("--") && a.includes(SECRET)) ?? "--api-key").split("=")[0]!;
+    expect(r.stderr).toContain(`unknown flag \`${flag}\``);
+    expect(r.stdout + r.stderr).not.toContain(SECRET);
+  });
+});

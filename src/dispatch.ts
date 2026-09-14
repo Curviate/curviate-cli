@@ -480,7 +480,8 @@ function findUnknownFlag(flags: TokenWalk["flags"], declared: Set<string>): stri
     // itself declared.
     if (declared.has(name)) continue;
     if (name.startsWith("no-") && declared.has(name.slice(3))) continue;
-    return token;
+    // The name only: an inline `=value` may be a credential (`--api-key=...`).
+    return token.split("=")[0]!;
   }
   return null;
 }

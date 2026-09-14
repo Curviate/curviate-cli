@@ -45,11 +45,14 @@ being silently accepted. None of those flags did anything.
   Under `--all`, a page's `safety_warning` is written to stderr as one
   `safety_warning: {...}` line per page, beside that page's notices.
 - **`account link` without `--seat-id` says where a seat id comes from.** A
-  missing required flag now prints the first sentence of its help
+  missing required flag now prints the first complete sentence of its help
   description as a `hint:` line, and the `--seat-id` description names the
   Billing page of the Curviate dashboard, where seat ids are listed. Exit stays `2`. The help's exit-`12`
   note is now scoped to a call that already has `--seat-id` and
   `--auth-method`.
+- **An unknown flag's inline value is no longer echoed.** `--api-key=<key>`
+  on a command that does not declare `--api-key` printed the key in the
+  error line. The error now names the flag only.
 - **The publish leak gate scans `.yml` and `.yaml` files**, including CI
   workflow files, which it previously never opened.
 
