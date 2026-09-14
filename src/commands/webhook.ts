@@ -622,8 +622,9 @@ const webhookDeleteCommand = defineCommand({
 
 const webhookVerifyCommand = defineCommand({
   meta: { name: "verify", description: "Verify a webhook signature offline (no network call)." },
+  // Offline: no profile, credential, transport or pagination flag applies.
   args: {
-    ...GLOBAL_FLAGS,
+    json: GLOBAL_FLAGS.json,
     secret: {
       type: "string",
       description: "The webhook signing secret from your webhook registration.",

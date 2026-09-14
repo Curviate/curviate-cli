@@ -4,7 +4,57 @@ All notable changes to `@curviate/cli` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
-a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
+a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
+
+## [0.33.0] - 2026-09-14
+
+Four fixes. One of them refuses flags that used to be accepted, so it ships
+as a minor.
+
+**Behavior change for a script that passes an inert flag to a local
+command**: `curviate login --cursor abc` and the like now exit `2` instead of
+being silently accepted. None of those flags did anything.
+
+### Changed
+
+- **Local commands accept only the flags they act on.** These commands make
+  no API request, yet listed and accepted the full global set. The flags
+  below are now refused as unknown flags (exit `2`):
+  - `login`: `--limit`, `--cursor`, `--all`, `--max-pages`, `--page-delay`,
+    `--fields`, `--preview`, `--verbose`, `--timeout`.
+  - `config list`: the same nine, plus `--api-key`, `--base-url`,
+    `--profile` and `--account`.
+  - `config set-account`: the same nine, plus `--api-key` and `--base-url`.
+  - `config set-base-url` and `config reset`: the same nine, plus
+    `--api-key`, `--base-url` and `--account`.
+  - `webhook verify`: the same nine, plus `--api-key`, `--base-url`,
+    `--account` and `--profile`.
+
+  `--json` stays accepted on all of them. `--beta` is still tolerated
+  everywhere, because it is consumed before flags are checked; it persists
+  nothing and has no effect on these commands. `setup` and `doctor` already
+  declared only their own flags and are unchanged.
+
+### Fixed
+
+- **`safety_warning` reaches the caller on every command.** A success body on
+  the warn posture carries `safety_warning` (the action went through, the
+  account is past a safety ceiling). Commands with a slim default, and
+  `--fields` on a single object, discarded it. It is now carried across both
+  projections like `notices`, and shown above list results in human mode.
+  Under `--all`, a page's `safety_warning` is written to stderr as one
+  `safety_warning: {...}` line per page, beside that page's notices.
+- **`account link` without `--seat-id` says where a seat id comes from.** A
+  missing required flag now prints the first complete sentence of its help
+  description as a `hint:` line, and the `--seat-id` description names the
+  Billing page of the Curviate dashboard, where seat ids are listed. Exit stays `2`. The help's exit-`12`
+  note is now scoped to a call that already has `--seat-id` and
+  `--auth-method`.
+- **An unknown flag's inline value is no longer echoed.** `--api-key=<key>`
+  on a command that does not declare `--api-key` printed the key in the
+  error line. The error now names the flag only.
+- **The publish leak gate scans `.yml` and `.yaml` files**, including CI
+  workflow files, which it previously never opened.
 
 ## [0.32.0] - 2026-09-11
 

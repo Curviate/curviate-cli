@@ -165,8 +165,12 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * near 23, because the whole point of this suite is that a run over the
  * documented subset is a false green. A refactor that quietly narrows the walk
  * to the documented arguments fails here instead of passing vacuously.
+ *
+ * Exact, not a floor: a floor cannot see the surface shrinking by less than
+ * its slack. Bump this whenever a command gains or loses a non-boolean flag
+ * (1684 after the local commands stopped declaring flags they never read).
  */
-const ARGUMENT_SURFACE_FLOOR = 1700;
+const ARGUMENT_SURFACE_COUNT = 1684;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------
@@ -239,8 +243,8 @@ beforeAll(async () => {
 }, 60_000);
 
 describe("the whole argument surface, not the documented subset", () => {
-  it(`walks at least ${ARGUMENT_SURFACE_FLOOR} non-boolean arguments`, () => {
-    expect(surface.length).toBeGreaterThanOrEqual(ARGUMENT_SURFACE_FLOOR);
+  it(`walks exactly ${ARGUMENT_SURFACE_COUNT} non-boolean arguments`, () => {
+    expect(surface.length).toBe(ARGUMENT_SURFACE_COUNT);
     expect(surface.filter((a) => a.documented).length).toBeGreaterThanOrEqual(DOCUMENTED_FLOOR);
   });
 
@@ -311,7 +315,7 @@ describe("the whole argument surface, not the documented subset", () => {
         reached,
         `only ${reached} of ${surface.length} arguments reached a handler ` +
           `(${unreached.length} bounced); the probe is not exercising the surface`,
-      ).toBeGreaterThanOrEqual(ARGUMENT_SURFACE_FLOOR / 2);
+      ).toBeGreaterThanOrEqual(ARGUMENT_SURFACE_COUNT / 2);
 
       expect(
         leaks,

@@ -960,7 +960,7 @@ const salesNavSaveLeadCommand = defineCommand({
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
     userId: { type: "positional", description: "Sales Navigator member ID (ACw... format)." },
-    list: { type: "string", description: "Lead list ID to save the member into (required; the v2 save always targets a specific list).", required: true },
+    list: { type: "string", description: "Lead list ID to save the member into (required).", required: true },
   },
   async run({ args }) {
     const flags = args as SalesNavFlags;

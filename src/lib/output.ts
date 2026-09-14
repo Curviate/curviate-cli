@@ -147,6 +147,10 @@ function withPreservedNotices(original: unknown, rendered: unknown): unknown {
   if (Array.isArray(notices) && notices.length > 0 && rendered["notices"] !== notices) {
     out = { ...out, notices };
   }
+  // Same class as `notices`: the warn-posture safety signal is not a data
+  // field, and it is the one warning meant to be seen before a refusal.
+  const safetyWarning = original["safety_warning"];
+  if (isPlain(safetyWarning)) out = { ...out, safety_warning: safetyWarning };
   return withPreservedProvenance(original, out);
 }
 
@@ -394,7 +398,10 @@ function renderHuman(data: unknown): string {
     // List response with items
     if (Array.isArray(obj["items"])) {
       const items = obj["items"] as unknown[];
-      const body = items.length === 0 ? "(no items)" : items.map(renderHuman).join("\n");
+      let body = items.length === 0 ? "(no items)" : items.map(renderHuman).join("\n");
+      if (isPlain(obj["safety_warning"])) {
+        body = `safety_warning: ${JSON.stringify(obj["safety_warning"])}\n${body}`;
+      }
       return notices ? `${notices}\n${body}` : body;
     }
 

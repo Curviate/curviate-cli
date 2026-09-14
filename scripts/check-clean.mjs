@@ -89,7 +89,8 @@ export const SKIP_DIRS = new Set(["node_modules", "dist"]);
 // tsup currently emits esm .js only (no sourcemaps, no .d.ts), but a format or
 // sourcemap change must not silently drop the emitted artifact out of the
 // scanned set.
-export const SCAN_EXTS = new Set([".ts", ".mts", ".cts", ".mjs", ".cjs", ".js", ".md", ".json", ".map"]);
+// .yml/.yaml: CI workflow files in a public repository are public too.
+export const SCAN_EXTS = new Set([".ts", ".mts", ".cts", ".mjs", ".cjs", ".js", ".md", ".json", ".map", ".yml", ".yaml"]);
 
 // Extensionless files to scan explicitly, matched by exact basename
 // (SCAN_EXTS can't catch these — see the module header comment). LICENSE is
