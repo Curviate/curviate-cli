@@ -283,6 +283,28 @@ describe("lib/paginate — NDJSON-mode notice", () => {
  * notices go to stderr via the same formatter `lib/output.ts`'s human-mode
  * renderer uses.
  */
+describe("lib/paginate — streamAll surfaces a per-page safety_warning", () => {
+  const warning = { row: "profile_views", reset_at: null, hint: { parameter: "posture" }, reason: "ceiling", blocked: false };
+
+  it("writes it to stderr for the page that carries it, never to stdout, and only once", async () => {
+    const method = makePaginatedMethod([
+      { items: ["a"], cursor: "next", safety_warning: warning } as never,
+      { items: ["b"], cursor: null } as never,
+    ]);
+    const out = makeOut();
+    const collected: unknown[] = [];
+    for await (const item of streamAll(method as never, {}, { maxPages: 10, out, sleep: noSleep })) {
+      collected.push(item);
+    }
+    expect(collected).toEqual(["a", "b"]);
+    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stderrText.match(/safety_warning: /g)).toHaveLength(1);
+    expect(stderrText).toContain(`safety_warning: ${JSON.stringify(warning)}\n`);
+    const stdoutText = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(stdoutText).not.toContain("safety_warning");
+  });
+});
+
 describe("lib/paginate — streamAll surfaces page notices[]", () => {
   const filterNotice = {
     code: "FILTER_VALUE_UNCHECKED",

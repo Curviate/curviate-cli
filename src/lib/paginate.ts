@@ -206,6 +206,11 @@ export async function* streamAll<P extends Record<string, unknown>>(
     if (opts.out) {
       const pageNotices = renderNotices(page.notices);
       if (pageNotices) opts.out.stderr.write(pageNotices + "\n");
+      // A page's warn-posture safety_warning: raw NDJSON items cannot carry it.
+      const pageWarning = (page as { safety_warning?: unknown }).safety_warning;
+      if (typeof pageWarning === "object" && pageWarning !== null && !Array.isArray(pageWarning)) {
+        opts.out.stderr.write(`safety_warning: ${JSON.stringify(pageWarning)}\n`);
+      }
       // Same argument, same channel: the retrieval envelope sits on the PAGE,
       // beside `items`, so raw NDJSON items carry no trace of whether the page
       // was served from the stored copy or fetched. `renderSuccess` puts that

@@ -60,11 +60,7 @@ describe("safety_warning survives slim projection", () => {
   it.each(projectors)("%s: single object keeps safety_warning in JSON", (_n, slim) => {
     const out = capture();
     renderSuccess({ id: "x", object: "thing", safety_warning: WARNING }, { json: true, isTTY: false, slim }, out);
-    const parsed = JSON.parse(out.captured.stdout) as unknown;
-    // Some projectors return a non-object for a non-list input; only an object body can carry the key.
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      expect((parsed as Record<string, unknown>)["safety_warning"]).toEqual(WARNING);
-    }
+    expect((JSON.parse(out.captured.stdout) as Record<string, unknown>)["safety_warning"]).toEqual(WARNING);
   });
 
   it.each(projectors)("%s: no safety_warning key invented when absent", (_n, slim) => {
@@ -115,6 +111,18 @@ describe("safety_warning survives --fields", () => {
     );
     expect(out.captured.stdout).toContain("safety_warning:");
     expect(out.captured.stdout).toContain("profile_views");
+  });
+
+  it("human mode surfaces it on a single object under --fields", () => {
+    const out = capture();
+    renderSuccess(
+      { id: "acc_1", object: "account", status: "active", safety_warning: WARNING },
+      { json: false, isTTY: true, fields: "id" },
+      out,
+    );
+    expect(out.captured.stdout).toContain("id: acc_1");
+    expect(out.captured.stdout).toContain(`safety_warning: ${JSON.stringify(WARNING)}`);
+    expect(out.captured.stdout).not.toContain("status");
   });
 
   it("a non-object safety_warning is not carried", () => {
