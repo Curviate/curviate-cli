@@ -688,8 +688,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   setBetaOverride(beta.ok ? beta.value : undefined);
   const argsAfterBeta = beta.ok ? beta.rest : rawArgs;
 
+  // The resolved leaf's arg declarations, kept for the missing-argument hint below.
+  let leafArgsForHint: Record<string, { description?: string }> = {};
   try {
     const { leaf, leafArgs } = await resolveLeaf(root, argsAfterBeta);
+    leafArgsForHint = (await resolveValue(leaf.args ?? {})) as typeof leafArgsForHint;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).
@@ -763,6 +766,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const message = err instanceof Error ? err.message : String(err);
     const code = (err as { code?: string } | null)?.code;
     process.stderr.write(`error: ${message}\n`);
+    // A missing flag's own help description says what it is and, where it
+    // matters, where the value comes from (e.g. `account link --seat-id`).
+    const missing = code === "EARG" ? /--([\w-]+)$/.exec(message)?.[1] : undefined;
+    const description = missing ? leafArgsForHint[missing]?.description : undefined;
+    if (description) process.stderr.write(`hint: --${missing}: ${description}\n`);
     process.exit(code === "EARG" ? 2 : 1);
   }
 }

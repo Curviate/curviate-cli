@@ -680,7 +680,7 @@ export async function runAccountLink(
 ): Promise<void> {
   // Validate required fields
   if (!flags["seat-id"]) {
-    out.stderr.write("error: --seat-id is required for account link.\n");
+    out.stderr.write("error: --seat-id is required for account link. Copy a seat id from the Billing page of the Curviate dashboard.\n");
     process.exit(2);
   }
   if (!flags["auth-method"]) {
@@ -1341,11 +1341,11 @@ const accountLinkCommand = defineCommand({
     name: "link",
     description:
       "Connect a LinkedIn account to an empty seat. " +
-      "If LinkedIn requires verification you'll be prompted for the code interactively; in a non-interactive shell the command exits 12 and you finish with `curviate account checkpoint solve <account_id> --code`.",
+      "If LinkedIn requires verification you'll be prompted for the code interactively. Given --seat-id and --auth-method, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "seat-id": { type: "string", description: "Empty seat to bind the account to.", required: true },
+    "seat-id": { type: "string", description: "Empty seat to bind the account to. Seat ids are listed, with a copy button, on the Billing page of the Curviate dashboard; no CLI command lists seats.", required: true },
     "auth-method": { type: "string", description: "Authentication method: credentials | cookie.", required: true },
     email: { type: "string", description: "LinkedIn email (credentials method)." },
     password: { type: "string", description: `LinkedIn password (credentials method). ${PW_WARNING("--password-stdin", "CURVIATE_LINKEDIN_PASSWORD")}` },
