@@ -8,7 +8,7 @@
 // Dev fills in the full config-resolution logic (profile, env, flags) in a
 // follow-up pass; this module provides the factory signature for wiring.
 
-import { Curviate } from "@curviate/sdk";
+import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
 
@@ -36,7 +36,7 @@ function headerStrings(headers: RequestInit["headers"]): string[] {
  * LinkedIn password. Non-string bodies (streams, binary uploads) are not
  * scanned; the placeholder only ever originates as an argument value.
  */
-const guardedFetch: typeof fetch = (input, init) => {
+const guardedFetch: typeof fetch = async (input, init) => {
   // `--beta` rides here rather than through the SDK's config, because the SDK
   // exposes no custom-header option and this is the seam the CLI already owns.
   // Merged as ADDITIONAL headers only: the SDK's own `authorization` and
@@ -59,8 +59,59 @@ const guardedFetch: typeof fetch = (input, init) => {
     ...headerStrings(merged?.headers),
     typeof merged?.body === "string" ? merged.body : undefined,
   ]);
-  return fetch(input, merged);
+  return platformFaultIfUnreadable(await fetch(input, merged));
 };
+
+/**
+ * A 5xx whose body is not an error envelope (a proxy's HTML page, an empty
+ * body) came back over a working connection from something that failed, so
+ * it is a platform fault: exit 7, retry with backoff. Left alone, the SDK
+ * decodes it as `INTERNAL`, exit 1, which reads as "the CLI broke". A 5xx that
+ * DOES carry an envelope keeps its declared code and its table row.
+ */
+async function platformFaultIfUnreadable(res: Response): Promise<Response> {
+  if (res.status < 500) return res;
+  try {
+    const env = (await res.clone().json()) as { code?: unknown } | null;
+    if (typeof env?.code === "string") return res;
+  } catch {
+    // not JSON: fall through
+  }
+  const headers = new Headers(res.headers);
+  headers.set("content-type", "application/json");
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  return new Response(
+    JSON.stringify({
+      code: "PLATFORM_ERROR",
+      message: `The API answered ${res.status} without a readable error body.`,
+      user_fixable: false,
+      retry_likely_to_succeed: true,
+    }),
+    { status: res.status, statusText: res.statusText, headers },
+  );
+}
+
+/**
+ * A base URL the transport cannot send to is a usage error: nothing reaches
+ * the network, so it is exit 2, never 1 (an uncaught `Invalid URL`) or 7 (a
+ * scheme `fetch` refuses, misread as a network fault).
+ */
+function assertSendableBaseUrl(baseUrl: string): void {
+  let protocol: string | undefined;
+  try {
+    protocol = new URL(baseUrl).protocol;
+  } catch {
+    protocol = undefined;
+  }
+  if (protocol === "http:" || protocol === "https:") return;
+  throw new CurviateError({
+    code: "INVALID_REQUEST",
+    message: `Invalid base URL ${JSON.stringify(baseUrl)}: expected an absolute http:// or https:// URL. Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.`,
+    userFixable: true,
+    retryLikelyToSucceed: false,
+  });
+}
 
 
 /**
@@ -117,6 +168,7 @@ export interface ClientConfig {
  * surrounding whitespace. The SDK is the validator of last resort.
  */
 export function createClient(config: ClientConfig): Curviate {
+  if (config.baseUrl !== undefined) assertSendableBaseUrl(config.baseUrl);
   return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,

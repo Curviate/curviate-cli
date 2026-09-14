@@ -55,6 +55,15 @@ being silently accepted. None of those flags did anything.
   error line. The error now names the flag only.
 - **The publish leak gate scans `.yml` and `.yaml` files**, including CI
   workflow files, which it previously never opened.
+- **A malformed base URL exits `2`.** `--base-url 'not a url'` (or
+  `http://`, `localhost:9`, `ftp://x`, an empty string, the same value from
+  `CURVIATE_BASE_URL` or the profile) exited `1` with `Invalid URL`, or `7`
+  for a non-http scheme. Nothing was sent, so it is now a usage error on every
+  command, `doctor` included, whose report still prints.
+- **A 5xx without a readable error body exits `7`.** A gateway's HTML page or
+  an empty 5xx decoded as `INTERNAL`, exit `1`. It now surfaces as
+  `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error envelope keeps its
+  declared code.
 
 ## [0.32.0] - 2026-09-11
 

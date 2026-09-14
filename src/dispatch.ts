@@ -804,6 +804,13 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
       const hint = firstSentenceHint(defs[missing]?.description);
       if (hint) process.stderr.write(`hint: --${missing}: ${hint}\n`);
     }
+    // A `CurviateError` raised before any request (the client refusing a
+    // malformed base URL) keeps its table row rather than reading as a crash.
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const { getExitCode } = await import("./lib/exit-codes.js");
+      process.exit(getExitCode(err.code));
+    }
     process.exit(code === "EARG" ? 2 : 1);
   }
 }
