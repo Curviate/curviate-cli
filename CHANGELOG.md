@@ -6,6 +6,44 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major; a fix is a patch.
 
+## [0.33.0] - 2026-09-14
+
+Four fixes. One of them refuses flags that used to be accepted, so it ships
+as a minor.
+
+**Behavior change for a script that passes an inert flag to a local
+command**: `curviate login --cursor abc` and the like now exit `2` instead of
+being silently accepted. None of those flags did anything.
+
+### Changed
+
+- **Local commands accept only the flags they act on.** `login`, `config
+  list`, `config set-account`, `config set-base-url`, `config reset` and
+  `webhook verify` make no API request, yet listed and accepted the full
+  global set. `--limit`, `--cursor`, `--all`, `--max-pages`, `--page-delay`,
+  `--fields`, `--preview`, `--verbose` and `--timeout` are now refused as
+  unknown flags (exit `2`) on all of them, and `--api-key` and `--base-url`
+  on the `config` subcommands and `webhook verify` (plus `--account` and
+  `--profile` on `webhook verify`). `--json` stays accepted everywhere.
+  `setup` and `doctor` already declared only their own flags and are
+  unchanged.
+
+### Fixed
+
+- **`safety_warning` reaches the caller on every command.** A success body on
+  the warn posture carries `safety_warning` (the action went through, the
+  account is past a safety ceiling). Commands with a slim default, and
+  `--fields` on a single object, discarded it. It is now carried across both
+  projections like `notices`, and shown above list results in human mode.
+- **`account link` without `--seat-id` says where a seat id comes from.** A
+  missing required flag now prints its help description as a `hint:` line,
+  and the `--seat-id` description names the Billing page of the Curviate
+  dashboard, where seat ids are listed. Exit stays `2`. The help's exit-`12`
+  note is now scoped to a call that already has `--seat-id` and
+  `--auth-method`.
+- **The publish leak gate scans `.yml` and `.yaml` files**, including CI
+  workflow files, which it previously never opened.
+
 ## [0.32.0] - 2026-09-11
 
 Follows `@curviate/sdk` `0.31.0`: step two of the tier retirement, and one
