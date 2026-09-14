@@ -73,7 +73,6 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
  * with one (`--api-key-<key>`, a missing `=`).
  */
 export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
-const REDACTED = "<redacted>";
 
 /**
  * The only flags that accumulate when repeated (`--attach a --attach b`).
@@ -85,18 +84,24 @@ export const REPEATABLE_FLAGS = ["attach", "invitee"];
 
 /**
  * The canonical name of the first non-repeatable flag given more than once
- * on `leaf`, or null. An alias counts as its flag (`-o x --output y`).
+ * on `leaf`, or null. An alias counts as its flag (`-o x --output y`), and so
+ * does a boolean's negation (`--json --no-json`).
  */
-export async function repeatedFlag(leaf: AnyCommand, rawArgs: string[]): Promise<string | null> {
-  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { alias?: string | string[] }>;
+export async function repeatedFlag(
+  leaf: AnyCommand,
+  flags: ReadonlyArray<{ name: string }>,
+): Promise<string | null> {
+  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { type?: string; alias?: string | string[] }>;
   const canonical = new Map<string, string>();
+  for (const [name, def] of Object.entries(defs)) {
+    if (def?.type === "boolean" && !(`no-${name}` in defs)) canonical.set(`no-${name}`, name);
+  }
   for (const [name, def] of Object.entries(defs)) {
     canonical.set(name, name);
     for (const a of ([] as string[]).concat(def?.alias ?? [])) canonical.set(a, name);
   }
-  const walk = walkTokens(rawArgs, await booleanFlagNames(leaf), await declaredArgNames(leaf));
   const seen = new Set<string>();
-  for (const { name } of walk.flags) {
+  for (const { name } of flags) {
     const flag = canonical.get(name);
     if (flag === undefined || REPEATABLE_FLAGS.includes(flag)) continue;
     if (seen.has(flag)) return flag;
@@ -105,18 +110,24 @@ export async function repeatedFlag(leaf: AnyCommand, rawArgs: string[]): Promise
   return null;
 }
 
-/** `rawArgs[index]` as a diagnostic may show it: redacted when a secret flag precedes it. */
-function shownToken(rawArgs: string[], index: number): string {
-  const prev = index > 0 ? stripFlagName(rawArgs[index - 1]!) : null;
-  return prev !== null && SECRET_FLAGS.includes(prev) ? REDACTED : rawArgs[index]!;
+/**
+ * Usage errors never echo a user-supplied token: it may be a secret that
+ * lost its flag (`--api-key= KEY`, `-- --api-key=KEY`). A stray argument is
+ * named by its 1-based position after the command instead.
+ */
+function argumentAt(index: number): string {
+  return `argument ${index + 1}`;
 }
 
-/** A flag token (value already dropped) as a diagnostic may show it. */
-function shownFlag(flag: string): string {
-  const dashes = /^-*/.exec(flag)![0];
-  const name = flag.slice(dashes.length);
-  const secret = SECRET_FLAGS.find((s) => name.startsWith(s) && name !== s);
-  return secret ? `${dashes}${secret}${REDACTED}` : flag;
+/**
+ * An unknown flag (value already dropped) as a diagnostic may show it: its
+ * exact name, unless the name runs on past a secret flag's name
+ * (`--api-key-KEY`, a missing `=`), where the tail may be the secret itself.
+ */
+function shownFlag(flag: string, index: number): string {
+  const name = flag.replace(/^-+/, "");
+  const runsOn = !SECRET_FLAGS.includes(name) && SECRET_FLAGS.some((secret) => name.startsWith(secret));
+  return runsOn ? `at ${argumentAt(index)}` : `\`${flag}\``;
 }
 
 /**
@@ -476,7 +487,7 @@ async function assertLeafConsumesPositionals(
   if (extras.length === 0) return;
 
   const token = extras[0]!.token;
-  const shown = shownToken(leafArgs, extras[0]!.index);
+  const shown = argumentAt(extras[0]!.index);
   const form = renderPath(path);
   const arity = arityPhrase(await nodePositionalCount(leaf));
 
@@ -486,7 +497,7 @@ async function assertLeafConsumesPositionals(
       : undefined;
 
   usageError(
-    `unexpected argument \`${shown}\` after \`${form}\`. ` +
+    `unexpected ${shown} after \`${form}\`. ` +
       `\`${form}\` takes ${arity}. ` +
       `Run \`${form} --help\` for its usage.`,
     hint,
@@ -530,7 +541,7 @@ function findUnknownFlag(
   declared: Set<string>,
   booleans: Set<string>,
 ): string | null {
-  for (const { token, name } of flags) {
+  for (const { token, name, index } of flags) {
     // Exactly `--name`, or `-x` for a one-letter alias. `stripFlagName` strips
     // every dash, so without this `---api-key=K` and `-api-key=K` bound as
     // `--api-key`.
@@ -546,7 +557,7 @@ function findUnknownFlag(
       if (name.startsWith("no-") && booleans.has(name.slice(3))) continue;
     }
     // The name only: an inline `=value` may be a credential (`--api-key=...`).
-    return shownFlag(token.split("=")[0]!);
+    return shownFlag(token.split("=")[0]!, index);
   }
   return null;
 }
@@ -681,7 +692,7 @@ export async function resolveLeaf(
     if (token !== undefined) {
       const hint = successorHint(await nodeName(cmd), token);
       if (hint) {
-        usageError(`unknown command \`${shownToken(rawArgs, idx)}\``, hint);
+        usageError(`unknown command at ${argumentAt(idx)}`, hint);
       }
     }
 
@@ -714,7 +725,7 @@ export async function resolveLeaf(
         // a silent swallow of the extra token.
         const name = await nodeName(cmd);
         usageError(
-          `unexpected argument \`${shownToken(rawArgs, first.index)}\` after \`${name}\`. ` +
+          `unexpected ${argumentAt(first.index)} after \`${name}\`. ` +
             `It is neither a positional \`${name}\` accepts nor one of its subcommands. ` +
             `Run \`curviate ${name} --help\` for the available subcommands.`,
         );
@@ -725,7 +736,7 @@ export async function resolveLeaf(
 
     // No bare-positional intent. A token here is an unknown subcommand keyword.
     if (token !== undefined) {
-      usageError(`unknown command \`${shownToken(rawArgs, idx)}\``);
+      usageError(`unknown command at ${argumentAt(idx)}`);
     }
     // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
@@ -802,10 +813,10 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
-      usageError(`unknown flag \`${unknown}\`.`);
+      usageError(`unknown flag ${unknown}.`);
     }
     // Refused by name, never by value: the value may be a secret.
-    const repeated = await repeatedFlag(leaf, leafArgs);
+    const repeated = await repeatedFlag(leaf, walk.flags);
     if (repeated !== null) {
       usageError(`--${repeated} was given more than once. Pass it once.`);
     }

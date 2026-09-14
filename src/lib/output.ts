@@ -116,6 +116,10 @@ function applyProjection(
   return data;
 }
 
+/** The `--fields` list, trimmed, empties dropped. */
+const parseFields = (raw: string | undefined): string[] =>
+  raw ? raw.split(",").map((f) => f.trim()).filter(Boolean) : [];
+
 /** A plain object: the only shape either preservation pass can reattach onto. */
 const isPlain = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -292,9 +296,7 @@ export function renderSuccess(
   out: OutputStreams,
 ): void {
   const json = isJsonMode(opts);
-  const fields = opts.fields
-    ? opts.fields.split(",").map((f) => f.trim()).filter(Boolean)
-    : [];
+  const fields = parseFields(opts.fields);
 
   // Apply slim projection first (before --fields), unless --verbose
   const slimmed = (!opts.verbose && opts.slim) ? opts.slim(data) : data;
@@ -347,7 +349,7 @@ export function writeNdjsonItem(
   fields: string | undefined,
   original: unknown = item,
 ): void {
-  const list = fields ? fields.split(",").map((f) => f.trim()).filter(Boolean) : [];
+  const list = parseFields(fields);
   const projected = list.length > 0 ? withPreservedNotices(original, applyProjection(item, list)) : item;
   out.stdout.write(JSON.stringify(projected) + "\n");
 }

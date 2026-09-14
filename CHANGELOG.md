@@ -8,12 +8,25 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-Ten fixes. Three of them refuse flags that used to be accepted, and three
+One change and ten fixes. Several refuse input that used to be accepted or
 change an exit code, so it ships as a minor.
 
-**Behavior change for a script that passes an inert flag to a local
-command**: `curviate login --cursor abc` and the like now exit `2` instead of
-being silently accepted. None of those flags did anything.
+**Behavior changes a script may notice:**
+
+- Passing an inert flag to a local command (`curviate login --cursor abc`
+  and the like) now exits `2` instead of being silently accepted. None of
+  those flags did anything.
+- Repeating a non-repeatable flag, such as `--keywords x --keywords y`, used
+  to send an array (or crash, or for a boolean silently read as unset) and
+  now exits `2`.
+- `---<flag>`, and `--no-<flag>` for a flag that is not a boolean, used to
+  be ignored and now exit `2`.
+- A malformed base URL or an invalid `--timeout` now exits `2` (was `1`, or
+  `7` for a non-http scheme).
+- A request that gets no response, or a response that is not an API answer,
+  now exits `7` (was `1`, or `0` with empty data for a `200` HTML page).
+- Usage errors name a stray argument by its position
+  (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
 ### Changed
 
@@ -56,14 +69,17 @@ being silently accepted. None of those flags did anything.
 - **The publish leak gate scans `.yml` and `.yaml` files**, including CI
   workflow files, which it previously never opened.
 - **A malformed base URL exits `2`.** `--base-url 'not a url'` (or
-  `http://`, `localhost:9`, `ftp://x`, an empty string, the same value from
+  `http://`, `localhost:9`, `ftp://x`, the same value from
   `CURVIATE_BASE_URL` or the profile) exited `1` with `Invalid URL`, or `7`
   for a non-http scheme. Nothing was sent, so it is now a usage error on every
-  command, `doctor` included, whose report still prints.
-- **A 5xx without a readable error body exits `7`.** A gateway's HTML page or
-  an empty 5xx decoded as `INTERNAL`, exit `1`. It now surfaces as
-  `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error envelope keeps its
-  declared code.
+  command, `doctor` included, whose report still prints. `login --base-url`
+  and `config set-base-url` refuse it before saving.
+- **A response that is not an API answer exits `7`.** A 5xx whose body is not
+  an error envelope (a gateway's HTML page, an empty body) decoded as
+  `INTERNAL`, exit `1`. A `200` that claimed JSON but did not parse exited
+  `1` (`doctor`: `3`), and a `200` HTML page exited `0` with empty data. All
+  now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error
+  envelope keeps its declared code, and a binary download is untouched.
 - **A request that gets no response exits `7` on every command.** A refused
   connection, a DNS failure or a timeout arrived as `INTERNAL` and exited
   `1`, while `doctor` already reported it as `7`. It is a transient platform
@@ -75,25 +91,26 @@ being silently accepted. None of those flags did anything.
   keys when the item has them. Without `--fields` the stream is unchanged.
 - **A repeated flag exits `2`.** `--account a --account b` crashed with
   `account.trim is not a function`, and `--json --json` silently turned JSON
-  output off. Any flag given more than once, by name or alias (`-o x
-  --output y`), now exits `2` with `--<flag> was given more than once`. The
-  two repeatable flags, `--attach` and `--invitee`, still accumulate.
+  output off. Any flag given more than once, by name, alias (`-o x
+  --output y`) or negation (`--json --no-json`), and `--beta` given twice,
+  now exit `2` with `--<flag> was given more than once`. The two repeatable
+  flags, `--attach` and `--invitee`, still accumulate.
 - **Credential flags are handled strictly and never echoed.**
-  - A repeated secret flag (`--api-key`, `--password`, `--proxy-password`,
-    `--li-at`, `--li-a`, `--code`, `--secret`, `--signature`) exits `2` with
-    a clear message. `login --api-key=X --api-key=X` crashed with exit `1`.
-  - A value after `--api-key=` with a stray space, and the tail of a flag
-    written without its `=` (`--api-key-<key>`), are shown as `<redacted>`
-    in the error instead of printed. This applies to every secret flag.
-  - `---api-key=X`, `-api-key=X` and `--no-api-key=X` are unknown flags
-    (exit `2`). They were bound as `--api-key`. `--no-<flag>` stays valid
-    for boolean flags.
+  - A usage error never echoes a user-supplied token. A value after
+    `--api-key=` with a stray space, or after `--`, was printed as an
+    unexpected argument; it is now named by position. A flag written without
+    its `=` (`--api-key-<key>`) is named by position too, and an unknown flag
+    by its exact name without any value. `--beta=<value>` no longer echoes the
+    rejected value.
+  - `---api-key=X` and `--no-api-key=X` are unknown flags (exit `2`). They
+    were ignored. `--no-<flag>` stays valid for boolean flags.
   - `config list` shows only the last 4 characters of a key (`••••1234`),
     and none of a key shorter than 16 characters. It showed the first 8 and
     last 4, most of a short key.
-  - `--timeout` must be a positive whole number of milliseconds. `abc`,
-    `10abc`, `0` or `1.5` now exit `2`; they surfaced as a timeout or a
-    silently truncated value.
+  - `--timeout` must be a whole number of milliseconds from `1` to
+    `2147483647`, digits only. `abc`, `10abc`, `0`, `1.5`, `0x10`, `1e3`,
+    ` 5` or `2147483648` now exit `2`; they surfaced as an immediate timeout,
+    a silently truncated value, or an out-of-range timer.
 
 ## [0.32.0] - 2026-09-11
 

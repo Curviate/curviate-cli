@@ -132,7 +132,9 @@ describe("resolved leaf — the reported case", () => {
 
   it("`profile me zzzz-not-a-command` exits 2 (the class is any trailing token, not one alias)", async () => {
     const stderr = await expectUsageExit(asCmd(profileCommand), ["me", "zzzz-not-a-command"]);
-    expect(stderr).toContain("zzzz-not-a-command");
+    // Named by position: a usage error never echoes a user-supplied token.
+    expect(stderr).not.toContain("zzzz-not-a-command");
+    expect(stderr).toMatch(/unexpected argument 1 after `curviate profile me`/);
     // Not a sibling subcommand, so no did-you-mean is invented for it.
     expect(stderr).not.toContain("Did you mean");
   });
@@ -244,10 +246,11 @@ describe("resolved leaf — every reach path rejects an unconsumed positional", 
   ];
 
   it.each(cases)(
-    "%s exits 2, naming the token and the resolved form",
+    "%s exits 2, naming the token's position and the resolved form, never the token",
     async (_label, tree, rawArgs, token, path) => {
       const stderr = await expectUsageExit(tree, rawArgs);
-      expect(stderr).toContain(token);
+      expect(stderr).not.toContain(token);
+      expect(stderr).toMatch(/unexpected argument \d+ after/);
       expect(stderr).toContain(path);
     },
   );
@@ -256,7 +259,8 @@ describe("resolved leaf — every reach path rejects an unconsumed positional", 
   //    refactor that moves the check cannot quietly drop it.
   it("company <id> <bogus> (bare form of a group with subcommands) still exits 2", async () => {
     const stderr = await expectUsageExit(asCmd(companyCommand), ["1035", "zzz-bogus"]);
-    expect(stderr).toContain("zzz-bogus");
+    expect(stderr).not.toContain("zzz-bogus");
+    expect(stderr).toMatch(/unexpected argument 2 after/);
   });
 });
 

@@ -291,7 +291,7 @@ describe("router — usage/routing errors exit 2", () => {
     // `bogus` (which returned the base company profile, exit 0, pre-fix).
     const r = run(["company", "1035", "bogus", "--account", "acc_x"]);
     expect(r.status).toBe(2);
-    expect(combined(r)).toMatch(/unexpected argument `bogus`/);
+    expect(combined(r)).toMatch(/unexpected argument 2 after/);
   });
 
   it("`profile <id> bogus` exits 2 (non-subcommand extra positional, D4a)", () => {

@@ -68,8 +68,12 @@ describe("every flag, repeated", () => {
       const defs = (await resolveValue(cmd.args ?? {})) as Record<string, ArgDef>;
       for (const [flag, def] of Object.entries(defs)) {
         if (def.type === "positional") continue;
-        const once = def.type === "boolean" ? [`--${flag}`] : [`--${flag}`, "v"];
+        const once = [{ name: flag }];
         const verdict = await repeatedFlag(cmd, [...once, ...once]);
+        if (def.type === "boolean" && !(`no-${flag}` in defs)) {
+          const negated = await repeatedFlag(cmd, [...once, { name: `no-${flag}` }]);
+          if (negated !== flag) wrong.push(`${path} --${flag} --no-${flag}: ${negated}`);
+        }
         const expected = REPEATABLE_FLAGS.includes(flag) ? null : flag;
         if (verdict !== expected) wrong.push(`${path} --${flag}: ${verdict}`);
         // a single use is never refused

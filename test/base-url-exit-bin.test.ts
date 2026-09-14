@@ -119,6 +119,43 @@ describe("a 5xx with no readable error body is a platform fault, exit 7", () => 
     expect(r.status, r.stdout + r.stderr).toBe(1);
   });
 
+  for (const [type, body] of [
+    ["application/json", "<html>portal</html>"],
+    ["text/html", "<html>portal</html>"],
+  ] as const) {
+    it(`a 200 ${type} that is not JSON exits 7 on a command and in doctor`, async () => {
+      reply = { status: 200, type, body };
+      const cmd = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+      expect(cmd.status, cmd.stdout + cmd.stderr).toBe(7);
+      const doc = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+      expect(doc.status, doc.stdout + doc.stderr).toBe(7);
+      expect((JSON.parse(doc.stdout.trim()) as { exit: number }).exit).toBe(7);
+    });
+  }
+
+  it("a 200 JSON body is untouched (positive control)", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ items: [], cursor: null }) };
+    const r = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  it("a 200 binary body is not reclassified", async () => {
+    reply = { status: 200, type: "application/octet-stream", body: "not json" };
+    const r = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).not.toBe(7);
+  });
+
+  it("config set-base-url refuses a malformed URL before saving", async () => {
+    const r = await run(["config", "set-base-url", "not a url"]);
+    expect(r.status, r.stderr).not.toBe(0);
+    const login = await run(["login", "--api-key", "cvt_test_x"]);
+    expect(login.status, login.stderr).toBe(0);
+    const bad = await run(["config", "set-base-url", "not a url"]);
+    expect(bad.status, bad.stderr).toBe(2);
+    const list = await run(["config", "list", "--json"]);
+    expect(list.stdout).not.toContain("not a url");
+  });
+
   it("a 4xx with a non-JSON body is not reclassified", async () => {
     reply = { status: 404, type: "text/plain", body: "nope" };
     const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);

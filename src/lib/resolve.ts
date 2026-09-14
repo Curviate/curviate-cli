@@ -86,7 +86,7 @@ export async function resolveEffectiveConfig(
 
   // Timeout: flag (as number) > profile > SDK default
   const timeoutFlag =
-    flags.timeout !== undefined ? Number(flags.timeout === "" ? NaN : flags.timeout) : undefined;
+    flags.timeout === undefined ? undefined : /^[1-9]\d*$/.test(flags.timeout) ? Number(flags.timeout) : NaN;
   const timeout = timeoutFlag ?? profile?.timeout ?? DEFAULT_TIMEOUT_MS;
 
   // Account: flag > env > profile

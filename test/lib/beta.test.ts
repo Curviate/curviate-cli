@@ -94,8 +94,8 @@ describe("parseBetaFlag — an invalid value is a usage error, never an opt-in",
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.error).toContain("--beta must be one of");
-    // The rejected value is echoed so the operator can see their typo.
-    expect(r.error).toContain(`"${token}"`);
+    // A usage error never echoes a user-supplied value.
+    if (token) expect(r.error).not.toContain(token);
   });
 
   // POSITIVE CONTROL on the same probe. Every case above asserts `ok === false`,

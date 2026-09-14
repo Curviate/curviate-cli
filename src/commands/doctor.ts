@@ -205,7 +205,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
       // "could not reach" blames the network for a usage error, and exit 7
       // invites a retry that cannot help.
       const transportFault = !responded && error.retryLikelyToSucceed === true;
-      const codeExit = code ? getExitCode(code as never) : 3;
+      const codeExit = code ? getExitCode(error as CurviateError) : 3;
       reachable = responded;
       checks.push({
         name: "api reachable",

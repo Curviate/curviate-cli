@@ -63,19 +63,22 @@ const guardedFetch: typeof fetch = async (input, init) => {
 };
 
 /**
- * A 5xx whose body is not an error envelope (a proxy's HTML page, an empty
- * body) came back over a working connection from something that failed, so
- * it is a platform fault: exit 7, retry with backoff. Left alone, the SDK
- * decodes it as `INTERNAL`, exit 1, which reads as "the CLI broke". A 5xx that
- * DOES carry an envelope keeps its declared code and its table row.
+ * A response that is no API answer came back over a working connection from
+ * something that failed, so it is a platform fault: exit 7, retry with
+ * backoff. Two shapes: a 5xx whose body is not an error envelope (a proxy's
+ * HTML page, an empty body), which the SDK would decode as `INTERNAL` (exit
+ * 1); and a 2xx that claims JSON (or is an HTML page) but does not parse,
+ * which the SDK would either crash on (exit 1) or hand over as bytes. A 5xx
+ * that DOES carry an envelope keeps its declared code; a binary download
+ * (any other content type) is untouched.
  */
 async function platformFaultIfUnreadable(res: Response): Promise<Response> {
-  if (res.status < 500) return res;
-  try {
-    const env = (await res.clone().json()) as { code?: unknown } | null;
+  const type = res.headers.get("content-type") ?? "";
+  const env = (await res.clone().json().catch(() => null)) as { code?: unknown } | null;
+  if (res.status >= 500) {
     if (typeof env?.code === "string") return res;
-  } catch {
-    // not JSON: fall through
+  } else if (!res.ok || env !== null || !(type.includes("json") || type.includes("text/html"))) {
+    return res;
   }
   const headers = new Headers(res.headers);
   headers.set("content-type", "application/json");
@@ -84,35 +87,40 @@ async function platformFaultIfUnreadable(res: Response): Promise<Response> {
   return new Response(
     JSON.stringify({
       code: "PLATFORM_ERROR",
-      message: `The API answered ${res.status} without a readable error body.`,
+      message: `The API answered ${res.status} without a readable body.`,
       user_fixable: false,
       retry_likely_to_succeed: true,
     }),
-    { status: res.status, statusText: res.statusText, headers },
+    // A 2xx has to become an error status for the SDK to decode it as one.
+    { status: res.status >= 500 ? res.status : 502, statusText: res.statusText, headers },
   );
 }
 
+/** A refusal before any request: `INVALID_REQUEST`, exit 2. */
+function usage(message: string): CurviateError {
+  return new CurviateError({ code: "INVALID_REQUEST", message, userFixable: true, retryLikelyToSucceed: false });
+}
+
 /**
- * A base URL the transport cannot send to is a usage error: nothing reaches
- * the network, so it is exit 2, never 1 (an uncaught `Invalid URL`) or 7 (a
- * scheme `fetch` refuses, misread as a network fault).
+ * Why `baseUrl` cannot be sent to, or null when it can. A base URL the
+ * transport cannot use is a usage error: nothing reaches the network, so it
+ * is exit 2, never 1 (an uncaught `Invalid URL`) or 7 (a scheme `fetch`
+ * refuses, misread as a network fault). Exported so `login` and
+ * `config set-base-url` refuse it before saving.
  */
-function assertSendableBaseUrl(baseUrl: string): void {
+export function baseUrlProblem(baseUrl: string): string | null {
   let protocol: string | undefined;
   try {
     protocol = new URL(baseUrl).protocol;
   } catch {
     protocol = undefined;
   }
-  if (protocol === "http:" || protocol === "https:") return;
-  throw new CurviateError({
-    code: "INVALID_REQUEST",
-    message: `Invalid base URL ${JSON.stringify(baseUrl)}: expected an absolute http:// or https:// URL. Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.`,
-    userFixable: true,
-    retryLikelyToSucceed: false,
-  });
+  return protocol === "http:" || protocol === "https:"
+    ? null
+    : "Invalid base URL: expected an absolute http:// or https:// URL. Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.";
 }
 
+const MAX_TIMEOUT_MS = 2_147_483_647; // the largest delay a Node timer honours
 
 /**
  * ## Why there is no path-segment guard here
@@ -168,14 +176,13 @@ export interface ClientConfig {
  * surrounding whitespace. The SDK is the validator of last resort.
  */
 export function createClient(config: ClientConfig): Curviate {
-  if (config.baseUrl !== undefined) assertSendableBaseUrl(config.baseUrl);
-  if (config.timeout !== undefined && !(Number.isInteger(config.timeout) && config.timeout > 0)) {
-    throw new CurviateError({
-      code: "INVALID_REQUEST",
-      message: "Invalid timeout: expected a positive whole number of milliseconds. Check --timeout or the profile's timeout.",
-      userFixable: true,
-      retryLikelyToSucceed: false,
-    });
+  const badUrl = config.baseUrl === undefined ? null : baseUrlProblem(config.baseUrl);
+  if (badUrl) throw usage(badUrl);
+  const t = config.timeout;
+  if (t !== undefined && !(Number.isInteger(t) && t > 0 && t <= MAX_TIMEOUT_MS)) {
+    throw usage(
+      `Invalid timeout: expected a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS}. Check --timeout or the profile's timeout.`,
+    );
   }
   return new Curviate({
     apiKey: config.apiKey.trim(),

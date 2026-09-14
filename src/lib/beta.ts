@@ -80,6 +80,7 @@ export function parseBetaFlag(rawArgs: string[]): BetaFlagParse {
   let value: boolean | undefined;
   const rest: string[] = [];
   let endOfFlags = false;
+  let seen = false;
 
   for (const arg of rawArgs) {
     // Everything after a bare `--` is positional data, never a flag. A message
@@ -92,6 +93,11 @@ export function parseBetaFlag(rawArgs: string[]): BetaFlagParse {
       endOfFlags = true;
       rest.push(arg);
       continue;
+    }
+    // Any second spelling of the flag is a repeat, whatever the values.
+    if (arg === "--beta" || arg === "--no-beta" || arg.startsWith("--beta=") || arg.startsWith("--no-beta=")) {
+      if (seen) return { ok: false, error: "--beta was given more than once. Pass it once." };
+      seen = true;
     }
     if (arg === "--beta") {
       value = true;
@@ -129,7 +135,7 @@ export function parseBetaFlag(rawArgs: string[]): BetaFlagParse {
       // "consent" ends up consenting by accident.
       return {
         ok: false,
-        error: `--beta must be one of ${BETA_ACCEPTED_VALUES}. Got "${arg.slice("--beta=".length)}".`,
+        error: `--beta must be one of ${BETA_ACCEPTED_VALUES}.`,
       };
     }
     rest.push(arg);

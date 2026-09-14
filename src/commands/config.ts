@@ -23,6 +23,7 @@ import {
 } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { redactKeyForDisplay } from "../lib/config-display.js";
+import { baseUrlProblem } from "../lib/client.js";
 
 
 export const configCommand = defineCommand({
@@ -185,6 +186,11 @@ export const configCommand = defineCommand({
         const profileName = (args.profile as string | undefined) ?? cfg.active;
         const reset = args.reset as boolean;
         const url = reset ? undefined : ((args.url as string | undefined) ?? "");
+        const badUrl = url ? baseUrlProblem(url) : null;
+        if (badUrl) {
+          process.stderr.write(`error: ${badUrl}\n`);
+          process.exit(2);
+        }
 
         try {
           await updateProfileField(
