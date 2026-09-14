@@ -9,21 +9,15 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderUsage, type CommandDef } from "citty";
-import { cliPath } from "./helpers/built-cli.js";
+import { runBin } from "./helpers/run-bin.js";
 
 const xdgHome = mkdtempSync(join(tmpdir(), "curviate-seat-hint-"));
 
-function run(args: string[]) {
-  const env: NodeJS.ProcessEnv = { ...process.env, XDG_CONFIG_HOME: xdgHome, NODE_ENV: "production" };
-  delete env["CURVIATE_API_KEY"];
-  const r = spawnSync(process.execPath, [cliPath, ...args], { env, encoding: "utf8", input: "" });
-  return { status: r.status, stderr: r.stderr };
-}
+const run = (args: string[]) => runBin(args, xdgHome);
 
 describe("account link: missing --seat-id names where seat ids come from", () => {
   it("no arguments: exit 2, names --seat-id and the dashboard Billing page", () => {
@@ -40,6 +34,15 @@ describe("account link: missing --seat-id names where seat ids come from", () =>
     expect(r.stderr).toContain("Missing required argument: --auth-method");
     expect(r.stderr).toContain("credentials | cookie");
     expect(r.stderr).not.toContain("Billing");
+  });
+
+  it("the hint is the description's first sentence, without the (required) marker: job list --state", () => {
+    const r = run(["job", "list"]);
+    expect(r.status).toBe(2);
+    const hints = r.stderr.split("\n").filter((l) => l.startsWith("hint: "));
+    expect(hints).toEqual([
+      "hint: --state: Filter by state: DRAFT|OPEN|CLOSED|REVIEW|SUSPENDED, or ALL for a best-effort client-side union across every state (each state queried, re-filtered, merged and de-duplicated by id; no unified cursor).",
+    ]);
   });
 
   it("--help: --seat-id names the Billing page; the exit-12 note is scoped to after the required flags", async () => {

@@ -502,6 +502,16 @@ function hasEmptyFields(rawArgs: string[]): boolean {
 }
 
 /**
+ * A flag description cut to a one-line hint: its first sentence, with the
+ * "(required)" marker dropped (the error line already says so).
+ */
+export function firstSentenceHint(description: string | undefined): string {
+  if (!description) return "";
+  const first = /^.*?[.!?](?=\s|$)/.exec(description)?.[0] ?? description;
+  return first.replace(/\s*\(required\)/g, "").trim();
+}
+
+/**
  * Emit a usage diagnostic to stderr and exit 2 (CLI-side usage error).
  * An optional `hint` line (e.g. a removed-command successor) is written
  * between the error and the generic help pointer.
@@ -688,11 +698,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   setBetaOverride(beta.ok ? beta.value : undefined);
   const argsAfterBeta = beta.ok ? beta.rest : rawArgs;
 
-  // The resolved leaf's arg declarations, kept for the missing-argument hint below.
-  let leafArgsForHint: Record<string, { description?: string }> = {};
+  // The resolved leaf, kept for the missing-argument hint below.
+  let hintLeaf: AnyCommand | undefined;
   try {
     const { leaf, leafArgs } = await resolveLeaf(root, argsAfterBeta);
-    leafArgsForHint = (await resolveValue(leaf.args ?? {})) as typeof leafArgsForHint;
+    hintLeaf = leaf;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).
@@ -768,9 +778,12 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     process.stderr.write(`error: ${message}\n`);
     // A missing flag's own help description says what it is and, where it
     // matters, where the value comes from (e.g. `account link --seat-id`).
-    const missing = code === "EARG" ? /--([\w-]+)$/.exec(message)?.[1] : undefined;
-    const description = missing ? leafArgsForHint[missing]?.description : undefined;
-    if (description) process.stderr.write(`hint: --${missing}: ${description}\n`);
+    const missing = code === "EARG" ? /^Missing required argument: --([\w-]+)$/.exec(message)?.[1] : undefined;
+    if (missing && hintLeaf) {
+      const defs = (await resolveValue(hintLeaf.args ?? {})) as Record<string, { description?: string }>;
+      const hint = firstSentenceHint(defs[missing]?.description);
+      if (hint) process.stderr.write(`hint: --${missing}: ${hint}\n`);
+    }
     process.exit(code === "EARG" ? 2 : 1);
   }
 }
