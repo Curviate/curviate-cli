@@ -86,8 +86,12 @@ export const loginCommand = defineCommand({
     description:
       "Save an API key to a local profile. Run `curviate profile me` to verify.",
   },
+  // Only what login acts on: it makes no request, so pagination, projection,
+  // preview and transport flags would be accepted and do nothing. `--json` is
+  // kept: callers pass it on every command as an output-mode selector.
   args: {
-    ...GLOBAL_FLAGS,
+    "base-url": GLOBAL_FLAGS["base-url"],
+    json: GLOBAL_FLAGS.json,
     "api-key": {
       type: "string",
       stdinArg: true,

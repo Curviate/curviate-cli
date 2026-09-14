@@ -165,8 +165,11 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * near 23, because the whole point of this suite is that a run over the
  * documented subset is a false green. A refactor that quietly narrows the walk
  * to the documented arguments fails here instead of passing vacuously.
+ *
+ * Lowered to 1680 when the local commands (login, config, webhook verify)
+ * stopped declaring flags they never read: the walk measured 1684 after.
  */
-const ARGUMENT_SURFACE_FLOOR = 1700;
+const ARGUMENT_SURFACE_FLOOR = 1680;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

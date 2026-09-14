@@ -38,7 +38,7 @@ export const configCommand = defineCommand({
   subCommands: {
     list: defineCommand({
       meta: { name: "list", description: "List all profiles (keys redacted)." },
-      args: { ...GLOBAL_FLAGS },
+      args: { json: GLOBAL_FLAGS.json },
       async run({ args }) {
         const cfg = await readConfig();
         if (!cfg) {
@@ -135,7 +135,7 @@ export const configCommand = defineCommand({
         description: "Set the default account on a profile.",
       },
       args: {
-        ...GLOBAL_FLAGS,
+        profile: GLOBAL_FLAGS.profile,
         account: {
           type: "positional",
           description: "Account id to set as default.",
@@ -167,7 +167,7 @@ export const configCommand = defineCommand({
         description: "Set or clear the base URL on a profile.",
       },
       args: {
-        ...GLOBAL_FLAGS,
+        profile: GLOBAL_FLAGS.profile,
         url: {
           type: "positional",
           description: 'Base URL to set, or "" to clear.',
@@ -219,7 +219,6 @@ export const configCommand = defineCommand({
         description: "Remove the config file (or a single profile).",
       },
       args: {
-        ...GLOBAL_FLAGS,
         profile: {
           type: "string",
           description: "Remove only this profile instead of the whole file.",
