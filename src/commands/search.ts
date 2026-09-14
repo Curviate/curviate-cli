@@ -410,7 +410,7 @@ export async function runSearchPeople(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -462,7 +462,7 @@ export async function runSearchCompanies(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -514,7 +514,7 @@ export async function runSearchPosts(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -566,7 +566,7 @@ export async function runSearchJobs(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -618,7 +618,7 @@ export async function runSearchParameters(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -678,7 +678,7 @@ export async function runSearchGroups(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -736,7 +736,7 @@ export async function runSearchServices(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -778,7 +778,7 @@ export async function runSearchServiceParameters(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -832,7 +832,7 @@ export async function runSearchFromUrl(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);

@@ -85,8 +85,8 @@ describe("router — bare intent-shaped forms reach the handler (not 'Unknown co
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    // Reached the SDK and failed on the network — INTERNAL maps to exit 1.
-    expect(r.status).toBe(1);
+    // Reached the SDK and failed on the network — no response is a transient platform fault, exit 7.
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -99,7 +99,7 @@ describe("router — bare intent-shaped forms reach the handler (not 'Unknown co
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -112,7 +112,7 @@ describe("router — bare intent-shaped forms reach the handler (not 'Unknown co
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -128,7 +128,7 @@ describe("router — bare intent-shaped forms reach the handler (not 'Unknown co
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -157,7 +157,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -169,7 +169,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -196,7 +196,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -208,7 +208,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -221,7 +221,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -233,7 +233,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -245,7 +245,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -257,7 +257,7 @@ describe("router — subcommands still route after the bare-form fix", () => {
       "--json",
     ]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
@@ -324,7 +324,7 @@ describe("router — id-first reroute reaches the subcommand, not the bare form 
   // `company <id> employees` must reroute to the employees sub-resource, NOT
   // silently return the base company retrieve. Against an unroutable base URL
   // both network-fail, so the observable end-to-end signal here is simply that
-  // it routes to a handler (exit 1, not a routing usage error 2 / "Unknown
+  // it routes to a handler (exit 7, not a routing usage error 2 / "Unknown
   // command"); the exact reroute target is pinned in test/dispatch.test.ts.
   for (const sub of ["employees", "posts", "jobs"] as const) {
     it(`company <id> ${sub} routes to a handler (not exit 2 / Unknown command)`, () => {
@@ -336,7 +336,7 @@ describe("router — id-first reroute reaches the subcommand, not the bare form 
       ]);
       expect(isUnknownCommand(r)).toBe(false);
       expect(r.status).not.toBe(2);
-      expect(r.status).toBe(1);
+      expect(r.status).toBe(7);
     });
   }
 });

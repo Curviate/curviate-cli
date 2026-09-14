@@ -272,7 +272,7 @@ export async function requireAccount(
       out.stderr.write(
         `error: [${e.code}] could not look up connected accounts to resolve --account "${selector}": ${e.message}\n`,
       );
-      process.exit(getExitCode(e.code));
+      process.exit(getExitCode(e));
     }
     throw err;
   }

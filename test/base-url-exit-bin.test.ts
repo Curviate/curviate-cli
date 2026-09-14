@@ -109,6 +109,16 @@ describe("a 5xx with no readable error body is a platform fault, exit 7", () => 
     expect(r.status, r.stdout + r.stderr).toBe(1);
   });
 
+  it("a server-sent retry-likely INTERNAL is a response, not a transport failure: exit 1", async () => {
+    reply = {
+      status: 503,
+      type: "application/json",
+      body: JSON.stringify({ code: "INTERNAL", message: "boom", user_fixable: false, retry_likely_to_succeed: true }),
+    };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+  });
+
   it("a 4xx with a non-JSON body is not reclassified", async () => {
     reply = { status: 404, type: "text/plain", body: "nope" };
     const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);

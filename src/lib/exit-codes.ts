@@ -258,11 +258,22 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
 };
 
 /**
- * Return the process exit code for a given ErrorCode.
+ * Return the process exit code for an error, or for a bare ErrorCode.
  * Returns `1` for any unmapped or unknown code (safe default).
+ *
+ * Pass the error when you have it. A request that got NO response (refused
+ * connection, DNS failure, timeout) reaches the CLI as `INTERNAL` with no
+ * `httpStatus` and `retryLikelyToSucceed: true`, the SDK's transport-failure
+ * shape. That is a transient platform fault, exit 7, not the tool breaking;
+ * `doctor` already classified it so. A server-sent `INTERNAL` carries an
+ * `httpStatus` and keeps exit 1.
  */
-export function getExitCode(code: ErrorCode): number {
-  return EXIT_CODE_MAP[code] ?? 1;
+export function getExitCode(
+  error: ErrorCode | { code: ErrorCode; httpStatus?: number; retryLikelyToSucceed?: boolean },
+): number {
+  if (typeof error === "string") return EXIT_CODE_MAP[error] ?? 1;
+  if (error.code === "INTERNAL" && error.httpStatus === undefined && error.retryLikelyToSucceed === true) return 7;
+  return EXIT_CODE_MAP[error.code] ?? 1;
 }
 
 /**

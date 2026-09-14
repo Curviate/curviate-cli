@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-Eight fixes. Two of them refuse flags that used to be accepted, and two
+Nine fixes. Two of them refuse flags that used to be accepted, and three
 change an exit code, so it ships as a minor.
 
 **Behavior change for a script that passes an inert flag to a local
@@ -64,6 +64,11 @@ being silently accepted. None of those flags did anything.
   an empty 5xx decoded as `INTERNAL`, exit `1`. It now surfaces as
   `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error envelope keeps its
   declared code.
+- **A request that gets no response exits `7` on every command.** A refused
+  connection, a DNS failure or a timeout arrived as `INTERNAL` and exited
+  `1`, while `doctor` already reported it as `7`. It is a transient platform
+  fault worth a retry, so every command now exits `7`. The `--json` envelope
+  is unchanged, and an `INTERNAL` the server sends still exits `1`.
 - **`--fields` narrows each item of an `--all` stream.** `account list --all
   --fields account_id` streamed full items. Every NDJSON line now carries only
   the requested keys, plus `notices`, `safety_warning` and the provenance

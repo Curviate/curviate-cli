@@ -124,7 +124,7 @@ export async function runConnectSend(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -176,7 +176,7 @@ export async function runConnectSent(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -228,7 +228,7 @@ export async function runConnectReceived(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -271,7 +271,7 @@ export async function runConnectAccept(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -314,7 +314,7 @@ export async function runConnectDecline(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -357,7 +357,7 @@ export async function runConnectCancel(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);

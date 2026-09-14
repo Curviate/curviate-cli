@@ -851,7 +851,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const { CurviateError } = await import("@curviate/sdk");
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("./lib/exit-codes.js");
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     process.exit(code === "EARG" ? 2 : 1);
   }

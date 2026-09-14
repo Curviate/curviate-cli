@@ -59,28 +59,28 @@ describe("sales-nav v2 — router reaches the five new subcommands (not 'Unknown
   it("sales-nav account-lists --account acc_x reaches the SDK path", () => {
     const r = run(["sales-nav", "account-lists", "--account", "acc_x", "--base-url", UNROUTABLE, "--json"]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
   it("sales-nav lead-lists --account acc_x reaches the SDK path", () => {
     const r = run(["sales-nav", "lead-lists", "--account", "acc_x", "--base-url", UNROUTABLE, "--json"]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
   it("sales-nav browse-account-list L1 --account acc_x reaches the SDK path", () => {
     const r = run(["sales-nav", "browse-account-list", "L1", "--account", "acc_x", "--base-url", UNROUTABLE, "--json"]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
   it("sales-nav browse-lead-list L2 --account acc_x reaches the SDK path", () => {
     const r = run(["sales-nav", "browse-lead-list", "L2", "--account", "acc_x", "--base-url", UNROUTABLE, "--json"]);
     expect(isUnknownCommand(r)).toBe(false);
-    expect(r.status).toBe(1);
+    expect(r.status).toBe(7);
     expect(r.stdout).toMatch(/"error"/);
   });
 
