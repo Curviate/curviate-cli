@@ -95,6 +95,17 @@ function fileProblem(what: string): CurviateError {
   return malformed(`${getConfigPath()} is invalid: ${what}. Edit the file, or run \`curviate config reset\` to start over.`);
 }
 
+/**
+ * The shape every reader and writer relies on: an object top level, an object
+ * (or absent) `profiles`, and, when the command takes it, a string (or absent)
+ * `active`. Refuses with exit 2 otherwise.
+ */
+function assertStructure(root: unknown, takesActive: boolean): asserts root is Record<string, unknown> {
+  if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
+  if (takesActive && root["active"] != null && typeof root["active"] !== "string") throw fileProblem("\"active\" must be a string");
+  if (root["profiles"] != null && !isPlainObject(root["profiles"])) throw fileProblem("\"profiles\" must be an object");
+}
+
 function profileRepair(name: string): string {
   return `Run \`curviate config reset --profile ${name}\`, or edit the file.`;
 }
@@ -120,22 +131,16 @@ export async function readConfigFile(): Promise<{ root: unknown } | null> {
 export function profileValue(file: { root: unknown } | null, selected: string | undefined, field: ProfileField): string | number | undefined {
   if (file === null) return undefined;
   const { root } = file;
-  if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
-  let name = selected;
-  if (name === undefined) {
-    const active = root["active"];
-    if (active !== undefined && active !== null && typeof active !== "string") throw fileProblem("\"active\" must be a string");
-    name = active ?? "default";
-  }
-  const profiles = root["profiles"];
-  if (profiles === undefined || profiles === null) return undefined;
-  if (!isPlainObject(profiles)) throw fileProblem("\"profiles\" must be an object");
+  assertStructure(root, selected === undefined);
+  const name = selected ?? (root["active"] as string | null | undefined) ?? "default";
+  const profiles = root["profiles"] as Record<string, unknown> | null | undefined;
+  if (profiles == null) return undefined;
   const profile = Object.prototype.hasOwnProperty.call(profiles, name) ? profiles[name] : undefined;
-  if (profile === undefined || profile === null) return undefined;
+  if (profile == null) return undefined;
   const where = `Profile ${JSON.stringify(name)} in ${getConfigPath()}`;
   if (!isPlainObject(profile)) throw malformed(`${where} is not an object. ${profileRepair(name)}`);
   const value = profile[field];
-  if (value === undefined || value === null) return undefined;
+  if (value == null) return undefined;
   const want = PROFILE_FIELD_TYPES[field];
   if (typeof value !== want) throw malformed(`${where} is invalid: ${field} must be a ${want}. ${profileRepair(name)}`);
   return value as string | number;
@@ -159,12 +164,8 @@ export async function readConfig(): Promise<CliConfig | null> {
   const file = await readConfigFile();
   if (file === null) return null;
   const { root } = file;
-  if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
-  if (root["active"] !== undefined && root["active"] !== null && typeof root["active"] !== "string") {
-    throw fileProblem("\"active\" must be a string");
-  }
+  assertStructure(root, true);
   const profiles = root["profiles"] ?? {};
-  if (!isPlainObject(profiles)) throw fileProblem("\"profiles\" must be an object");
   return { ...(root as unknown as CliConfig), profiles: nullProtoProfiles(profiles as Record<string, ProfileEntry | undefined>) };
 }
 
