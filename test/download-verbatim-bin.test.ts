@@ -151,7 +151,7 @@ describe("a 2xx that is not a list page", () => {
     [200, "application/json", '{"items":null,"cursor":null}'],
     [200, "application/json", '{"items":"x","cursor":null}'],
     [200, "application/json", '{"items":{},"cursor":null}'],
-    [200, "application/json", '{"data":[],"cursor":null}'],
+    [200, "application/json", '{"items":null,"data":[],"cursor":null}'],
   ];
   const ALL: string[][] = [
     ["account", "list", "--all"],
@@ -188,6 +188,13 @@ describe("a 2xx that is not a list page", () => {
       });
     }
   }
+
+  it("control: a page carried as data (the Recruiter lists) streams", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ object: "list", data: [{ id: "proj_1" }], cursor: null }) };
+    const r = await run(["recruiter", "projects", "--all", "--json", "--page-delay", "0", "--beta", ...common()]);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(r.stdout).toContain("proj_1");
+  });
 
   it("control: a real empty page is verified and streams", async () => {
     reply = { status: 200, type: "application/json", body: JSON.stringify({ object: "list", items: [], cursor: null }) };

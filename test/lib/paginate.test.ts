@@ -111,7 +111,14 @@ describe("lib/paginate — streamAll", () => {
     expect(calls[1]).toMatchObject({ cursor: "page2cursor" });
   });
 
-  for (const page of [{ data: ["x", "y"], cursor: null }, { id: "not-a-list" }, null, {}, { items: null }, { items: "x" }]) {
+  it("handles response with data[] array instead of items[]", async () => {
+    const method = vi.fn(async () => ({ data: ["x", "y"], cursor: null }));
+    const items: unknown[] = [];
+    for await (const item of streamAll(method as never, {}, { maxPages: 10 })) items.push(item);
+    expect(items).toEqual(["x", "y"]);
+  });
+
+  for (const page of [{ id: "not-a-list" }, null, {}, { items: null }, { items: "x" }, { items: null, data: ["x"] }, { data: "x" }, []]) {
     it(`a response that is not a page (${JSON.stringify(page)}) is PLATFORM_ERROR, before yielding`, async () => {
       const method = vi.fn(async () => page);
       const yielded: unknown[] = [];

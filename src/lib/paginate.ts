@@ -43,15 +43,17 @@ import { isPlainObject } from "./config.js";
 import { renderNotices, renderProvenanceNote } from "./output.js";
 
 /**
- * A list call's 2xx must be a page: an object with an `items` array. `null`,
+ * A list call's 2xx must be a page: an object with an `items` array (the
+ * Recruiter lists, and the SDK's own paginator, carry it as `data`). `null`,
  * `{}`, a non-array `items`, an array, a scalar, or an empty body (which
  * arrives as bytes) is no API answer: a platform fault, exit 7, never a crash
  * on `.items` and never an empty page read as real. Every path that reads a
  * list (`--all` streams, name resolvers, credential checks) goes through here.
  */
 export function readablePage<T>(page: T): T & { items: unknown[] } {
-  if (!isPlainObject(page) || !Array.isArray(page["items"])) throw unreadable("list page");
-  return page as T & { items: unknown[] };
+  const list = isPlainObject(page) ? (page["items"] === undefined ? page["data"] : page["items"]) : undefined;
+  if (!Array.isArray(list)) throw unreadable("list page");
+  return { ...(page as T), items: list };
 }
 
 /**
