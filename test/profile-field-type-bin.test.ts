@@ -421,3 +421,37 @@ describe("an active that is null or absent means default, for writers too", () =
     });
   }
 });
+
+describe("env-only CI: key and base URL from the environment, timeout falls back to its default", () => {
+  const CASES: Array<[string, () => void]> = [
+    ["invalid JSON", () => { mkdirSync(join(xdg, "curviate"), { recursive: true }); writeFileSync(cfgPath, `{not json ${MARK}`); }],
+    ["non-object profile", () => writeConfig({ default: [MARK] })],
+    ["null root", () => writeRaw(null)],
+    ["array profiles", () => writeRaw({ active: "default", profiles: [MARK] })],
+    ["wrong-typed timeout", () => writeConfig({ default: { timeout: `x${MARK}` } })],
+  ];
+  for (const [label, setup] of CASES) {
+    it(`${label}: account list and profile me run with only env set`, async () => {
+      setup();
+      const env = { CURVIATE_API_KEY: KEY, CURVIATE_BASE_URL: baseUrl };
+      const list = await run(["account", "list", "--json"], env);
+      expect(list.status, list.out).toBe(0);
+      const me = await run(["profile", "me", "--json"], { ...env, CURVIATE_ACCOUNT: "acc_1" });
+      expect(me.status, me.out).toBe(0);
+      expect(list.out + me.out).not.toContain(MARK);
+    });
+  }
+
+  it("control: a broken timeout still refuses when the base URL comes from the profile", async () => {
+    writeConfig({ default: { baseUrl, timeout: `x${MARK}` } });
+    const r = await run(["account", "list", "--json"], { CURVIATE_API_KEY: KEY });
+    expect(r.status, r.out).toBe(2);
+    expect(r.out).toContain("timeout");
+  });
+
+  it("control: the same broken file still refuses when the key comes from it", async () => {
+    writeConfig({ default: [MARK] });
+    const r = await run(["account", "list", "--json"], { CURVIATE_BASE_URL: baseUrl });
+    expect(r.status, r.out).toBe(2);
+  });
+});

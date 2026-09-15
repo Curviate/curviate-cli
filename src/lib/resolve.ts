@@ -89,7 +89,22 @@ export async function resolveEffectiveConfig(
   // Timeout: flag (as number) > profile > SDK default
   const timeoutFlag =
     flags.timeout === undefined ? undefined : /^[1-9]\d*$/.test(flags.timeout) ? Number(flags.timeout) : NaN;
-  const timeout = timeoutFlag ?? fromProfile<number>("timeout") ?? DEFAULT_TIMEOUT_MS;
+  // `timeout` has a default, so when the key and base URL both came from
+  // flags or env, an unreadable profile never blocks the command (env-only CI):
+  // its timeout is taken if it can be read, and the default otherwise.
+  const keyAndUrlBypassProfile =
+    apiKeySource !== "profile" &&
+    apiKeySource !== "none" &&
+    (flags.baseUrl ?? process.env["CURVIATE_BASE_URL"]) !== undefined;
+  const profileTimeout = (): number | undefined => {
+    try {
+      return fromProfile<number>("timeout");
+    } catch (err) {
+      if (keyAndUrlBypassProfile) return undefined;
+      throw err;
+    }
+  };
+  const timeout = timeoutFlag ?? profileTimeout() ?? DEFAULT_TIMEOUT_MS;
 
   return {
     apiKey,
