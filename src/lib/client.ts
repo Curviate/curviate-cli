@@ -8,6 +8,7 @@
 // Dev fills in the full config-resolution logic (profile, env, flags) in a
 // follow-up pass; this module provides the factory signature for wiring.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
@@ -59,8 +60,28 @@ const guardedFetch: typeof fetch = async (input, init) => {
     ...headerStrings(merged?.headers),
     typeof merged?.body === "string" ? merged.body : undefined,
   ]);
-  return platformFaultIfUnreadable(await fetch(input, merged));
+  const res = await fetch(input, merged);
+  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res);
 };
+
+const downloading = new AsyncLocalStorage<true>();
+
+/**
+ * Run a binary download. Inside it a 2xx body is the file, saved verbatim
+ * whatever its content type: the server passes the stored file's own type
+ * through, so an HTML page or a JSON document is still the file, never a
+ * platform fault. A non-2xx keeps the usual classification.
+ */
+export function downloadBinary<T>(call: () => Promise<T>): Promise<T> {
+  return downloading.run(true, call);
+}
+
+/** Relabel so the SDK hands back the raw bytes instead of decoding JSON. */
+function asOpaqueBytes(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set("content-type", "application/octet-stream");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
 
 /**
  * A response that is no API answer came back over a working connection from
@@ -69,8 +90,8 @@ const guardedFetch: typeof fetch = async (input, init) => {
  * HTML page, an empty body), which the SDK would decode as `INTERNAL` (exit
  * 1); and a 2xx that claims JSON (or is an HTML page) but does not parse,
  * which the SDK would either crash on (exit 1) or hand over as bytes. A 5xx
- * that DOES carry an envelope keeps its declared code; a binary download
- * (any other content type) is untouched.
+ * that DOES carry an envelope keeps its declared code; a 2xx inside
+ * `downloadBinary` never reaches here.
  */
 async function platformFaultIfUnreadable(res: Response): Promise<Response> {
   const type = res.headers.get("content-type") ?? "";

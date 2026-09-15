@@ -31,7 +31,7 @@ import { defineCommand } from "citty";
 import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
-import { createClient } from "../lib/client.js";
+import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS } from "../lib/paginate.js";
@@ -505,7 +505,7 @@ export async function runJobApplicantResume(client: Curviate, flags: JobFlags, o
   const ns = client.account(accountId);
 
   try {
-    const data = await ns.jobs.downloadResume(jobId, applicantId);
+    const data = await downloadBinary(() => ns.jobs.downloadResume(jobId, applicantId));
     await writeBinaryOutput(data, { outputPath: flags.output, isTTY, stdout: process.stdout });
   } catch (err: unknown) {
     if (err instanceof BinaryOutputError) {

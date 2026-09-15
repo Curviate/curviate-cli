@@ -25,6 +25,7 @@ change an exit code, so it ships as a minor.
   `7` for a non-http scheme).
 - A request that gets no response, or a response that is not an API answer,
   now exits `7` (was `1`, or `0` with empty data for a `200` HTML page).
+  Download commands are the exception: they save any `2xx` body as the file.
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
@@ -79,7 +80,11 @@ change an exit code, so it ships as a minor.
   `INTERNAL`, exit `1`. A `200` that claimed JSON but did not parse exited
   `1` (`doctor`: `3`), and a `200` HTML page exited `0` with empty data. All
   now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error
-  envelope keeps its declared code, and a binary download is untouched.
+  envelope keeps its declared code. The download commands (`message
+  attachment`, `job applicant resume`, `recruiter applicant resume`) are
+  exempt: they save any `2xx` body byte-for-byte whatever its content type,
+  since the server passes the file's own type through. That includes a
+  JSON-labelled file, which used to be saved empty.
 - **A request that gets no response exits `7` on every command.** A refused
   connection, a DNS failure or a timeout arrived as `INTERNAL` and exited
   `1`, while `doctor` already reported it as `7`. It is a transient platform

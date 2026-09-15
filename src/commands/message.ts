@@ -35,7 +35,7 @@ import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
-import { createClient } from "../lib/client.js";
+import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
@@ -509,7 +509,7 @@ export async function runMessageAttachment(
   const ns = client.account(accountId);
 
   try {
-    const data = await ns.messaging.getAttachment(chatId, messageId, attachmentId);
+    const data = await downloadBinary(() => ns.messaging.getAttachment(chatId, messageId, attachmentId));
     await writeBinaryOutput(data, {
       outputPath: flags.output,
       isTTY,

@@ -1,7 +1,8 @@
 /**
  * Binary return handling.
  *
- * Commands that return binary data (`message attachment`, `recruiter applicant resume`)
+ * Commands that return binary data (`message attachment`, `job applicant resume`,
+ * `recruiter applicant resume`) fetch inside `downloadBinary` and
  * write bytes to `-o <file>` or, when stdout is not a TTY, to stdout raw.
  * If stdout IS a TTY and no `-o` is given, the CLI refuses with exit 2.
  *
