@@ -65,6 +65,15 @@ function nullProtoProfiles(
   return Object.assign(Object.create(null) as Record<string, ProfileEntry | undefined>, profiles);
 }
 
+/** The JSON type of every field a profile may carry. */
+const PROFILE_FIELD_TYPES = {
+  apiKey: "string",
+  account: "string",
+  baseUrl: "string",
+  tenant: "string",
+  timeout: "number",
+} as const;
+
 /**
  * Why a profile read from disk cannot be used, or null when it can. The file is
  * hand-editable, so a field can hold any JSON type; one that is not what the
@@ -79,9 +88,8 @@ export function profileProblem(name: string, profile: unknown): string | null {
     return `${where} is not an object. Fix or remove it in that file.`;
   }
   const entry = profile as Record<string, unknown>;
-  for (const field of ["apiKey", "account", "baseUrl", "tenant", "timeout"]) {
+  for (const [field, want] of Object.entries(PROFILE_FIELD_TYPES)) {
     const value = entry[field];
-    const want = field === "timeout" ? "number" : "string";
     if (value !== undefined && value !== null && typeof value !== want) {
       return `${where} is invalid: ${field} must be a ${want}. Fix it in that file.`;
     }
