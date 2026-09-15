@@ -56,7 +56,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -169,8 +169,7 @@ async function resolveCompanyId(
 ): Promise<string> {
   const normalized = resolveIdentifier(raw);
   if (/^\d+$/.test(normalized)) return normalized;
-  const company = await ns.companies.get(normalized);
-  return String(company.id);
+  return readableId(await ns.companies.get(normalized));
 }
 
 async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOutputOpts>, out: OutputStreams): Promise<never> {

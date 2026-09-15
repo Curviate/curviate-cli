@@ -50,17 +50,30 @@ import { renderNotices, renderProvenanceNote } from "./output.js";
  * list (`--all` streams, name resolvers, credential checks) goes through here.
  */
 export function readablePage<T>(page: T): T & { items: unknown[] } {
-  if (!isPlainObject(page) || !Array.isArray(page["items"])) {
-    throw new CurviateError({
-      code: "PLATFORM_ERROR",
-      message: "The API answered without a readable list page.",
-      // The status the client gives every synthesized unreadable-2xx fault.
-      httpStatus: 502,
-      userFixable: false,
-      retryLikelyToSucceed: true,
-    });
-  }
+  if (!isPlainObject(page) || !Array.isArray(page["items"])) throw unreadable("list page");
   return page as T & { items: unknown[] };
+}
+
+/**
+ * The id a slug or name lookup resolved to. An answer that is not an object
+ * with a non-empty `id` is a platform fault (exit 7), never `undefined` or
+ * `null` spliced into the next request's path.
+ */
+export function readableId(entity: unknown): string {
+  const id = isPlainObject(entity) ? entity["id"] : undefined;
+  if ((typeof id !== "string" || id === "") && !(typeof id === "number" && Number.isFinite(id))) throw unreadable("id");
+  return String(id);
+}
+
+function unreadable(what: string): CurviateError {
+  return new CurviateError({
+    code: "PLATFORM_ERROR",
+    message: `The API answered without a readable ${what}.`,
+    // The status the client gives every synthesized unreadable-2xx fault.
+    httpStatus: 502,
+    userFixable: false,
+    retryLikelyToSucceed: true,
+  });
 }
 
 type PageResponse = {

@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { cliPath } from "./helpers/built-cli.js";
 
 let dir: string;
+const paths: string[] = [];
 let server: Server;
 let baseUrl: string;
 let reply: { status: number; type: string | null; body: string } = { status: 200, type: "text/html", body: "" };
@@ -40,6 +41,7 @@ function run(args: string[]): Promise<{ status: number | null; stdout: string; s
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "curviate-download-bin-"));
   server = createServer((req, res) => {
+    paths.push(req.url ?? "");
     req.resume();
     req.on("end", () => {
       res.writeHead(reply.status, { ...(reply.type === null ? {} : { "content-type": reply.type }), "retry-after": "0" });
@@ -196,5 +198,54 @@ describe("a 2xx that is not a list page", () => {
       const r = await run([...argv, "--json", ...common()]);
       expect(r.status, `${argv.join(" ")}: ${r.stdout + r.stderr}`).toBe(0);
     }
+  });
+});
+
+describe("a name or slug lookup whose answer is unreadable", () => {
+  const ENTITY_BODIES = ["null", "{}", '{"items":{}}', "[]", '{"id":null}', '{"id":""}'];
+  const SLUG: string[][] = [
+    ["company", "posts", "acme"],
+    ["company", "employees", "acme"],
+    ["post", "user-posts", "john-doe"],
+    ["comment", "user", "john-doe"],
+    ["profile", "john-doe", "--sections", "skills"],
+    ["profile", "someco", "--posts", "--is-company"],
+    ["profile", "endorse", "john-doe", "--endorsement-id", "e1"],
+    ["profile", "follow", "john-doe"],
+    ["message", "new", "--to", "john-doe", "hello"],
+    ["message", "inmail", "--to", "john-doe", "--subject", "Hi", "hello"],
+  ];
+  for (const body of ENTITY_BODIES) {
+    for (const argv of SLUG) {
+      it(`${argv.join(" ")} on ${body}: exit 7, no request path carries undefined`, async () => {
+        reply = { status: 200, type: "application/json", body };
+        paths.length = 0;
+        const r = await run([...argv, "--json", ...common()]);
+        expect(r.status, r.stdout + r.stderr).toBe(7);
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.join(" ")).not.toMatch(/undefined|null|\/\//);
+      });
+    }
+  }
+
+  for (const body of ["null", "{}", '{"items":{}}', '{"items":null}', "[]"]) {
+    it(`--account "Ralf Fischer" resolved against ${body}: exit 7`, async () => {
+      reply = { status: 200, type: "application/json", body };
+      paths.length = 0;
+      const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "Ralf Fischer", "--base-url", baseUrl]);
+      expect(r.status, r.stdout + r.stderr).toBe(7);
+      expect(paths.join(" ")).not.toMatch(/undefined/);
+    });
+  }
+
+  it("control: a readable lookup resolves and proceeds", async () => {
+    reply = { status: 200, type: "application/json", body: '{"id":"ACoAAB1234","object":"list","items":[{"account_id":"acc_9","full_name":"Ralf Fischer"}],"cursor":null}' };
+    paths.length = 0;
+    const r = await run(["post", "user-posts", "john-doe", "--json", ...common()]);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(paths.some((p) => p.includes("/users/ACoAAB1234/"))).toBe(true);
+    const acc = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "Ralf Fischer", "--base-url", baseUrl]);
+    expect(acc.status, acc.stdout + acc.stderr).toBe(0);
+    expect(paths.some((p) => p.startsWith("/v1/acc_9/"))).toBe(true);
   });
 });

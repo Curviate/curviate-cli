@@ -46,7 +46,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -404,8 +404,7 @@ export async function runProfileGet(
       if (flags["is-company"]) {
         const isNumericId = /^\d+$/.test(resolvedId);
         if (!isNumericId) {
-          const companyData = await ns.companies.get(resolvedId);
-          postId = companyData.id;
+          postId = readableId(await ns.companies.get(resolvedId));
         }
       }
 

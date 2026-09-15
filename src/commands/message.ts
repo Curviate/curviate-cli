@@ -40,6 +40,7 @@ import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output
 import { buildPreviewOutput } from "../lib/preview.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
+import { readableId } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type MessageFlags = {
@@ -220,8 +221,7 @@ export async function runMessageNew(
   } else {
     // Slug or other form, resolve via users.get.
     try {
-      const profileData = await ns.users.get(resolvedSlugOrId, {});
-      providerId = profileData.id;
+      providerId = readableId(await ns.users.get(resolvedSlugOrId, {}));
     } catch (err: unknown) {
       await handleSdkError(err, outOpts, out);
       return; // unreachable: handleSdkError always calls process.exit
@@ -572,8 +572,7 @@ export async function runMessageInMail(
   } else {
     // Slug or URL-derived slug, resolve via users.get.
     try {
-      const profileData = await ns.users.get(resolvedSlugOrId, {});
-      recipientUrn = profileData.id;
+      recipientUrn = readableId(await ns.users.get(resolvedSlugOrId, {}));
     } catch (err: unknown) {
       await handleSdkError(err, outOpts, out);
       return; // unreachable: handleSdkError always calls process.exit
