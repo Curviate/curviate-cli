@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliPath } from "./helpers/built-cli.js";
@@ -273,5 +273,45 @@ describe("config list never refuses", () => {
     expect(text.out).not.toContain("password");
     expect(text.out).toMatch(/broken\n {2}apiKey: <invalid>\n {2}account: <invalid>\n {2}baseUrl: <invalid>\n {2}timeout: <invalid>/);
     expect(text.out).toMatch(/scalar\n {2}<invalid>/);
+  });
+});
+
+describe("a writer repairs a non-object profile", () => {
+  const readBack = () => JSON.parse(readFileSync(cfgPath, "utf8")) as { active: string; profiles: Record<string, unknown> };
+  const WRITES: Array<[string[], Record<string, unknown>]> = [
+    [["config", "set-account", "acc_9"], { account: "acc_9" }],
+    [["config", "set-base-url", "https://custom.test"], { baseUrl: "https://custom.test" }],
+    [["config", "set-base-url", "--reset"], {}],
+    [["login", "--api-key", KEY], { apiKey: KEY }],
+  ];
+  for (const value of [[MARK], `cvt_live_${MARK}`, 42, true, false]) {
+    for (const [argv, written] of WRITES) {
+      it(`profile ${JSON.stringify(value).slice(0, 10)}: ${argv.join(" ")} replaces it with a fresh object`, async () => {
+        writeConfig({ default: value, other: good() });
+        const r = await run(argv);
+        expect(r.status, r.out).toBe(0);
+        expect(r.out).not.toContain(MARK);
+        const cfg = readBack();
+        expect(cfg.profiles["default"]).toEqual(written);
+        expect(cfg.profiles["other"]).toEqual(good());
+        expect(cfg.active).toBe("default");
+      });
+    }
+  }
+
+  it("--profile targets the named non-object profile", async () => {
+    writeConfig({ default: good(), other: [MARK] });
+    const r = await run(["config", "set-account", "acc_9", "--profile", "other"]);
+    expect(r.status, r.out).toBe(0);
+    expect(readBack().profiles["other"]).toEqual({ account: "acc_9" });
+    expect(readBack().profiles["default"]).toEqual(good());
+  });
+
+  it("control: a missing profile is still refused, and nothing is written", async () => {
+    writeConfig({ default: good() });
+    const before = readFileSync(cfgPath, "utf8");
+    const r = await run(["config", "set-account", "acc_9", "--profile", "ghost"]);
+    expect(r.status, r.out).toBe(2);
+    expect(readFileSync(cfgPath, "utf8")).toBe(before);
   });
 });

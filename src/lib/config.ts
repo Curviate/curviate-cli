@@ -309,11 +309,16 @@ export async function updateProfileField(
   value: string | number | undefined,
 ): Promise<void> {
   const cfg = await readConfig();
-  if (!cfg || !cfg.profiles[profileName]) {
+  const stored = cfg?.profiles[profileName];
+  if (!cfg || stored == null) {
     throw new Error(`Profile "${profileName}" not found.`);
   }
-  const profile = cfg.profiles[profileName];
-  if (profile) {
+  // A hand-edited profile that is not an object is replaced by a fresh one
+  // holding the written field, as `login` does. Assigning onto an array would
+  // write nothing; onto a string it throws and names the stored value.
+  const profile: ProfileEntry = isPlainObject(stored) ? stored : {};
+  cfg.profiles[profileName] = profile;
+  {
     if (field === "timeout") {
       profile.timeout =
         typeof value === "number" ? value : value !== undefined
