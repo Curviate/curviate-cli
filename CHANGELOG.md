@@ -35,7 +35,8 @@ change an exit code, so it ships as a minor.
   `"<invalid>"` and drops unknown fields. `config set-account` and
   `config set-base-url` replace a profile that is not an object.
 - A list answer that is not a page now exits `7` on every path that reads
-  one, `setup`'s verifying call included (it exited `3`).
+  one, `setup`'s verifying call included (it reported success on most such
+  answers).
 - `--all`, `--max-pages` and `--page-delay` on a command that does not
   stream pages now exit `2` (they were accepted and ignored on some).
 - Usage errors name a stray argument by its position
@@ -103,7 +104,7 @@ change an exit code, so it ships as a minor.
   `{}`, a non-array `items`, an array, a scalar or an empty body, exits `7`
   wherever one is read: every `--all` stream, `job list`, the `--account`
   name lookup, and the credential checks in `doctor` and `setup` (`setup`
-  exited `3`, `doctor` reported the credential valid). Depending on the path
+  reported success and `doctor` reported the credential valid). Depending on the path
   it used to crash with exit `1`, or print an empty result or a usage error.
   A company or member slug lookup whose answer carries no id exits `7` too,
   instead of sending `undefined` in the next request's path (`company posts
@@ -168,9 +169,10 @@ change an exit code, so it ships as a minor.
   (or a broken `active`, `profiles` or profile) as `<invalid>`, and emits only
   the known fields, where `--json` used to copy any stored field through.
   A config file that is not valid JSON (empty, truncated, hand-mangled) exited
-  `1` printing the parser's error; every command, `config list` included, now
-  exits `2` with the `curviate config reset` repair and no parser text, unless
-  every value it needs comes from flags or the environment. Config writers
+  `1` printing the parser's error; every command now exits `2` with the
+  `curviate config reset` repair and no parser text, unless every value it
+  needs comes from flags or the environment; `config list` always exits `2`
+  on it. Config writers
   (`login`, `config set-*`) refuse a broken top level, `active` or `profiles`
   with exit `2`, and repair a profile that is not an object by replacing it
   with a fresh one holding the written value: `config set-account` and
@@ -183,8 +185,9 @@ change an exit code, so it ships as a minor.
   `timeout` falls back to its default, so env-only CI runs. A leading UTF-8
   byte order mark is ignored.
 - **`--all` is refused where nothing streams.** `--all`, `--max-pages` and
-  `--page-delay` are now declared only on commands that stream pages; on
-  the rest they are unknown flags, exit `2`, nothing sent. `webhook delete
+  `--page-delay` are no longer declared on the commands listed below, which
+  never stream pages; there they are unknown flags, exit `2`, nothing sent.
+  `profile me` keeps the flags and refuses `--all` at run time (exit `2`). `webhook delete
   <id> --all` sent the DELETE, and `recruiter applicants`, `recruiter search
   parameters`, `sales-nav search parameters`, `webhook create`, `get`,
   `update` and `profile endorse` accepted and ignored it. `company <id>`,
