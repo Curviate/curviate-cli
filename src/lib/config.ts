@@ -100,7 +100,9 @@ function fileProblem(what: string): CurviateError {
  * (or absent) `profiles`, and, when the command takes it, a string (or absent)
  * `active`. Refuses with exit 2 otherwise.
  */
-function assertStructure(root: unknown, takesActive: boolean): asserts root is Record<string, unknown> {
+export function assertStructure(file: ConfigFile, takesActive: boolean): asserts file is { root: Record<string, unknown> } {
+  if (file.unparseable) throw fileProblem("it is not valid JSON");
+  const { root } = file;
   if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
   if (takesActive && root["active"] != null && typeof root["active"] !== "string") throw fileProblem("\"active\" must be a string");
   if (root["profiles"] != null && !isPlainObject(root["profiles"])) throw fileProblem("\"profiles\" must be an object");
@@ -110,8 +112,15 @@ function profileRepair(name: string): string {
   return `Run \`curviate config reset --profile ${name}\`, or edit the file.`;
 }
 
-/** The parsed file, unvalidated. Null when there is no file; throws on read/parse errors. */
-export async function readConfigFile(): Promise<{ root: unknown } | null> {
+/** The parsed file, unvalidated. */
+export interface ConfigFile {
+  root: unknown;
+  /** The file exists but is not valid JSON (empty, truncated, hand-mangled). */
+  unparseable?: true;
+}
+
+/** The parsed file, unvalidated. Null when there is no file; throws on read errors. */
+export async function readConfigFile(): Promise<ConfigFile | null> {
   let raw: string;
   try {
     raw = await readFile(getConfigPath(), "utf8");
@@ -119,7 +128,14 @@ export async function readConfigFile(): Promise<{ root: unknown } | null> {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw err;
   }
-  return { root: JSON.parse(raw) as unknown };
+  try {
+    return { root: JSON.parse(raw) as unknown };
+  } catch {
+    // Kept, not thrown: a command whose every value comes from flags or env
+    // never reads the file, so it must still run. The parser's text quotes the
+    // file and is never shown.
+    return { root: undefined, unparseable: true };
+  }
 }
 
 /**
@@ -128,10 +144,10 @@ export async function readConfigFile(): Promise<{ root: unknown } | null> {
  * bypasses a broken field. `null` means unset. `selected` is `--profile`; without
  * it `active` is taken too.
  */
-export function profileValue(file: { root: unknown } | null, selected: string | undefined, field: ProfileField): string | number | undefined {
+export function profileValue(file: ConfigFile | null, selected: string | undefined, field: ProfileField): string | number | undefined {
   if (file === null) return undefined;
+  assertStructure(file, selected === undefined);
   const { root } = file;
-  assertStructure(root, selected === undefined);
   const name = selected ?? (root["active"] as string | null | undefined) ?? "default";
   const profiles = root["profiles"] as Record<string, unknown> | null | undefined;
   if (profiles == null) return undefined;
@@ -163,8 +179,8 @@ export function getConfigPath(): string {
 export async function readConfig(): Promise<CliConfig | null> {
   const file = await readConfigFile();
   if (file === null) return null;
+  assertStructure(file, true);
   const { root } = file;
-  assertStructure(root, true);
   const profiles = root["profiles"] ?? {};
   return { ...(root as unknown as CliConfig), profiles: nullProtoProfiles(profiles as Record<string, ProfileEntry | undefined>) };
 }

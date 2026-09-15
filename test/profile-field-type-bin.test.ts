@@ -315,3 +315,66 @@ describe("a writer repairs a non-object profile", () => {
     expect(readFileSync(cfgPath, "utf8")).toBe(before);
   });
 });
+
+describe("a config file that is not valid JSON", () => {
+  const writeText = (text: string) => {
+    mkdirSync(join(xdg, "curviate"), { recursive: true });
+    writeFileSync(cfgPath, text);
+  };
+  const BROKEN: Array<[string, string]> = [
+    ["garbage", `{not json ${MARK}`],
+    ["empty file", ""],
+    ["truncated", `{"active":"default","profiles":{"default":{"apiKey":"cvt_live_${MARK}`],
+  ];
+  const COMMANDS: string[][] = [
+    ["account", "list", "--json"],
+    ["profile", "me", "--json"],
+    ["doctor", "--json"],
+    ["config", "list"],
+    ["config", "list", "--json"],
+    ["login", "--api-key", KEY],
+    ["config", "set-account", "acc_9"],
+    ["config", "set-base-url", "https://custom.test"],
+    ["config", "set-base-url", "--reset"],
+    ["config", "use", "default"],
+    ["config", "rename", "default", "other"],
+    ["config", "reset", "--profile", "default", "--yes"],
+  ];
+  for (const [label, text] of BROKEN) {
+    for (const argv of COMMANDS) {
+      it(`${label}: ${argv.join(" ")} exits 2 with the reset hint, no parser text, file untouched`, async () => {
+        writeText(text);
+        const r = await run(argv);
+        expect(r.status, r.out).toBe(2);
+        expect(r.out).toContain(cfgPath);
+        expect(r.out).toContain("config reset");
+        expect(r.out).toContain("not valid JSON");
+        expect(r.out).not.toMatch(/SyntaxError|Unexpected|JSON at position|end of JSON|is not valid JSON:/);
+        expect(r.out).not.toContain(MARK);
+        expect(readFileSync(cfgPath, "utf8")).toBe(text);
+      });
+    }
+
+    it(`${label}: readers whose every value comes from flags or env bypass it`, async () => {
+      writeText(text);
+      const flags = ["--api-key", KEY, "--base-url", baseUrl, "--timeout", "5000"];
+      for (const [argv, env] of [
+        [["account", "list", "--json", ...flags], {}],
+        [["profile", "me", "--json", "--account", "acc_1", ...flags], {}],
+        [["doctor", "--json", ...flags], {}],
+        [["profile", "me", "--json", "--timeout", "5000"], { CURVIATE_API_KEY: KEY, CURVIATE_BASE_URL: baseUrl, CURVIATE_ACCOUNT: "acc_1" }],
+      ] as Array<[string[], Record<string, string>]>) {
+        const r = await run(argv, env);
+        expect(r.status, `${argv.join(" ")}: ${r.out}`).toBe(0);
+      }
+    });
+  }
+
+  it("config reset removes it (the repair works)", async () => {
+    writeText("{not json");
+    const r = await run(["config", "reset", "--yes"]);
+    expect(r.status, r.out).toBe(0);
+    const list = await run(["config", "list", "--json"]);
+    expect(list.out).toMatch(/No config file/);
+  });
+});

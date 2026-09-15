@@ -20,6 +20,7 @@ import {
   removeProfile,
   updateProfileField,
   readConfigFile,
+  assertStructure,
   isPlainObject,
   PROFILE_FIELD_TYPES,
 } from "../lib/config.js";
@@ -46,6 +47,8 @@ export const configCommand = defineCommand({
           process.stderr.write("No config file found. Run `curviate login` to create one.\n");
           return;
         }
+        // Nothing to list in a file that does not parse: exit 2 with the repair.
+        if (file.unparseable) assertStructure(file, false);
         const INVALID = "<invalid>";
         const root = isPlainObject(file.root) ? file.root : undefined;
         const rawActive = root?.["active"];
