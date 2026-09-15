@@ -53,9 +53,10 @@ import { describe, it, expect } from "vitest";
 // call no SDK resource method (offline HMAC / local config management).
 
 const PARITY_MANIFEST: Record<string, string> = {
-  // accounts (4)
+  // accounts (5)
   "account list":       "accounts.list",
   "account get":        "accounts.get",
+  "account seats":      "accounts.listSeats",
   "account update":     "accounts.update",
   "account disconnect": "accounts.disconnect",
 
@@ -236,10 +237,10 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 145;
+const EXPECTED_MANIFEST_COUNT = 146;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
-const EXPECTED_SDK_METHOD_COUNT = 145;
+const EXPECTED_SDK_METHOD_COUNT = 146;
 
 /**
  * Pre-existing SDK methods with no CLI command yet — see the file-header
