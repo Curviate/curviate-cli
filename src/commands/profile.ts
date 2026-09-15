@@ -37,7 +37,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { parseSectionsFlag } from "../lib/sections.js";
@@ -1035,7 +1035,7 @@ const profileRelationsCommand = defineCommand({
 const profileEndorseCommand = defineCommand({
   meta: { name: "endorse", description: "Endorse a skill on a member's profile." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
     "endorsement-id": {
       type: "string",

@@ -33,7 +33,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -1551,7 +1551,7 @@ const recruiterSearchPeopleCommand = defineCommand({
 const recruiterSearchParametersCommand = defineCommand({
   meta: { name: "parameters", description: "Resolve Recruiter filter parameter IDs (POST, source-scoped)." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     source: {
       type: "string",
       description:
@@ -1886,7 +1886,7 @@ const recruiterJobPublishCommand = defineCommand({
 const recruiterApplicantsCommand = defineCommand({
   meta: { name: "applicants", description: "List applicants in a Recruiter project's talent pool." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },
   },

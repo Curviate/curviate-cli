@@ -90,6 +90,27 @@ export const GLOBAL_FLAGS = {
   },
 } as const;
 
+/**
+ * `GLOBAL_FLAGS` without the stream trio (`--all`, `--max-pages`,
+ * `--page-delay`), for a command that returns one object or one page and never
+ * streams: there `--all` is an unknown flag (exit 2) rather than accepted and
+ * ignored.
+ */
+export const NON_STREAM_FLAGS = {
+  "api-key": GLOBAL_FLAGS["api-key"],
+  profile: GLOBAL_FLAGS.profile,
+  account: GLOBAL_FLAGS.account,
+  "base-url": GLOBAL_FLAGS["base-url"],
+  timeout: GLOBAL_FLAGS.timeout,
+  json: GLOBAL_FLAGS.json,
+  fields: GLOBAL_FLAGS.fields,
+  limit: GLOBAL_FLAGS.limit,
+  cursor: GLOBAL_FLAGS.cursor,
+  preview: GLOBAL_FLAGS.preview,
+  verbose: GLOBAL_FLAGS.verbose,
+  beta: GLOBAL_FLAGS.beta,
+};
+
 export type GlobalFlags = {
   "api-key"?: string;
   profile?: string;

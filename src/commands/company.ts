@@ -55,7 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readableId } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -1048,7 +1048,7 @@ const companyChatCommand = defineCommand({
     description: "Retrieve one conversation from a company page's admin inbox. Admin-gated.",
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1106,7 +1106,7 @@ const companyMessageCommand = defineCommand({
     description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
@@ -1204,7 +1204,7 @@ const companyReplyCommand = defineCommand({
 export const companyCommand = defineCommand({
   meta: { name: "company", description: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Company identifier (URL, slug, or native id)." },
     sections: { type: "string" as const, description: "Not supported on company commands; a usage error (exit 2) if supplied." },
   },

@@ -23,7 +23,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -1006,7 +1006,7 @@ const searchJobsCommand = defineCommand({
 const searchParametersCommand = defineCommand({
   meta: { name: "parameters", description: "Resolve human-readable terms to opaque filter IDs." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     type: {
       type: "string",
       description:
@@ -1100,7 +1100,7 @@ const searchServiceParametersCommand = defineCommand({
     description: "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts.",
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     type: {
       type: "string",
       description: "Filter type to resolve: service_category (default) or location.",
