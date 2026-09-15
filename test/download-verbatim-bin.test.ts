@@ -145,6 +145,11 @@ describe("a 2xx that is not a list page", () => {
     [200, "application/json", "[]"],
     [200, "application/json", "5"],
     [200, "application/json", '"x"'],
+    [200, "application/json", "{}"],
+    [200, "application/json", '{"items":null,"cursor":null}'],
+    [200, "application/json", '{"items":"x","cursor":null}'],
+    [200, "application/json", '{"items":{},"cursor":null}'],
+    [200, "application/json", '{"data":[],"cursor":null}'],
   ];
   const ALL: string[][] = [
     ["account", "list", "--all"],
@@ -166,6 +171,8 @@ describe("a 2xx that is not a list page", () => {
       const report = JSON.parse(r.stdout.trim()) as { credential_valid: boolean; api_reachable: boolean; exit: number };
       expect(report.credential_valid).toBe(false);
       expect(report.api_reachable).toBe(true);
+      const credential = (report as unknown as { checks: Array<{ name: string; detail: string }> }).checks.find((c) => c.name === "credential valid");
+      expect(credential?.detail).toMatch(/not verified/);
       expect(report.exit).toBe(7);
     });
 
@@ -174,7 +181,8 @@ describe("a 2xx that is not a list page", () => {
         reply = { status, type, body };
         const r = await run([...argv, "--json", ...common()]);
         expect(r.status, r.stdout + r.stderr).toBe(7);
-        expect(r.stdout + r.stderr).not.toMatch(/Internal error|Cannot read|is not a function/);
+        expect(r.stdout + r.stderr).not.toMatch(/Internal error|Cannot read|is not a function|requires a paginated method/);
+        expect(r.stdout).toContain("PLATFORM_ERROR");
       });
     }
   }
