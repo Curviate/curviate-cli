@@ -49,7 +49,6 @@ import { defaultReadStdin } from "../lib/stdin.js";
 import {
   resolveSecret,
   checkCredentialConflicts,
-  maskCredentialSecretsForPreview,
 } from "../lib/credential-resolve.js";
 import { AUTH_NEEDED } from "../lib/exit-codes.js";
 import {
@@ -721,7 +720,7 @@ export async function runAccountLink(
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
-    const preview = buildPreviewOutput({ method: "auth.intent", args: {}, body: maskCredentialSecretsForPreview(body) });
+    const preview = buildPreviewOutput({ method: "auth.intent", args: {}, body });
     out.stdout.write(JSON.stringify(preview) + "\n");
     return;
   }
@@ -977,7 +976,7 @@ export async function runAccountUpdate(
     const preview = buildPreviewOutput({
       method: "accounts.update",
       args: { accountId },
-      body: maskCredentialSecretsForPreview(body),
+      body,
     });
     out.stdout.write(JSON.stringify(preview) + "\n");
     return;

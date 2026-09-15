@@ -40,6 +40,7 @@ import {
   type RestorableArgDef,
 } from "./lib/stdin.js";
 import { GLOBAL_FLAGS } from "./lib/global-flags.js";
+import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 
 type AnyCommand = CommandDef;
@@ -66,13 +67,7 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
     .map(([name]) => name),
 );
 
-/**
- * Flags whose value is a secret. Their values are never echoed in a
- * diagnostic, and neither is anything that may be one: a positional right
- * after `--api-key=` (a stray space), or the tail of a flag name that starts
- * with one (`--api-key-<key>`, a missing `=`).
- */
-export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
+export { SECRET_FLAGS };
 
 /**
  * A flag accumulates when repeated (`--attach a --attach b`) only on a command

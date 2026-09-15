@@ -7,6 +7,7 @@
  * that exits 2 but prints the key is the defect, not the fix.
  */
 
+import { SECRET_FLAGS } from "../src/dispatch.js";
 import { describe, it, expect, beforeEach } from "vitest";
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -147,9 +148,7 @@ describe("--timeout must be a positive whole number of milliseconds", () => {
 });
 
 describe("usage errors never echo a user-supplied token", () => {
-  const SECRETS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
-
-  for (const flag of SECRETS) {
+  for (const flag of SECRET_FLAGS) {
     it(`--${flag}= --json SECRET: the stray value is named by position`, () => {
       const r = refused(["login", `--${flag}=`, "--json", K]);
       expect(r.stderr).not.toMatch(/<redacted>/);

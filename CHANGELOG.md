@@ -123,6 +123,12 @@ change an exit code, so it ships as a minor.
     its `=` (`--api-key-<key>`) is named by position too, and an unknown flag
     by its exact name without any value. `--beta=<value>` no longer echoes the
     rejected value.
+  - `--preview` masks every secret flag's value as `••••`. `account
+    checkpoint solve --code <otp> --preview` printed the code. The mask
+    covers `--code`, `--password`, `--li-at`, `--li-a` and `--proxy-password`
+    wherever the value sits in the rendered request. `recruiter message new
+    --signature` is the message's sign-off line, not a credential, so its
+    preview shows it.
   - `---api-key=X` and `--no-api-key=X` are unknown flags (exit `2`). They
     were ignored. `--no-<flag>` stays valid for boolean flags.
   - `config list` shows only the last 4 characters of a key (`••••1234`),

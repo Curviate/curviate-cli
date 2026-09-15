@@ -812,9 +812,11 @@ describe("account checkpoint solve", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     const parsed = JSON.parse(written);
     expect(parsed.method).toBe("auth.solveCheckpoint");
-    // account_id is a path/positional arg; the body carries the code.
+    // account_id is a path/positional arg; the body carries the code, masked:
+    // an OTP never appears in output.
     expect(parsed.args).toHaveProperty("accountId", "acc_pending_1");
-    expect(parsed.body).toHaveProperty("code", "654321");
+    expect(parsed.body).toHaveProperty("code", "••••");
+    expect(written).not.toContain("654321");
   });
 });
 
