@@ -8,8 +8,8 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-One change and twelve fixes. Several refuse input that used to be accepted or
-change an exit code, so it ships as a minor.
+One addition, one change and twelve fixes. Several refuse input that used to
+be accepted or change an exit code, so it ships as a minor.
 
 **Behavior changes a script may notice:**
 
@@ -42,6 +42,15 @@ change an exit code, so it ships as a minor.
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
+### Added
+
+- **`curviate account seats`.** Lists the workspace's live seats and whether
+  each is free or bound to an account (`seat_id`, `occupied`, `account_id`).
+  A free seat (`occupied:false`) is one `account link --seat-id` accepts
+  right now; an empty result can mean the workspace has no seats, or that
+  billing needs attention. Not paginated, `--all` is refused. Requires
+  `@curviate/sdk@0.32.0` (`accounts.listSeats()`), bumped below.
+
 ### Changed
 
 - **Local commands accept only the flags they act on.** These commands make
@@ -73,10 +82,10 @@ change an exit code, so it ships as a minor.
   `safety_warning: {...}` line per page, beside that page's notices.
 - **`account link` without `--seat-id` says where a seat id comes from.** A
   missing required flag now prints the first complete sentence of its help
-  description as a `hint:` line, and the `--seat-id` description names the
-  Billing page of the Curviate dashboard, where seat ids are listed. Exit stays `2`. The help's exit-`12`
-  note is now scoped to a call that already has `--seat-id` and
-  `--auth-method`.
+  description as a `hint:` line, and the `--seat-id` description names
+  `curviate account seats`, the new command below that lists seat ids. Exit
+  stays `2`. The help's exit-`12` note is now scoped to a call that already
+  has `--seat-id` and `--auth-method`.
 - **An unknown flag's inline value is no longer echoed.** `--api-key=<key>`
   on a command that does not declare `--api-key` printed the key in the
   error line. The error now names the flag only.
@@ -208,6 +217,8 @@ change an exit code, so it ships as a minor.
   `company chat`, `company message`, `post get`, `search parameters`,
   `search service-parameters` and `webhook events` already refused it and
   no longer list the three flags in `--help`.
+- **`@curviate/sdk` bumped to `0.32.0`**, for `accounts.listSeats()` behind
+  the new `account seats` command above.
 
 ## [0.32.0] - 2026-09-11
 

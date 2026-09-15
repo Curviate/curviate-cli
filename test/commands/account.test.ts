@@ -39,6 +39,7 @@ function makeClient() {
     accounts: {
       list: vi.fn(),
       get: vi.fn(),
+      listSeats: vi.fn(),
       update: vi.fn(),
       disconnect: vi.fn(),
     },
@@ -203,6 +204,98 @@ describe("account get", () => {
     });
     try {
       await runAccountGet(client as never, { "account-id": "acc_1", preview: true } as AccountFlags, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// account seats
+// ---------------------------------------------------------------------------
+
+describe("account seats", () => {
+  let client: Client;
+  const originalIsTTY = process.stdout.isTTY;
+
+  beforeEach(() => {
+    client = makeClient();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.stdout.isTTY = originalIsTTY;
+  });
+
+  it("calls accounts.listSeats() with no params", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountSeats(client as never, { json: true } as AccountFlags, out);
+    expect(client.accounts.listSeats).toHaveBeenCalledWith();
+  });
+
+  it("human mode (TTY, no --json): seat_id and free/bound, account_id shown only when bound", async () => {
+    process.stdout.isTTY = true;
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [
+        { seat_id: "seat_free", occupied: false, account_id: null },
+        { seat_id: "seat_bound", occupied: true, account_id: "acc_1" },
+      ],
+    });
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(written).toContain("seat_free: free");
+    expect(written).toContain("seat_bound: bound (acc_1)");
+    // Free-seat control: "free" must never carry a parenthesized account id.
+    expect(written).not.toMatch(/seat_free: free \(/);
+  });
+
+  it("human mode: an empty list renders (no seats), not a crash or blank line", async () => {
+    process.stdout.isTTY = true;
+    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(written).toContain("(no seats)");
+  });
+
+  // The empty-list billing note is covered at the bin layer (over-the-wire,
+  // "account seats: empty result names billing" in test/account-seats-bin.test.ts),
+  // not duplicated here.
+
+  it("a non-page answer (no items array) exits 7, never crashes on .items", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list" });
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runAccountSeats(client as never, { json: true } as AccountFlags, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it("--preview on a read command exits 2", async () => {
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      await runAccountSeats(client as never, { preview: true } as AccountFlags, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

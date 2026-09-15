@@ -4,6 +4,7 @@
  * Subcommands:
  *   account list: list connected accounts
  *   account get <account_id>: get one account
+ *   account seats: list the workspace's live seats and whether each is free or bound
  *   account link <body...>: link a new account (write)
  *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
  *   account update <account_id> <body...>: update metadata / proxy config (write)
@@ -40,7 +41,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
@@ -60,7 +61,7 @@ import {
   CHECKPOINT_POLL_FIRST_DELAY_MS,
   nextCheckpointPollDelayMs,
 } from "../lib/checkpoint-cadence.js";
-import type { Curviate, CurviateError, paths } from "@curviate/sdk";
+import type { Curviate, CurviateError, SeatList, paths } from "@curviate/sdk";
 
 /**
  * `POST /v1/auth/intent` body, a narrow cast target only (see
@@ -244,6 +245,73 @@ export async function runAccountGet(
   } catch (err) {
     await handleError(err, outOpts, out);
   }
+}
+
+/**
+ * One seat line for human output: `<seat_id>: free` or `<seat_id>: bound
+ * (<account_id>)`. Kept local to this command (not a lib/slim.ts projector)
+ * because it renders TEXT, not a projected object: the JSON/`--fields` shape
+ * is the raw `{seat_id, occupied, account_id}` triple unchanged, this only
+ * reformats the human-mode summary of it.
+ */
+function renderSeatLineHuman(item: unknown): string {
+  const seat = item as { seat_id?: unknown; occupied?: unknown; account_id?: unknown };
+  const seatId = typeof seat.seat_id === "string" ? seat.seat_id : String(seat.seat_id ?? "");
+  if (seat.occupied === true) {
+    const accountId = typeof seat.account_id === "string" ? seat.account_id : "";
+    return `${seatId}: bound (${accountId})`;
+  }
+  return `${seatId}: free`;
+}
+
+/**
+ * Run `account seats`. Not paginated (bounded by purchased seats, same as
+ * `GET /v1/inboxes`), so `--all`/`--limit`/`--cursor`/`--max-pages` are not
+ * declared and are refused as unknown flags. Root-scoped, works on a
+ * zero-account (and zero-seat) workspace.
+ *
+ * Human output is a friendly per-seat summary (`seat_id: free` /
+ * `seat_id: bound (account_id)`) instead of the generic key=value dump,
+ * UNLESS `--fields` narrows the output, in which case the generic projected
+ * rendering applies like any other command. `--json` (or a non-TTY stdout)
+ * always gets the raw `{object, items}` envelope, `--fields`-projected if
+ * asked.
+ */
+export async function runAccountSeats(
+  client: Curviate,
+  flags: AccountFlags,
+  out: OutputStreams,
+): Promise<void> {
+  rejectPreviewOnRead(flags.preview, out);
+
+  const outOpts = resolveOutputOpts(flags);
+
+  let result: SeatList;
+  try {
+    // readablePage validates the 2xx body is a real page (an `items` array);
+    // a malformed answer (not an object, no items array) is a platform fault,
+    // exit 7, never a crash on `.items` below.
+    result = readablePage(await client.accounts.listSeats());
+  } catch (err) {
+    await handleError(err, outOpts, out);
+    return;
+  }
+
+  if (result.items.length === 0) {
+    out.stderr.write(
+      "note: no seats listed. This can mean the workspace has no seats, or that billing needs attention " +
+        "(an empty seat is listed here only while connecting to it would be accepted right now).\n",
+    );
+  }
+
+  if (isJsonMode(outOpts) || flags.fields) {
+    renderSuccess(result, outOpts, out);
+    return;
+  }
+
+  out.stdout.write(
+    (result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n")) + "\n",
+  );
 }
 
 /**
@@ -1337,6 +1405,34 @@ const accountGetCommand = defineCommand({
   },
 });
 
+const accountSeatsCommand = defineCommand({
+  meta: {
+    name: "seats",
+    description:
+      "List the workspace's live seats and whether each is free or bound to an account. A seat with " +
+      "occupied:false (free) is a seat_id `account link --seat-id` accepts right now. Not paginated " +
+      "(bounded by purchased seats), --all is not supported. An empty result can mean the workspace has " +
+      "no seats, or that billing needs attention.",
+  },
+  args: { ...READ_SINGLE_FLAGS },
+  async run({ args }) {
+    const flags = args as AccountFlags;
+    const cfg = await resolveEffectiveConfig({
+      apiKey: flags["api-key"],
+      baseUrl: flags["base-url"],
+      timeout: flags.timeout,
+      profile: flags.profile,
+    });
+    if (!cfg.apiKey) {
+      process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
+      process.exit(3);
+    }
+    const client = createClient({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl, timeout: cfg.timeout });
+    const out = buildOutputStreams();
+    await runAccountSeats(client, flags, out);
+  },
+});
+
 const accountLinkCommand = defineCommand({
   meta: {
     name: "link",
@@ -1346,7 +1442,7 @@ const accountLinkCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "seat-id": { type: "string", description: "Empty seat to bind the account to, copied from the Billing page of the Curviate dashboard (no CLI command lists seats).", required: true },
+    "seat-id": { type: "string", description: "Empty seat to bind the account to, listed by `curviate account seats` (a free seat there is one this call accepts right now).", required: true },
     "auth-method": { type: "string", description: "Authentication method: credentials | cookie.", required: true },
     email: { type: "string", description: "LinkedIn email (credentials method)." },
     password: { type: "string", description: `LinkedIn password (credentials method). ${PW_WARNING("--password-stdin", "CURVIATE_LINKEDIN_PASSWORD")}` },
@@ -1636,6 +1732,7 @@ export const accountCommand = defineCommand({
   subCommands: {
     list: accountListCommand,
     get: accountGetCommand,
+    seats: accountSeatsCommand,
     link: accountLinkCommand,
     "connect-session": accountConnectSessionCommand,
     update: accountUpdateCommand,
@@ -1645,7 +1742,7 @@ export const accountCommand = defineCommand({
   async run() {
     process.stderr.write(
       "Usage: curviate account <subcommand>\n" +
-      "  list | get | link | connect-session poll | update | disconnect | checkpoint\n",
+      "  list | get | seats | link | connect-session poll | update | disconnect | checkpoint\n",
     );
   },
 });
