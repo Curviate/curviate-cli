@@ -337,21 +337,19 @@ export async function updateProfileField(
   // write nothing; onto a string it throws and names the stored value.
   const profile: ProfileEntry = isPlainObject(stored) ? stored : {};
   cfg.profiles[profileName] = profile;
-  {
-    if (field === "timeout") {
-      profile.timeout =
-        typeof value === "number" ? value : value !== undefined
-          ? Number(value)
-          : undefined;
-    } else if (field === "apiKey") {
-      profile.apiKey = value !== undefined ? String(value) : undefined;
-    } else if (field === "account") {
-      profile.account = value !== undefined ? String(value) : undefined;
-    } else if (field === "baseUrl") {
-      profile.baseUrl = value !== undefined ? String(value) : undefined;
-    } else if (field === "tenant") {
-      profile.tenant = value !== undefined ? String(value) : undefined;
-    }
+  if (field === "timeout") {
+    profile.timeout =
+      typeof value === "number" ? value : value !== undefined
+        ? Number(value)
+        : undefined;
+  } else if (field === "apiKey") {
+    profile.apiKey = value !== undefined ? String(value) : undefined;
+  } else if (field === "account") {
+    profile.account = value !== undefined ? String(value) : undefined;
+  } else if (field === "baseUrl") {
+    profile.baseUrl = value !== undefined ? String(value) : undefined;
+  } else if (field === "tenant") {
+    profile.tenant = value !== undefined ? String(value) : undefined;
   }
   await writeConfig(cfg);
 }

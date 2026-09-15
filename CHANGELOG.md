@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-One change and eleven fixes. Several refuse input that used to be accepted or
+One change and twelve fixes. Several refuse input that used to be accepted or
 change an exit code, so it ships as a minor.
 
 **Behavior changes a script may notice:**
@@ -34,6 +34,10 @@ change an exit code, so it ships as a minor.
   file that is not valid JSON. `config list --json` shows a broken field as
   `"<invalid>"` and drops unknown fields. `config set-account` and
   `config set-base-url` replace a profile that is not an object.
+- A list answer that is not a page now exits `7` on every path that reads
+  one, `setup`'s verifying call included (it exited `3`).
+- `--all`, `--max-pages` and `--page-delay` on a command that does not
+  stream pages now exit `2` (they were accepted and ignored on some).
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
@@ -94,10 +98,16 @@ change an exit code, so it ships as a minor.
   printing `{}`. All now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that
   carries an error envelope keeps its declared code. A `204` or any other
   empty-bodied success still exits `0`, and an empty `200` labelled JSON,
-  which exited `7`, now does too. A list call answered with something that
-  is not a page (`null`, an array, a scalar, an empty body) exits `7` under
-  `--all` and on `job list`, where it crashed with exit `1`, and `doctor`
-  no longer reports such an answer as a valid credential. The download commands (`message
+  which exited `7`, now does too. A list answer that is not a page (an object
+  with an `items` array, or `data` on the Recruiter lists), such as `null`,
+  `{}`, a non-array `items`, an array, a scalar or an empty body, exits `7`
+  wherever one is read: every `--all` stream, `job list`, the `--account`
+  name lookup, and the credential checks in `doctor` and `setup` (`setup`
+  exited `3`, `doctor` reported the credential valid). Depending on the path
+  it used to crash with exit `1`, or print an empty result or a usage error.
+  A company or member slug lookup whose answer carries no id exits `7` too,
+  instead of sending `undefined` in the next request's path (`company posts
+  acme` against `[]`). The download commands (`message
   attachment`, `job applicant resume`, `recruiter applicant resume`) are
   exempt: they save any `2xx` body byte-for-byte whatever its content type,
   since the server passes the file's own type through. That includes a
@@ -166,6 +176,21 @@ change an exit code, so it ships as a minor.
   with a fresh one holding the written value: `config set-account` and
   `config set-base-url` used to report success without writing (an array
   profile) or crash printing the stored value (a string profile).
+  An `active` that is `null` or absent means `default` for writers as well
+  as readers; `config set-account` and `config set-base-url` reported
+  `Profile "null" not found`. When the API key and base URL both come from
+  flags or the environment, an unreadable config never blocks a command:
+  `timeout` falls back to its default, so env-only CI runs. A leading UTF-8
+  byte order mark is ignored.
+- **`--all` is refused where nothing streams.** `--all`, `--max-pages` and
+  `--page-delay` are now declared only on commands that stream pages; on
+  the rest they are unknown flags, exit `2`, nothing sent. `webhook delete
+  <id> --all` sent the DELETE, and `recruiter applicants`, `recruiter search
+  parameters`, `sales-nav search parameters`, `webhook create`, `get`,
+  `update` and `profile endorse` accepted and ignored it. `company <id>`,
+  `company chat`, `company message`, `post get`, `search parameters`,
+  `search service-parameters` and `webhook events` already refused it and
+  no longer list the three flags in `--help`.
 
 ## [0.32.0] - 2026-09-11
 
