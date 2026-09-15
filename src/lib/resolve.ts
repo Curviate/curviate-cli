@@ -11,8 +11,7 @@
  * The API key is passed through verbatim, no prefix validation.
  */
 
-import { CurviateError } from "@curviate/sdk";
-import { profileProblem, readConfig } from "./config.js";
+import { profileValue, readConfigFile, type ProfileField } from "./config.js";
 
 export interface FlagInputs {
   /** `--api-key` flag value (citty parses `--api-key` to camelCase `apiKey`). */
@@ -39,6 +38,8 @@ export interface EffectiveConfig {
    * is in play without the value itself ever being displayed.
    */
   apiKeySource: CredentialSource;
+  /** Workspace name `setup` recorded, when the key came from the profile. */
+  tenant: string | undefined;
 }
 
 /** The precedence tier a credential resolved from. */
@@ -53,23 +54,19 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 export async function resolveEffectiveConfig(
   flags: FlagInputs,
 ): Promise<EffectiveConfig> {
-  // Load config file once.
-  const cfg = await readConfig();
-
-  // Determine which profile to use.
-  const profileName = flags.profile ?? (cfg?.active ?? "default");
-  const profile = cfg?.profiles[profileName];
-  const problem = profileProblem(profileName, profile);
-  if (problem) {
-    throw new CurviateError({ code: "INVALID_REQUEST", message: problem, userFixable: true, retryLikelyToSucceed: false });
-  }
+  // Load config file once. A value is taken from the profile, and type-checked,
+  // only after every higher tier came up empty, so a flag or env var bypasses a
+  // broken field.
+  const file = await readConfigFile();
+  const fromProfile = <T extends string | number>(field: ProfileField): T | undefined =>
+    profileValue(file, flags.profile, field) as T | undefined;
 
   // API key: flag > env > profile
-  const apiKey =
-    flags.apiKey ??
-    process.env["CURVIATE_API_KEY"] ??
-    profile?.apiKey ??
-    undefined;
+  const profileKey =
+    flags.apiKey === undefined && process.env["CURVIATE_API_KEY"] === undefined
+      ? fromProfile<string>("apiKey")
+      : undefined;
+  const apiKey = flags.apiKey ?? process.env["CURVIATE_API_KEY"] ?? profileKey;
 
   // Derived from the same expression above, in the same order, so the two can
   // never disagree about which tier won.
@@ -78,7 +75,7 @@ export async function resolveEffectiveConfig(
       ? "flag"
       : process.env["CURVIATE_API_KEY"] !== undefined
         ? "env"
-        : profile?.apiKey !== undefined
+        : profileKey !== undefined
           ? "profile"
           : "none";
 
@@ -86,20 +83,27 @@ export async function resolveEffectiveConfig(
   const baseUrl =
     flags.baseUrl ??
     process.env["CURVIATE_BASE_URL"] ??
-    profile?.baseUrl ??
+    fromProfile<string>("baseUrl") ??
     DEFAULT_BASE_URL;
 
   // Timeout: flag (as number) > profile > SDK default
   const timeoutFlag =
     flags.timeout === undefined ? undefined : /^[1-9]\d*$/.test(flags.timeout) ? Number(flags.timeout) : NaN;
-  const timeout = timeoutFlag ?? profile?.timeout ?? DEFAULT_TIMEOUT_MS;
+  const timeout = timeoutFlag ?? fromProfile<number>("timeout") ?? DEFAULT_TIMEOUT_MS;
 
-  // Account: flag > env > profile
-  const account =
-    flags.account ??
-    process.env["CURVIATE_ACCOUNT"] ??
-    profile?.account ??
-    undefined;
-
-  return { apiKey, baseUrl, timeout, account, apiKeySource };
+  return {
+    apiKey,
+    baseUrl,
+    timeout,
+    apiKeySource,
+    // Account: flag > env > profile. Read on access: a root-scoped command never
+    // takes it, so a broken profile account must not refuse that command.
+    get account() {
+      return flags.account ?? process.env["CURVIATE_ACCOUNT"] ?? fromProfile<string>("account");
+    },
+    // Tenant: only meaningful when the key itself came from the profile.
+    get tenant() {
+      return apiKeySource === "profile" ? fromProfile<string>("tenant") : undefined;
+    },
+  };
 }

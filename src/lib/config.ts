@@ -20,6 +20,7 @@ import {
 import { join, dirname } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
+import { CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 
 /** A single named profile's fields. */
@@ -66,7 +67,7 @@ function nullProtoProfiles(
 }
 
 /** The JSON type of every field a profile may carry. */
-const PROFILE_FIELD_TYPES = {
+export const PROFILE_FIELD_TYPES = {
   apiKey: "string",
   account: "string",
   baseUrl: "string",
@@ -74,27 +75,70 @@ const PROFILE_FIELD_TYPES = {
   timeout: "number",
 } as const;
 
+export type ProfileField = keyof typeof PROFILE_FIELD_TYPES;
+
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
- * Why a profile read from disk cannot be used, or null when it can. The file is
- * hand-editable, so a field can hold any JSON type; one that is not what the
- * CLI writes is a usage error (exit 2) rather than a crash or a value sent
- * onto the wire. The message names the field, never its value: `apiKey` is a
- * secret whatever its shape.
+ * A malformed config file is a usage error (exit 2), never a crash or a value
+ * sent onto the wire. The file is hand-editable, so any part of it can hold any
+ * JSON type. Messages name the file, profile and field, never the value:
+ * `apiKey` is a secret whatever its shape.
  */
-export function profileProblem(name: string, profile: unknown): string | null {
-  if (profile === undefined || profile === null) return null;
+function malformed(message: string): CurviateError {
+  return new CurviateError({ code: "INVALID_REQUEST", message, userFixable: true, retryLikelyToSucceed: false });
+}
+
+function fileProblem(what: string): CurviateError {
+  return malformed(`${getConfigPath()} is invalid: ${what}. Edit the file, or run \`curviate config reset\` to start over.`);
+}
+
+function profileRepair(name: string): string {
+  return `Run \`curviate config reset --profile ${name}\`, or edit the file.`;
+}
+
+/** The parsed file, unvalidated. Null when there is no file; throws on read/parse errors. */
+export async function readConfigFile(): Promise<{ root: unknown } | null> {
+  let raw: string;
+  try {
+    raw = await readFile(getConfigPath(), "utf8");
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+  return { root: JSON.parse(raw) as unknown };
+}
+
+/**
+ * One value the command takes from the profile, type-checked. Called only once
+ * a value has fallen through every higher precedence tier, so a flag or env var
+ * bypasses a broken field. `null` means unset. `selected` is `--profile`; without
+ * it `active` is taken too.
+ */
+export function profileValue(file: { root: unknown } | null, selected: string | undefined, field: ProfileField): string | number | undefined {
+  if (file === null) return undefined;
+  const { root } = file;
+  if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
+  let name = selected;
+  if (name === undefined) {
+    const active = root["active"];
+    if (active !== undefined && active !== null && typeof active !== "string") throw fileProblem("\"active\" must be a string");
+    name = active ?? "default";
+  }
+  const profiles = root["profiles"];
+  if (profiles === undefined || profiles === null) return undefined;
+  if (!isPlainObject(profiles)) throw fileProblem("\"profiles\" must be an object");
+  const profile = Object.prototype.hasOwnProperty.call(profiles, name) ? profiles[name] : undefined;
+  if (profile === undefined || profile === null) return undefined;
   const where = `Profile ${JSON.stringify(name)} in ${getConfigPath()}`;
-  if (typeof profile !== "object" || Array.isArray(profile)) {
-    return `${where} is not an object. Fix or remove it in that file.`;
-  }
-  const entry = profile as Record<string, unknown>;
-  for (const [field, want] of Object.entries(PROFILE_FIELD_TYPES)) {
-    const value = entry[field];
-    if (value !== undefined && value !== null && typeof value !== want) {
-      return `${where} is invalid: ${field} must be a ${want}. Fix it in that file.`;
-    }
-  }
-  return null;
+  if (!isPlainObject(profile)) throw malformed(`${where} is not an object. ${profileRepair(name)}`);
+  const value = profile[field];
+  if (value === undefined || value === null) return undefined;
+  const want = PROFILE_FIELD_TYPES[field];
+  if (typeof value !== want) throw malformed(`${where} is invalid: ${field} must be a ${want}. ${profileRepair(name)}`);
+  return value as string | number;
 }
 
 /** Return the absolute path to the config file (even if it does not exist). */
@@ -106,21 +150,22 @@ export function getConfigPath(): string {
 }
 
 /**
- * Read the config file. Returns null if the file does not exist.
- * Throws on parse/read errors.
+ * Read the config file for a command that rewrites it. Returns null if the
+ * file does not exist. A malformed top level, `active` or `profiles` refuses
+ * with exit 2 (the repair is editing the file or `config reset`); throws on
+ * read/parse errors.
  */
 export async function readConfig(): Promise<CliConfig | null> {
-  const cfgPath = getConfigPath();
-  let raw: string;
-  try {
-    raw = await readFile(cfgPath, "utf8");
-  } catch (err: unknown) {
-    const e = err as NodeJS.ErrnoException;
-    if (e.code === "ENOENT") return null;
-    throw err;
+  const file = await readConfigFile();
+  if (file === null) return null;
+  const { root } = file;
+  if (!isPlainObject(root)) throw fileProblem("the top level must be an object");
+  if (root["active"] !== undefined && root["active"] !== null && typeof root["active"] !== "string") {
+    throw fileProblem("\"active\" must be a string");
   }
-  const parsed = JSON.parse(raw) as CliConfig;
-  return { ...parsed, profiles: nullProtoProfiles(parsed.profiles ?? {}) };
+  const profiles = root["profiles"] ?? {};
+  if (!isPlainObject(profiles)) throw fileProblem("\"profiles\" must be an object");
+  return { ...(root as unknown as CliConfig), profiles: nullProtoProfiles(profiles as Record<string, ProfileEntry | undefined>) };
 }
 
 /**
@@ -192,7 +237,8 @@ export async function writeProfile(
   };
 
   // Merge entry into existing profile (don't overwrite unrelated fields).
-  const current = existing.profiles[profileName] ?? {};
+  const stored = existing.profiles[profileName];
+  const current = isPlainObject(stored) ? stored : {};
   existing.profiles[profileName] = { ...current, ...entry };
 
   // If no active is set yet, default to this profile.

@@ -27,8 +27,10 @@ change an exit code, so it ships as a minor.
   now exits `7` (was `1`, or `0` printing `{}` for a `200` whose body is not
   JSON).
   Download commands are the exception: they save any `2xx` body as the file.
-- A config profile field of the wrong JSON type now exits `2` (was `1`, or
-  sent as-is).
+- A malformed config file (a field of the wrong JSON type, a `null` top
+  level, a non-string `active`, a non-object `profiles`) now exits `2` when
+  the command takes a value from it (was `1`, or sent as-is). `config list
+  --json` shows a broken field as `"<invalid>"` and drops unknown fields.
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
@@ -122,13 +124,20 @@ change an exit code, so it ships as a minor.
     `2147483647`, digits only. `abc`, `10abc`, `0`, `1.5`, `0x10`, `1e3`,
     ` 5` or `2147483648` now exit `2`; they surfaced as an immediate timeout,
     a silently truncated value, or an out-of-range timer.
-- **A profile field of the wrong type exits `2`.** A hand-edited config whose
+- **A malformed config file exits `2`.** A hand-edited config whose profile
   `apiKey` was an array, object or number crashed every command and
-  `config list` with exit `1`. A non-string `account`, `baseUrl` or `tenant`
-  was sent or printed as-is, and a non-number `timeout` got a misleading
-  message. Every command, `doctor` included, now refuses the selected profile
-  with exit `2`, and `config list` refuses any such profile, naming the field
-  and never printing its value.
+  `config list` with exit `1`; a non-string `account` or `baseUrl` was sent
+  as-is; a `null` top level, a non-string `active` or a non-object `profiles`
+  crashed or was echoed back. Each is now a usage error, exit `2`, naming the
+  file, the profile and the field with the repair (`curviate config reset
+  --profile <name>`, or edit the file), never the value. A value is checked
+  only when the command actually takes it from the profile, so `--api-key`,
+  `--base-url`, `--timeout`, `--account` or the matching environment variable
+  still works around a broken field, and a root-scoped command such as
+  `account list` ignores a broken `account`. `null` on a field means unset.
+  `config list` never refuses: it lists every profile, shows a broken field
+  (or a broken `active`, `profiles` or profile) as `<invalid>`, and emits only
+  the known fields, where `--json` used to copy any stored field through.
 
 ## [0.32.0] - 2026-09-11
 

@@ -19,7 +19,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getConfigPath, readConfig } from "../lib/config.js";
+import { getConfigPath, isPlainObject, readConfigFile } from "../lib/config.js";
 import { createClient } from "../lib/client.js";
 import { getExitCode } from "../lib/exit-codes.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
@@ -128,14 +128,17 @@ export interface DoctorArgs {
 
 /** Build the report. Pure apart from the two injected calls. */
 export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorReport> {
-  const cfg = await readConfig();
+  const file = await readConfigFile();
   const effective = await resolveEffectiveConfig({
     apiKey: args["api-key"],
     baseUrl: args["base-url"],
     timeout: args.timeout,
     profile: args.profile,
   });
-  const profileName = args.profile ?? cfg?.active ?? "default";
+  // A malformed `active` already refused inside the resolve above.
+  const root = file?.root;
+  const active = isPlainObject(root) && typeof root["active"] === "string" ? root["active"] : undefined;
+  const profileName = args.profile ?? active ?? "default";
   const checks: Check[] = [];
 
   const credentialResolved = effective.apiKey !== undefined;
@@ -241,8 +244,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
   // that came from a flag or the environment is a DIFFERENT key, quite
   // possibly a different workspace, and naming the profile's workspace beside
   // it is worse than naming none: it reads as an answer.
-  const tenant =
-    effective.apiKeySource === "profile" ? (cfg?.profiles[profileName]?.tenant ?? null) : null;
+  const tenant = effective.tenant ?? null;
 
   const firstFailure = checks.find((c) => !c.ok);
   const report: DoctorReport = {

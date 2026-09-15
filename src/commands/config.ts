@@ -19,8 +19,9 @@ import {
   renameProfile,
   removeProfile,
   updateProfileField,
-  profileProblem,
-  type ProfileEntry,
+  readConfigFile,
+  isPlainObject,
+  PROFILE_FIELD_TYPES,
 } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { redactKeyForDisplay } from "../lib/config-display.js";
@@ -37,51 +38,67 @@ export const configCommand = defineCommand({
       meta: { name: "list", description: "List all profiles (keys redacted)." },
       args: { json: GLOBAL_FLAGS.json },
       async run({ args }) {
-        const cfg = await readConfig();
-        if (!cfg) {
+        // Never refuses: this is how a malformed file gets inspected. A field of
+        // the wrong type renders as <invalid>, never its value, and only known
+        // fields are emitted.
+        const file = await readConfigFile();
+        if (!file) {
           process.stderr.write("No config file found. Run `curviate login` to create one.\n");
           return;
         }
+        const INVALID = "<invalid>";
+        const root = isPlainObject(file.root) ? file.root : undefined;
+        const rawActive = root?.["active"];
+        const active = rawActive === undefined || rawActive === null ? undefined : typeof rawActive === "string" ? rawActive : INVALID;
+        const rawProfiles = root === undefined ? INVALID : (root["profiles"] ?? {});
+        const profiles = isPlainObject(rawProfiles) ? rawProfiles : undefined;
 
-        for (const [name, profile] of Object.entries(cfg.profiles)) {
-          const problem = profileProblem(name, profile);
-          if (problem) {
-            process.stderr.write(`error: ${problem}\n`);
-            process.exit(2);
+        /** Known fields of one profile, display-safe; `<invalid>` for a non-object. */
+        const display = (profile: unknown): Record<string, string | number> | string => {
+          if (!isPlainObject(profile)) return INVALID;
+          const out: Record<string, string | number> = {};
+          for (const [field, want] of Object.entries(PROFILE_FIELD_TYPES)) {
+            const value = profile[field];
+            if (typeof value !== want) {
+              if (value !== undefined && value !== null) out[field] = INVALID;
+            } else {
+              out[field] = field === "apiKey" ? redactKeyForDisplay(value as string) : (value as string | number);
+            }
           }
-        }
+          if (out["apiKey"] === undefined) out["apiKey"] = redactKeyForDisplay(undefined);
+          return out;
+        };
 
         const json = (args.json as boolean | undefined) ?? !process.stdout.isTTY;
+        const entries = Object.entries(profiles ?? {}).filter(([, profile]) => profile !== undefined && profile !== null);
 
         if (json) {
-          // Emit redacted profiles, key is never the raw value. Built with no
-          // prototype: `name` is a value the user (or a prior `config`
-          // subcommand) wrote to disk, and a name of "__proto__" assigned
-          // into a plain `{}` hits the inherited accessor instead of
-          // creating an own key, silently dropping that profile from the
-          // JSON output while text mode (which iterates cfg.profiles
-          // directly) still prints it. Same shape lib/config.ts's
-          // nullProtoProfiles fixes for reads; this fixes it for a write.
-          const redacted: Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }> =
-            Object.create(null) as Record<string, Omit<ProfileEntry, "apiKey"> & { apiKey: string; active?: boolean }>;
-          for (const [name, profile] of Object.entries(cfg.profiles)) {
-            if (!profile) continue;
-            redacted[name] = {
-              ...profile,
-              apiKey: redactKeyForDisplay(profile.apiKey),
-              ...(name === cfg.active ? { active: true } : {}),
-            };
+          // Built with no prototype: a profile named "__proto__" assigned into
+          // a plain `{}` hits the inherited accessor instead of creating an own
+          // key, silently dropping that profile from the JSON output.
+          const shown = Object.create(null) as Record<string, unknown>;
+          for (const [name, profile] of entries) {
+            const d = display(profile);
+            shown[name] = typeof d === "string" ? d : { ...d, ...(name === active ? { active: true } : {}) };
           }
-          process.stdout.write(JSON.stringify({ active: cfg.active, profiles: redacted }) + "\n");
+          process.stdout.write(
+            JSON.stringify({ ...(active !== undefined ? { active } : {}), profiles: profiles ? shown : INVALID }) + "\n",
+          );
         } else {
-          for (const [name, profile] of Object.entries(cfg.profiles)) {
-            if (!profile) continue;
-            const marker = name === cfg.active ? " (active)" : "";
+          if (active === INVALID) process.stdout.write(`active: ${INVALID}\n`);
+          if (!profiles) process.stdout.write(`profiles: ${INVALID}\n`);
+          for (const [name, profile] of entries) {
+            const marker = name === active ? " (active)" : "";
             process.stdout.write(`${name}${marker}\n`);
-            process.stdout.write(`  apiKey: ${redactKeyForDisplay(profile.apiKey)}\n`);
-            if (profile.account) process.stdout.write(`  account: ${profile.account}\n`);
-            if (profile.baseUrl) process.stdout.write(`  baseUrl: ${profile.baseUrl}\n`);
-            if (profile.timeout) process.stdout.write(`  timeout: ${profile.timeout}\n`);
+            const d = display(profile);
+            if (typeof d === "string") {
+              process.stdout.write(`  ${d}\n`);
+              continue;
+            }
+            process.stdout.write(`  apiKey: ${d["apiKey"]}\n`);
+            for (const field of ["account", "baseUrl", "timeout"]) {
+              if (d[field]) process.stdout.write(`  ${field}: ${d[field]}\n`);
+            }
           }
         }
       },
