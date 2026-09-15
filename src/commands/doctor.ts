@@ -24,7 +24,7 @@ import { createClient, withoutUserinfo } from "../lib/client.js";
 import { getExitCode } from "../lib/exit-codes.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig, type CredentialSource } from "../lib/resolve.js";
-import type { CurviateError } from "@curviate/sdk";
+import { CurviateError } from "@curviate/sdk";
 
 /** One connected account, as `doctor` reports it. */
 interface AccountLine {
@@ -165,6 +165,17 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         effective.baseUrl,
         effective.timeout,
       );
+      // A 2xx that is not an account list (an empty body, `null`) verified
+      // nothing: a platform fault, exit 7, through the catch below.
+      if (Object.prototype.toString.call(payload) !== "[object Object]" || !Array.isArray((payload as { items?: unknown }).items)) {
+        throw new CurviateError({
+          code: "PLATFORM_ERROR",
+          message: "The API answered without a readable account list, so the credential is not verified.",
+          httpStatus: 200,
+          userFixable: false,
+          retryLikelyToSucceed: true,
+        });
+      }
       reachable = true;
       valid = true;
       accounts = accountLines(payload);
@@ -228,7 +239,9 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         // so it was not "rejected". Saying it was is the half of this defect
         // that actually misdirects: it names the one subsystem that is fine.
         detail: responded
-          ? code
+          ? code === "PLATFORM_ERROR"
+            ? `not verified: ${error.message ?? code}`
+            : code
             ? `rejected: ${code}`
             : (error.message ?? "the call did not succeed")
           : transportFault

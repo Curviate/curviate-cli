@@ -136,3 +136,57 @@ describe("any other command: a 2xx with a non-empty body that is not JSON exits 
     });
   }
 });
+
+describe("a 2xx that is not a list page", () => {
+  const NOT_A_PAGE: Array<[number, string | null, string]> = [
+    [200, "application/json", "null"],
+    [200, "application/json", ""],
+    [204, null, ""],
+    [200, "application/json", "[]"],
+    [200, "application/json", "5"],
+    [200, "application/json", '"x"'],
+  ];
+  const ALL: string[][] = [
+    ["account", "list", "--all"],
+    ["webhook", "list", "--all"],
+    ["connect", "sent", "--all"],
+    ["inbox", "list", "--all"],
+    ["job", "list", "--state", "OPEN", "--all"],
+    ["job", "list", "--state", "ALL", "--all"],
+    ["job", "list", "--state", "OPEN"],
+    ["job", "list", "--state", "ALL"],
+  ];
+
+  for (const [status, type, body] of NOT_A_PAGE) {
+    const label = `${status} ${JSON.stringify(body)}`;
+    it(`doctor on a ${label}: not verified, exit 7`, async () => {
+      reply = { status, type, body };
+      const r = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+      expect(r.status, r.stdout + r.stderr).toBe(7);
+      const report = JSON.parse(r.stdout.trim()) as { credential_valid: boolean; api_reachable: boolean; exit: number };
+      expect(report.credential_valid).toBe(false);
+      expect(report.api_reachable).toBe(true);
+      expect(report.exit).toBe(7);
+    });
+
+    for (const argv of ALL) {
+      it(`${argv.join(" ")} on a ${label}: exit 7, no crash`, async () => {
+        reply = { status, type, body };
+        const r = await run([...argv, "--json", ...common()]);
+        expect(r.status, r.stdout + r.stderr).toBe(7);
+        expect(r.stdout + r.stderr).not.toMatch(/Internal error|Cannot read|is not a function/);
+      });
+    }
+  }
+
+  it("control: a real empty page is verified and streams", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ object: "list", items: [], cursor: null }) };
+    const doc = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+    expect(doc.status, doc.stdout + doc.stderr).toBe(0);
+    expect((JSON.parse(doc.stdout.trim()) as { credential_valid: boolean }).credential_valid).toBe(true);
+    for (const argv of ALL) {
+      const r = await run([...argv, "--json", ...common()]);
+      expect(r.status, `${argv.join(" ")}: ${r.stdout + r.stderr}`).toBe(0);
+    }
+  });
+});

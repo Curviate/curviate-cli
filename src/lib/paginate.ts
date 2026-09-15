@@ -38,7 +38,25 @@
  * modes.
  */
 
+import { CurviateError } from "@curviate/sdk";
 import { renderNotices, renderProvenanceNote } from "./output.js";
+
+/**
+ * A list call's 2xx must be a JSON object. `null`, an array, a scalar, or an
+ * empty body (which arrives as bytes) is no API answer: a platform fault, exit
+ * 7, never a crash on `.items` and never an empty page read as real.
+ */
+export function readablePage<T>(page: T): T {
+  if (Object.prototype.toString.call(page) !== "[object Object]") {
+    throw new CurviateError({
+      code: "PLATFORM_ERROR",
+      message: "The API answered without a readable list page.",
+      userFixable: false,
+      retryLikelyToSucceed: true,
+    });
+  }
+  return page;
+}
 
 /** Usage error for non-paginated commands. */
 export class PaginateError extends Error {
@@ -181,7 +199,7 @@ export async function* streamAll<P extends Record<string, unknown>>(
         ? ({ ...params, cursor } as P)
         : params;
 
-    const page = await fn(pageParams);
+    const page = readablePage(await fn(pageParams));
     pageCount++;
 
     // Validate paginatable shape on first response.

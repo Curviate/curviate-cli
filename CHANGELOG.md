@@ -92,7 +92,10 @@ change an exit code, so it ships as a minor.
   printing `{}`. All now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that
   carries an error envelope keeps its declared code. A `204` or any other
   empty-bodied success still exits `0`, and an empty `200` labelled JSON,
-  which exited `7`, now does too. The download commands (`message
+  which exited `7`, now does too. A list call answered with something that
+  is not a page (`null`, an array, a scalar, an empty body) exits `7` under
+  `--all` and on `job list`, where it crashed with exit `1`, and `doctor`
+  no longer reports such an answer as a valid credential. The download commands (`message
   attachment`, `job applicant resume`, `recruiter applicant resume`) are
   exempt: they save any `2xx` body byte-for-byte whatever its content type,
   since the server passes the file's own type through. That includes a

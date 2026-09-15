@@ -34,7 +34,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -302,7 +302,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
       // cursor/truncation bookkeeping, driven by the untouched page.cursor
       //, never sees the filtering at all.
       const fn = (p: typeof base) =>
-        ns.jobs.list(p as JobListQuery).then((page) => {
+        ns.jobs.list(p as JobListQuery).then(readablePage).then((page) => {
           const { items: filtered, dropped } = filterJobsByState(page.items, state);
           if (dropped > 0) {
             out.stderr.write(stateFilterDroppedNote(dropped, page.items?.length ?? 0, state));
@@ -317,7 +317,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
         writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
-      const result = await ns.jobs.list(base as JobListQuery);
+      const result = readablePage(await ns.jobs.list(base as JobListQuery));
       const { items: filtered, dropped } = filterJobsByState(result.items, state);
       if (dropped > 0) {
         out.stderr.write(stateFilterDroppedNote(dropped, result.items?.length ?? 0, state));
@@ -379,7 +379,7 @@ async function runJobListAllStates(
         const base: { state: string; limit?: number } = { state: s };
         if (limit !== undefined) base.limit = limit;
         const fn = (p: typeof base) =>
-          ns.jobs.list(p as JobListQuery).then((page) => ({
+          ns.jobs.list(p as JobListQuery).then(readablePage).then((page) => ({
             ...page,
             items: filterJobsByState(page.items, s).items,
           }));
@@ -402,7 +402,7 @@ async function runJobListAllStates(
         const s = JOB_STATES[i]!;
         const base: { state: string; limit?: number } = { state: s };
         if (limit !== undefined) base.limit = limit;
-        const page = await ns.jobs.list(base as JobListQuery);
+        const page = readablePage(await ns.jobs.list(base as JobListQuery));
         const { items: filtered } = filterJobsByState(page.items, s);
         for (const item of filtered) {
           const id = jobItemId(item);
