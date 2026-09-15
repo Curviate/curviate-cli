@@ -378,3 +378,46 @@ describe("a config file that is not valid JSON", () => {
     expect(list.out).toMatch(/No config file/);
   });
 });
+
+describe("an active that is null or absent means default, for writers too", () => {
+  const readBack = () => JSON.parse(readFileSync(cfgPath, "utf8")) as { active?: string; profiles: Record<string, Record<string, unknown>> };
+  const ROOTS: Array<[string, (p: Record<string, unknown>) => unknown]> = [
+    ["null active", (profiles) => ({ active: null, profiles })],
+    ["absent active", (profiles) => ({ profiles })],
+  ];
+  for (const [label, root] of ROOTS) {
+    const WRITES: Array<[string[], (p: Record<string, unknown>) => void]> = [
+      [["config", "set-account", "acc_9"], (p) => expect(p["account"]).toBe("acc_9")],
+      [["config", "set-base-url", "https://custom.test"], (p) => expect(p["baseUrl"]).toBe("https://custom.test")],
+      [["config", "set-base-url", "--reset"], (p) => expect(p["baseUrl"]).toBeUndefined()],
+    ];
+    for (const [argv, check] of WRITES) {
+      it(`${label}: ${argv.join(" ")} writes the default profile`, async () => {
+        writeRaw(root({ default: { apiKey: KEY, baseUrl: "https://old.test" }, other: good() }));
+        const r = await run(argv);
+        expect(r.status, r.out).toBe(0);
+        expect(r.out).toContain('profile "default"');
+        expect(r.out).not.toMatch(/"null"|"undefined"/);
+        const cfg = readBack();
+        check(cfg.profiles["default"]!);
+        expect(cfg.profiles["default"]!["apiKey"]).toBe(KEY);
+        expect(cfg.profiles["other"]).toEqual(good());
+      });
+    }
+
+    it(`${label}: config rename default repoints the (implicit) active profile`, async () => {
+      writeRaw(root({ default: { apiKey: KEY } }));
+      const r = await run(["config", "rename", "default", "team"]);
+      expect(r.status, r.out).toBe(0);
+      expect(readBack().active).toBe("team");
+      const list = await run(["account", "list", "--json", "--base-url", baseUrl]);
+      expect(list.status, list.out).toBe(0);
+    });
+
+    it(`${label}: a reader takes the default profile`, async () => {
+      writeRaw(root({ default: { apiKey: KEY, baseUrl } }));
+      const r = await run(["account", "list", "--json"]);
+      expect(r.status, r.out).toBe(0);
+    });
+  }
+});

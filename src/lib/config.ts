@@ -182,7 +182,9 @@ export async function readConfig(): Promise<CliConfig | null> {
   assertStructure(file, true);
   const { root } = file;
   const profiles = root["profiles"] ?? {};
-  return { ...(root as unknown as CliConfig), profiles: nullProtoProfiles(profiles as Record<string, ProfileEntry | undefined>) };
+  // A null or absent `active` means "default", for writers as for readers.
+  const active = (root["active"] as string | null | undefined) ?? "default";
+  return { ...(root as unknown as CliConfig), active, profiles: nullProtoProfiles(profiles as Record<string, ProfileEntry | undefined>) };
 }
 
 /**
