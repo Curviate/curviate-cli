@@ -65,6 +65,30 @@ function nullProtoProfiles(
   return Object.assign(Object.create(null) as Record<string, ProfileEntry | undefined>, profiles);
 }
 
+/**
+ * Why a profile read from disk cannot be used, or null when it can. The file is
+ * hand-editable, so a field can hold any JSON type; one that is not what the
+ * CLI writes is a usage error (exit 2) rather than a crash or a value sent
+ * onto the wire. The message names the field, never its value: `apiKey` is a
+ * secret whatever its shape.
+ */
+export function profileProblem(name: string, profile: unknown): string | null {
+  if (profile === undefined || profile === null) return null;
+  const where = `Profile ${JSON.stringify(name)} in ${getConfigPath()}`;
+  if (typeof profile !== "object" || Array.isArray(profile)) {
+    return `${where} is not an object. Fix or remove it in that file.`;
+  }
+  const entry = profile as Record<string, unknown>;
+  for (const field of ["apiKey", "account", "baseUrl", "tenant", "timeout"]) {
+    const value = entry[field];
+    const want = field === "timeout" ? "number" : "string";
+    if (value !== undefined && value !== null && typeof value !== want) {
+      return `${where} is invalid: ${field} must be a ${want}. Fix it in that file.`;
+    }
+  }
+  return null;
+}
+
 /** Return the absolute path to the config file (even if it does not exist). */
 export function getConfigPath(): string {
   const xdg =

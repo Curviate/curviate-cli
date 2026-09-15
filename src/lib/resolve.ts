@@ -11,7 +11,8 @@
  * The API key is passed through verbatim, no prefix validation.
  */
 
-import { readConfig } from "./config.js";
+import { CurviateError } from "@curviate/sdk";
+import { profileProblem, readConfig } from "./config.js";
 
 export interface FlagInputs {
   /** `--api-key` flag value (citty parses `--api-key` to camelCase `apiKey`). */
@@ -58,6 +59,10 @@ export async function resolveEffectiveConfig(
   // Determine which profile to use.
   const profileName = flags.profile ?? (cfg?.active ?? "default");
   const profile = cfg?.profiles[profileName];
+  const problem = profileProblem(profileName, profile);
+  if (problem) {
+    throw new CurviateError({ code: "INVALID_REQUEST", message: problem, userFixable: true, retryLikelyToSucceed: false });
+  }
 
   // API key: flag > env > profile
   const apiKey =

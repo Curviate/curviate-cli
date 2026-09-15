@@ -19,6 +19,7 @@ import {
   renameProfile,
   removeProfile,
   updateProfileField,
+  profileProblem,
   type ProfileEntry,
 } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
@@ -40,6 +41,14 @@ export const configCommand = defineCommand({
         if (!cfg) {
           process.stderr.write("No config file found. Run `curviate login` to create one.\n");
           return;
+        }
+
+        for (const [name, profile] of Object.entries(cfg.profiles)) {
+          const problem = profileProblem(name, profile);
+          if (problem) {
+            process.stderr.write(`error: ${problem}\n`);
+            process.exit(2);
+          }
         }
 
         const json = (args.json as boolean | undefined) ?? !process.stdout.isTTY;

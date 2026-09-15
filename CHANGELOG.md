@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-One change and ten fixes. Several refuse input that used to be accepted or
+One change and eleven fixes. Several refuse input that used to be accepted or
 change an exit code, so it ships as a minor.
 
 **Behavior changes a script may notice:**
@@ -26,6 +26,8 @@ change an exit code, so it ships as a minor.
 - A request that gets no response, or a response that is not an API answer,
   now exits `7` (was `1`, or `0` with empty data for a `200` HTML page).
   Download commands are the exception: they save any `2xx` body as the file.
+- A config profile field of the wrong JSON type now exits `2` (was `1`, or
+  sent as-is).
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
@@ -116,6 +118,13 @@ change an exit code, so it ships as a minor.
     `2147483647`, digits only. `abc`, `10abc`, `0`, `1.5`, `0x10`, `1e3`,
     ` 5` or `2147483648` now exit `2`; they surfaced as an immediate timeout,
     a silently truncated value, or an out-of-range timer.
+- **A profile field of the wrong type exits `2`.** A hand-edited config whose
+  `apiKey` was an array, object or number crashed every command and
+  `config list` with exit `1`. A non-string `account`, `baseUrl` or `tenant`
+  was sent or printed as-is, and a non-number `timeout` got a misleading
+  message. Every command, `doctor` included, now refuses the selected profile
+  with exit `2`, and `config list` refuses any such profile, naming the field
+  and never printing its value.
 
 ## [0.32.0] - 2026-09-11
 
