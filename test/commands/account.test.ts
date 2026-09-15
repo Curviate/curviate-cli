@@ -257,6 +257,20 @@ describe("account seats", () => {
     expect(written).not.toMatch(/seat_free: free \(/);
   });
 
+  it("human mode: safety_warning on the response is shown, not silently dropped", async () => {
+    process.stdout.isTTY = true;
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [{ seat_id: "seat_free", occupied: false, account_id: null }],
+      safety_warning: { row: "invites" },
+    });
+    const { runAccountSeats } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(written).toContain('safety_warning: {"row":"invites"}');
+  });
+
   it("human mode: an empty list renders (no seats), not a crash or blank line", async () => {
     process.stdout.isTTY = true;
     (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });

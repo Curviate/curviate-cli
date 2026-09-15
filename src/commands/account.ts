@@ -41,7 +41,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode, renderNotices } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
@@ -307,9 +307,19 @@ export async function runAccountSeats(
     return;
   }
 
-  out.stdout.write(
-    (result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n")) + "\n",
-  );
+  // Same precedence as the generic renderHuman (lib/output.ts): notices
+  // first, then safety_warning prepended to the body. A hand-rolled human
+  // body must not silently drop either — both are cross-cutting response
+  // fields, not seat data, and CHANGELOG 0.33.0 already fixed one path that
+  // dropped safety_warning; this one must not reintroduce it.
+  const notices = renderNotices((result as { notices?: unknown }).notices);
+  if (notices) out.stdout.write(notices + "\n");
+  let body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
+  const safetyWarning = (result as { safety_warning?: unknown }).safety_warning;
+  if (typeof safetyWarning === "object" && safetyWarning !== null) {
+    body = `safety_warning: ${JSON.stringify(safetyWarning)}\n${body}`;
+  }
+  out.stdout.write(body + "\n");
 }
 
 /**
