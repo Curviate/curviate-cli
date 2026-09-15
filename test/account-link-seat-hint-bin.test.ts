@@ -1,9 +1,9 @@
 /**
  * `account link` without `--seat-id` must say where a seat id comes from.
  *
- * No CLI command lists seats, so "is required" alone left a first run with no
- * way forward. The missing-argument error now carries the flag's own help
- * description, and that description names the dashboard page that lists
+ * "is required" alone left a first run with no way forward. The
+ * missing-argument error now carries the flag's own help description, and
+ * that description names `curviate account seats`, the command that lists
  * seat ids. Spawns the built bin: citty's required-argument check and its
  * diagnostic live in the dispatcher.
  */
@@ -20,11 +20,11 @@ const xdgHome = mkdtempSync(join(tmpdir(), "curviate-seat-hint-"));
 const run = (args: string[]) => runBin(args, xdgHome);
 
 describe("account link: missing --seat-id names where seat ids come from", () => {
-  it("no arguments: exit 2, names --seat-id and the dashboard Billing page", () => {
+  it("no arguments: exit 2, names --seat-id and `curviate account seats`", () => {
     const r = run(["account", "link"]);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("--seat-id");
-    expect(r.stderr).toMatch(/Billing page of the Curviate dashboard/);
+    expect(r.stderr).toMatch(/curviate account seats/);
     expect(r.stderr).not.toContain("—");
   });
 
@@ -33,7 +33,7 @@ describe("account link: missing --seat-id names where seat ids come from", () =>
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("Missing required argument: --auth-method");
     expect(r.stderr).toContain("credentials | cookie");
-    expect(r.stderr).not.toContain("Billing");
+    expect(r.stderr).not.toContain("account seats");
   });
 
   it("the hint is the description's first sentence, without the (required) marker: job list --state", () => {
@@ -45,11 +45,11 @@ describe("account link: missing --seat-id names where seat ids come from", () =>
     ]);
   });
 
-  it("--help: --seat-id names the Billing page; the exit-12 note is scoped to after the required flags", async () => {
+  it("--help: --seat-id names `curviate account seats`; the exit-12 note is scoped to after the required flags", async () => {
     const { accountCommand } = await import("../src/commands/account.js");
     const subs = (await (accountCommand as CommandDef).subCommands) as Record<string, CommandDef>;
     const help = await renderUsage(subs["link"]!);
-    expect(help).toMatch(/--seat-id[\s\S]*Billing page of the Curviate dashboard/);
+    expect(help).toMatch(/--seat-id[\s\S]*curviate account seats/);
     expect(help).toMatch(/--seat-id and --auth-method[^.]*exits 12/);
   });
 });
