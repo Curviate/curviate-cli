@@ -23,10 +23,10 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import {
   assembleFilters,
@@ -399,7 +399,7 @@ export async function runSearchPeople(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchPeopleItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.people(body);
@@ -410,7 +410,7 @@ export async function runSearchPeople(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -451,7 +451,7 @@ export async function runSearchCompanies(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchCompaniesItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.companies(body);
@@ -462,7 +462,7 @@ export async function runSearchCompanies(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -503,7 +503,7 @@ export async function runSearchPosts(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchPostsItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.posts(body);
@@ -514,7 +514,7 @@ export async function runSearchPosts(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -555,7 +555,7 @@ export async function runSearchJobs(
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
         const projected = verbose ? item : slimSearchJobsItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await ns.search.jobs(body);
@@ -566,7 +566,7 @@ export async function runSearchJobs(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -618,7 +618,7 @@ export async function runSearchParameters(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -667,7 +667,7 @@ export async function runSearchGroups(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.groups(query);
@@ -678,7 +678,7 @@ export async function runSearchGroups(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -725,7 +725,7 @@ export async function runSearchServices(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.services(body as SearchServicesBody);
@@ -736,7 +736,7 @@ export async function runSearchServices(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -778,7 +778,7 @@ export async function runSearchServiceParameters(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -821,7 +821,7 @@ export async function runSearchFromUrl(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.search.fromUrl(body as SearchFromUrlBody);
@@ -832,7 +832,7 @@ export async function runSearchFromUrl(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -1006,7 +1006,7 @@ const searchJobsCommand = defineCommand({
 const searchParametersCommand = defineCommand({
   meta: { name: "parameters", description: "Resolve human-readable terms to opaque filter IDs." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     type: {
       type: "string",
       description:
@@ -1100,7 +1100,7 @@ const searchServiceParametersCommand = defineCommand({
     description: "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts.",
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     type: {
       type: "string",
       description: "Filter type to resolve: service_category (default) or location.",

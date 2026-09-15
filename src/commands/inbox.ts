@@ -23,7 +23,7 @@ import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/glob
 import { normalizeChatId } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { RETRIEVAL_FLAGS, parseRetrievalFlags } from "../lib/retrieval.js";
@@ -160,7 +160,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -211,7 +211,7 @@ export async function runInboxList(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.messaging.listChats(params);
@@ -342,7 +342,7 @@ export async function runInboxMessages(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.messaging.listMessages(chatId, params);
@@ -399,7 +399,7 @@ export async function runInboxSearch(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.messaging.searchChats(params as { query: string });

@@ -33,7 +33,7 @@ import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
@@ -50,7 +50,7 @@ type CommentFlags = {
   userId?: string;
   text?: string;
   reaction?: string;
-  attach?: string | string[];
+  attach?: string;
   account?: string;
   json?: boolean;
   fields?: string;
@@ -122,16 +122,15 @@ async function handleSdkError(
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
 }
 
-/** Normalize --attach to an array of paths. */
-function normalizeAttachPaths(attach: string | string[] | undefined): string[] {
-  if (!attach) return [];
-  return Array.isArray(attach) ? attach : [attach];
+/** --attach as a list of paths: at most one, a repeat is refused before this runs. */
+function normalizeAttachPaths(attach: string | undefined): string[] {
+  return attach ? [attach] : [];
 }
 
 function assertReaction(reaction: string, out: OutputStreams): asserts reaction is Reaction {
@@ -166,7 +165,7 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.posts.listComments(postId, params);
@@ -197,7 +196,7 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.comments.listReplies(postId, commentId, params);
@@ -228,7 +227,7 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.comments.listReactions(postId, commentId, params);
@@ -271,7 +270,7 @@ export async function runCommentUser(client: Curviate, flags: CommentFlags, out:
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.comments.listUserComments(userId, params);
@@ -287,7 +286,7 @@ export async function runCommentUser(client: Curviate, flags: CommentFlags, out:
 // ---------------------------------------------------------------------------
 
 /**
- * Run `comment add <post_id> <text> [--attach <file>...]`, comments.create.
+ * Run `comment add <post_id> <text> [--attach <file>]`, comments.create.
  * Write command, supports --preview. TEXT accepts `-` for stdin.
  */
 export async function runCommentAdd(
@@ -341,7 +340,7 @@ export async function runCommentAdd(
 }
 
 /**
- * Run `comment reply <post_id> <comment_id> <text> [--attach <file>...]`, comments.reply.
+ * Run `comment reply <post_id> <comment_id> <text> [--attach <file>]`, comments.reply.
  * Write command, supports --preview. TEXT accepts `-` for stdin.
  */
 export async function runCommentReply(

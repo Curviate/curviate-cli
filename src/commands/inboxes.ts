@@ -27,7 +27,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
@@ -92,7 +92,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -184,7 +184,7 @@ export async function runInboxesChats(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.inboxes.listChats(inboxId, params);

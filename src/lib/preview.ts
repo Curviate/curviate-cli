@@ -48,6 +48,29 @@ export interface PreviewOutput {
 }
 
 /**
+ * Flags whose value is a secret (a credential, a cookie, an OTP, a signing
+ * secret). Their values are never echoed in a diagnostic, and neither is
+ * anything that may be one: a positional right after `--api-key=` (a stray
+ * space), or the tail of a flag name that starts with one (`--api-key-<key>`,
+ * a missing `=`). A `--preview` render masks them too. `recruiter message new
+ * --signature` is not here: it is the sign-off line of the message, content
+ * the preview exists to show.
+ */
+export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret"];
+
+/** Body keys a secret flag's value is sent under (`--li-at` -> `li_at`), at any depth. */
+const SECRET_KEYS = new Set(SECRET_FLAGS.map((flag) => flag.replace(/-/g, "_")));
+const SECRET_MASK = "••••";
+
+function maskSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskSecrets);
+  if (typeof value !== "object" || value === null || Buffer.isBuffer(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, v]) => [key, SECRET_KEYS.has(key) && v !== undefined && v !== null ? SECRET_MASK : maskSecrets(v)]),
+  );
+}
+
+/**
  * Build the preview output object for `--preview` rendering.
  *
  * Attachment buffers are replaced with their description strings. No raw
@@ -56,8 +79,8 @@ export interface PreviewOutput {
 export function buildPreviewOutput(req: PreviewRequest): PreviewOutput {
   const result: PreviewOutput = {
     method: req.method,
-    args: req.args,
-    body: req.body,
+    args: maskSecrets(req.args) as Record<string, unknown>,
+    body: maskSecrets(req.body) as Record<string, unknown>,
   };
 
   if (req.account !== undefined) {

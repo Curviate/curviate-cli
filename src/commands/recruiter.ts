@@ -33,11 +33,11 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
-import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { createClient, downloadBinary } from "../lib/client.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
@@ -200,7 +200,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -543,7 +543,7 @@ export async function runRecruiterSearchPeople(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
@@ -645,7 +645,7 @@ export async function runRecruiterSearchFromUrl(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
@@ -687,7 +687,7 @@ export async function runRecruiterListProjects(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listProjects(Object.keys(params).length > 0 ? params : undefined);
@@ -818,7 +818,7 @@ export async function runRecruiterListPipeline(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listPipeline(
@@ -959,7 +959,7 @@ export async function runRecruiterListJobs(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.listJobs(Object.keys(params).length > 0 ? params : undefined);
@@ -1298,7 +1298,7 @@ export async function runRecruiterSearchTalentPool(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.recruiter.searchTalentPool(projectId, body as RecruiterSearchTalentPoolBody, Object.keys(params).length > 0 ? params : undefined);
@@ -1424,7 +1424,7 @@ export async function runRecruiterDownloadResume(
   const ns = client.account(accountId);
 
   try {
-    const data = await ns.recruiter.downloadResume(projectId, applicantId);
+    const data = await downloadBinary(() => ns.recruiter.downloadResume(projectId, applicantId));
     await writeBinaryOutput(data, {
       outputPath: flags.output,
       isTTY,
@@ -1551,7 +1551,7 @@ const recruiterSearchPeopleCommand = defineCommand({
 const recruiterSearchParametersCommand = defineCommand({
   meta: { name: "parameters", description: "Resolve Recruiter filter parameter IDs (POST, source-scoped)." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     source: {
       type: "string",
       description:
@@ -1886,7 +1886,7 @@ const recruiterJobPublishCommand = defineCommand({
 const recruiterApplicantsCommand = defineCommand({
   meta: { name: "applicants", description: "List applicants in a Recruiter project's talent pool." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },
   },

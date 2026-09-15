@@ -32,6 +32,7 @@
 
 import type { Curviate } from "@curviate/sdk";
 import { resolveIdentifier } from "./identifier.js";
+import { readableId } from "./paginate.js";
 import type { RetrievalQuery } from "./retrieval.js";
 
 type AccountNamespaces = ReturnType<Curviate["account"]>;
@@ -54,8 +55,7 @@ export async function resolveMemberProviderId(
 ): Promise<string> {
   const normalized = resolveIdentifier(raw);
   if (MEMBER_PROVIDER_ID_RE.test(normalized)) return normalized;
-  const profile = await ns.users.get(normalized, {});
-  return profile.id;
+  return readableId(await ns.users.get(normalized, {}));
 }
 
 /**
@@ -79,6 +79,5 @@ export async function resolveMemberOrMeProviderId(
   // an explicit `max_age` it would also ignore the caller's freshness bound.
   // Callers with no retrieval flags pass nothing and get the previous
   // behaviour exactly.
-  const profile = await ns.users.get(normalized, query);
-  return profile.id;
+  return readableId(await ns.users.get(normalized, query));
 }

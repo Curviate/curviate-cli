@@ -5,8 +5,8 @@
  * to prevent infinite loops. On truncation, the command exits 0 (not an
  * error).
  *
- * Commands that are not paginated (no `items` or `data` array in the response)
- * reject `--all` with exit 2.
+ * Only commands that stream declare `--all`; elsewhere it is an unknown flag
+ * (exit 2). A response that is not a page exits 7 (`readablePage`).
  *
  * **Truncation output contract.** When `--max-pages` truncates a stream that
  * still has pages remaining, EVERY `--all` command must emit the identical
@@ -38,20 +38,48 @@
  * modes.
  */
 
+import { CurviateError } from "@curviate/sdk";
+import { isPlainObject } from "./config.js";
 import { renderNotices, renderProvenanceNote } from "./output.js";
 
-/** Usage error for non-paginated commands. */
-export class PaginateError extends Error {
-  readonly exitCode = 2;
-  constructor(message: string) {
-    super(message);
-    this.name = "PaginateError";
-  }
+/**
+ * A list call's 2xx must be a page: an object with an `items` array (the
+ * Recruiter lists, and the SDK's own paginator, carry it as `data`). `null`,
+ * `{}`, a non-array `items`, an array, a scalar, or an empty body (which
+ * arrives as bytes) is no API answer: a platform fault, exit 7, never a crash
+ * on `.items` and never an empty page read as real. Every path that reads a
+ * list (`--all` streams, name resolvers, credential checks) goes through here.
+ */
+export function readablePage<T>(page: T): T & { items: unknown[] } {
+  const list = isPlainObject(page) ? (page["items"] === undefined ? page["data"] : page["items"]) : undefined;
+  if (!Array.isArray(list)) throw unreadable("list page");
+  return { ...(page as T), items: list };
+}
+
+/**
+ * The id a slug or name lookup resolved to. An answer that is not an object
+ * with a non-empty `id` is a platform fault (exit 7), never `undefined` or
+ * `null` spliced into the next request's path.
+ */
+export function readableId(entity: unknown): string {
+  const id = isPlainObject(entity) ? entity["id"] : undefined;
+  if ((typeof id !== "string" || id === "") && !(typeof id === "number" && Number.isFinite(id))) throw unreadable("id");
+  return String(id);
+}
+
+function unreadable(what: string): CurviateError {
+  return new CurviateError({
+    code: "PLATFORM_ERROR",
+    message: `The API answered without a readable ${what}.`,
+    // The status the client gives every synthesized unreadable-2xx fault.
+    httpStatus: 502,
+    userFixable: false,
+    retryLikelyToSucceed: true,
+  });
 }
 
 type PageResponse = {
   items?: unknown[];
-  data?: unknown[];
   cursor?: string | null;
   notices?: unknown;
 };
@@ -161,7 +189,7 @@ export interface StreamAllOptions {
  * Fetches pages, injecting the cursor from each response into the next call.
  * Yields individual items. Stops when cursor is null or maxPages is reached.
  *
- * @throws {PaginateError} (exitCode 2) when the first response has no items/data array.
+ * @throws {CurviateError} `PLATFORM_ERROR` (exit 7) when a response is not a page.
  */
 export async function* streamAll<P extends Record<string, unknown>>(
   fn: PaginatableMethod<P>,
@@ -181,17 +209,10 @@ export async function* streamAll<P extends Record<string, unknown>>(
         ? ({ ...params, cursor } as P)
         : params;
 
-    const page = await fn(pageParams);
+    const page = readablePage(await fn(pageParams));
     pageCount++;
 
-    // Validate paginatable shape on first response.
-    const items = page.items ?? page.data;
-    if (firstPage && !Array.isArray(items)) {
-      throw new PaginateError(
-        "--all requires a paginated method (response must have `items` or `data` array). " +
-        "Remove --all for non-list commands.",
-      );
-    }
+    const items = page.items;
     if (firstPage) {
       // Streaming has engaged and the shape is valid, announce the NDJSON
       // format switch once, before any item is emitted.

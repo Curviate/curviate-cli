@@ -1,13 +1,11 @@
 /**
  * Unit tests for the LinkedIn-account credential resolver: precedence
- * (flag > stdin > env > prompt > fail-fast), the stdin/flag conflict matrix,
- * and the `--preview` secret-masking helper.
+ * (flag > stdin > env > prompt > fail-fast) and the stdin/flag conflict matrix.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   resolveSecret,
   checkCredentialConflicts,
-  maskCredentialSecretsForPreview,
   type CredentialConflictFlags,
 } from "../../src/lib/credential-resolve.js";
 
@@ -391,42 +389,5 @@ describe("checkCredentialConflicts", () => {
       exitSpy.mockRestore();
     }
     expect(exitSpy).not.toHaveBeenCalled();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// maskCredentialSecretsForPreview
-// ---------------------------------------------------------------------------
-
-describe("maskCredentialSecretsForPreview", () => {
-  it("masks credentials.password when present, on a copy", () => {
-    const body = { credentials: { email: "a@b.c", password: "SENTINEL" } };
-    const masked = maskCredentialSecretsForPreview(body);
-    expect((masked["credentials"] as Record<string, unknown>)["password"]).toBe("••••");
-    expect(JSON.stringify(masked)).not.toContain("SENTINEL");
-    // Original object must be untouched — masking must not mutate the shared body.
-    expect(body.credentials.password).toBe("SENTINEL");
-  });
-
-  it("masks cookie.li_at and cookie.li_a independently", () => {
-    const body = { cookie: { li_at: "LIAT_SENTINEL", li_a: "LIA_SENTINEL" } };
-    const masked = maskCredentialSecretsForPreview(body);
-    const cookie = masked["cookie"] as Record<string, unknown>;
-    expect(cookie["li_at"]).toBe("••••");
-    expect(cookie["li_a"]).toBe("••••");
-    expect(JSON.stringify(masked)).not.toContain("LIAT_SENTINEL");
-    expect(JSON.stringify(masked)).not.toContain("LIA_SENTINEL");
-  });
-
-  it("masks proxy.password when present", () => {
-    const body = { proxy: { host: "h", password: "PROXY_SENTINEL" } };
-    const masked = maskCredentialSecretsForPreview(body);
-    expect((masked["proxy"] as Record<string, unknown>)["password"]).toBe("••••");
-  });
-
-  it("leaves a body with no secret fields unchanged", () => {
-    const body = { seat_id: "seat_1", auth_method: "credentials" };
-    const masked = maskCredentialSecretsForPreview(body);
-    expect(masked).toEqual(body);
   });
 });

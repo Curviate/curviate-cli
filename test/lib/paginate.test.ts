@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import type { Mock } from "vitest";
 import {
   streamAll,
-  PaginateError,
   ndjsonModeNotice,
   pageDelayFrom,
   DEFAULT_PAGE_DELAY_MS,
@@ -113,27 +112,36 @@ describe("lib/paginate — streamAll", () => {
   });
 
   it("handles response with data[] array instead of items[]", async () => {
-    const method = vi.fn(async () => ({
-      data: ["x", "y"],
-      cursor: null,
-    }));
+    const method = vi.fn(async () => ({ data: ["x", "y"], cursor: null }));
     const items: unknown[] = [];
-    for await (const item of streamAll(method as never, {}, { maxPages: 10 })) {
-      items.push(item);
-    }
+    for await (const item of streamAll(method as never, {}, { maxPages: 10 })) items.push(item);
     expect(items).toEqual(["x", "y"]);
   });
 
-  it("throws PaginateError (exitCode 2) when used on a non-paginated response", async () => {
-    // A method that returns a response with neither items nor data
-    const method = vi.fn(async () => ({ id: "not-a-list" }));
+  for (const page of [{ id: "not-a-list" }, null, {}, { items: null }, { items: "x" }, { items: null, data: ["x"] }, { data: "x" }, []]) {
+    it(`a response that is not a page (${JSON.stringify(page)}) is PLATFORM_ERROR, before yielding`, async () => {
+      const method = vi.fn(async () => page);
+      const yielded: unknown[] = [];
+      await expect(
+        (async () => {
+          for await (const item of streamAll(method as never, {}, { maxPages: 10 })) yielded.push(item);
+        })(),
+      ).rejects.toMatchObject({ code: "PLATFORM_ERROR", retryLikelyToSucceed: true });
+      expect(yielded).toEqual([]);
+    });
+  }
+
+  it("a later page that is not a page is PLATFORM_ERROR too, after the earlier items", async () => {
+    const pages: unknown[] = [{ items: ["a"], cursor: "next" }, null];
+    let call = 0;
+    const method = vi.fn(async () => pages[call++]);
+    const yielded: unknown[] = [];
     await expect(
       (async () => {
-        for await (const item of streamAll(method as never, {}, { maxPages: 10 })) {
-          void item; // should throw before yielding
-        }
+        for await (const item of streamAll(method as never, {}, { maxPages: 10, sleep: noSleep })) yielded.push(item);
       })(),
-    ).rejects.toBeInstanceOf(PaginateError);
+    ).rejects.toMatchObject({ code: "PLATFORM_ERROR" });
+    expect(yielded).toEqual(["a"]);
   });
 
   // ---------------------------------------------------------------------------
@@ -248,7 +256,7 @@ describe("lib/paginate — NDJSON-mode notice", () => {
     expect(noticeWrites[0]).toBe(ndjsonModeNotice());
   });
 
-  it("does NOT emit the notice when the response is non-paginatable (PaginateError first)", async () => {
+  it("does NOT emit the notice when the response is not a page (PLATFORM_ERROR first)", async () => {
     const method = vi.fn(async () => ({ id: "not-a-list" }));
     const out = makeOut();
     await expect(
@@ -257,7 +265,7 @@ describe("lib/paginate — NDJSON-mode notice", () => {
           void item;
         }
       })(),
-    ).rejects.toBeInstanceOf(PaginateError);
+    ).rejects.toMatchObject({ code: "PLATFORM_ERROR" });
     const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     expect(stderrText).not.toContain("NDJSON");
   });

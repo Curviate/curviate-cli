@@ -35,11 +35,12 @@ import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
-import { createClient } from "../lib/client.js";
+import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
+import { readableId } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type MessageFlags = {
@@ -123,7 +124,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -220,8 +221,7 @@ export async function runMessageNew(
   } else {
     // Slug or other form, resolve via users.get.
     try {
-      const profileData = await ns.users.get(resolvedSlugOrId, {});
-      providerId = profileData.id;
+      providerId = readableId(await ns.users.get(resolvedSlugOrId, {}));
     } catch (err: unknown) {
       await handleSdkError(err, outOpts, out);
       return; // unreachable: handleSdkError always calls process.exit
@@ -509,7 +509,7 @@ export async function runMessageAttachment(
   const ns = client.account(accountId);
 
   try {
-    const data = await ns.messaging.getAttachment(chatId, messageId, attachmentId);
+    const data = await downloadBinary(() => ns.messaging.getAttachment(chatId, messageId, attachmentId));
     await writeBinaryOutput(data, {
       outputPath: flags.output,
       isTTY,
@@ -572,8 +572,7 @@ export async function runMessageInMail(
   } else {
     // Slug or URL-derived slug, resolve via users.get.
     try {
-      const profileData = await ns.users.get(resolvedSlugOrId, {});
-      recipientUrn = profileData.id;
+      recipientUrn = readableId(await ns.users.get(resolvedSlugOrId, {}));
     } catch (err: unknown) {
       await handleSdkError(err, outOpts, out);
       return; // unreachable: handleSdkError always calls process.exit

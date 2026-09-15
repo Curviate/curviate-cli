@@ -168,9 +168,10 @@ function argumentSurface(nodes: Node[]): Arg[] {
  *
  * Exact, not a floor: a floor cannot see the surface shrinking by less than
  * its slack. Bump this whenever a command gains or loses a non-boolean flag
- * (1684 after the local commands stopped declaring flags they never read).
+ * (1684 after the local commands stopped declaring flags they never read; 1654
+ * after the 15 commands that never stream dropped --max-pages and --page-delay).
  */
-const ARGUMENT_SURFACE_COUNT = 1684;
+const ARGUMENT_SURFACE_COUNT = 1654;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------
@@ -483,16 +484,16 @@ const WIRE_SHAPE_CASES: WireCase[] = [
     },
   },
   {
-    // mri accumulates a REPEATED flag into an array regardless of the citty
-    // argument's declared type, so `--keywords` typed twice reaches
-    // restoreLiteralDashes as an array and hits its Array.isArray branch,
-    // which no other case here exercises.
+    // mri accumulates a REPEATED flag into an array, so a flag declared
+    // repeatable (`--invitee`) reaches restoreLiteralDashes as an array and
+    // hits its Array.isArray branch, which no other case here exercises. Only
+    // repeatable flags can carry an array: any other repeat is refused first.
     shape: "array",
-    label: "search people --keywords x --keywords - (array element)",
-    argv: ["search", "people", "--keywords", "x", "--keywords", "-"],
+    label: "company follow-invite 12345 --invitee x --invitee - (array element)",
+    argv: ["company", "follow-invite", "12345", "--invitee", "x", "--invitee", "-"],
     assertBody: (body) => {
       expect(
-        body["keywords"],
+        body["invitee_ids"],
         `expected the array element to come back as a literal dash, not the placeholder: ${JSON.stringify(body)}`,
       ).toEqual(["x", "-"]);
     },

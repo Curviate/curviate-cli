@@ -34,11 +34,11 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
@@ -143,7 +143,7 @@ async function handleSdkError(err: unknown, outOpts: ReturnType<typeof resolveOu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -210,7 +210,7 @@ export async function runSalesNavSearchPeople(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.salesNavigator.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
@@ -271,7 +271,7 @@ export async function runSalesNavSearchCompanies(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.salesNavigator.searchCompanies(body, Object.keys(params).length > 0 ? params : undefined);
@@ -359,7 +359,7 @@ export async function runSalesNavSearchFromUrl(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.salesNavigator.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
@@ -559,7 +559,7 @@ export async function runSalesNavAccountLists(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -600,7 +600,7 @@ export async function runSalesNavLeadLists(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -647,7 +647,7 @@ export async function runSalesNavBrowseAccountList(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -694,7 +694,7 @@ export async function runSalesNavBrowseLeadList(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
       return;
     }
@@ -854,7 +854,7 @@ const salesNavSearchCompaniesCommand = defineCommand({
 const salesNavSearchParametersCommand = defineCommand({
   meta: { name: "parameters", description: "Resolve Sales Navigator filter parameter IDs." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     type: {
       type: "string",
       description:

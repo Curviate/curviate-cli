@@ -31,10 +31,10 @@ import { defineCommand } from "citty";
 import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
-import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { createClient, downloadBinary } from "../lib/client.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -206,7 +206,7 @@ async function handleSdkError(
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -302,7 +302,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
       // cursor/truncation bookkeeping, driven by the untouched page.cursor
       //, never sees the filtering at all.
       const fn = (p: typeof base) =>
-        ns.jobs.list(p as JobListQuery).then((page) => {
+        listJobs(ns, p as JobListQuery).then((page) => {
           const { items: filtered, dropped } = filterJobsByState(page.items, state);
           if (dropped > 0) {
             out.stderr.write(stateFilterDroppedNote(dropped, page.items?.length ?? 0, state));
@@ -314,10 +314,10 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
-      const result = await ns.jobs.list(base as JobListQuery);
+      const result = await listJobs(ns, base as JobListQuery);
       const { items: filtered, dropped } = filterJobsByState(result.items, state);
       if (dropped > 0) {
         out.stderr.write(stateFilterDroppedNote(dropped, result.items?.length ?? 0, state));
@@ -327,6 +327,11 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
   }
+}
+
+/** Every `job list` page fetch: a 2xx that is not a page exits 7. */
+function listJobs(ns: AccountNs, query: JobListQuery) {
+  return ns.jobs.list(query).then(readablePage);
 }
 
 /** A modest inter-request pause reused between per-state fetches in a union. */
@@ -379,7 +384,7 @@ async function runJobListAllStates(
         const base: { state: string; limit?: number } = { state: s };
         if (limit !== undefined) base.limit = limit;
         const fn = (p: typeof base) =>
-          ns.jobs.list(p as JobListQuery).then((page) => ({
+          listJobs(ns, p as JobListQuery).then((page) => ({
             ...page,
             items: filterJobsByState(page.items, s).items,
           }));
@@ -391,7 +396,7 @@ async function runJobListAllStates(
           const id = jobItemId(item);
           if (id !== undefined && seen.has(id)) continue;
           if (id !== undefined) seen.add(id);
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
         if (i < JOB_STATES.length - 1) await pace(betweenStatesDelay);
       }
@@ -402,7 +407,7 @@ async function runJobListAllStates(
         const s = JOB_STATES[i]!;
         const base: { state: string; limit?: number } = { state: s };
         if (limit !== undefined) base.limit = limit;
-        const page = await ns.jobs.list(base as JobListQuery);
+        const page = await listJobs(ns, base as JobListQuery);
         const { items: filtered } = filterJobsByState(page.items, s);
         for (const item of filtered) {
           const id = jobItemId(item);
@@ -464,7 +469,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.jobs.listApplicants(jobId, base as ListApplicantsParams);
@@ -505,7 +510,7 @@ export async function runJobApplicantResume(client: Curviate, flags: JobFlags, o
   const ns = client.account(accountId);
 
   try {
-    const data = await ns.jobs.downloadResume(jobId, applicantId);
+    const data = await downloadBinary(() => ns.jobs.downloadResume(jobId, applicantId));
     await writeBinaryOutput(data, { outputPath: flags.output, isTTY, stdout: process.stdout });
   } catch (err: unknown) {
     if (err instanceof BinaryOutputError) {

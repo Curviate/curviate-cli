@@ -1,0 +1,239 @@
+/**
+ * Exit classification for a request that never left the process (a malformed
+ * base URL -> 2) and for a server fault with no readable error body (-> 7),
+ * through the built bin.
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { spawn } from "node:child_process";
+import { createServer, type Server } from "node:http";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { cliPath } from "./helpers/built-cli.js";
+
+let xdg: string;
+let server: Server;
+let baseUrl: string;
+let requests = 0;
+let reply: { status: number; type: string; body: string } = {
+  status: 200,
+  type: "application/json",
+  body: JSON.stringify({ items: [], cursor: null }),
+};
+
+function run(args: string[]): Promise<{ status: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolvePromise, reject) => {
+    const env: NodeJS.ProcessEnv = { ...process.env, XDG_CONFIG_HOME: xdg, NODE_ENV: "production" };
+    delete env["CURVIATE_API_KEY"];
+    delete env["CURVIATE_ACCOUNT"];
+    delete env["CURVIATE_BASE_URL"];
+    const child = spawn(process.execPath, [cliPath, ...args], { env });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (c: string) => (stdout += c));
+    child.stderr.on("data", (c: string) => (stderr += c));
+    child.on("error", reject);
+    child.on("close", (status) => resolvePromise({ status, stdout, stderr }));
+    child.stdin.end("");
+  });
+}
+
+beforeAll(async () => {
+  xdg = mkdtempSync(join(tmpdir(), "curviate-base-url-bin-"));
+  server = createServer((req, res) => {
+    requests++;
+    req.resume();
+    req.on("end", () => {
+      res.writeHead(reply.status, { "content-type": reply.type, "retry-after": "0" });
+      res.end(reply.body);
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, r));
+  baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+});
+
+afterAll(async () => {
+  await new Promise<void>((r) => server.close(() => r()));
+});
+
+const MALFORMED = ["not a url", "http//x", "http://", "", "localhost:9", "ftp://x"];
+
+describe("a malformed base URL is a refused invocation, exit 2", () => {
+  it("doctor: a well-formed base URL passes (positive control)", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ items: [], cursor: null }) };
+    const r = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  for (const bad of MALFORMED) {
+    it(`doctor --base-url ${JSON.stringify(bad)} exits 2 and still reports`, async () => {
+      const r = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", bad]);
+      expect(r.status, r.stdout + r.stderr).toBe(2);
+      const report = JSON.parse(r.stdout.trim()) as { exit: number; api_reachable: boolean };
+      expect(report.exit).toBe(2);
+      expect(report.api_reachable).toBe(false);
+    });
+  }
+
+  it("profile me: a well-formed base URL passes (positive control)", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ provider_id: "p" }) };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  for (const bad of MALFORMED) {
+    it(`profile me --base-url ${JSON.stringify(bad)} exits 2, naming the base URL`, async () => {
+      const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", bad]);
+      expect(r.status, r.stdout + r.stderr).toBe(2);
+      expect(r.stdout + r.stderr).toMatch(/base URL/i);
+    });
+  }
+});
+
+describe("a 5xx with no readable error body is a platform fault, exit 7", () => {
+  it("an HTML 502 exits 7 with PLATFORM_ERROR", async () => {
+    reply = { status: 502, type: "text/html", body: "<html>Bad Gateway</html>" };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).toBe(7);
+    expect(r.stdout).toContain("PLATFORM_ERROR");
+  });
+
+  it("a 500 with a declared INTERNAL envelope still exits 1 (table unchanged)", async () => {
+    reply = {
+      status: 500,
+      type: "application/json",
+      body: JSON.stringify({ code: "INTERNAL", message: "boom", user_fixable: false, retry_likely_to_succeed: false }),
+    };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+  });
+
+  it("a server-sent retry-likely INTERNAL is a response, not a transport failure: exit 1", async () => {
+    reply = {
+      status: 503,
+      type: "application/json",
+      body: JSON.stringify({ code: "INTERNAL", message: "boom", user_fixable: false, retry_likely_to_succeed: true }),
+    };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+  });
+
+  for (const [type, body] of [
+    ["application/json", "<html>portal</html>"],
+    ["text/html", "<html>portal</html>"],
+  ] as const) {
+    it(`a 200 ${type} that is not JSON exits 7 on a command and in doctor`, async () => {
+      reply = { status: 200, type, body };
+      const cmd = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+      expect(cmd.status, cmd.stdout + cmd.stderr).toBe(7);
+      const doc = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+      expect(doc.status, doc.stdout + doc.stderr).toBe(7);
+      expect((JSON.parse(doc.stdout.trim()) as { exit: number }).exit).toBe(7);
+    });
+  }
+
+  it("a 200 JSON body is untouched (positive control)", async () => {
+    reply = { status: 200, type: "application/json", body: JSON.stringify({ items: [], cursor: null }) };
+    const r = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
+    expect(r.status, r.stderr).toBe(0);
+  });
+
+  it("config set-base-url refuses a malformed URL before saving", async () => {
+    const r = await run(["config", "set-base-url", "not a url"]);
+    expect(r.status, r.stderr).not.toBe(0);
+    const login = await run(["login", "--api-key", "cvt_test_x"]);
+    expect(login.status, login.stderr).toBe(0);
+    const bad = await run(["config", "set-base-url", "not a url"]);
+    expect(bad.status, bad.stderr).toBe(2);
+    const list = await run(["config", "list", "--json"]);
+    expect(list.stdout).not.toContain("not a url");
+  });
+
+  describe("a base URL carrying credentials (userinfo) is refused before sending", () => {
+    const withUserinfo = () => {
+      const port = new URL(baseUrl).port;
+      return [`http://u:ZZPW42@127.0.0.1:${port}`, `http://ZZUSER42@127.0.0.1:${port}`, `http://:ZZPW42@127.0.0.1:${port}`];
+    };
+    const noEcho = (text: string) => {
+      expect(text).not.toContain("ZZPW42");
+      expect(text).not.toContain("ZZUSER42");
+    };
+
+    it("control: the same host without userinfo is sent to", async () => {
+      reply = { status: 200, type: "application/json", body: JSON.stringify({ provider_id: "p" }) };
+      requests = 0;
+      const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+      expect(r.status, r.stderr).toBe(0);
+      expect(requests).toBe(1);
+    });
+
+    it("--base-url, CURVIATE_BASE_URL and doctor: exit 2, zero requests, never echoed", async () => {
+      for (const url of withUserinfo()) {
+        requests = 0;
+        const flag = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", url]);
+        expect(flag.status, flag.stdout + flag.stderr).toBe(2);
+        expect(flag.stdout + flag.stderr).toMatch(/base URL/i);
+        noEcho(flag.stdout + flag.stderr);
+        const doc = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", url]);
+        expect(doc.status, doc.stdout + doc.stderr).toBe(2);
+        expect((JSON.parse(doc.stdout.trim()) as { exit: number }).exit).toBe(2);
+        noEcho(doc.stdout + doc.stderr);
+        expect(requests).toBe(0);
+      }
+      requests = 0;
+      const env = await new Promise<{ status: number | null; out: string }>((done) => {
+        const child = spawn(process.execPath, [cliPath, "account", "list", "--json", "--api-key", "cvt_test_x"], {
+          env: { ...process.env, XDG_CONFIG_HOME: xdg, CURVIATE_BASE_URL: withUserinfo()[0]! },
+        });
+        let out = "";
+        child.stdout.on("data", (c: Buffer) => (out += c.toString()));
+        child.stderr.on("data", (c: Buffer) => (out += c.toString()));
+        child.on("close", (status) => done({ status, out }));
+        child.stdin.end("");
+      });
+      expect(env.status, env.out).toBe(2);
+      noEcho(env.out);
+      expect(requests).toBe(0);
+    });
+
+    it("login --base-url and config set-base-url refuse to save it", async () => {
+      const ok = await run(["login", "--api-key", "cvt_test_x"]);
+      expect(ok.status, ok.stderr).toBe(0);
+      for (const url of withUserinfo()) {
+        const login = await run(["login", "--api-key", "cvt_test_x", "--base-url", url]);
+        expect(login.status, login.stderr).toBe(2);
+        noEcho(login.stdout + login.stderr);
+        const set = await run(["config", "set-base-url", url]);
+        expect(set.status, set.stderr).toBe(2);
+        noEcho(set.stdout + set.stderr);
+      }
+      const list = await run(["config", "list", "--json"]);
+      noEcho(list.stdout);
+      expect(list.stdout).not.toContain("127.0.0.1");
+    });
+
+    it("a hand-edited profile baseUrl with userinfo: a command refuses, config list does not echo it", async () => {
+      const url = withUserinfo()[0]!;
+      mkdirSync(join(xdg, "curviate"), { recursive: true });
+      writeFileSync(join(xdg, "curviate", "config.json"), JSON.stringify({ active: "default", profiles: { default: { apiKey: "cvt_test_x", baseUrl: url } } }));
+      requests = 0;
+      const r = await run(["account", "list", "--json"]);
+      expect(r.status, r.stdout + r.stderr).toBe(2);
+      noEcho(r.stdout + r.stderr);
+      expect(requests).toBe(0);
+      const list = await run(["config", "list", "--json"]);
+      expect(list.status).toBe(0);
+      noEcho(list.stdout + list.stderr);
+      expect(list.stdout).toContain(`127.0.0.1:${new URL(baseUrl).port}`);
+    });
+  });
+
+  it("a 4xx with a non-JSON body is not reclassified", async () => {
+    reply = { status: 404, type: "text/plain", body: "nope" };
+    const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+    expect(r.status, r.stdout + r.stderr).not.toBe(7);
+  });
+});

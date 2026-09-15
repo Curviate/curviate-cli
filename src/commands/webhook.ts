@@ -16,10 +16,10 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
@@ -112,7 +112,7 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -207,7 +207,7 @@ export async function runWebhookList(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await client.webhooks.list(params);
@@ -473,7 +473,7 @@ export async function runWebhookVerify(
 const webhookCreateCommand = defineCommand({
   meta: { name: "create", description: "Register a new webhook endpoint." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target (required).", required: true },
@@ -523,7 +523,7 @@ const webhookListCommand = defineCommand({
 
 const webhookEventsCommand = defineCommand({
   meta: { name: "events", description: "List the canonical webhook event catalogue." },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...NON_STREAM_FLAGS },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -545,7 +545,7 @@ const webhookEventsCommand = defineCommand({
 const webhookGetCommand = defineCommand({
   meta: { name: "get", description: "Get a single webhook owned by the calling tenant." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
@@ -569,7 +569,7 @@ const webhookGetCommand = defineCommand({
 const webhookUpdateCommand = defineCommand({
   meta: { name: "update", description: "Update a webhook in place (source is immutable)." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
     "request-url": { type: "string", description: "Replace the delivery URL." },
     name: { type: "string", description: "Replace the name (or clear with empty string)." },
@@ -599,7 +599,7 @@ const webhookUpdateCommand = defineCommand({
 const webhookDeleteCommand = defineCommand({
   meta: { name: "delete", description: "Permanently remove a webhook subscription." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {

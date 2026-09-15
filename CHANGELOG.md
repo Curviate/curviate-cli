@@ -8,12 +8,39 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.33.0] - 2026-09-14
 
-Four fixes. One of them refuses flags that used to be accepted, so it ships
-as a minor.
+One change and twelve fixes. Several refuse input that used to be accepted or
+change an exit code, so it ships as a minor.
 
-**Behavior change for a script that passes an inert flag to a local
-command**: `curviate login --cursor abc` and the like now exit `2` instead of
-being silently accepted. None of those flags did anything.
+**Behavior changes a script may notice:**
+
+- Passing an inert flag to a local command (`curviate login --cursor abc`
+  and the like) now exits `2` instead of being silently accepted. None of
+  those flags did anything.
+- Repeating a non-repeatable flag, such as `--keywords x --keywords y`, used
+  to send an array (or crash, or for a boolean silently read as unset) and
+  now exits `2`.
+- `---<flag>`, and `--no-<flag>` for a flag that is not a boolean, used to
+  be ignored and now exit `2`.
+- A malformed base URL (including one carrying `user:pass@`) or an invalid
+  `--timeout` now exits `2` (was `1`, or `7` for a non-http scheme or
+  credentials in the URL).
+- A request that gets no response, or a response that is not an API answer,
+  now exits `7` (was `1`, or `0` printing `{}` for a `200` whose body is not
+  JSON).
+  Download commands are the exception: they save any `2xx` body as the file.
+- A malformed config file (a field of the wrong JSON type, a `null` top
+  level, a non-string `active`, a non-object `profiles`) now exits `2` when
+  the command takes a value from it (was `1`, or sent as-is), and so does a
+  file that is not valid JSON. `config list --json` shows a broken field as
+  `"<invalid>"` and drops unknown fields. `config set-account` and
+  `config set-base-url` replace a profile that is not an object.
+- A list answer that is not a page now exits `7` on every path that reads
+  one, `setup`'s verifying call included (it reported success on most such
+  answers).
+- `--all`, `--max-pages` and `--page-delay` on a command that does not
+  stream pages now exit `2` (they were accepted and ignored on some).
+- Usage errors name a stray argument by its position
+  (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
 ### Changed
 
@@ -55,6 +82,118 @@ being silently accepted. None of those flags did anything.
   error line. The error now names the flag only.
 - **The publish leak gate scans `.yml` and `.yaml` files**, including CI
   workflow files, which it previously never opened.
+- **A malformed base URL exits `2`.** `--base-url 'not a url'` (or
+  `http://`, `localhost:9`, `ftp://x`, the same value from
+  `CURVIATE_BASE_URL` or the profile) exited `1` with `Invalid URL`, or `7`
+  for a non-http scheme. Nothing was sent, so it is now a usage error on every
+  command, `doctor` included, whose report still prints. `login --base-url`
+  and `config set-base-url` refuse it before saving. A base URL carrying a
+  user name or password (`http://user:pass@host`) is refused the same way,
+  exit `2` with nothing sent (it exited `7`), and `doctor` and `config list`
+  never display the credentials.
+- **A response that is not an API answer exits `7`.** A 5xx whose body is not
+  an error envelope (a gateway's HTML page, an empty body) decoded as
+  `INTERNAL`, exit `1`. A `2xx` whose non-empty body is not JSON exited `1`
+  when it claimed JSON (`doctor`: `3`), and otherwise (`text/html`,
+  `text/plain`, `application/octet-stream`, no content type) exited `0`
+  printing `{}`. All now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that
+  carries an error envelope keeps its declared code. A `204` or any other
+  empty-bodied success still exits `0`, and an empty `200` labelled JSON,
+  which exited `7`, now does too. A list answer that is not a page (an object
+  with an `items` array, or `data` on the Recruiter lists), such as `null`,
+  `{}`, a non-array `items`, an array, a scalar or an empty body, exits `7`
+  wherever one is read: every `--all` stream, `job list`, the `--account`
+  name lookup, and the credential checks in `doctor` and `setup` (`setup`
+  reported success and `doctor` reported the credential valid). Depending on the path
+  it used to crash with exit `1`, or print an empty result or a usage error.
+  A company or member slug lookup whose answer carries no id exits `7` too,
+  instead of sending `undefined` in the next request's path (`company posts
+  acme` against `[]`). The download commands (`message
+  attachment`, `job applicant resume`, `recruiter applicant resume`) are
+  exempt: they save any `2xx` body byte-for-byte whatever its content type,
+  since the server passes the file's own type through. That includes a
+  JSON-labelled file, which used to be saved empty.
+- **A request that gets no response exits `7` on every command.** A refused
+  connection, a DNS failure or a timeout arrived as `INTERNAL` and exited
+  `1`, while `doctor` already reported it as `7`. It is a transient platform
+  fault worth a retry, so every command now exits `7`. The `--json` envelope
+  is unchanged, and an `INTERNAL` the server sends still exits `1`.
+- **`--fields` narrows each item of an `--all` stream.** `account list --all
+  --fields account_id` streamed full items. Every NDJSON line now carries only
+  the requested keys, plus `notices`, `safety_warning` and the provenance
+  keys when the item has them. Without `--fields` the stream is unchanged.
+- **A repeated flag exits `2`.** `--account a --account b` crashed with
+  `account.trim is not a function`, and `--json --json` silently turned JSON
+  output off. Any flag given more than once, by name, alias (`-o x
+  --output y`) or negation (`--json --no-json`), and `--beta` given twice,
+  now exit `2` with `--<flag> was given more than once`. A flag still
+  accumulates where the command's help calls it repeatable: `--attach` on
+  `message`, `post create`, `company reply`, `sales-nav message new` and
+  `recruiter message new`, and `--invitee` on `company follow-invite`.
+  `comment add` and `comment reply` take at most one `--attach`, and used to
+  send every repeat.
+- **Credential flags are handled strictly and never echoed.**
+  - A usage error never echoes a user-supplied token. A value after
+    `--api-key=` with a stray space, or after `--`, was printed as an
+    unexpected argument; it is now named by position. A flag written without
+    its `=` (`--api-key-<key>`) is named by position too, and an unknown flag
+    by its exact name without any value. `--beta=<value>` no longer echoes the
+    rejected value.
+  - `--preview` masks every secret flag's value as `••••`. `account
+    checkpoint solve --code <otp> --preview` printed the code. The mask
+    covers `--code`, `--password`, `--li-at`, `--li-a` and `--proxy-password`
+    wherever the value sits in the rendered request. `recruiter message new
+    --signature` is the message's sign-off line, not a credential, so its
+    preview shows it.
+  - `---api-key=X` and `--no-api-key=X` are unknown flags (exit `2`). They
+    were ignored. `--no-<flag>` stays valid for boolean flags.
+  - `config list` shows only the last 4 characters of a key (`••••1234`),
+    and none of a key shorter than 16 characters. It showed the first 8 and
+    last 4, most of a short key.
+  - `--timeout` must be a whole number of milliseconds from `1` to
+    `2147483647`, digits only. `abc`, `10abc`, `0`, `1.5`, `0x10`, `1e3`,
+    ` 5` or `2147483648` now exit `2`; they surfaced as an immediate timeout,
+    a silently truncated value, or an out-of-range timer.
+- **A malformed config file exits `2`.** A hand-edited config whose profile
+  `apiKey` was an array, object or number crashed every command and
+  `config list` with exit `1`; a non-string `account` or `baseUrl` was sent
+  as-is; a `null` top level, a non-string `active` or a non-object `profiles`
+  crashed or was echoed back. Each is now a usage error, exit `2`, naming the
+  file, the profile and the field with the repair (`curviate config reset
+  --profile <name>`, or edit the file), never the value. A value is checked
+  only when the command actually takes it from the profile, so `--api-key`,
+  `--base-url`, `--timeout`, `--account` or the matching environment variable
+  still works around a broken field, and a root-scoped command such as
+  `account list` ignores a broken `account`. `null` on a field means unset.
+  `config list` never refuses: it lists every profile, shows a broken field
+  (or a broken `active`, `profiles` or profile) as `<invalid>`, and emits only
+  the known fields, where `--json` used to copy any stored field through.
+  A config file that is not valid JSON (empty, truncated, hand-mangled) exited
+  `1` printing the parser's error; every command now exits `2` with the
+  `curviate config reset` repair and no parser text, unless every value it
+  needs comes from flags or the environment; `config list` always exits `2`
+  on it. Config writers
+  (`login`, `config set-*`) refuse a broken top level, `active` or `profiles`
+  with exit `2`, and repair a profile that is not an object by replacing it
+  with a fresh one holding the written value: `config set-account` and
+  `config set-base-url` used to report success without writing (an array
+  profile) or crash printing the stored value (a string profile).
+  An `active` that is `null` or absent means `default` for writers as well
+  as readers; `config set-account` and `config set-base-url` reported
+  `Profile "null" not found`. When the API key and base URL both come from
+  flags or the environment, an unreadable config never blocks a command:
+  `timeout` falls back to its default, so env-only CI runs. A leading UTF-8
+  byte order mark is ignored.
+- **`--all` is refused where nothing streams.** `--all`, `--max-pages` and
+  `--page-delay` are no longer declared on the commands listed below, which
+  never stream pages; there they are unknown flags, exit `2`, nothing sent.
+  `profile me` keeps the flags and refuses `--all` at run time (exit `2`). `webhook delete
+  <id> --all` sent the DELETE, and `recruiter applicants`, `recruiter search
+  parameters`, `sales-nav search parameters`, `webhook create`, `get`,
+  `update` and `profile endorse` accepted and ignored it. `company <id>`,
+  `company chat`, `company message`, `post get`, `search parameters`,
+  `search service-parameters` and `webhook events` already refused it and
+  no longer list the three flags in `--help`.
 
 ## [0.32.0] - 2026-09-11
 

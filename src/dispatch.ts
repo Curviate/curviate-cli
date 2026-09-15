@@ -40,6 +40,7 @@ import {
   type RestorableArgDef,
 } from "./lib/stdin.js";
 import { GLOBAL_FLAGS } from "./lib/global-flags.js";
+import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 
 type AnyCommand = CommandDef;
@@ -65,6 +66,67 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
     .filter(([, def]) => def.type === "boolean")
     .map(([name]) => name),
 );
+
+export { SECRET_FLAGS };
+
+/**
+ * A flag accumulates when repeated (`--attach a --attach b`) only on a command
+ * whose own help calls it repeatable, so help and behavior cannot drift apart:
+ * `message send --attach` is, `comment add --attach` (at most one) is not.
+ * Such a command reads the value as `string | string[]`; every other flag reads
+ * a single value, and citty hands it an array on a repeat, which crashes a
+ * string consumer or silently flips a boolean to "not set".
+ */
+const saysRepeatable = (def: { description?: string } | undefined): boolean =>
+  /\brepeatable\b/i.test(def?.description ?? "");
+
+/**
+ * The canonical name of the first non-repeatable flag given more than once
+ * on `leaf`, or null. An alias counts as its flag (`-o x --output y`), and so
+ * does a boolean's negation (`--json --no-json`).
+ */
+export async function repeatedFlag(
+  leaf: AnyCommand,
+  flags: ReadonlyArray<{ name: string }>,
+): Promise<string | null> {
+  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { type?: string; alias?: string | string[]; description?: string }>;
+  const canonical = new Map<string, string>();
+  for (const [name, def] of Object.entries(defs)) {
+    if (def?.type === "boolean" && !(`no-${name}` in defs)) canonical.set(`no-${name}`, name);
+  }
+  for (const [name, def] of Object.entries(defs)) {
+    canonical.set(name, name);
+    for (const a of ([] as string[]).concat(def?.alias ?? [])) canonical.set(a, name);
+  }
+  const seen = new Set<string>();
+  for (const { name } of flags) {
+    const flag = canonical.get(name);
+    if (flag === undefined || saysRepeatable(defs[flag])) continue;
+    if (seen.has(flag)) return flag;
+    seen.add(flag);
+  }
+  return null;
+}
+
+/**
+ * Usage errors never echo a user-supplied token: it may be a secret that
+ * lost its flag (`--api-key= KEY`, `-- --api-key=KEY`). A stray argument is
+ * named by its 1-based position after the command instead.
+ */
+function argumentAt(index: number): string {
+  return `argument ${index + 1}`;
+}
+
+/**
+ * An unknown flag (value already dropped) as a diagnostic may show it: its
+ * exact name, unless the name runs on past a secret flag's name
+ * (`--api-key-KEY`, a missing `=`), where the tail may be the secret itself.
+ */
+function shownFlag(flag: string, index: number): string {
+  const name = flag.replace(/^-+/, "");
+  const runsOn = !SECRET_FLAGS.includes(name) && SECRET_FLAGS.some((secret) => name.startsWith(secret));
+  return runsOn ? `at ${argumentAt(index)}` : `\`${flag}\``;
+}
 
 /**
  * Removed/renamed commands -> a one-line "did you mean" successor hint.
@@ -423,6 +485,7 @@ async function assertLeafConsumesPositionals(
   if (extras.length === 0) return;
 
   const token = extras[0]!.token;
+  const shown = argumentAt(extras[0]!.index);
   const form = renderPath(path);
   const arity = arityPhrase(await nodePositionalCount(leaf));
 
@@ -432,7 +495,7 @@ async function assertLeafConsumesPositionals(
       : undefined;
 
   usageError(
-    `unexpected argument \`${token}\` after \`${form}\`. ` +
+    `unexpected ${shown} after \`${form}\`. ` +
       `\`${form}\` takes ${arity}. ` +
       `Run \`${form} --help\` for its usage.`,
     hint,
@@ -471,17 +534,28 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
  * fix for a value like `--api-key -something`: the old version scanned every
  * dash-led token unconditionally and had no notion of "already spoken for".
  */
-function findUnknownFlag(flags: TokenWalk["flags"], declared: Set<string>): string | null {
-  for (const { token, name } of flags) {
+function findUnknownFlag(
+  flags: TokenWalk["flags"],
+  declared: Set<string>,
+  booleans: Set<string>,
+): string | null {
+  for (const { token, name, index } of flags) {
+    // Exactly `--name`, or `-x` for a one-letter alias. `stripFlagName` strips
+    // every dash, so without this `---api-key=K` and `-api-key=K` bound as
+    // `--api-key`.
+    const dashes = /^-*/.exec(token)![0].length;
+    if (dashes === 2 || (dashes === 1 && name.length === 1)) {
     // Match the full declared name FIRST, a flag may be literally declared
     // with a "no-" prefix (e.g. "no-interactive"), and that declaration must
     // win. Only fall back to stripping "no-" for citty's implicit negation
     // (e.g. "--no-json" negating a declared "json") when the full name isn't
     // itself declared.
-    if (declared.has(name)) continue;
-    if (name.startsWith("no-") && declared.has(name.slice(3))) continue;
+      if (declared.has(name)) continue;
+      // Negation exists for booleans only: `--no-api-key=K` is not a spelling.
+      if (name.startsWith("no-") && booleans.has(name.slice(3))) continue;
+    }
     // The name only: an inline `=value` may be a credential (`--api-key=...`).
-    return token.split("=")[0]!;
+    return shownFlag(token.split("=")[0]!, index);
   }
   return null;
 }
@@ -616,7 +690,7 @@ export async function resolveLeaf(
     if (token !== undefined) {
       const hint = successorHint(await nodeName(cmd), token);
       if (hint) {
-        usageError(`unknown command \`${token}\``, hint);
+        usageError(`unknown command at ${argumentAt(idx)}`, hint);
       }
     }
 
@@ -649,7 +723,7 @@ export async function resolveLeaf(
         // a silent swallow of the extra token.
         const name = await nodeName(cmd);
         usageError(
-          `unexpected argument \`${first.token}\` after \`${name}\`. ` +
+          `unexpected ${argumentAt(first.index)} after \`${name}\`. ` +
             `It is neither a positional \`${name}\` accepts nor one of its subcommands. ` +
             `Run \`curviate ${name} --help\` for the available subcommands.`,
         );
@@ -660,7 +734,7 @@ export async function resolveLeaf(
 
     // No bare-positional intent. A token here is an unknown subcommand keyword.
     if (token !== undefined) {
-      usageError(`unknown command \`${token}\``);
+      usageError(`unknown command at ${argumentAt(idx)}`);
     }
     // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
@@ -735,9 +809,14 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
-    const unknown = findUnknownFlag(walk.flags, declared);
+    const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
-      usageError(`unknown flag \`${unknown}\`.`);
+      usageError(`unknown flag ${unknown}.`);
+    }
+    // Refused by name, never by value: the value may be a secret.
+    const repeated = await repeatedFlag(leaf, walk.flags);
+    if (repeated !== null) {
+      usageError(`--${repeated} was given more than once. Pass it once.`);
     }
 
     // Rewrite `--flag -value` pairs the SAME walk already proved are a known
@@ -803,6 +882,13 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
       const defs = (await resolveValue(hintLeaf.args ?? {})) as Record<string, { description?: string }>;
       const hint = firstSentenceHint(defs[missing]?.description);
       if (hint) process.stderr.write(`hint: --${missing}: ${hint}\n`);
+    }
+    // A `CurviateError` raised before any request (the client refusing a
+    // malformed base URL) keeps its table row rather than reading as a crash.
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const { getExitCode } = await import("./lib/exit-codes.js");
+      process.exit(getExitCode(err));
     }
     process.exit(code === "EARG" ? 2 : 1);
   }

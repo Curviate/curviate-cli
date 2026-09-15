@@ -40,7 +40,7 @@ import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
@@ -49,7 +49,6 @@ import { defaultReadStdin } from "../lib/stdin.js";
 import {
   resolveSecret,
   checkCredentialConflicts,
-  maskCredentialSecretsForPreview,
 } from "../lib/credential-resolve.js";
 import { AUTH_NEEDED } from "../lib/exit-codes.js";
 import {
@@ -175,7 +174,7 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -214,7 +213,7 @@ export async function runAccountList(
       })) {
         // Slim mode (default) projects each NDJSON item too; --verbose emits raw items.
         const projected = outOpts.verbose ? item : slimAccountListItem(item as Record<string, unknown>);
-        out.stdout.write(JSON.stringify(projected) + "\n");
+        writeNdjsonItem(out, projected, outOpts.fields, item);
       }
     } else {
       const result = await client.accounts.list(params);
@@ -721,7 +720,7 @@ export async function runAccountLink(
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
-    const preview = buildPreviewOutput({ method: "auth.intent", args: {}, body: maskCredentialSecretsForPreview(body) });
+    const preview = buildPreviewOutput({ method: "auth.intent", args: {}, body });
     out.stdout.write(JSON.stringify(preview) + "\n");
     return;
   }
@@ -977,7 +976,7 @@ export async function runAccountUpdate(
     const preview = buildPreviewOutput({
       method: "accounts.update",
       args: { accountId },
-      body: maskCredentialSecretsForPreview(body),
+      body,
     });
     out.stdout.write(JSON.stringify(preview) + "\n");
     return;

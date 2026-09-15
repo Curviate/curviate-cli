@@ -116,6 +116,10 @@ function applyProjection(
   return data;
 }
 
+/** The `--fields` list, trimmed, empties dropped. */
+const parseFields = (raw: string | undefined): string[] =>
+  raw ? raw.split(",").map((f) => f.trim()).filter(Boolean) : [];
+
 /** A plain object: the only shape either preservation pass can reattach onto. */
 const isPlain = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -292,9 +296,7 @@ export function renderSuccess(
   out: OutputStreams,
 ): void {
   const json = isJsonMode(opts);
-  const fields = opts.fields
-    ? opts.fields.split(",").map((f) => f.trim()).filter(Boolean)
-    : [];
+  const fields = parseFields(opts.fields);
 
   // Apply slim projection first (before --fields), unless --verbose
   const slimmed = (!opts.verbose && opts.slim) ? opts.slim(data) : data;
@@ -332,6 +334,24 @@ export function renderSuccess(
     // Human-readable output: best-effort, not a stability contract.
     out.stdout.write(renderHuman(projected) + "\n");
   }
+}
+
+/**
+ * Write one `--all` NDJSON item, projected by `--fields` like any other output
+ * (the per-item rule), with the preserved keys carried across. `item` is the
+ * already-slimmed item when the command has a slim default; without
+ * `--fields` it is written exactly as given. `original` is the raw item the
+ * preserved keys are read from.
+ */
+export function writeNdjsonItem(
+  out: OutputStreams,
+  item: unknown,
+  fields: string | undefined,
+  original: unknown = item,
+): void {
+  const list = parseFields(fields);
+  const projected = list.length > 0 ? withPreservedNotices(original, applyProjection(item, list)) : item;
+  out.stdout.write(JSON.stringify(projected) + "\n");
 }
 
 /**

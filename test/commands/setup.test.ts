@@ -11,7 +11,7 @@
  * other greps every stream against a positive control.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import {
   createECDH,
   createCipheriv,
@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   runSetup,
+  resolveSetupIO,
   resumeStatePath,
   normaliseCode,
   authorizeUrl,
@@ -111,6 +112,7 @@ function harness(opts: {
   platform?: string;
   stdin?: string;
   verifyFails?: boolean;
+  verifyError?: unknown;
   openThrows?: boolean;
 }): Harness {
   const material = pinnedMaterial();
@@ -174,6 +176,7 @@ function harness(opts: {
       } as unknown as Response;
     }) as unknown as typeof fetch,
     verify: async () => {
+      if (opts.verifyError !== undefined) throw opts.verifyError;
       if (opts.verifyFails) throw new Error("rejected");
     },
     generate: () => material,
@@ -719,6 +722,49 @@ describe("the credential is proven, not assumed", () => {
     const h = harness({ answers: [CODE], verifyFails: true });
     expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(3);
     expect(h.stderr.join("")).toMatch(/verifying call/);
+  });
+
+  it("a verifying call that got no readable answer exits 7, a platform fault, like doctor", async () => {
+    const { CurviateError } = await import("@curviate/sdk");
+    const h = harness({
+      answers: [CODE],
+      verifyError: new CurviateError({ code: "PLATFORM_ERROR", message: "x", httpStatus: 502, userFixable: false, retryLikelyToSucceed: true }),
+    });
+    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(7);
+    expect(h.stderr.join("")).toMatch(/verifying call/);
+  });
+
+  describe("the default verifying call requires a real account page", () => {
+    let server: import("node:http").Server;
+    let base: string;
+    let body = "";
+    beforeAll(async () => {
+      const { createServer } = await import("node:http");
+      server = createServer((req, res) => {
+        req.resume();
+        req.on("end", () => {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(body);
+        });
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    });
+    afterAll(async () => {
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    for (const unreadable of ["", "null", "{}", '{"items":null}', '{"items":"x"}', "[]"]) {
+      it(`${JSON.stringify(unreadable)} is not verified: PLATFORM_ERROR`, async () => {
+        body = unreadable;
+        await expect(resolveSetupIO({}).verify("cvt_test_x", base)).rejects.toMatchObject({ code: "PLATFORM_ERROR" });
+      });
+    }
+
+    it("control: a real page verifies", async () => {
+      body = JSON.stringify({ object: "list", items: [], cursor: null });
+      await expect(resolveSetupIO({}).verify("cvt_test_x", base)).resolves.toBeUndefined();
+    });
   });
 });
 

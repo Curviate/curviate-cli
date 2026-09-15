@@ -14,6 +14,7 @@
  * verifies it against the API.
  */
 
+import { baseUrlProblem } from "../lib/client.js";
 import { defineCommand } from "citty";
 import { writeProfile } from "../lib/config.js";
 import type { ProfileEntry } from "../lib/config.js";
@@ -61,6 +62,12 @@ export async function runLogin(
   const baseUrl = args["base-url"];
   if (baseUrl === "") {
     out.stderr.write("error: --base-url must not be empty.\n");
+    process.exit(2);
+    return;
+  }
+  const badUrl = baseUrl === undefined ? null : baseUrlProblem(baseUrl);
+  if (badUrl) {
+    out.stderr.write(`error: ${badUrl}\n`);
     process.exit(2);
     return;
   }

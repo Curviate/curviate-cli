@@ -8,7 +8,8 @@
 // Dev fills in the full config-resolution logic (profile, env, flags) in a
 // follow-up pass; this module provides the factory signature for wiring.
 
-import { Curviate } from "@curviate/sdk";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
 
@@ -36,7 +37,7 @@ function headerStrings(headers: RequestInit["headers"]): string[] {
  * LinkedIn password. Non-string bodies (streams, binary uploads) are not
  * scanned; the placeholder only ever originates as an argument value.
  */
-const guardedFetch: typeof fetch = (input, init) => {
+const guardedFetch: typeof fetch = async (input, init) => {
   // `--beta` rides here rather than through the SDK's config, because the SDK
   // exposes no custom-header option and this is the seam the CLI already owns.
   // Merged as ADDITIONAL headers only: the SDK's own `authorization` and
@@ -59,9 +60,118 @@ const guardedFetch: typeof fetch = (input, init) => {
     ...headerStrings(merged?.headers),
     typeof merged?.body === "string" ? merged.body : undefined,
   ]);
-  return fetch(input, merged);
+  const res = await fetch(input, merged);
+  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res);
 };
 
+const downloading = new AsyncLocalStorage<true>();
+
+/**
+ * Run a binary download. Inside it a 2xx body is the file, saved verbatim
+ * whatever its content type: the server passes the stored file's own type
+ * through, so an HTML page or a JSON document is still the file, never a
+ * platform fault. A non-2xx keeps the usual classification.
+ */
+export function downloadBinary<T>(call: () => Promise<T>): Promise<T> {
+  return downloading.run(true, call);
+}
+
+/** Relabel so the SDK hands back the raw bytes instead of decoding JSON. */
+function asOpaqueBytes(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set("content-type", "application/octet-stream");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+/**
+ * A response that is no API answer came back over a working connection from
+ * something that failed, so it is a platform fault: exit 7, retry with
+ * backoff. Two shapes: a 5xx whose body is not an error envelope (a proxy's
+ * HTML page, an empty body), which the SDK would decode as `INTERNAL` (exit
+ * 1); and a 2xx with a non-empty body that is not JSON, whatever its content
+ * type, which the SDK would crash on (exit 1) or hand over as bytes that print
+ * as `{}` (exit 0). A 5xx that DOES carry an envelope keeps its declared code.
+ * An empty 2xx is a bodyless success, handed on without a content type so the
+ * SDK reads it the way it reads a 204. A 2xx inside `downloadBinary` never
+ * reaches here.
+ */
+async function platformFaultIfUnreadable(res: Response): Promise<Response> {
+  const text = res.status === 204 ? "" : await res.clone().text();
+  let parsed = true;
+  let env: { code?: unknown } | null = null;
+  try {
+    env = JSON.parse(text) as { code?: unknown } | null;
+  } catch {
+    parsed = false;
+  }
+  if (res.status >= 500) {
+    if (typeof env?.code === "string") return res;
+  } else if (!res.ok || parsed) {
+    return res;
+  } else if (text === "") {
+    const headers = new Headers(res.headers);
+    headers.delete("content-type");
+    return new Response(null, { status: res.status, statusText: res.statusText, headers });
+  }
+  const headers = new Headers(res.headers);
+  headers.set("content-type", "application/json");
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  return new Response(
+    JSON.stringify({
+      code: "PLATFORM_ERROR",
+      message: `The API answered ${res.status} without a readable body.`,
+      user_fixable: false,
+      retry_likely_to_succeed: true,
+    }),
+    // A 2xx has to become an error status for the SDK to decode it as one.
+    { status: res.status >= 500 ? res.status : 502, statusText: res.statusText, headers },
+  );
+}
+
+/** A refusal before any request: `INVALID_REQUEST`, exit 2. */
+function usage(message: string): CurviateError {
+  return new CurviateError({ code: "INVALID_REQUEST", message, userFixable: true, retryLikelyToSucceed: false });
+}
+
+/**
+ * Why `baseUrl` cannot be sent to, or null when it can. A base URL the
+ * transport cannot use is a usage error: nothing reaches the network, so it
+ * is exit 2, never 1 (an uncaught `Invalid URL`) or 7 (a scheme `fetch`
+ * refuses, misread as a network fault). Exported so `login` and
+ * `config set-base-url` refuse it before saving.
+ */
+export function baseUrlProblem(baseUrl: string): string | null {
+  let url: URL | undefined;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    url = undefined;
+  }
+  if (url && (url.username !== "" || url.password !== "")) {
+    // Credentials in a URL end up in shell history, logs and the profile file,
+    // and the transport refuses them anyway. Never echoed.
+    return "Invalid base URL: it must not carry a user name or password (`user:pass@`). Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.";
+  }
+  return url?.protocol === "http:" || url?.protocol === "https:"
+    ? null
+    : "Invalid base URL: expected an absolute http:// or https:// URL. Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.";
+}
+
+/** `baseUrl` safe to display: any `user:pass@` removed. */
+export function withoutUserinfo(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+    if (url.username === "" && url.password === "") return baseUrl;
+    url.username = "";
+    url.password = "";
+    return url.href;
+  } catch {
+    return baseUrl;
+  }
+}
+
+const MAX_TIMEOUT_MS = 2_147_483_647; // the largest delay a Node timer honours
 
 /**
  * ## Why there is no path-segment guard here
@@ -117,6 +227,14 @@ export interface ClientConfig {
  * surrounding whitespace. The SDK is the validator of last resort.
  */
 export function createClient(config: ClientConfig): Curviate {
+  const badUrl = config.baseUrl === undefined ? null : baseUrlProblem(config.baseUrl);
+  if (badUrl) throw usage(badUrl);
+  const t = config.timeout;
+  if (t !== undefined && !(Number.isInteger(t) && t > 0 && t <= MAX_TIMEOUT_MS)) {
+    throw usage(
+      `Invalid timeout: expected a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS}. Check --timeout or the profile's timeout.`,
+    );
+  }
   return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,

@@ -45,6 +45,7 @@ import {
 } from "./path-safety.js";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { getExitCode } from "./exit-codes.js";
+import { readablePage } from "./paginate.js";
 
 /**
  * A Curviate account id. Deliberately loose after the `acc_` prefix: the id is
@@ -139,10 +140,10 @@ function listConnectedAccounts(client: Curviate): Promise<AccountSet> {
     for (let page = 0; page < MAX_LOOKUP_PAGES; page++) {
       const params: Record<string, unknown> = { limit: 250 };
       if (cursor) params["cursor"] = cursor;
-      const result = (await client.accounts.list(
-        params as Parameters<typeof client.accounts.list>[0],
-      )) as { items?: unknown[]; cursor?: string | null };
-      for (const item of result.items ?? []) {
+      const result = readablePage(
+        (await client.accounts.list(params as Parameters<typeof client.accounts.list>[0])) as { cursor?: string | null },
+      );
+      for (const item of result.items) {
         const account = toConnectedAccount(item);
         if (account) accounts.push(account);
       }
@@ -272,7 +273,7 @@ export async function requireAccount(
       out.stderr.write(
         `error: [${e.code}] could not look up connected accounts to resolve --account "${selector}": ${e.message}\n`,
       );
-      process.exit(getExitCode(e.code));
+      process.exit(getExitCode(e));
     }
     throw err;
   }

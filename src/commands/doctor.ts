@@ -19,8 +19,9 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getConfigPath, readConfig } from "../lib/config.js";
-import { createClient } from "../lib/client.js";
+import { getConfigPath, isPlainObject, readConfigFile } from "../lib/config.js";
+import { createClient, withoutUserinfo } from "../lib/client.js";
+import { readablePage } from "../lib/paginate.js";
 import { getExitCode } from "../lib/exit-codes.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig, type CredentialSource } from "../lib/resolve.js";
@@ -128,15 +129,19 @@ export interface DoctorArgs {
 
 /** Build the report. Pure apart from the two injected calls. */
 export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorReport> {
-  const cfg = await readConfig();
+  const file = await readConfigFile();
   const effective = await resolveEffectiveConfig({
     apiKey: args["api-key"],
     baseUrl: args["base-url"],
     timeout: args.timeout,
     profile: args.profile,
   });
-  const profileName = args.profile ?? cfg?.active ?? "default";
+  // A malformed `active` already refused inside the resolve above.
+  const root = file?.root;
+  const active = isPlainObject(root) && typeof root["active"] === "string" ? root["active"] : undefined;
+  const profileName = args.profile ?? active ?? "default";
   const checks: Check[] = [];
+  const shownBaseUrl = withoutUserinfo(effective.baseUrl);
 
   const credentialResolved = effective.apiKey !== undefined;
   checks.push({
@@ -161,14 +166,17 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         effective.baseUrl,
         effective.timeout,
       );
+      // A 2xx that is not an account list (an empty body, `null`) verified
+      // nothing: a platform fault, exit 7, through the catch below.
+      readablePage(payload);
       reachable = true;
       valid = true;
       accounts = accountLines(payload);
-      checks.push({ name: "api reachable", ok: true, detail: effective.baseUrl, exit: 7 });
+      checks.push({ name: "api reachable", ok: true, detail: shownBaseUrl, exit: 7 });
       checks.push({
         name: "credential valid",
         ok: true,
-        detail: `accepted by ${effective.baseUrl}`,
+        detail: `accepted by ${shownBaseUrl}`,
         exit: 3,
       });
       checks.push({
@@ -205,15 +213,15 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
       // "could not reach" blames the network for a usage error, and exit 7
       // invites a retry that cannot help.
       const transportFault = !responded && error.retryLikelyToSucceed === true;
-      const codeExit = code ? getExitCode(code as never) : 3;
+      const codeExit = code ? getExitCode(error as CurviateError) : 3;
       reachable = responded;
       checks.push({
         name: "api reachable",
         ok: reachable,
         detail: reachable
-          ? effective.baseUrl
+          ? shownBaseUrl
           : transportFault
-            ? `could not reach ${effective.baseUrl}: ${error.message ?? "network error"}`
+            ? `could not reach ${shownBaseUrl}: ${error.message ?? "network error"}`
             : "not checked: the request was refused before it was sent",
         exit: transportFault ? 7 : codeExit,
       });
@@ -224,11 +232,13 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         // so it was not "rejected". Saying it was is the half of this defect
         // that actually misdirects: it names the one subsystem that is fine.
         detail: responded
-          ? code
+          ? code === "PLATFORM_ERROR"
+            ? `not verified: ${error.message ?? code}`
+            : code
             ? `rejected: ${code}`
             : (error.message ?? "the call did not succeed")
           : transportFault
-            ? `not checked: ${effective.baseUrl} could not be reached`
+            ? `not checked: ${shownBaseUrl} could not be reached`
             : (error.message ?? "the request was refused before it was sent"),
         exit: responded ? codeExit : transportFault ? 3 : codeExit,
       });
@@ -241,15 +251,14 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
   // that came from a flag or the environment is a DIFFERENT key, quite
   // possibly a different workspace, and naming the profile's workspace beside
   // it is worse than naming none: it reads as an answer.
-  const tenant =
-    effective.apiKeySource === "profile" ? (cfg?.profiles[profileName]?.tenant ?? null) : null;
+  const tenant = effective.tenant ?? null;
 
   const firstFailure = checks.find((c) => !c.ok);
   const report: DoctorReport = {
     version: io.version(),
     config_path: getConfigPath(),
     profile: profileName,
-    base_url: effective.baseUrl,
+    base_url: shownBaseUrl,
     credential_source: effective.apiKeySource,
     credential_resolved: credentialResolved,
     tenant,

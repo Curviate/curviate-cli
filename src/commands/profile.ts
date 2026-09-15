@@ -37,16 +37,16 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { parseSectionsFlag } from "../lib/sections.js";
 import { RETRIEVAL_FLAGS, hasRetrievalFlags, parseRetrievalFlags, type RetrievalQuery } from "../lib/retrieval.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -248,7 +248,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.posts.listUserPosts("me", params);
@@ -262,7 +262,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.comments.listUserComments("me", params);
@@ -276,7 +276,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.posts.listUserReactions("me", params);
@@ -290,7 +290,7 @@ export async function runProfileMe(
             out,
             pageDelayMs: pageDelayFromFlags(flags),
           })) {
-            out.stdout.write(JSON.stringify(item) + "\n");
+            writeNdjsonItem(out, item, outOpts.fields);
           }
         } else {
           const result = await ns.users.listFollowers("me", params);
@@ -302,7 +302,7 @@ export async function runProfileMe(
       if (err instanceof CurviateError) {
         const { getExitCode } = await import("../lib/exit-codes.js");
         renderError(err as CurviateError, outOpts, out);
-        process.exit(getExitCode(err.code));
+        process.exit(getExitCode(err));
       }
       renderUnexpectedError(err, out);
       process.exit(1);
@@ -334,7 +334,7 @@ export async function runProfileMe(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -404,8 +404,7 @@ export async function runProfileGet(
       if (flags["is-company"]) {
         const isNumericId = /^\d+$/.test(resolvedId);
         if (!isNumericId) {
-          const companyData = await ns.companies.get(resolvedId);
-          postId = companyData.id;
+          postId = readableId(await ns.companies.get(resolvedId));
         }
       }
 
@@ -416,7 +415,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.posts.listUserPosts(postId, params);
@@ -434,7 +433,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.comments.listUserComments(resolvedId, params);
@@ -452,7 +451,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.posts.listUserReactions(resolvedId, params);
@@ -470,7 +469,7 @@ export async function runProfileGet(
           out,
           pageDelayMs: pageDelayFromFlags(flags),
         })) {
-          out.stdout.write(JSON.stringify(item) + "\n");
+          writeNdjsonItem(out, item, outOpts.fields);
         }
       } else {
         const result = await ns.users.listFollowers(resolvedId, params);
@@ -506,7 +505,7 @@ export async function runProfileGet(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -543,7 +542,7 @@ export async function runProfileRelations(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listRelations(params);
@@ -554,7 +553,7 @@ export async function runProfileRelations(
     if (err instanceof CurviateError) {
       const { getExitCode } = await import("../lib/exit-codes.js");
       renderError(err as CurviateError, outOpts, out);
-      process.exit(getExitCode(err.code));
+      process.exit(getExitCode(err));
     }
     renderUnexpectedError(err, out);
     process.exit(1);
@@ -618,7 +617,7 @@ async function handleSdkError(
   if (err instanceof CurviateError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     renderError(err as CurviateError, outOpts, out);
-    process.exit(getExitCode(err.code));
+    process.exit(getExitCode(err));
   }
   renderUnexpectedError(err, out);
   process.exit(1);
@@ -705,7 +704,7 @@ export async function runProfileVisitors(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.profile.visitors(params);
@@ -907,7 +906,7 @@ export async function runProfileFollowers(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listFollowers(resolvedId, params);
@@ -943,7 +942,7 @@ export async function runProfileFollowing(
         out,
         pageDelayMs: pageDelayFromFlags(flags),
       })) {
-        out.stdout.write(JSON.stringify(item) + "\n");
+        writeNdjsonItem(out, item, outOpts.fields);
       }
     } else {
       const result = await ns.users.listFollowing(resolvedId, params);
@@ -1036,7 +1035,7 @@ const profileRelationsCommand = defineCommand({
 const profileEndorseCommand = defineCommand({
   meta: { name: "endorse", description: "Endorse a skill on a member's profile." },
   args: {
-    ...GLOBAL_FLAGS,
+    ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
     "endorsement-id": {
       type: "string",

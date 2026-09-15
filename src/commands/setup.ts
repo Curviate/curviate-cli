@@ -38,6 +38,9 @@ import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getConfigPath, writeProfile } from "../lib/config.js";
 import { createClient } from "../lib/client.js";
+import { CurviateError } from "@curviate/sdk";
+import { getExitCode } from "../lib/exit-codes.js";
+import { readablePage } from "../lib/paginate.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { readlineSync, type ReadlineStdin } from "../lib/readline.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -422,7 +425,8 @@ async function defaultOpen(url: string): Promise<unknown> {
 }
 
 async function defaultVerify(apiKey: string, baseUrl: string): Promise<void> {
-  await createClient({ apiKey, baseUrl }).accounts.list();
+  // A 2xx proves nothing unless it is a real account page, as in `doctor`.
+  readablePage(await createClient({ apiKey, baseUrl }).accounts.list());
 }
 
 export function resolveSetupIO(io: Partial<SetupIO> = {}): SetupIO {
@@ -647,11 +651,12 @@ async function finishExchange(
 
   try {
     await io.verify(apiKey, baseUrl);
-  } catch {
+  } catch (err: unknown) {
     io.stderr.write(
       "error: the credential was saved but a verifying call did not succeed. Run `curviate doctor` for detail.\n",
     );
-    return 3;
+    // A platform fault or no response (7) is not a rejected credential (3).
+    return err instanceof CurviateError ? getExitCode(err) : 3;
   }
 
   const summary = {
