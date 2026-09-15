@@ -129,7 +129,8 @@ export async function readConfigFile(): Promise<ConfigFile | null> {
     throw err;
   }
   try {
-    return { root: JSON.parse(raw) as unknown };
+    // A leading UTF-8 byte order mark (some Windows editors write one) is not JSON.
+    return { root: JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown };
   } catch {
     // Kept, not thrown: a command whose every value comes from flags or env
     // never reads the file, so it must still run. The parser's text quotes the

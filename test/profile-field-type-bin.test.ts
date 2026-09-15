@@ -455,3 +455,30 @@ describe("env-only CI: key and base URL from the environment, timeout falls back
     expect(r.status, r.out).toBe(2);
   });
 });
+
+describe("a leading UTF-8 byte order mark is ignored", () => {
+  const writeBom = (root: unknown) => {
+    mkdirSync(join(xdg, "curviate"), { recursive: true });
+    writeFileSync(cfgPath, "﻿" + JSON.stringify(root));
+  };
+
+  it("readers, config list and writers all read the file", async () => {
+    writeBom({ active: "default", profiles: { default: { apiKey: KEY, baseUrl } } });
+    expect(readFileSync(cfgPath)[0]).toBe(0xef);
+    const r = await run(["account", "list", "--json"]);
+    expect(r.status, r.out).toBe(0);
+    const list = await run(["config", "list", "--json"]);
+    expect(list.status, list.out).toBe(0);
+    expect(JSON.parse(list.stdout).profiles.default.baseUrl).toBe(baseUrl);
+    const set = await run(["config", "set-account", "acc_9"]);
+    expect(set.status, set.out).toBe(0);
+    expect(JSON.parse(readFileSync(cfgPath, "utf8").replace(/^﻿/, "")).profiles.default.account).toBe("acc_9");
+  });
+
+  it("control: a BOM anywhere but the start is still invalid JSON", async () => {
+    mkdirSync(join(xdg, "curviate"), { recursive: true });
+    writeFileSync(cfgPath, " ﻿{}");
+    const r = await run(["account", "list", "--json"]);
+    expect(r.status, r.out).toBe(2);
+  });
+});
