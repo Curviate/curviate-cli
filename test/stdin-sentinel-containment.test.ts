@@ -168,9 +168,10 @@ function argumentSurface(nodes: Node[]): Arg[] {
  *
  * Exact, not a floor: a floor cannot see the surface shrinking by less than
  * its slack. Bump this whenever a command gains or loses a non-boolean flag
- * (1684 after the local commands stopped declaring flags they never read).
+ * (1684 after the local commands stopped declaring flags they never read; 1654
+ * after the 15 commands that never stream dropped --max-pages and --page-delay).
  */
-const ARGUMENT_SURFACE_COUNT = 1684;
+const ARGUMENT_SURFACE_COUNT = 1654;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

@@ -73,7 +73,7 @@ describe("recruiter list commands — DOES have pagination flags (negative contr
     ["search.people", ["search", "people"]],
     ["projects", ["projects"]],
     ["jobs", ["jobs"]],
-    ["applicants", ["applicants"]],
+    // `applicants` takes --limit/--cursor but does not stream, so it declares no --all.
     ["pipeline", ["pipeline"]],
     ["talent-search", ["talent-search"]],
   ])("recruiter %s — args definition retains pagination flags", async (_label, path) => {
