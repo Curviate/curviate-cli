@@ -30,8 +30,10 @@ change an exit code, so it ships as a minor.
   Download commands are the exception: they save any `2xx` body as the file.
 - A malformed config file (a field of the wrong JSON type, a `null` top
   level, a non-string `active`, a non-object `profiles`) now exits `2` when
-  the command takes a value from it (was `1`, or sent as-is). `config list
-  --json` shows a broken field as `"<invalid>"` and drops unknown fields.
+  the command takes a value from it (was `1`, or sent as-is), and so does a
+  file that is not valid JSON. `config list --json` shows a broken field as
+  `"<invalid>"` and drops unknown fields. `config set-account` and
+  `config set-base-url` replace a profile that is not an object.
 - Usage errors name a stray argument by its position
   (`unexpected argument 2 after \`curviate login\``) instead of echoing it.
 
@@ -155,6 +157,15 @@ change an exit code, so it ships as a minor.
   `config list` never refuses: it lists every profile, shows a broken field
   (or a broken `active`, `profiles` or profile) as `<invalid>`, and emits only
   the known fields, where `--json` used to copy any stored field through.
+  A config file that is not valid JSON (empty, truncated, hand-mangled) exited
+  `1` printing the parser's error; every command, `config list` included, now
+  exits `2` with the `curviate config reset` repair and no parser text, unless
+  every value it needs comes from flags or the environment. Config writers
+  (`login`, `config set-*`) refuse a broken top level, `active` or `profiles`
+  with exit `2`, and repair a profile that is not an object by replacing it
+  with a fresh one holding the written value: `config set-account` and
+  `config set-base-url` used to report success without writing (an array
+  profile) or crash printing the stored value (a string profile).
 
 ## [0.32.0] - 2026-09-11
 
