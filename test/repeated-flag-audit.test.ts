@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { CommandDef } from "citty";
-import { repeatedFlag, REPEATABLE_FLAGS } from "../src/dispatch.js";
+import { repeatedFlag } from "../src/dispatch.js";
 import { runBin } from "./helpers/run-bin.js";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -46,7 +46,10 @@ const GROUPS: Record<string, () => Promise<CommandDef>> = {
     import("../src/commands/notification.js").then((m) => asCmd(m.notificationCommand)),
 };
 
-type ArgDef = { type?: string };
+type ArgDef = { type?: string; description?: string };
+
+/** A flag repeats only where its own help says so. */
+const saysRepeatable = (def: ArgDef) => /\brepeatable\b/i.test(def.description ?? "");
 
 async function leaves(cmd: CommandDef, path: string[], out: Array<{ path: string; cmd: CommandDef }>) {
   const subs = (await resolveValue(cmd.subCommands ?? {})) as Record<string, unknown>;
@@ -63,6 +66,7 @@ describe("every flag, repeated", () => {
     expect(all.length).toBeGreaterThan(100);
 
     let checked = 0;
+    let repeatable = 0;
     const wrong: string[] = [];
     for (const { path, cmd } of all) {
       const defs = (await resolveValue(cmd.args ?? {})) as Record<string, ArgDef>;
@@ -74,7 +78,8 @@ describe("every flag, repeated", () => {
           const negated = await repeatedFlag(cmd, [...once, { name: `no-${flag}` }]);
           if (negated !== flag) wrong.push(`${path} --${flag} --no-${flag}: ${negated}`);
         }
-        const expected = REPEATABLE_FLAGS.includes(flag) ? null : flag;
+        const expected = saysRepeatable(def) ? null : flag;
+        if (saysRepeatable(def)) repeatable++;
         if (verdict !== expected) wrong.push(`${path} --${flag}: ${verdict}`);
         // a single use is never refused
         if ((await repeatedFlag(cmd, once)) !== null) wrong.push(`${path} --${flag} once`);
@@ -82,18 +87,36 @@ describe("every flag, repeated", () => {
       }
     }
     expect(checked).toBeGreaterThan(500);
+    expect(repeatable).toBeGreaterThan(0);
     expect(wrong).toEqual([]);
   });
 
-  it("the repeatable list is exactly the flags a command reads as an array", () => {
+  it("in each command file, the flags read as an array are exactly the ones its help calls repeatable", async () => {
     const dir = resolve(pkgRoot, "src", "commands");
-    const arrayFlags = new Set<string>();
+    const described = new Map<string, Set<string>>();
+    for (const [name, load] of Object.entries(GROUPS)) {
+      const all: Array<{ path: string; cmd: CommandDef }> = [];
+      await leaves(await load(), [name], all);
+      const set = described.get(name) ?? new Set<string>();
+      for (const { cmd } of all) {
+        for (const [flag, def] of Object.entries((await resolveValue(cmd.args ?? {})) as Record<string, ArgDef>)) {
+          if (saysRepeatable(def)) set.add(flag);
+        }
+      }
+      described.set(name, set);
+    }
+    let files = 0;
     for (const f of readdirSync(dir)) {
+      const group = f.replace(/\.ts$/, "");
+      if (!described.has(group)) continue;
+      const arrayFlags = new Set<string>();
       for (const m of readFileSync(join(dir, f), "utf8").matchAll(/^\s*"?([a-z-]+)"?\?: string \| string\[\];/gm)) {
         arrayFlags.add(m[1]!);
       }
+      expect([...arrayFlags].sort(), f).toEqual([...described.get(group)!].sort());
+      files++;
     }
-    expect([...arrayFlags].sort()).toEqual([...REPEATABLE_FLAGS].sort());
+    expect(files).toBe(Object.keys(GROUPS).length);
   });
 });
 
@@ -113,6 +136,20 @@ describe("through the built bin", () => {
     const r = runBin(["job", "applicant", "resume", "a", "b", "-o", "x", "--output", "y", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", "http://127.0.0.1:9"], xdg);
     expect(r.status, r.stderr).toBe(2);
     expect(r.stderr).toMatch(/--output was given more than once/);
+  });
+
+  for (const argv of [["comment", "add", "p1", "hi"], ["comment", "reply", "p1", "c1", "hi"]]) {
+    it(`${argv.slice(0, 2).join(" ")} --attach a --attach b exits 2: at most one`, () => {
+      const r = runBin([...argv, "--attach", "a.png", "--attach", "b.png", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", "http://127.0.0.1:9"], xdg);
+      expect(r.status, r.stderr).toBe(2);
+      expect(r.stderr).toMatch(/--attach was given more than once/);
+    });
+  }
+
+  it("message send --attach a --attach b is still accepted (positive control)", () => {
+    const r = runBin(["message", "send", "chat_1", "hi", "--attach", "a.png", "--attach", "b.png", "--preview", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", "http://127.0.0.1:9"], xdg);
+    expect(r.stderr).not.toMatch(/was given more than once/);
+    expect(r.stderr).toMatch(/Cannot read attachment/);
   });
 
   it("--json --json exits 2", () => {

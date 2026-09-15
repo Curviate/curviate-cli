@@ -75,12 +75,15 @@ const GLOBAL_BOOLEAN_FLAG_NAMES = new Set(
 export const SECRET_FLAGS = ["api-key", "password", "proxy-password", "li-at", "li-a", "code", "secret", "signature"];
 
 /**
- * The only flags that accumulate when repeated (`--attach a --attach b`).
- * Their commands read the value as `string | string[]`; every other flag
- * reads a single value, and citty hands it an array on a repeat, which
- * crashes a string consumer or silently flips a boolean to "not set".
+ * A flag accumulates when repeated (`--attach a --attach b`) only on a command
+ * whose own help calls it repeatable, so help and behavior cannot drift apart:
+ * `message send --attach` is, `comment add --attach` (at most one) is not.
+ * Such a command reads the value as `string | string[]`; every other flag reads
+ * a single value, and citty hands it an array on a repeat, which crashes a
+ * string consumer or silently flips a boolean to "not set".
  */
-export const REPEATABLE_FLAGS = ["attach", "invitee"];
+const saysRepeatable = (def: { description?: string } | undefined): boolean =>
+  /\brepeatable\b/i.test(def?.description ?? "");
 
 /**
  * The canonical name of the first non-repeatable flag given more than once
@@ -91,7 +94,7 @@ export async function repeatedFlag(
   leaf: AnyCommand,
   flags: ReadonlyArray<{ name: string }>,
 ): Promise<string | null> {
-  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { type?: string; alias?: string | string[] }>;
+  const defs = (await resolveValue(leaf.args ?? {})) as Record<string, { type?: string; alias?: string | string[]; description?: string }>;
   const canonical = new Map<string, string>();
   for (const [name, def] of Object.entries(defs)) {
     if (def?.type === "boolean" && !(`no-${name}` in defs)) canonical.set(`no-${name}`, name);
@@ -103,7 +106,7 @@ export async function repeatedFlag(
   const seen = new Set<string>();
   for (const { name } of flags) {
     const flag = canonical.get(name);
-    if (flag === undefined || REPEATABLE_FLAGS.includes(flag)) continue;
+    if (flag === undefined || saysRepeatable(defs[flag])) continue;
     if (seen.has(flag)) return flag;
     seen.add(flag);
   }

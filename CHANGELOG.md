@@ -106,8 +106,12 @@ change an exit code, so it ships as a minor.
   `account.trim is not a function`, and `--json --json` silently turned JSON
   output off. Any flag given more than once, by name, alias (`-o x
   --output y`) or negation (`--json --no-json`), and `--beta` given twice,
-  now exit `2` with `--<flag> was given more than once`. The two repeatable
-  flags, `--attach` and `--invitee`, still accumulate.
+  now exit `2` with `--<flag> was given more than once`. A flag still
+  accumulates where the command's help calls it repeatable: `--attach` on
+  `message`, `post create`, `company reply`, `sales-nav message new` and
+  `recruiter message new`, and `--invitee` on `company follow-invite`.
+  `comment add` and `comment reply` take at most one `--attach`, and used to
+  send every repeat.
 - **Credential flags are handled strictly and never echoed.**
   - A usage error never echoes a user-supplied token. A value after
     `--api-key=` with a stray space, or after `--`, was printed as an
