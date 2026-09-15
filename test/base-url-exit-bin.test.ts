@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliPath } from "./helpers/built-cli.js";
@@ -15,6 +15,7 @@ import { cliPath } from "./helpers/built-cli.js";
 let xdg: string;
 let server: Server;
 let baseUrl: string;
+let requests = 0;
 let reply: { status: number; type: string; body: string } = {
   status: 200,
   type: "application/json",
@@ -43,6 +44,7 @@ function run(args: string[]): Promise<{ status: number | null; stdout: string; s
 beforeAll(async () => {
   xdg = mkdtempSync(join(tmpdir(), "curviate-base-url-bin-"));
   server = createServer((req, res) => {
+    requests++;
     req.resume();
     req.on("end", () => {
       res.writeHead(reply.status, { "content-type": reply.type, "retry-after": "0" });
@@ -148,6 +150,85 @@ describe("a 5xx with no readable error body is a platform fault, exit 7", () => 
     expect(bad.status, bad.stderr).toBe(2);
     const list = await run(["config", "list", "--json"]);
     expect(list.stdout).not.toContain("not a url");
+  });
+
+  describe("a base URL carrying credentials (userinfo) is refused before sending", () => {
+    const withUserinfo = () => {
+      const port = new URL(baseUrl).port;
+      return [`http://u:ZZPW42@127.0.0.1:${port}`, `http://ZZUSER42@127.0.0.1:${port}`, `http://:ZZPW42@127.0.0.1:${port}`];
+    };
+    const noEcho = (text: string) => {
+      expect(text).not.toContain("ZZPW42");
+      expect(text).not.toContain("ZZUSER42");
+    };
+
+    it("control: the same host without userinfo is sent to", async () => {
+      reply = { status: 200, type: "application/json", body: JSON.stringify({ provider_id: "p" }) };
+      requests = 0;
+      const r = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", baseUrl]);
+      expect(r.status, r.stderr).toBe(0);
+      expect(requests).toBe(1);
+    });
+
+    it("--base-url, CURVIATE_BASE_URL and doctor: exit 2, zero requests, never echoed", async () => {
+      for (const url of withUserinfo()) {
+        requests = 0;
+        const flag = await run(["profile", "me", "--json", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", url]);
+        expect(flag.status, flag.stdout + flag.stderr).toBe(2);
+        expect(flag.stdout + flag.stderr).toMatch(/base URL/i);
+        noEcho(flag.stdout + flag.stderr);
+        const doc = await run(["doctor", "--json", "--api-key", "cvt_test_x", "--base-url", url]);
+        expect(doc.status, doc.stdout + doc.stderr).toBe(2);
+        expect((JSON.parse(doc.stdout.trim()) as { exit: number }).exit).toBe(2);
+        noEcho(doc.stdout + doc.stderr);
+        expect(requests).toBe(0);
+      }
+      requests = 0;
+      const env = await new Promise<{ status: number | null; out: string }>((done) => {
+        const child = spawn(process.execPath, [cliPath, "account", "list", "--json", "--api-key", "cvt_test_x"], {
+          env: { ...process.env, XDG_CONFIG_HOME: xdg, CURVIATE_BASE_URL: withUserinfo()[0]! },
+        });
+        let out = "";
+        child.stdout.on("data", (c: Buffer) => (out += c.toString()));
+        child.stderr.on("data", (c: Buffer) => (out += c.toString()));
+        child.on("close", (status) => done({ status, out }));
+        child.stdin.end("");
+      });
+      expect(env.status, env.out).toBe(2);
+      noEcho(env.out);
+      expect(requests).toBe(0);
+    });
+
+    it("login --base-url and config set-base-url refuse to save it", async () => {
+      const ok = await run(["login", "--api-key", "cvt_test_x"]);
+      expect(ok.status, ok.stderr).toBe(0);
+      for (const url of withUserinfo()) {
+        const login = await run(["login", "--api-key", "cvt_test_x", "--base-url", url]);
+        expect(login.status, login.stderr).toBe(2);
+        noEcho(login.stdout + login.stderr);
+        const set = await run(["config", "set-base-url", url]);
+        expect(set.status, set.stderr).toBe(2);
+        noEcho(set.stdout + set.stderr);
+      }
+      const list = await run(["config", "list", "--json"]);
+      noEcho(list.stdout);
+      expect(list.stdout).not.toContain("127.0.0.1");
+    });
+
+    it("a hand-edited profile baseUrl with userinfo: a command refuses, config list does not echo it", async () => {
+      const url = withUserinfo()[0]!;
+      mkdirSync(join(xdg, "curviate"), { recursive: true });
+      writeFileSync(join(xdg, "curviate", "config.json"), JSON.stringify({ active: "default", profiles: { default: { apiKey: "cvt_test_x", baseUrl: url } } }));
+      requests = 0;
+      const r = await run(["account", "list", "--json"]);
+      expect(r.status, r.stdout + r.stderr).toBe(2);
+      noEcho(r.stdout + r.stderr);
+      expect(requests).toBe(0);
+      const list = await run(["config", "list", "--json"]);
+      expect(list.status).toBe(0);
+      noEcho(list.stdout + list.stderr);
+      expect(list.stdout).toContain(`127.0.0.1:${new URL(baseUrl).port}`);
+    });
   });
 
   it("a 4xx with a non-JSON body is not reclassified", async () => {

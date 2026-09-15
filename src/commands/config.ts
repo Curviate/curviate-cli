@@ -25,7 +25,7 @@ import {
 } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { redactKeyForDisplay } from "../lib/config-display.js";
-import { baseUrlProblem } from "../lib/client.js";
+import { baseUrlProblem, withoutUserinfo } from "../lib/client.js";
 
 
 export const configCommand = defineCommand({
@@ -62,7 +62,12 @@ export const configCommand = defineCommand({
             if (typeof value !== want) {
               if (value !== undefined && value !== null) out[field] = INVALID;
             } else {
-              out[field] = field === "apiKey" ? redactKeyForDisplay(value as string) : (value as string | number);
+              out[field] =
+                field === "apiKey"
+                  ? redactKeyForDisplay(value as string)
+                  : field === "baseUrl"
+                    ? withoutUserinfo(value as string)
+                    : (value as string | number);
             }
           }
           if (out["apiKey"] === undefined) out["apiKey"] = redactKeyForDisplay(undefined);

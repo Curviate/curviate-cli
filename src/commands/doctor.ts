@@ -20,7 +20,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getConfigPath, isPlainObject, readConfigFile } from "../lib/config.js";
-import { createClient } from "../lib/client.js";
+import { createClient, withoutUserinfo } from "../lib/client.js";
 import { getExitCode } from "../lib/exit-codes.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig, type CredentialSource } from "../lib/resolve.js";
@@ -140,6 +140,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
   const active = isPlainObject(root) && typeof root["active"] === "string" ? root["active"] : undefined;
   const profileName = args.profile ?? active ?? "default";
   const checks: Check[] = [];
+  const shownBaseUrl = withoutUserinfo(effective.baseUrl);
 
   const credentialResolved = effective.apiKey !== undefined;
   checks.push({
@@ -167,11 +168,11 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
       reachable = true;
       valid = true;
       accounts = accountLines(payload);
-      checks.push({ name: "api reachable", ok: true, detail: effective.baseUrl, exit: 7 });
+      checks.push({ name: "api reachable", ok: true, detail: shownBaseUrl, exit: 7 });
       checks.push({
         name: "credential valid",
         ok: true,
-        detail: `accepted by ${effective.baseUrl}`,
+        detail: `accepted by ${shownBaseUrl}`,
         exit: 3,
       });
       checks.push({
@@ -214,9 +215,9 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         name: "api reachable",
         ok: reachable,
         detail: reachable
-          ? effective.baseUrl
+          ? shownBaseUrl
           : transportFault
-            ? `could not reach ${effective.baseUrl}: ${error.message ?? "network error"}`
+            ? `could not reach ${shownBaseUrl}: ${error.message ?? "network error"}`
             : "not checked: the request was refused before it was sent",
         exit: transportFault ? 7 : codeExit,
       });
@@ -231,7 +232,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
             ? `rejected: ${code}`
             : (error.message ?? "the call did not succeed")
           : transportFault
-            ? `not checked: ${effective.baseUrl} could not be reached`
+            ? `not checked: ${shownBaseUrl} could not be reached`
             : (error.message ?? "the request was refused before it was sent"),
         exit: responded ? codeExit : transportFault ? 3 : codeExit,
       });
@@ -251,7 +252,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
     version: io.version(),
     config_path: getConfigPath(),
     profile: profileName,
-    base_url: effective.baseUrl,
+    base_url: shownBaseUrl,
     credential_source: effective.apiKeySource,
     credential_resolved: credentialResolved,
     tenant,

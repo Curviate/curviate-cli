@@ -142,15 +142,33 @@ function usage(message: string): CurviateError {
  * `config set-base-url` refuse it before saving.
  */
 export function baseUrlProblem(baseUrl: string): string | null {
-  let protocol: string | undefined;
+  let url: URL | undefined;
   try {
-    protocol = new URL(baseUrl).protocol;
+    url = new URL(baseUrl);
   } catch {
-    protocol = undefined;
+    url = undefined;
   }
-  return protocol === "http:" || protocol === "https:"
+  if (url && (url.username !== "" || url.password !== "")) {
+    // Credentials in a URL end up in shell history, logs and the profile file,
+    // and the transport refuses them anyway. Never echoed.
+    return "Invalid base URL: it must not carry a user name or password (`user:pass@`). Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.";
+  }
+  return url?.protocol === "http:" || url?.protocol === "https:"
     ? null
     : "Invalid base URL: expected an absolute http:// or https:// URL. Check --base-url, CURVIATE_BASE_URL, or the profile's baseUrl.";
+}
+
+/** `baseUrl` safe to display: any `user:pass@` removed. */
+export function withoutUserinfo(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+    if (url.username === "" && url.password === "") return baseUrl;
+    url.username = "";
+    url.password = "";
+    return url.href;
+  } catch {
+    return baseUrl;
+  }
 }
 
 const MAX_TIMEOUT_MS = 2_147_483_647; // the largest delay a Node timer honours

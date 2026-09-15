@@ -21,8 +21,9 @@ change an exit code, so it ships as a minor.
   now exits `2`.
 - `---<flag>`, and `--no-<flag>` for a flag that is not a boolean, used to
   be ignored and now exit `2`.
-- A malformed base URL or an invalid `--timeout` now exits `2` (was `1`, or
-  `7` for a non-http scheme).
+- A malformed base URL (including one carrying `user:pass@`) or an invalid
+  `--timeout` now exits `2` (was `1`, or `7` for a non-http scheme or
+  credentials in the URL).
 - A request that gets no response, or a response that is not an API answer,
   now exits `7` (was `1`, or `0` printing `{}` for a `200` whose body is not
   JSON).
@@ -79,7 +80,10 @@ change an exit code, so it ships as a minor.
   `CURVIATE_BASE_URL` or the profile) exited `1` with `Invalid URL`, or `7`
   for a non-http scheme. Nothing was sent, so it is now a usage error on every
   command, `doctor` included, whose report still prints. `login --base-url`
-  and `config set-base-url` refuse it before saving.
+  and `config set-base-url` refuse it before saving. A base URL carrying a
+  user name or password (`http://user:pass@host`) is refused the same way,
+  exit `2` with nothing sent (it exited `7`), and `doctor` and `config list`
+  never display the credentials.
 - **A response that is not an API answer exits `7`.** A 5xx whose body is not
   an error envelope (a gateway's HTML page, an empty body) decoded as
   `INTERNAL`, exit `1`. A `2xx` whose non-empty body is not JSON exited `1`
