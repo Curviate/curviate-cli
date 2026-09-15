@@ -16,7 +16,7 @@ import { cliPath } from "./helpers/built-cli.js";
 let dir: string;
 let server: Server;
 let baseUrl: string;
-let reply: { status: number; type: string; body: string } = { status: 200, type: "text/html", body: "" };
+let reply: { status: number; type: string | null; body: string } = { status: 200, type: "text/html", body: "" };
 
 function run(args: string[]): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
@@ -42,8 +42,8 @@ beforeAll(async () => {
   server = createServer((req, res) => {
     req.resume();
     req.on("end", () => {
-      res.writeHead(reply.status, { "content-type": reply.type, "retry-after": "0" });
-      res.end(reply.body);
+      res.writeHead(reply.status, { ...(reply.type === null ? {} : { "content-type": reply.type }), "retry-after": "0" });
+      res.end(reply.status === 204 ? undefined : reply.body);
     });
   });
   await new Promise<void>((r) => server.listen(0, r));
@@ -97,4 +97,42 @@ describe("download commands save any 2xx body verbatim", () => {
     expect(r.status, r.stdout + r.stderr).toBe(7);
     expect(r.stdout).toContain("PLATFORM_ERROR");
   });
+});
+
+describe("any other command: a 2xx with a non-empty body that is not JSON exits 7", () => {
+  const UNREADABLE: Array<[string | null, string]> = [
+    ["text/plain", "hello"],
+    ["application/octet-stream", "hello"],
+    [null, "hello"],
+    ["text/html", "<html>portal</html>"],
+    ["application/json", "<html>portal</html>"],
+    ["application/json", " "],
+  ];
+  for (const [type, body] of UNREADABLE) {
+    for (const argv of [["post", "get", "p1"], ["post", "delete", "p1"], ["account", "list"]]) {
+      it(`${argv.join(" ")}: a 200 ${type ?? "(no content type)"} ${JSON.stringify(body)} exits 7`, async () => {
+        reply = { status: 200, type, body };
+        const r = await run([...argv, "--json", ...common()]);
+        expect(r.status, r.stdout + r.stderr).toBe(7);
+        expect(r.stdout).toContain("PLATFORM_ERROR");
+      });
+    }
+  }
+
+  const READABLE: Array<[number, string | null, string]> = [
+    [204, null, ""],
+    [200, null, ""],
+    [200, "application/json", ""],
+    [200, "text/plain", ""],
+    [200, "application/json", "{}"],
+    [201, "application/json; charset=utf-8", '{"ok":true}'],
+  ];
+  for (const [status, type, body] of READABLE) {
+    it(`post delete: a ${status} ${type ?? "(no content type)"} ${JSON.stringify(body)} exits 0`, async () => {
+      reply = { status, type, body };
+      const r = await run(["post", "delete", "p1", "--json", ...common()]);
+      expect(r.status, r.stdout + r.stderr).toBe(0);
+      expect(r.stdout).not.toContain("PLATFORM_ERROR");
+    });
+  }
 });

@@ -88,18 +88,30 @@ function asOpaqueBytes(res: Response): Response {
  * something that failed, so it is a platform fault: exit 7, retry with
  * backoff. Two shapes: a 5xx whose body is not an error envelope (a proxy's
  * HTML page, an empty body), which the SDK would decode as `INTERNAL` (exit
- * 1); and a 2xx that claims JSON (or is an HTML page) but does not parse,
- * which the SDK would either crash on (exit 1) or hand over as bytes. A 5xx
- * that DOES carry an envelope keeps its declared code; a 2xx inside
- * `downloadBinary` never reaches here.
+ * 1); and a 2xx with a non-empty body that is not JSON, whatever its content
+ * type, which the SDK would crash on (exit 1) or hand over as bytes that print
+ * as `{}` (exit 0). A 5xx that DOES carry an envelope keeps its declared code.
+ * An empty 2xx is a bodyless success, handed on without a content type so the
+ * SDK reads it the way it reads a 204. A 2xx inside `downloadBinary` never
+ * reaches here.
  */
 async function platformFaultIfUnreadable(res: Response): Promise<Response> {
-  const type = res.headers.get("content-type") ?? "";
-  const env = (await res.clone().json().catch(() => null)) as { code?: unknown } | null;
+  const text = res.status === 204 ? "" : await res.clone().text();
+  let parsed = true;
+  let env: { code?: unknown } | null = null;
+  try {
+    env = JSON.parse(text) as { code?: unknown } | null;
+  } catch {
+    parsed = false;
+  }
   if (res.status >= 500) {
     if (typeof env?.code === "string") return res;
-  } else if (!res.ok || env !== null || !(type.includes("json") || type.includes("text/html"))) {
+  } else if (!res.ok || parsed) {
     return res;
+  } else if (text === "") {
+    const headers = new Headers(res.headers);
+    headers.delete("content-type");
+    return new Response(null, { status: res.status, statusText: res.statusText, headers });
   }
   const headers = new Headers(res.headers);
   headers.set("content-type", "application/json");

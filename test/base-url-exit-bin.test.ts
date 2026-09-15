@@ -139,12 +139,6 @@ describe("a 5xx with no readable error body is a platform fault, exit 7", () => 
     expect(r.status, r.stderr).toBe(0);
   });
 
-  it("a 200 binary body is not reclassified", async () => {
-    reply = { status: 200, type: "application/octet-stream", body: "not json" };
-    const r = await run(["account", "list", "--json", "--api-key", "cvt_test_x", "--base-url", baseUrl]);
-    expect(r.status, r.stdout + r.stderr).not.toBe(7);
-  });
-
   it("config set-base-url refuses a malformed URL before saving", async () => {
     const r = await run(["config", "set-base-url", "not a url"]);
     expect(r.status, r.stderr).not.toBe(0);

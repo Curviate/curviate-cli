@@ -24,7 +24,8 @@ change an exit code, so it ships as a minor.
 - A malformed base URL or an invalid `--timeout` now exits `2` (was `1`, or
   `7` for a non-http scheme).
 - A request that gets no response, or a response that is not an API answer,
-  now exits `7` (was `1`, or `0` with empty data for a `200` HTML page).
+  now exits `7` (was `1`, or `0` printing `{}` for a `200` whose body is not
+  JSON).
   Download commands are the exception: they save any `2xx` body as the file.
 - A config profile field of the wrong JSON type now exits `2` (was `1`, or
   sent as-is).
@@ -79,10 +80,13 @@ change an exit code, so it ships as a minor.
   and `config set-base-url` refuse it before saving.
 - **A response that is not an API answer exits `7`.** A 5xx whose body is not
   an error envelope (a gateway's HTML page, an empty body) decoded as
-  `INTERNAL`, exit `1`. A `200` that claimed JSON but did not parse exited
-  `1` (`doctor`: `3`), and a `200` HTML page exited `0` with empty data. All
-  now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that carries an error
-  envelope keeps its declared code. The download commands (`message
+  `INTERNAL`, exit `1`. A `2xx` whose non-empty body is not JSON exited `1`
+  when it claimed JSON (`doctor`: `3`), and otherwise (`text/html`,
+  `text/plain`, `application/octet-stream`, no content type) exited `0`
+  printing `{}`. All now surface as `PLATFORM_ERROR`, exit `7`. A 5xx that
+  carries an error envelope keeps its declared code. A `204` or any other
+  empty-bodied success still exits `0`, and an empty `200` labelled JSON,
+  which exited `7`, now does too. The download commands (`message
   attachment`, `job applicant resume`, `recruiter applicant resume`) are
   exempt: they save any `2xx` body byte-for-byte whatever its content type,
   since the server passes the file's own type through. That includes a
