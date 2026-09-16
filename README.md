@@ -5,6 +5,8 @@ Official command-line interface for the [Curviate API](https://docs.curviate.com
 Built for coding agents and power users: JSON output on pipes, structured exit codes,
 and shell-native composition with `jq`, `xargs`, and `curl`.
 
+![An agent using the Curviate CLI to triage a LinkedIn inbox: 18 threads unread, 7 profiles analyzed, 3 companies researched, 6 warm intros, 5 no action needed, 6 drafts waiting for approval](./assets/curviate-cli-hero.png)
+
 ## Install
 
 **Global install** (recommended for interactive use):
