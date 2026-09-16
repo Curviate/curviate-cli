@@ -1420,7 +1420,7 @@ const accountSeatsCommand = defineCommand({
     name: "seats",
     description:
       "List the workspace's live seats and whether each is free or bound to an account. A seat with " +
-      "occupied:false (free) is a seat_id `account link --seat-id` accepts right now. Not paginated " +
+      "occupied:false (free) is a seat_id `curviate account link --seat-id` accepts right now. Not paginated " +
       "(bounded by purchased seats), --all is not supported. An empty result can mean the workspace has " +
       "no seats, or that billing needs attention.",
   },
