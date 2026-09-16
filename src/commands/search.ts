@@ -27,7 +27,7 @@ import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import {
   assembleFilters,
   splitCsv,
@@ -366,6 +366,7 @@ export async function runSearchPeople(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   // Reject flags that are only valid for jobs / Sales Navigator (not classic people search)
   for (const f of PEOPLE_INVALID_FLAGS) {
@@ -403,6 +404,7 @@ export async function runSearchPeople(
       }
     } else {
       const result = await ns.search.people(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchPeople }, out);
     }
   } catch (err: unknown) {
@@ -428,6 +430,7 @@ export async function runSearchCompanies(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -455,6 +458,7 @@ export async function runSearchCompanies(
       }
     } else {
       const result = await ns.search.companies(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchCompanies }, out);
     }
   } catch (err: unknown) {
@@ -480,6 +484,7 @@ export async function runSearchPosts(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -507,6 +512,7 @@ export async function runSearchPosts(
       }
     } else {
       const result = await ns.search.posts(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchPosts }, out);
     }
   } catch (err: unknown) {
@@ -532,6 +538,7 @@ export async function runSearchJobs(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -559,6 +566,7 @@ export async function runSearchJobs(
       }
     } else {
       const result = await ns.search.jobs(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchJobs }, out);
     }
   } catch (err: unknown) {
@@ -642,6 +650,7 @@ export async function runSearchGroups(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const keywords = flags.query ?? "";
   if (!keywords) {
@@ -671,6 +680,7 @@ export async function runSearchGroups(
       }
     } else {
       const result = await ns.search.groups(query);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -698,6 +708,7 @@ export async function runSearchServices(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -729,6 +740,7 @@ export async function runSearchServices(
       }
     } else {
       const result = await ns.search.services(body as SearchServicesBody);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -800,6 +812,7 @@ export async function runSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
@@ -825,6 +838,7 @@ export async function runSearchFromUrl(
       }
     } else {
       const result = await ns.search.fromUrl(body as SearchFromUrlBody);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, verbose }, out);
     }
   } catch (err: unknown) {

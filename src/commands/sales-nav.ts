@@ -40,7 +40,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import {
   assembleFilters,
@@ -165,6 +165,7 @@ export async function runSalesNavSearchPeople(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -214,6 +215,7 @@ export async function runSalesNavSearchPeople(
       }
     } else {
       const result = await ns.salesNavigator.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -233,6 +235,7 @@ export async function runSalesNavSearchCompanies(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -275,6 +278,7 @@ export async function runSalesNavSearchCompanies(
       }
     } else {
       const result = await ns.salesNavigator.searchCompanies(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -329,6 +333,7 @@ export async function runSalesNavSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
@@ -363,6 +368,7 @@ export async function runSalesNavSearchFromUrl(
       }
     } else {
       const result = await ns.salesNavigator.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -539,6 +545,7 @@ export async function runSalesNavAccountLists(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -564,6 +571,7 @@ export async function runSalesNavAccountLists(
       return;
     }
     const result = await ns.salesNavigator.accountLists(Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -580,6 +588,7 @@ export async function runSalesNavLeadLists(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -605,6 +614,7 @@ export async function runSalesNavLeadLists(
       return;
     }
     const result = await ns.salesNavigator.leadLists(Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -621,6 +631,7 @@ export async function runSalesNavBrowseAccountList(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const listId = flags.listId ?? "";
@@ -652,6 +663,7 @@ export async function runSalesNavBrowseAccountList(
       return;
     }
     const result = await ns.salesNavigator.browseAccountList(listId, body, Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -668,6 +680,7 @@ export async function runSalesNavBrowseLeadList(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const listId = flags.listId ?? "";
@@ -699,6 +712,7 @@ export async function runSalesNavBrowseLeadList(
       return;
     }
     const result = await ns.salesNavigator.browseLeadList(listId, body, Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

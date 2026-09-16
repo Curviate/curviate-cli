@@ -25,7 +25,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { RETRIEVAL_FLAGS, parseRetrievalFlags } from "../lib/retrieval.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
@@ -182,6 +182,7 @@ export async function runInboxList(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -215,6 +216,7 @@ export async function runInboxList(
       }
     } else {
       const result = await ns.messaging.listChats(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -303,6 +305,7 @@ export async function runInboxMessages(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   // The retrieval pair, validated BEFORE any network call: the API refuses
   // `cache_only` + `max_age` with a 400, and a caller who typed both deserves
@@ -346,6 +349,7 @@ export async function runInboxMessages(
       }
     } else {
       const result = await ns.messaging.listMessages(chatId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -365,6 +369,7 @@ export async function runInboxSearch(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const query = flags.query ?? "";
@@ -403,6 +408,7 @@ export async function runInboxSearch(
       }
     } else {
       const result = await ns.messaging.searchChats(params as { query: string });
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

@@ -39,7 +39,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
@@ -500,6 +500,7 @@ export async function runRecruiterSearchPeople(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -547,6 +548,7 @@ export async function runRecruiterSearchPeople(
       }
     } else {
       const result = await ns.recruiter.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -615,6 +617,7 @@ export async function runRecruiterSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
@@ -649,6 +652,7 @@ export async function runRecruiterSearchFromUrl(
       }
     } else {
       const result = await ns.recruiter.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -666,6 +670,7 @@ export async function runRecruiterListProjects(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -691,6 +696,7 @@ export async function runRecruiterListProjects(
       }
     } else {
       const result = await ns.recruiter.listProjects(Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -783,6 +789,7 @@ export async function runRecruiterListPipeline(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -826,6 +833,7 @@ export async function runRecruiterListPipeline(
         Object.keys(body).length > 0 ? (body as RecruiterListPipelineBody) : undefined,
         Object.keys(params).length > 0 ? params : undefined,
       );
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -938,6 +946,7 @@ export async function runRecruiterListJobs(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -963,6 +972,7 @@ export async function runRecruiterListJobs(
       }
     } else {
       const result = await ns.recruiter.listJobs(Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -1255,6 +1265,7 @@ export async function runRecruiterSearchTalentPool(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags["channel-id"]) {
     out.stderr.write("error: --channel-id is required.\n");
@@ -1302,6 +1313,7 @@ export async function runRecruiterSearchTalentPool(
       }
     } else {
       const result = await ns.recruiter.searchTalentPool(projectId, body as RecruiterSearchTalentPoolBody, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

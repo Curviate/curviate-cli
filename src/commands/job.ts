@@ -34,7 +34,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -274,8 +274,23 @@ export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputSt
  */
 export async function runJobList(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  const accountId = await requireAccount(client, flags, out);
   const state = requireFlag(flags.state, "--state", out);
+
+  // --state ALL's union paces its per-state fetches with --page-delay even
+  // without --all (see runJobListAllStates below); only --max-pages is
+  // meaningless there without --all. For every other state, NEITHER modifier
+  // does anything without --all, so both are refused — the ordinary rule.
+  // Checked before requireAccount, so a refusal here still sends nothing.
+  if (state === "ALL") {
+    if (!flags.all && flags["max-pages"] !== undefined) {
+      out.stderr.write("error: --max-pages requires --all; without it, streaming never engages so the flag does nothing.\n");
+      process.exit(2);
+    }
+  } else {
+    rejectPaginationModifiersWithoutAll(flags, out);
+  }
+
+  const accountId = await requireAccount(client, flags, out);
 
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
@@ -318,6 +333,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
       }
     } else {
       const result = await listJobs(ns, base as JobListQuery);
+      readablePage(result);
       const { items: filtered, dropped } = filterJobsByState(result.items, state);
       if (dropped > 0) {
         out.stderr.write(stateFilterDroppedNote(dropped, result.items?.length ?? 0, state));
@@ -443,6 +459,7 @@ export async function runJobBudget(client: Curviate, flags: JobFlags, out: Outpu
 /** Run `job applicants <id>`, jobs.listApplicants (POST-as-search, paginated read). */
 export async function runJobApplicants(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
@@ -473,6 +490,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
       }
     } else {
       const result = await ns.jobs.listApplicants(jobId, base as ListApplicantsParams);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

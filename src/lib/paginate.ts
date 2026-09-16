@@ -67,6 +67,24 @@ export function readableId(entity: unknown): string {
   return String(id);
 }
 
+/**
+ * Refuse `--max-pages`/`--page-delay` on a streaming command when `--all` is
+ * not also given. Both only mean anything as part of an `--all` page walk;
+ * without it they were silently accepted and did nothing, which an agent has
+ * no way to detect. Usage error, exit 2, checked before any request (call it
+ * before the command resolves an account or an identifier).
+ */
+export function rejectPaginationModifiersWithoutAll(
+  flags: { all?: boolean; "max-pages"?: string; "page-delay"?: string },
+  out: StreamWriters,
+): void {
+  if (flags.all) return;
+  const offender = flags["max-pages"] !== undefined ? "--max-pages" : flags["page-delay"] !== undefined ? "--page-delay" : null;
+  if (!offender) return;
+  out.stderr.write(`error: ${offender} requires --all; without it, streaming never engages so the flag does nothing.\n`);
+  process.exit(2);
+}
+
 function unreadable(what: string): CurviateError {
   return new CurviateError({
     code: "PLATFORM_ERROR",
