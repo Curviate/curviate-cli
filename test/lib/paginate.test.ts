@@ -5,6 +5,7 @@ import {
   ndjsonModeNotice,
   pageDelayFrom,
   DEFAULT_PAGE_DELAY_MS,
+  rejectPaginationModifiersWithoutAll,
 } from "../../src/lib/paginate.js";
 
 function makeOut() {
@@ -479,5 +480,47 @@ describe("lib/paginate — pageDelayFrom (flag parsing)", () => {
     expect(pageDelayFrom("-5")).toBeUndefined();
     expect(pageDelayFrom("abc")).toBeUndefined();
     expect(pageDelayFrom("")).toBeUndefined();
+  });
+});
+
+function mockExit() {
+  return vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+    throw new Error(`process.exit(${code})`);
+  });
+}
+
+describe("lib/paginate — rejectPaginationModifiersWithoutAll", () => {
+  it("--all present: --max-pages and --page-delay are both left alone", () => {
+    const out = makeOut();
+    expect(() => rejectPaginationModifiersWithoutAll({ all: true, "max-pages": "5", "page-delay": "0" }, out)).not.toThrow();
+    expect(out.stderr.write).not.toHaveBeenCalled();
+  });
+
+  it("neither modifier present, no --all: not an error (the plain path itself is fine)", () => {
+    const out = makeOut();
+    expect(() => rejectPaginationModifiersWithoutAll({ all: false }, out)).not.toThrow();
+    expect(out.stderr.write).not.toHaveBeenCalled();
+  });
+
+  it("--max-pages without --all: exit 2, one stderr line naming --max-pages", () => {
+    const out = makeOut();
+    const exitSpy = mockExit();
+    try {
+      expect(() => rejectPaginationModifiersWithoutAll({ "max-pages": "5" }, out)).toThrow("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    expect((out.stderr.write as Mock).mock.calls[0]?.[0]).toContain("--max-pages");
+  });
+
+  it("--page-delay without --all: exit 2, one stderr line naming --page-delay", () => {
+    const out = makeOut();
+    const exitSpy = mockExit();
+    try {
+      expect(() => rejectPaginationModifiersWithoutAll({ "page-delay": "0" }, out)).toThrow("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    expect((out.stderr.write as Mock).mock.calls[0]?.[0]).toContain("--page-delay");
   });
 });

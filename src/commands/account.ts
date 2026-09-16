@@ -42,7 +42,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
 import { readlineSync } from "../lib/readline.js";
 import { defaultReadStdin } from "../lib/stdin.js";
@@ -191,6 +191,7 @@ export async function runAccountList(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;

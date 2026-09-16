@@ -56,7 +56,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
-import { streamAll, pageDelayFromFlags, readableId, readablePage } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -235,6 +235,7 @@ export async function runCompanyEmployees(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -280,6 +281,7 @@ export async function runCompanyPosts(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -323,6 +325,7 @@ export async function runCompanyJobs(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -371,6 +374,7 @@ export async function runCompanyInvitableFollowers(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -464,6 +468,7 @@ export async function runCompanyManaged(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -507,6 +512,7 @@ export async function runCompanyFollowers(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -551,6 +557,7 @@ export async function runCompanyChats(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -625,6 +632,7 @@ export async function runCompanyMessages(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -708,6 +716,7 @@ export async function runCompanySearchChats(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);

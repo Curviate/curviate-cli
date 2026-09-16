@@ -46,7 +46,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readableId, readablePage } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -207,6 +207,7 @@ export async function runProfileMe(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const hasActivityFlag = !!(flags.posts || flags.comments || flags.reactions || flags.followers);
 
@@ -355,6 +356,7 @@ export async function runProfileGet(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   // --sections is a usage error on the default (users.get) branch when
   // empty, or when it contains an unknown section (D9, validated/prefixed
@@ -530,6 +532,7 @@ export async function runProfileRelations(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -693,6 +696,7 @@ export async function runProfileVisitors(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -898,6 +902,7 @@ export async function runProfileFollowers(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
@@ -935,6 +940,7 @@ export async function runProfileFollowing(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
   const ns = client.account(accountId);

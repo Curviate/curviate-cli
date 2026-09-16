@@ -118,6 +118,15 @@ change an exit code, so it ships as a minor.
   read named on the streaming surface above) exited `0` on a `null` or
   otherwise not-a-page body when read without `--all`; it now exits `7`,
   matching the `--all` behavior exactly.
+- **`--max-pages`/`--page-delay` without `--all`, on a command that does
+  stream, now exit `2` with nothing sent.** Both flags only mean anything as
+  part of an `--all` page walk; without it they were accepted and silently
+  did nothing, which an agent has no way to detect. This is distinct from
+  the `--all`-declared-nowhere case above (unknown flag, exit `2`): here the
+  command genuinely streams, `--all` is just missing. `job list --state ALL`
+  keeps its own inter-state `--page-delay` pacing without `--all`, since it
+  is not part of an `--all` walk either way; only `--max-pages` is refused
+  there without `--all`.
 - **A request that gets no response exits `7` on every command.** A refused
   connection, a DNS failure or a timeout arrived as `INTERNAL` and exited
   `1`, while `doctor` already reported it as `7`. It is a transient platform

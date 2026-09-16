@@ -27,7 +27,7 @@ import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import {
   assembleFilters,
   splitCsv,
@@ -366,6 +366,7 @@ export async function runSearchPeople(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   // Reject flags that are only valid for jobs / Sales Navigator (not classic people search)
   for (const f of PEOPLE_INVALID_FLAGS) {
@@ -429,6 +430,7 @@ export async function runSearchCompanies(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -482,6 +484,7 @@ export async function runSearchPosts(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -535,6 +538,7 @@ export async function runSearchJobs(
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -646,6 +650,7 @@ export async function runSearchGroups(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const keywords = flags.query ?? "";
   if (!keywords) {
@@ -703,6 +708,7 @@ export async function runSearchServices(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -806,6 +812,7 @@ export async function runSearchFromUrl(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
   const ns = client.account(accountId);
