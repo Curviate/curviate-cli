@@ -42,7 +42,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
 import { readlineSync } from "../lib/readline.js";
 import { defaultReadStdin } from "../lib/stdin.js";
@@ -217,6 +217,7 @@ export async function runAccountList(
       }
     } else {
       const result = await client.accounts.list(params);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimAccountList }, out);
     }
   } catch (err) {

@@ -25,7 +25,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { RETRIEVAL_FLAGS, parseRetrievalFlags } from "../lib/retrieval.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
@@ -215,6 +215,7 @@ export async function runInboxList(
       }
     } else {
       const result = await ns.messaging.listChats(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -346,6 +347,7 @@ export async function runInboxMessages(
       }
     } else {
       const result = await ns.messaging.listMessages(chatId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -403,6 +405,7 @@ export async function runInboxSearch(
       }
     } else {
       const result = await ns.messaging.searchChats(params as { query: string });
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

@@ -35,7 +35,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { readAttachment, AttachError, toAttachmentPayload, describeAttachment } from "../lib/attach.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -169,6 +169,7 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
       }
     } else {
       const result = await ns.posts.listComments(postId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -200,6 +201,7 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
       }
     } else {
       const result = await ns.comments.listReplies(postId, commentId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -231,6 +233,7 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
       }
     } else {
       const result = await ns.comments.listReactions(postId, commentId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -274,6 +277,7 @@ export async function runCommentUser(client: Curviate, flags: CommentFlags, out:
       }
     } else {
       const result = await ns.comments.listUserComments(userId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

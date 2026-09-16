@@ -318,6 +318,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
       }
     } else {
       const result = await listJobs(ns, base as JobListQuery);
+      readablePage(result);
       const { items: filtered, dropped } = filterJobsByState(result.items, state);
       if (dropped > 0) {
         out.stderr.write(stateFilterDroppedNote(dropped, result.items?.length ?? 0, state));
@@ -473,6 +474,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
       }
     } else {
       const result = await ns.jobs.listApplicants(jobId, base as ListApplicantsParams);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

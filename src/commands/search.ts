@@ -27,7 +27,7 @@ import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import {
   assembleFilters,
   splitCsv,
@@ -403,6 +403,7 @@ export async function runSearchPeople(
       }
     } else {
       const result = await ns.search.people(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchPeople }, out);
     }
   } catch (err: unknown) {
@@ -455,6 +456,7 @@ export async function runSearchCompanies(
       }
     } else {
       const result = await ns.search.companies(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchCompanies }, out);
     }
   } catch (err: unknown) {
@@ -507,6 +509,7 @@ export async function runSearchPosts(
       }
     } else {
       const result = await ns.search.posts(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchPosts }, out);
     }
   } catch (err: unknown) {
@@ -559,6 +562,7 @@ export async function runSearchJobs(
       }
     } else {
       const result = await ns.search.jobs(body);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimSearchJobs }, out);
     }
   } catch (err: unknown) {
@@ -671,6 +675,7 @@ export async function runSearchGroups(
       }
     } else {
       const result = await ns.search.groups(query);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -729,6 +734,7 @@ export async function runSearchServices(
       }
     } else {
       const result = await ns.search.services(body as SearchServicesBody);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -825,6 +831,7 @@ export async function runSearchFromUrl(
       }
     } else {
       const result = await ns.search.fromUrl(body as SearchFromUrlBody);
+      readablePage(result);
       renderSuccess(result, { ...outOpts, verbose }, out);
     }
   } catch (err: unknown) {

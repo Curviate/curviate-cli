@@ -39,7 +39,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
@@ -547,6 +547,7 @@ export async function runRecruiterSearchPeople(
       }
     } else {
       const result = await ns.recruiter.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -649,6 +650,7 @@ export async function runRecruiterSearchFromUrl(
       }
     } else {
       const result = await ns.recruiter.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -691,6 +693,7 @@ export async function runRecruiterListProjects(
       }
     } else {
       const result = await ns.recruiter.listProjects(Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -826,6 +829,7 @@ export async function runRecruiterListPipeline(
         Object.keys(body).length > 0 ? (body as RecruiterListPipelineBody) : undefined,
         Object.keys(params).length > 0 ? params : undefined,
       );
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -963,6 +967,7 @@ export async function runRecruiterListJobs(
       }
     } else {
       const result = await ns.recruiter.listJobs(Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -1302,6 +1307,7 @@ export async function runRecruiterSearchTalentPool(
       }
     } else {
       const result = await ns.recruiter.searchTalentPool(projectId, body as RecruiterSearchTalentPoolBody, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

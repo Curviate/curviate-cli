@@ -33,7 +33,7 @@ import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type GroupFlags = {
@@ -145,6 +145,7 @@ export async function runGroupList(
       }
     } else {
       const result = await ns.groups.list(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -215,6 +216,7 @@ export async function runGroupMembers(
       }
     } else {
       const result = await ns.groups.members(groupId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

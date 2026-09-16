@@ -26,7 +26,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type NotificationFlags = {
@@ -128,6 +128,7 @@ export async function runNotificationList(
       }
     } else {
       const result = await ns.notifications.list(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

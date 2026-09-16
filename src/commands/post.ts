@@ -35,7 +35,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
@@ -322,6 +322,7 @@ export async function runPostReactions(
       }
     } else {
       const result = await ns.posts.listReactions(postId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -362,6 +363,7 @@ export async function runPostSaved(
       }
     } else {
       const result = await ns.posts.listSaved(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -539,6 +541,7 @@ export async function runPostUserPosts(
       }
     } else {
       const result = await ns.posts.listUserPosts(userId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -587,6 +590,7 @@ export async function runPostUserReactions(
       }
     } else {
       const result = await ns.posts.listUserReactions(userId, params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {

@@ -40,7 +40,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import {
   assembleFilters,
@@ -214,6 +214,7 @@ export async function runSalesNavSearchPeople(
       }
     } else {
       const result = await ns.salesNavigator.searchPeople(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -275,6 +276,7 @@ export async function runSalesNavSearchCompanies(
       }
     } else {
       const result = await ns.salesNavigator.searchCompanies(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -363,6 +365,7 @@ export async function runSalesNavSearchFromUrl(
       }
     } else {
       const result = await ns.salesNavigator.searchFromUrl(body, Object.keys(params).length > 0 ? params : undefined);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
@@ -564,6 +567,7 @@ export async function runSalesNavAccountLists(
       return;
     }
     const result = await ns.salesNavigator.accountLists(Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -605,6 +609,7 @@ export async function runSalesNavLeadLists(
       return;
     }
     const result = await ns.salesNavigator.leadLists(Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -652,6 +657,7 @@ export async function runSalesNavBrowseAccountList(
       return;
     }
     const result = await ns.salesNavigator.browseAccountList(listId, body, Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -699,6 +705,7 @@ export async function runSalesNavBrowseLeadList(
       return;
     }
     const result = await ns.salesNavigator.browseLeadList(listId, body, Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

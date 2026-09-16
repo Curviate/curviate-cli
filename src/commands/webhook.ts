@@ -21,7 +21,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readablePage } from "../lib/paginate.js";
 import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
 import { readFileSync } from "node:fs";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
@@ -211,6 +211,7 @@ export async function runWebhookList(
       }
     } else {
       const result = await client.webhooks.list(params);
+      readablePage(result);
       renderSuccess(result, outOpts, out);
     }
   } catch (err) {

@@ -56,7 +56,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
-import { streamAll, pageDelayFromFlags, readableId } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readableId, readablePage } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -262,6 +262,7 @@ export async function runCompanyEmployees(
       return;
     }
     const result = await ns.companies.employees(identifier, params);
+    readablePage(result);
     renderSuccess(result, { ...outOpts, slim: slimSearchPeople }, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -304,6 +305,7 @@ export async function runCompanyPosts(
       return;
     }
     const result = await ns.companies.posts(identifier, params);
+    readablePage(result);
     renderSuccess(result, { ...outOpts, slim: slimSearchPosts }, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -347,6 +349,7 @@ export async function runCompanyJobs(
       return;
     }
     const result = await ns.companies.jobs(identifier, params);
+    readablePage(result);
     renderSuccess(result, { ...outOpts, slim: slimSearchJobs }, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -393,6 +396,7 @@ export async function runCompanyInvitableFollowers(
       return;
     }
     const result = await ns.companies.invitableFollowers(identifier, params);
+    readablePage(result);
     const safeResult = reencodeInvitableFollowers(result);
     renderSuccess(safeResult, { ...outOpts, slim: slimCompanyInvitableFollowers }, out);
   } catch (err: unknown) {
@@ -484,6 +488,7 @@ export async function runCompanyManaged(
       return;
     }
     const result = await ns.companies.managed(params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -527,6 +532,7 @@ export async function runCompanyFollowers(
       return;
     }
     const result = await ns.companies.followers(identifier, params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -570,6 +576,7 @@ export async function runCompanyChats(
       return;
     }
     const result = await ns.companies.chats(identifier, params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -644,6 +651,7 @@ export async function runCompanyMessages(
       return;
     }
     const result = await ns.companies.messages(identifier, chatId, params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -728,6 +736,7 @@ export async function runCompanySearchChats(
       return;
     }
     const result = await ns.companies.searchChats(identifier, params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
