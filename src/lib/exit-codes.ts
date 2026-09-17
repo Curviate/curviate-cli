@@ -182,7 +182,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // may exist perfectly well on LinkedIn, and this API simply holds no copy of
   // it, so it is NOT "not found" and re-checking the id is the wrong move. It
   // is not 1 either: nothing failed. It is user_fixable and not retryable AS
-  // SENT — the fix is another mode (`refill` fetches it once, `auto` fetches
+  // SENT: the fix is another mode (`refill` fetches it once, `auto` fetches
   // now), which is the same shape as exit 2 but reached without a malformed
   // request, so it earns its own number rather than muddying either.
   // A 502 under cache_only stays 7: "we could not look" and "we hold nothing"
@@ -193,7 +193,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   //
   // Each of these is returned by a `/v1` route, the `/v1` catch-all, or a
   // shared handler one of them calls, and each was absent from the SDK's
-  // exported union until 0.30.0 — so it decoded to `INTERNAL` and landed here
+  // exported union until 0.30.0, so it decoded to `INTERNAL` and landed here
   // on exit 1, which reads as "the tool broke" for a refusal that is usually
   // the caller's to fix. They are bucketed by what the caller does next, taken
   // from each code's own HTTP status and retry contract rather than by name.
