@@ -17,6 +17,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -108,7 +109,7 @@ describe("company managed", () => {
     const { runCompanyManaged } = await import("../../src/commands/company.js");
     const exitSpy = mockExit();
     try {
-      await runCompanyManaged(client as never, { json: true } as Args, makeOut());
+      await runCompanyManaged(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

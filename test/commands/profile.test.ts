@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { CAPTURED_EXPERIENCE, CAPTURED_EDUCATION } from "../fixtures/profile-sections.js";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -370,7 +371,7 @@ describe("profile — no account error", () => {
 
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
     try {
-      await runProfileMe(client as never, { json: true } as ProfileCommandArgs, out);
+      await runProfileMe(noConnectedAccounts(client) as never, { json: true } as ProfileCommandArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

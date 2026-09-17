@@ -251,7 +251,7 @@ curviate job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
 Company commands (`curviate company ...`) are Core-tier reads. `company <id>` accepts a public
 handle (the slug in `linkedin.com/company/<handle>`) or a numeric id; the four sub-resource
 commands require the company's **numeric provider id**, the `id` field `company <id>` returns.
-`--account` (or a configured default account) is required on all of them.
+`--account` (or a configured default account) is required on all of them, unless exactly one account is connected.
 
 ### 1. Retrieve a company, then list its employees
 

@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeInboxesNs() {
   return {
@@ -130,7 +131,7 @@ describe("inboxes list", () => {
       throw new Error(`process.exit(${code})`);
     });
     try {
-      await runInboxesList(client as never, { json: true } as InboxesArgs, out);
+      await runInboxesList(noConnectedAccounts(client) as never, { json: true } as InboxesArgs, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -268,7 +269,7 @@ describe("inboxes chats", () => {
       throw new Error(`process.exit(${code})`);
     });
     try {
-      await runInboxesChats(client as never, { inboxId: "CLASSIC_PRIMARY", json: true } as InboxesArgs, out);
+      await runInboxesChats(noConnectedAccounts(client) as never, { inboxId: "CLASSIC_PRIMARY", json: true } as InboxesArgs, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

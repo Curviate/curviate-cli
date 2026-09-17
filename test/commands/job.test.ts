@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -162,7 +163,7 @@ describe("job get — usage errors", () => {
     const exitSpy = mockExit();
 
     try {
-      await runJobGet(client as never, { id: "4428113858" } as JobArgs, out);
+      await runJobGet(noConnectedAccounts(client) as never, { id: "4428113858" } as JobArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

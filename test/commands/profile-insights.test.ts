@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -94,7 +95,7 @@ describe("profile subscription", () => {
     const { runProfileSubscription } = await import("../../src/commands/profile.js");
     const exitSpy = mockExit();
     try {
-      await runProfileSubscription(client as never, { json: true } as Args, makeOut());
+      await runProfileSubscription(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

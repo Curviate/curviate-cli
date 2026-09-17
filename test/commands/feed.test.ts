@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { resolveLeaf } from "../../src/dispatch.js";
 import { feedCommand } from "../../src/commands/feed.js";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -104,7 +105,7 @@ describe("feed home", () => {
     const { runFeedHome } = await import("../../src/commands/feed.js");
     const exitSpy = mockExit();
     try {
-      await runFeedHome(client as never, { json: true } as Args, makeOut());
+      await runFeedHome(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

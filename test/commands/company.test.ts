@@ -21,6 +21,7 @@ import { writeFile, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { CurviateError } from "@curviate/sdk";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeInvalidRequestError() {
   return new CurviateError({
@@ -129,7 +130,7 @@ describe("company command (retrieve)", () => {
     const exitSpy = mockExit();
 
     try {
-      await runCompanyGet(client as never, { id: "t-systems", json: true } as CompanyArgs, out);
+      await runCompanyGet(noConnectedAccounts(client) as never, { id: "t-systems", json: true } as CompanyArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -746,7 +747,7 @@ describe("company invitable-followers command", () => {
     const exitSpy = mockExit();
 
     try {
-      await runCompanyInvitableFollowers(client as never, { id: "112013061", json: true } as CompanyArgs, out);
+      await runCompanyInvitableFollowers(noConnectedAccounts(client) as never, { id: "112013061", json: true } as CompanyArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -836,7 +837,7 @@ describe("company follow-invite command", () => {
     const exitSpy = mockExit();
 
     try {
-      await runCompanyFollowInvite(client as never, { id: "112013061", json: true, invitee: "ACoA1" } as CompanyArgs, out);
+      await runCompanyFollowInvite(noConnectedAccounts(client) as never, { id: "112013061", json: true, invitee: "ACoA1" } as CompanyArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -1202,7 +1203,7 @@ describe("company reply command", () => {
     const exitSpy = mockExit();
 
     try {
-      await runCompanyReply(client as never, {
+      await runCompanyReply(noConnectedAccounts(client) as never, {
         id: "112013061",
         chatId: "2-YTQ3ODU3Njgt",
         text: "hi",
