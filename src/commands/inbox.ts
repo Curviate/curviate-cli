@@ -353,6 +353,15 @@ export async function runInboxMessages(
       renderSuccess(result, outOpts, out);
     }
   } catch (err: unknown) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError && err.code === "NOT_STORED") {
+      renderError(err, outOpts, out);
+      out.stderr.write(
+        "hint: stored messages are served only after a walk of the whole chat, and a single page fetch restarts that walk. " +
+          "Run `curviate inbox messages <chat_id> --all` without `--mode cache_only` to walk it to the end.\n",
+      );
+      process.exit(14);
+    }
     await handleSdkError(err, outOpts, out);
   }
 }
@@ -509,7 +518,7 @@ const inboxMarkReadCommand = defineCommand({
 });
 
 const inboxMessagesCommand = defineCommand({
-  meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately." },
+  meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. A single page fetch from LinkedIn (such as `--mode live` without `--all`) restarts the chat's message walk, so `--mode cache_only` cannot serve the chat afterwards; `--all` walks to the end and closes it." },
   args: {
     ...GLOBAL_FLAGS,
     ...RETRIEVAL_FLAGS,

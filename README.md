@@ -540,6 +540,11 @@ this API simply holds no copy, so re-checking the id is the wrong move. It is
 not a failure either. The fix is another mode, and it is never worth retrying
 as sent, because the answer cannot change until you change the mode.
 
+`inbox messages` is served from the store only over a walk of the whole chat:
+a single page fetch from LinkedIn (such as `--mode live` without `--all`)
+restarts that walk, so `--mode cache_only` exits `14` for the chat afterwards,
+and `inbox messages <chat_id> --all` walks to the end and closes it.
+
 ```bash
 # The default: a fresh stored copy if there is one, otherwise fetch
 curviate profile me --account acc_1 --json
