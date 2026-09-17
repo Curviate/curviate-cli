@@ -833,7 +833,7 @@ const postUserPostsCommand = defineCommand({
 });
 
 const postUserReactionsCommand = defineCommand({
-  meta: { name: "user-reactions", description: "List a member's own reactions (accepts 'me')." },
+  meta: { name: "user-reactions", description: "List a member's own reactions (accepts 'me'). Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page." },
   args: {
     ...GLOBAL_FLAGS,
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },

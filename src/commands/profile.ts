@@ -1000,7 +1000,7 @@ const profileMeCommand = defineCommand({
     },
     reactions: {
       type: "boolean",
-      description: "List own reactions.",
+      description: "List own reactions. Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page.",
       default: false,
     },
     followers: {
@@ -1201,7 +1201,7 @@ export const profileCommand = defineCommand({
     id: { type: "positional", description: "Member identifier (URL, slug, or URN). Optional for subcommands.", required: false },
     posts: { type: "boolean", description: "List the profile's posts.", default: false },
     comments: { type: "boolean", description: "List the profile's comments.", default: false },
-    reactions: { type: "boolean", description: "List the profile's reactions.", default: false },
+    reactions: { type: "boolean", description: "List the profile's reactions. Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page.", default: false },
     followers: { type: "boolean", description: "List the profile's followers.", default: false },
     "is-company": { type: "boolean", description: "When listing posts, treat the profile as a company page.", default: false },
     ...RETRIEVAL_FLAGS,
