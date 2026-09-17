@@ -100,7 +100,10 @@ interface ConnectedAccount {
  */
 interface AccountSet {
   accounts: ConnectedAccount[];
-  /** False when the walk stopped at `MAX_LOOKUP_PAGES` with a cursor still open. */
+  /**
+   * False when the walk stopped at `MAX_LOOKUP_PAGES` with a cursor still open,
+   * or when a row could not be read: both leave members out of the set.
+   */
   complete: boolean;
 }
 
@@ -120,6 +123,12 @@ const listCache = new WeakMap<object, Promise<AccountSet>>();
  */
 const MAX_LOOKUP_PAGES = 10;
 
+/**
+ * `null` for a row this resolver cannot read. Such a row makes the SET
+ * incomplete (see `AccountSet.complete`): a row with no usable id is still an
+ * account, so counting the rest as "all of them" would let one readable row
+ * beside one unreadable one look like a sole account and be auto-picked.
+ */
 function toConnectedAccount(item: unknown): ConnectedAccount | null {
   if (item === null || typeof item !== "object") return null;
   const row = item as Record<string, unknown>;
@@ -139,6 +148,7 @@ function listConnectedAccounts(client: Curviate): Promise<AccountSet> {
 
   const pending = (async (): Promise<AccountSet> => {
     const accounts: ConnectedAccount[] = [];
+    let unreadableRow = false;
     let cursor: string | undefined;
     for (let page = 0; page < MAX_LOOKUP_PAGES; page++) {
       const params: Record<string, unknown> = { limit: 250 };
@@ -149,11 +159,12 @@ function listConnectedAccounts(client: Curviate): Promise<AccountSet> {
       for (const item of result.items) {
         const account = toConnectedAccount(item);
         if (account) accounts.push(account);
+        else unreadableRow = true;
       }
       // The cursor running out is the only ending that means "that was all of
       // them". Reaching the last page with one still open means the opposite,
       // and the two must not be reported the same way.
-      if (!result.cursor) return { accounts, complete: true };
+      if (!result.cursor) return { accounts, complete: !unreadableRow };
       cursor = result.cursor;
     }
     return { accounts, complete: false };
@@ -240,8 +251,9 @@ async function soleConnectedAccount(
   // A single account on a truncated list is not proof there is only one.
   if (!listed.complete) {
     out.stderr.write(
-      `error: [ACCOUNT_LIST_TRUNCATED] --account is required: this API key has more connected accounts than the ` +
-        `resolver reads, so none can be picked for you. ${SET_ACCOUNT}\n`,
+      `error: [ACCOUNT_LIST_TRUNCATED] --account is required: the connected accounts could not be read in full ` +
+        `(more of them than the resolver reads, or an entry it could not read), so none can be picked for you. ` +
+        `${SET_ACCOUNT}\n`,
     );
     process.exit(2);
   }
@@ -284,6 +296,19 @@ export async function requireAccount(
   out: AccountArgStreams,
 ): Promise<string> {
   const account = flags.account;
+
+  // An EMPTY or blank value is a value, not an omission. `--account ""`, and an
+  // empty `CURVIATE_ACCOUNT` (which the flag>env>profile merge lets win over a
+  // configured profile account), would otherwise read as "no account given"
+  // here and auto-pick the sole connected account: a write under a persona the
+  // caller never named, and one they had configured a different value for.
+  if (account !== undefined && account.trim() === "") {
+    out.stderr.write(
+      `error: --account was given an empty value. ${SET_ACCOUNT} Omit it entirely to use the only connected account.\n`,
+    );
+    process.exit(2);
+  }
+
   if (!account) return soleConnectedAccount(client, flags, out);
 
   // Surrounding whitespace is a copy/paste artifact, not intent.
@@ -344,9 +369,10 @@ export async function requireAccount(
   if (!listed.complete) {
     out.stderr.write(
       `error: [ACCOUNT_LIST_TRUNCATED] --account "${selector}" cannot be resolved by name: ` +
-        `this API key has more connected accounts than the resolver reads (it stops after ` +
-        `${MAX_LOOKUP_PAGES} pages of 250), so the name would be matched against an incomplete list ` +
-        `and a single match would not prove there is only one. ` +
+        `the connected accounts could not be read in full (this API key has more of them than the resolver ` +
+        `reads, which stops after ${MAX_LOOKUP_PAGES} pages of 250, or the list carried an entry it could not ` +
+        `read), so the name would be matched against an incomplete list and a single match would not prove ` +
+        `there is only one. ` +
         `Pass the account id instead; an id is used as given and needs no lookup.\n`,
     );
     process.exit(2);
