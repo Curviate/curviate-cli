@@ -20,6 +20,15 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   explicitly is used as before, with no lookup. An empty or blank `--account`
   or `CURVIATE_ACCOUNT` is a usage error (exit `2`), never a stand-in for
   omitting it. `--preview` still requires `--account`, since it calls nothing.
+- **`inbox messages` explains when `--mode cache_only` can be served.** The
+  store answers a message listing only for an unfiltered first page of a chat
+  whose whole message set fits in that one page (`--limit`, at most 25), and
+  only after a walk of the chat completed. Any fetched unfiltered first page
+  restarts that walk; `--all` walks to the end and closes it. The command's
+  help and the README's retrieval section now say so, and an exit `14` on an
+  unfiltered, uncursored `inbox messages` adds a `hint:` line. A read carrying
+  `--before`, `--after` or `--cursor` is never served from the store and gets
+  no hint, since `--all` would not help it. The exit code is unchanged.
 
 ### Fixed
 
