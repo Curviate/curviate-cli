@@ -38,8 +38,6 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Fixed
 
-### Fixed
-
 - **The published bundle no longer carries typographic characters from source
   comments.** The bundler keeps some comments, and two in the exit-code table
   shipped em dashes. They are rewritten, and the pre-publish scan of the built
