@@ -6,7 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.34.0] - 2026-09-17
+
+Three changes and two fixes. `--account` becomes optional when a workspace has
+exactly one connected account, which turns an invocation that used to be a
+usage error into one that runs, so it ships as a minor.
 
 ### Changed
 
