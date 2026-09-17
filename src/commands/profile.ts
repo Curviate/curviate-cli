@@ -48,7 +48,7 @@ import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } fr
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
-import { slimProfileMe, slimProfile } from "../lib/slim.js";
+import { slimProfileMe, slimProfile, withRequestedSections } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 // Body type derived from the real SDK signature, a shape drift is a compile
@@ -332,7 +332,7 @@ export async function runProfileMe(
 
   try {
     const result = await ns.users.get("me", params);
-    const slimOutOpts = { ...outOpts, slim: slimProfileMe };
+    const slimOutOpts = { ...outOpts, slim: withRequestedSections(slimProfileMe, params.linkedin_sections) };
     renderSuccess(result, slimOutOpts, out);
   } catch (err: unknown) {
     const { CurviateError } = await import("@curviate/sdk");
@@ -507,7 +507,7 @@ export async function runProfileGet(
         : resolvedId;
 
       const result = await ns.users.get(getId, params);
-      const getOutOpts = { ...outOpts, slim: slimProfile };
+      const getOutOpts = { ...outOpts, slim: withRequestedSections(slimProfile, parsedSections) };
       renderSuccess(result, getOutOpts, out);
     }
   } catch (err: unknown) {
@@ -986,7 +986,8 @@ const profileMeCommand = defineCommand({
         "Comma-separated LinkedIn sections to fetch: linkedin_experience, linkedin_education, linkedin_languages, " +
         "linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, " +
         "linkedin_interests, or linkedin_* for all (each also has a _preview variant). A bare value (e.g. skills) is " +
-        "auto-prefixed to linkedin_skills. Only applies to the base getMe call (no activity flag).",
+        "auto-prefixed to linkedin_skills. Each requested section is added to the output under its own name (skills). " +
+        "Only applies to the base getMe call (no activity flag).",
     },
     posts: {
       type: "boolean",
@@ -1211,7 +1212,7 @@ export const profileCommand = defineCommand({
         "Comma-separated LinkedIn sections to fetch: linkedin_experience, linkedin_education, linkedin_languages, " +
         "linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, " +
         "linkedin_interests, or linkedin_* for all (each also has a _preview variant). A bare value (e.g. skills) is " +
-        "auto-prefixed to linkedin_skills.",
+        "auto-prefixed to linkedin_skills. Each requested section is added to the output under its own name (skills).",
     },
   },
   subCommands: {
