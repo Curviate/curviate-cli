@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+### Fixed
+
+- **The published bundle no longer carries typographic characters from source
+  comments.** The bundler keeps some comments, and two in the exit-code table
+  shipped em dashes. They are rewritten, and the pre-publish scan of the built
+  bundle now blocks the same typographic characters the README and CHANGELOG
+  scan blocks.
+
 ## [0.33.0] - 2026-09-14
 
 One addition, one change and twelve fixes. Several refuse input that used to

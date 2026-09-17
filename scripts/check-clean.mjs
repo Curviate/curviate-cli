@@ -26,6 +26,9 @@
 // pattern set. Source-level exclusions (e.g. inline comments explaining a
 // pattern) don't protect the bundle — a leak can survive minification or be
 // re-introduced by a dependency, so the assembled output gets its own pass.
+// It also applies check:copy's blocking typographic tier (TYPOGRAPHIC), which
+// the source run does not: tsup keeps some comments, so in dist/ a comment is
+// shipped copy.
 // dist/ must already exist (run `pnpm build` first) — the mode fails closed
 // rather than silently reporting 0 hits over a directory that isn't there.
 // Chained into `prepack` AFTER the build step so no publish can skip it.
@@ -179,6 +182,30 @@ export const PATTERNS = [
     pattern:
       /\bnpm_[A-Za-z0-9]{36,}\b|_authToken\s*=\s*(?:npm_[A-Za-z0-9]{20,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
   },
+];
+
+/**
+ * Blocking tier: check:copy's typographic tells. Each entry names a non-ASCII
+ * character with a plain-ASCII replacement, so a hit is always actionable and
+ * never a judgment call. check:copy runs it over the npm-page copy; --dist runs
+ * it over the bundle.
+ * @type {Array<{ label: string; pattern: RegExp; fix: string }>}
+ */
+export const TYPOGRAPHIC = [
+  { label: "em dash (U+2014)", pattern: /—/, fix: "a comma, semicolon, colon, or period" },
+  { label: "en dash (U+2013)", pattern: /–/, fix: "a hyphen in a range, otherwise a comma" },
+  { label: "horizontal bar (U+2015)", pattern: /―/, fix: "a comma or period" },
+  { label: "curly single quote (U+2018/U+2019)", pattern: /[‘’]/, fix: "'" },
+  { label: "curly double quote (U+201C/U+201D)", pattern: /[“”]/, fix: '"' },
+  { label: "ellipsis glyph (U+2026)", pattern: /…/, fix: "..." },
+  { label: "non-breaking or exotic space", pattern: /[\u00A0\u2007\u2008\u2009\u202F\u205F\u3000]/, fix: "a normal space" },
+  { label: "zero-width or invisible character", pattern: /[\u200B-\u200D\u2060\uFEFF\u00AD]/, fix: "delete it" },
+  { label: "arrow (U+2190-U+21FF)", pattern: /[←-⇿]/, fix: "-> or <-" },
+  { label: "minus sign (U+2212)", pattern: /−/, fix: "-" },
+  { label: "multiplication sign (U+00D7)", pattern: /×/, fix: "x" },
+  { label: "inequality glyph (U+2264/U+2265)", pattern: /[≤≥]/, fix: "<= or >=" },
+  { label: "prime (U+2032/U+2033)", pattern: /[′″]/, fix: "' or \"" },
+  { label: "decorative check or cross glyph", pattern: /[✓✗✅❌]/, fix: "plain text" },
 ];
 
 // Extra patterns for a tree that is public in its ENTIRETY — a sibling repo of
@@ -504,7 +531,8 @@ async function main() {
     }
   }
 
-  const result = await scanDirectory(scanRoot, { patterns });
+  // Comments can survive bundling, so in dist/ they are published copy.
+  const result = await scanDirectory(scanRoot, { patterns: distMode ? [...patterns, ...TYPOGRAPHIC] : patterns });
 
   for (const rel of result.unreadable) {
     console.error(`UNREAD  ${rel}  — could not be read, so it was NOT scanned`);

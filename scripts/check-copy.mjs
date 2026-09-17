@@ -11,8 +11,9 @@
 // the TypeScript AST so it inspects string and template literals and nothing
 // else. Comments never become AST nodes, which is the exemption obtained
 // structurally. A regex over src/ cannot make that distinction and would red on
-// internal comments, which tsup strips from the bundle and which CLAUDE.md
-// exempts. Two instruments, each pointed at what it can actually judge.
+// internal comments. tsup does NOT strip every comment, though: some survive
+// into dist/ and ship. So `check:clean --dist` runs the blocking tier below
+// over the built bundle, where a surviving comment is published copy.
 //
 // TWO TIERS, and the split is deliberate.
 //
@@ -40,6 +41,8 @@
 // file:line. Chained into prepack so no publish can skip it.
 
 import { readFile } from "node:fs/promises";
+// Blocking tier, shared with `check:clean --dist` so the bundle gets the same scan.
+import { TYPOGRAPHIC } from "./check-clean.mjs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,29 +52,6 @@ const verbose = process.argv.includes("--verbose");
 
 /** The published copy surfaces, in the order a consumer meets them. */
 const TARGETS = ["README.md", "CHANGELOG.md", "package.json"];
-
-/**
- * Blocking tier. Each entry names a non-ASCII typographic character with a
- * plain-ASCII replacement, so a hit is always actionable and never a judgment
- * call.
- * @type {Array<{ label: string; pattern: RegExp; fix: string }>}
- */
-const TYPOGRAPHIC = [
-  { label: "em dash (U+2014)", pattern: /—/, fix: "a comma, semicolon, colon, or period" },
-  { label: "en dash (U+2013)", pattern: /–/, fix: "a hyphen in a range, otherwise a comma" },
-  { label: "horizontal bar (U+2015)", pattern: /―/, fix: "a comma or period" },
-  { label: "curly single quote (U+2018/U+2019)", pattern: /[‘’]/, fix: "'" },
-  { label: "curly double quote (U+201C/U+201D)", pattern: /[“”]/, fix: '"' },
-  { label: "ellipsis glyph (U+2026)", pattern: /…/, fix: "..." },
-  { label: "non-breaking or exotic space", pattern: /[\u00A0\u2007\u2008\u2009\u202F\u205F\u3000]/, fix: "a normal space" },
-  { label: "zero-width or invisible character", pattern: /[\u200B-\u200D\u2060\uFEFF\u00AD]/, fix: "delete it" },
-  { label: "arrow (U+2190-U+21FF)", pattern: /[←-⇿]/, fix: "-> or <-" },
-  { label: "minus sign (U+2212)", pattern: /−/, fix: "-" },
-  { label: "multiplication sign (U+00D7)", pattern: /×/, fix: "x" },
-  { label: "inequality glyph (U+2264/U+2265)", pattern: /[≤≥]/, fix: "<= or >=" },
-  { label: "prime (U+2032/U+2033)", pattern: /[′″]/, fix: "' or \"" },
-  { label: "decorative check or cross glyph", pattern: /[✓✗✅❌]/, fix: "plain text" },
-];
 
 /**
  * Warning tier: the LLM vocabulary register, plus emoji. Reported, never

@@ -3,10 +3,10 @@
  *
  * Copy that reaches for characters no keyboard produces reads as
  * machine-generated: em and en dashes, curly quotes, the single-glyph ellipsis,
- * arrows, non-breaking spaces. Comments and JSDoc are exempt (they never reach
- * a consumer: tsup strips them from the bundle), so a line-based grep is the
- * wrong instrument. It would flag this package's own internal prose and catch
- * nothing a user can see. This walks the TypeScript AST instead, so only string
+ * arrows, non-breaking spaces. Comments and JSDoc in src/ are exempt here, so a
+ * line-based grep is the wrong instrument: it would flag this package's own
+ * internal prose. (tsup keeps some comments in the bundle, so
+ * `check:clean --dist` scans dist/ for the same characters.) This walks the TypeScript AST instead, so only string
  * and template literals are inspected; comments are trivia and never become
  * nodes, which is exactly the exemption, obtained structurally rather than by a
  * heuristic.

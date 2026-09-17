@@ -609,3 +609,40 @@ describe("check:clean guard — real invocation against the actual package (inte
     expect(Array.isArray(mod.PATTERNS)).toBe(true);
   });
 });
+
+describe("check:clean --dist also blocks the copy tells check:copy blocks", () => {
+  // The bundler keeps some comments, so a source comment can ship. Escapes keep
+  // this file itself free of the characters.
+  const EM_DASH = "—";
+  const script = join(pkgRoot, "scripts", "check-clean.mjs");
+  const runGate = (...args: string[]) => {
+    try {
+      execFileSync(process.execPath, [script, ...args], { encoding: "utf8", stdio: "pipe" });
+      return { status: 0, stderr: "" };
+    } catch (e) {
+      const err = e as { status: number; stderr: string };
+      return { status: err.status, stderr: err.stderr };
+    }
+  };
+
+  it("an em dash in a bundled comment reds --dist; removed, green", async () => {
+    const rel = join("dist", "chunk.js");
+    const dir = await makeFixtureDir({ [rel]: `const a = 1;\n  // kept ${EM_DASH} by the bundler\n` });
+    const red = runGate("--dist", "--root", dir);
+    expect(red.status).not.toBe(0);
+    expect(red.stderr).toContain("chunk.js:2  [em dash (U+2014)]");
+
+    await writeFile(join(dir, rel), "const a = 1;\n  // kept, by the bundler\n", "utf8");
+    const green = runGate("--dist", "--root", dir);
+    expect(green.status, green.stderr).toBe(0);
+  });
+
+  it("the source scan still exempts the same comment (the tier is dist-only)", async () => {
+    const dir = await makeFixtureDir({ [join("src", "a.ts")]: `// note ${EM_DASH} internal\n` });
+    const src = runGate("--root", dir);
+    expect(src.status, src.stderr).toBe(0);
+    // Positive control on the same path: a real leak there does red.
+    await writeFile(join(dir, "src", "a.ts"), `// see #${"1234"}\n`, "utf8");
+    expect(runGate("--root", dir).status).not.toBe(0);
+  });
+});
