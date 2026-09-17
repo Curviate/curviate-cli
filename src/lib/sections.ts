@@ -16,7 +16,7 @@
  * generic, unhelpful message.
  */
 
-export const SECTION_BASE_NAMES = [
+const SECTION_BASE_NAMES = [
   "experience",
   "education",
   "languages",
