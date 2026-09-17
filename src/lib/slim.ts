@@ -25,6 +25,8 @@
  *   is_current   <- (ended_on == null)
  */
 
+import { sectionKeys } from "./sections.js";
+
 // ---------------------------------------------------------------------------
 // Exported synthesis helpers (used by slim projectors and testable standalone)
 // ---------------------------------------------------------------------------
@@ -140,6 +142,26 @@ function extractExperience(specifics: Record<string, unknown> | null): unknown[]
   return Array.isArray(specifics?.["experience"]) ? (specifics!["experience"] as unknown[]) : [];
 }
 
+/**
+ * Add the sections a caller requested with `--sections` to a slim profile.
+ * They are fetched only on request, so dropping them made `--sections` look
+ * like a no-op. Each lands under its own `specifics` name, `null` when the
+ * response did not carry it; unrequested sections stay out.
+ */
+export function withRequestedSections(
+  slim: (data: unknown) => Record<string, unknown>,
+  sections: readonly string[] | undefined,
+): (data: unknown) => Record<string, unknown> {
+  if (!sections?.length) return slim;
+  return (data) => {
+    const d = (data !== null && typeof data === "object" ? data : {}) as Record<string, unknown>;
+    const specifics = getSpecifics(d);
+    const out = slim(data);
+    for (const key of sectionKeys(sections)) out[key] = specifics?.[key] ?? null;
+    return out;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // profile me
 // ---------------------------------------------------------------------------
@@ -154,6 +176,7 @@ function extractExperience(specifics: Record<string, unknown> | null): unknown[]
  * Exact fields returned (9):
  *   provider_id, first_name, last_name, headline, public_identifier,
  *   location, emails (array), is_premium, current_position
+ *   plus each section requested with `--sections` (see withRequestedSections).
  *
  * v1-drift fixes (verified against the SDK's generated types, the wire truth):
  *   - `provider_id` <- `id` (the real wire has no `provider_id` key at all,
@@ -215,6 +238,7 @@ export function slimProfileMe(data: unknown): Record<string, unknown> {
  * Exact fields returned (8):
  *   provider_id, first_name, last_name, headline, location,
  *   network_distance, public_identifier, current_position
+ *   plus each section requested with `--sections` (see withRequestedSections).
  *
  * v1-drift fixes (verified against the SDK's generated types, the wire truth):
  *   - `provider_id` <- `id` (no top-level `provider_id` on the real wire).

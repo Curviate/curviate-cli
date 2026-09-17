@@ -16,7 +16,7 @@
  * generic, unhelpful message.
  */
 
-const SECTION_BASE_NAMES = [
+export const SECTION_BASE_NAMES = [
   "experience",
   "education",
   "languages",
@@ -82,4 +82,14 @@ export function parseSectionsFlag(raw: string): SectionsParseResult {
   }
 
   return { ok: true, sections };
+}
+
+/**
+ * The `specifics` keys the requested sections arrive under:
+ * `linkedin_skills` and `linkedin_skills_preview` both land in `skills`, and
+ * `linkedin_*` means every section.
+ */
+export function sectionKeys(sections: readonly string[]): string[] {
+  if (sections.includes("linkedin_*")) return [...SECTION_BASE_NAMES];
+  return [...new Set(sections.map((s) => s.replace(/^linkedin_/, "").replace(/_preview$/, "")))];
 }

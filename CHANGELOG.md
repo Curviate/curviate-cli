@@ -38,11 +38,20 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Fixed
 
+### Fixed
+
 - **The published bundle no longer carries typographic characters from source
   comments.** The bundler keeps some comments, and two in the exit-code table
   shipped em dashes. They are rewritten, and the pre-publish scan of the built
   bundle now blocks the same typographic characters the README and CHANGELOG
   scan blocks.
+- **`profile <id> --sections` and `profile me --sections` now show the
+  sections they fetch.** The default output dropped them, so the flag looked
+  like it did nothing. Each requested section is added under its own name
+  (`--sections education,skills` adds `education` and `skills`,
+  `linkedin_*` adds all nine), `null` when the response did not include it.
+  Sections that were not requested stay out, output without `--sections` is
+  unchanged, and `--verbose` still prints the full response.
 
 ## [0.33.0] - 2026-09-14
 
