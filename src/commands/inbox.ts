@@ -356,10 +356,18 @@ export async function runInboxMessages(
     const { CurviateError } = await import("@curviate/sdk");
     if (err instanceof CurviateError && err.code === "NOT_STORED") {
       renderError(err, outOpts, out);
-      out.stderr.write(
-        "hint: stored messages are served only after a walk of the whole chat, and a single page fetch restarts that walk. " +
-          "Run `curviate inbox messages <chat_id> --all` without `--mode cache_only` to walk it to the end.\n",
-      );
+      // Only for a read the store could ever answer. A filtered or cursored
+      // page is never served and never touches the walk, so telling its caller
+      // to run `--all` would send them after something that cannot help.
+      const servable =
+        flags.before === undefined && flags.after === undefined && flags.cursor === undefined;
+      if (servable) {
+        out.stderr.write(
+          "hint: a stored listing is served only after a walk of the whole chat, which any unfiltered page fetch " +
+            "restarts. Run `curviate inbox messages <chat_id> --all` without `--mode cache_only` to walk it to the " +
+            "end. A chat whose messages do not fit one page (`--limit`, at most 25) is not served from the store at all.\n",
+        );
+      }
       process.exit(14);
     }
     await handleSdkError(err, outOpts, out);
@@ -518,7 +526,7 @@ const inboxMarkReadCommand = defineCommand({
 });
 
 const inboxMessagesCommand = defineCommand({
-  meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. A single page fetch from LinkedIn (such as `--mode live` without `--all`) restarts the chat's message walk, so `--mode cache_only` cannot serve the chat afterwards; `--all` walks to the end and closes it." },
+  meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store." },
   args: {
     ...GLOBAL_FLAGS,
     ...RETRIEVAL_FLAGS,

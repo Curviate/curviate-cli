@@ -30,6 +30,7 @@ const NOT_FOUND = { code: "RESOURCE_NOT_FOUND", message: "No such chat.", user_f
 async function drive(
   run: typeof runInboxMessages,
   client: Curviate,
+  extraFlags: Record<string, unknown> = {},
 ): Promise<{ exit: number; stderr: string }> {
   const spy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
     throw new Error(`__exit__${code ?? 0}`);
@@ -37,7 +38,11 @@ async function drive(
   const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
   let exit = 0;
   try {
-    await run(client, { account: ACCOUNT, chatId: "chat_1", json: true, mode: "cache_only" } as never, out);
+    await run(
+      client,
+      { account: ACCOUNT, chatId: "chat_1", json: true, mode: "cache_only", ...extraFlags } as never,
+      out,
+    );
   } catch (e) {
     const m = /__exit__(\d+)/.exec((e as Error).message);
     exit = m ? Number(m[1]) : -1;
@@ -48,13 +53,16 @@ async function drive(
 }
 
 describe("inbox messages: the walk caveat", () => {
-  it("help states that a live page restarts the walk and --all closes it", () => {
+  it("help states the one-page limit, the unfiltered page and --all", () => {
     const subs = (inboxCommand as unknown as { subCommands: Record<string, { meta: { description: string } }> })
       .subCommands;
     const desc = subs["messages"]!.meta.description;
-    expect(desc).toContain("--mode live");
+    expect(desc).toContain("unfiltered");
     expect(desc).toContain("--all");
     expect(desc).toContain("cache_only");
+    // The most common reason a chat is never servable: it does not fit one page.
+    expect(desc).toMatch(/one page|single page/);
+    expect(desc).toContain("--limit");
   });
 
   it("exit 14 on inbox messages prints the --all hint", async () => {
@@ -62,6 +70,18 @@ describe("inbox messages: the walk caveat", () => {
     expect(r.exit).toBe(14);
     // After the error line, the way every other hint reads.
     expect(r.stderr).toMatch(/^error \[NOT_STORED\][^\n]*\nhint: [^\n]*--all[^\n]*\n$/);
+  });
+
+  it.each([
+    ["--before", { before: "2026-01-01T00:00:00Z" }],
+    ["--after", { after: "2026-01-01T00:00:00Z" }],
+    ["--cursor", { cursor: "opaque" }],
+  ])("a filtered or cursored read gets NO --all hint (%s)", async (_label, flags) => {
+    // Such a read is never served from the store and never touches the walk,
+    // so "--all" is the wrong instruction.
+    const r = await drive(runInboxMessages, clientAnswering(422, NOT_STORED), flags);
+    expect(r.exit).toBe(14);
+    expect(r.stderr).not.toContain("hint: ");
   });
 
   it("control: another error on the same command prints no hint", async () => {
