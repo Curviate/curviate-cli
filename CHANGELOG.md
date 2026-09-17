@@ -29,6 +29,12 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   unfiltered, uncursored `inbox messages` adds a `hint:` line. A read carrying
   `--before`, `--after` or `--cursor` is never served from the store and gets
   no hint, since `--all` would not help it. The exit code is unchanged.
+- **Help for `post user-reactions` and `profile --reactions` says items carry
+  no time of the reaction.** `parent_post.created_at` is when the post was
+  created, and an old post can pick up a fresh reaction, so it is not a
+  recency signal and the listing cannot be filtered by date. Read a bounded
+  number of items instead: without `--all`, `--limit` caps the read at one
+  page.
 
 ### Fixed
 
