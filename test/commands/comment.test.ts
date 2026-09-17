@@ -23,6 +23,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -188,7 +189,7 @@ describe("comment reads — method + args", () => {
     const { runCommentReplies } = await import("../../src/commands/comment.js");
     const exitSpy = mockExit();
     try {
-      await runCommentReplies(client as never, { postId: "p1", commentId: "c1" } as Args, makeOut());
+      await runCommentReplies(noConnectedAccounts(client) as never, { postId: "p1", commentId: "c1" } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

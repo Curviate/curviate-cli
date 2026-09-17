@@ -35,6 +35,9 @@
  * cursor reads for one that does not, because the ambiguity guard below is only
  * as good as the set it decides against. The walk is memoized per client, so a
  * command that asks twice still resolves once.
+ *
+ * No account at all (no flag, env or profile) pays the same walk, to use the
+ * only connected account; see `soleConnectedAccount`.
  */
 
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -194,6 +197,79 @@ function matchAccounts(
   return accounts.filter((a) => a.fullName?.toLowerCase().startsWith(needle));
 }
 
+/** `listConnectedAccounts`, exiting with the API's own code when the lookup fails. */
+async function listOrExit(client: Curviate, out: AccountArgStreams, purpose: string): Promise<AccountSet> {
+  try {
+    return await listConnectedAccounts(client);
+  } catch (err: unknown) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError) {
+      const e = err as CurviateError;
+      out.stderr.write(`error: [${e.code}] could not look up connected accounts to ${purpose}: ${e.message}\n`);
+      process.exit(getExitCode(e));
+    }
+    throw err;
+  }
+}
+
+/** Where an account can be set, for the messages that ask for one. */
+const SET_ACCOUNT = "Pass --account, set CURVIATE_ACCOUNT, or run `curviate config set-account`.";
+
+/**
+ * No account from flag, env or profile: use the only connected account.
+ *
+ * With exactly one there is nothing to choose between, so asking for it only
+ * blocks a new user (`curviate login` points at `curviate profile me`). This
+ * holds for writes too: the unrecoverable failure is acting as an account the
+ * caller did not mean, and that needs a second account to exist, which is the
+ * case refused here. Same contract as the MCP surface, where the account may
+ * be omitted when exactly one is connected.
+ */
+async function soleConnectedAccount(
+  client: Curviate,
+  flags: AccountSelectorFlags,
+  out: AccountArgStreams,
+): Promise<string> {
+  // A preview sends nothing, the lookup included.
+  if (flags.preview === true) {
+    out.stderr.write(`error: --account is required with --preview, which does not call the API to find it. ${SET_ACCOUNT}\n`);
+    process.exit(2);
+  }
+
+  const listed = await listOrExit(client, out, "pick the account for this command");
+  // A single account on a truncated list is not proof there is only one.
+  if (!listed.complete) {
+    out.stderr.write(
+      `error: [ACCOUNT_LIST_TRUNCATED] --account is required: this API key has more connected accounts than the ` +
+        `resolver reads, so none can be picked for you. ${SET_ACCOUNT}\n`,
+    );
+    process.exit(2);
+  }
+
+  const { accounts } = listed;
+  if (accounts.length === 0) {
+    out.stderr.write(
+      "error: no LinkedIn account is connected to this workspace yet. Connect one with `curviate account link`, then retry.\n",
+    );
+    process.exit(2);
+  }
+  if (accounts.length > 1) {
+    out.stderr.write(
+      `error: --account is required: ${accounts.length} accounts are connected (${describeAll(accounts)}). ${SET_ACCOUNT}\n`,
+    );
+    process.exit(2);
+  }
+
+  const resolved = accounts[0]!.accountId;
+  // Off the wire and about to become a path segment: checked like a resolved name.
+  const bad = pathSegmentViolation(resolved);
+  if (bad !== null) {
+    out.stderr.write(pathSegmentErrorMessage("the connected account id", resolved, bad));
+    process.exit(2);
+  }
+  return resolved;
+}
+
 /**
  * Resolve the effective `--account` value to an account id, or exit.
  *
@@ -208,12 +284,7 @@ export async function requireAccount(
   out: AccountArgStreams,
 ): Promise<string> {
   const account = flags.account;
-  if (!account) {
-    out.stderr.write(
-      "error: --account is required for this command. Set it via --account, CURVIATE_ACCOUNT, or `curviate config set-account`.\n",
-    );
-    process.exit(2);
-  }
+  if (!account) return soleConnectedAccount(client, flags, out);
 
   // Surrounding whitespace is a copy/paste artifact, not intent.
   const selector = account.trim();
@@ -263,20 +334,7 @@ export async function requireAccount(
     return selector;
   }
 
-  let listed: AccountSet;
-  try {
-    listed = await listConnectedAccounts(client);
-  } catch (err: unknown) {
-    const { CurviateError } = await import("@curviate/sdk");
-    if (err instanceof CurviateError) {
-      const e = err as CurviateError;
-      out.stderr.write(
-        `error: [${e.code}] could not look up connected accounts to resolve --account "${selector}": ${e.message}\n`,
-      );
-      process.exit(getExitCode(e));
-    }
-    throw err;
-  }
+  const listed = await listOrExit(client, out, `resolve --account "${selector}"`);
 
   // Before any matching, because every answer below is only as good as the set
   // it was decided against. A unique match on a truncated list is exactly the

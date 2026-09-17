@@ -8,6 +8,19 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Changed
+
+- **`--account` is optional when exactly one LinkedIn account is connected.**
+  Every account-scoped command, reads and writes, now looks up the connected
+  accounts when no account comes from `--account`, `CURVIATE_ACCOUNT` or the
+  profile, and uses the only one. `curviate profile me`, which `curviate login`
+  tells a new user to run, used to exit `2` with `--account is required` on a
+  fresh config. With no account connected the error says so; with several it
+  lists them. Both still exit `2` and send nothing else. An account given
+  explicitly is used as before, with no lookup. An empty or blank `--account`
+  or `CURVIATE_ACCOUNT` is a usage error (exit `2`), never a stand-in for
+  omitting it. `--preview` still requires `--account`, since it calls nothing.
+
 ### Fixed
 
 - **The published bundle no longer carries typographic characters from source

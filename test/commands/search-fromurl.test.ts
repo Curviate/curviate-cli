@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -71,7 +72,7 @@ describe("search <url> -> search.fromUrl", () => {
     const { runSearchFromUrl } = await import("../../src/commands/search.js");
     const exitSpy = mockExit();
     try {
-      await runSearchFromUrl(client as never, { url: URL } as Args, makeOut());
+      await runSearchFromUrl(noConnectedAccounts(client) as never, { url: URL } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

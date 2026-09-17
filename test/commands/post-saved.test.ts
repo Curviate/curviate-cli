@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -97,7 +98,7 @@ describe("post saved", () => {
     const { runPostSaved } = await import("../../src/commands/post.js");
     const exitSpy = mockExit();
     try {
-      await runPostSaved(client as never, { json: true } as Args, makeOut());
+      await runPostSaved(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -192,7 +193,7 @@ describe("post unsave", () => {
     const { runPostUnsave } = await import("../../src/commands/post.js");
     const exitSpy = mockExit();
     try {
-      await runPostUnsave(client as never, { postId: "p1", json: true } as Args, makeOut());
+      await runPostUnsave(noConnectedAccounts(client) as never, { postId: "p1", json: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

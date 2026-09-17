@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
+import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
 
 function makeAccountNs() {
   return {
@@ -364,7 +365,7 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
       throw new Error(`process.exit(${code})`);
     });
     try {
-      await runConnectAccept(client as never, { id: "inv_123" } as ConnectArgs, out);
+      await runConnectAccept(noConnectedAccounts(client) as never, { id: "inv_123" } as ConnectArgs, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
