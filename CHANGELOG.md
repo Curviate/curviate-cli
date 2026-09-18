@@ -8,6 +8,8 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-09-18
+
 ### Fixed
 
 - **Re-vendored `test/fixtures/openapi.json` from `@curviate/sdk@0.33.0`.**
