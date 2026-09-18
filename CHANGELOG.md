@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+### Fixed
+
+- **Re-vendored `test/fixtures/openapi.json` from `@curviate/sdk@0.33.0`.**
+  The previous copy (vendored from an unpublished pre-0.32.0 build) still
+  published superseded retention wording on six Recruiter/Sales Navigator
+  descriptions (`recruiter/chats` `text`, `signature`, `follow_up`,
+  `follow_up.subject`, `follow_up.text`; `sales-navigator/chats` `text`) that
+  production corrected upstream. `@curviate/sdk` dependency bumped to the
+  exact `0.33.0`.
+- Added `scripts/check-vendored-descriptions.mjs`, chained into `pretest`
+  beside `check-fixture-pin`, comparing the vendored fixture against the SDK
+  fixture by JSON path rather than by sentence, so a future re-wording can't
+  slip past a phrase-shaped check the way this one did. Skips loudly
+  (`SKIPPED`, exit 0) on a standalone clone with no `../sdk` sibling, or when
+  the sibling isn't built at the pinned version.
+
 ## [0.34.0] - 2026-09-17
 
 Three changes and two fixes. `--account` becomes optional when a workspace has
