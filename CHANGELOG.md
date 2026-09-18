@@ -18,7 +18,6 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   on three `Message.specifics.subject` sites, which production no longer
   serves: a live round-trip showed an ordinary message sent with a subject
   does carry one. `@curviate/sdk` dependency bumped to the exact `0.34.0`.
-  Closes #1551.
 - `check-vendored-descriptions` was previously `SKIPPED` on this repo (the
   sibling `../sdk` checkout sat at 0.34.0 while this package's pin was still
   0.33.0, so the guard's own version-match precondition never fired). It now
