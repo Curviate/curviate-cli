@@ -8,6 +8,22 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-09-18
+
+### Fixed
+
+- **Re-vendored `test/fixtures/openapi.json` from `@curviate/sdk@0.34.0`.**
+  The previous copy (vendored from `0.33.0`) still carried the superseded
+  ordinary-message subject retention wording ("Ordinary messages have none")
+  on three `Message.specifics.subject` sites, which production no longer
+  serves: a live round-trip showed an ordinary message sent with a subject
+  does carry one. `@curviate/sdk` dependency bumped to the exact `0.34.0`.
+  Closes #1551.
+- `check-vendored-descriptions` was previously `SKIPPED` on this repo (the
+  sibling `../sdk` checkout sat at 0.34.0 while this package's pin was still
+  0.33.0, so the guard's own version-match precondition never fired). It now
+  runs a real comparison and passes.
+
 ## [0.35.0] - 2026-09-18
 
 ### Fixed

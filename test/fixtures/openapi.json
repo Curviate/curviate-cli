@@ -615,7 +615,7 @@
                   "string",
                   "null"
                 ],
-                "description": "The InMail subject line, when the platform carries one on this message. Ordinary messages have none. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
+                "description": "The message's subject line, when the platform carries one on this message. Typically an InMail opener, but an ordinary message sent with a subject carries one too. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
               }
             },
             "additionalProperties": false
@@ -21390,7 +21390,7 @@
                                   "string",
                                   "null"
                                 ],
-                                "description": "The InMail subject line, when the platform carries one on this message. Ordinary messages have none. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
+                                "description": "The message's subject line, when the platform carries one on this message. Typically an InMail opener, but an ordinary message sent with a subject carries one too. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
                               }
                             },
                             "additionalProperties": false
@@ -22359,7 +22359,7 @@
                             "string",
                             "null"
                           ],
-                          "description": "The InMail subject line, when the platform carries one on this message. Ordinary messages have none. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
+                          "description": "The message's subject line, when the platform carries one on this message. Typically an InMail opener, but an ordinary message sent with a subject carries one too. Reading a conversation back stores the subject in your tenant's inbox records alongside the body, with no expiry."
                         }
                       },
                       "additionalProperties": false
