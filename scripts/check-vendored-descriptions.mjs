@@ -28,10 +28,14 @@ const pkgRoot = resolve(__dirname, "..");
 
 const load = (p) => JSON.parse(readFileSync(p, "utf8"));
 
+// Joined with NUL, not "/" — OpenAPI path keys (e.g. paths["/v1/{id}"])
+// contain literal "/", so a "/"-joined key is not guaranteed unique across
+// ancestor-key chains. NUL cannot appear in a JSON object key from a parsed
+// document.
 const descs = (o, path = [], out = new Map()) => {
   if (!o || typeof o !== "object") return out;
   for (const k of Object.keys(o)) {
-    if (k === "description" && typeof o[k] === "string") out.set(path.join("/"), o[k]);
+    if (k === "description" && typeof o[k] === "string") out.set(path.join("\0"), o[k]);
     else descs(o[k], [...path, k], out);
   }
   return out;
@@ -73,7 +77,7 @@ function resolveSiblingSdkFixture() {
 }
 
 function printRows(rows) {
-  for (const [kind, p, v] of rows) console.log(`${kind}  ${p}\n        ${v.slice(0, 120)}`);
+  for (const [kind, p, v] of rows) console.log(`${kind}  ${p.replaceAll("\0", "/")}\n        ${v.slice(0, 120)}`);
 }
 
 async function main() {
@@ -101,6 +105,6 @@ async function main() {
   console.error("check:vendored-descriptions OK — vendored fixture matches the sibling SDK fixture.");
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   await main();
 }
