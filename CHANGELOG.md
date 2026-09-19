@@ -10,6 +10,14 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Fixed
 
+- **Re-vendored `test/fixtures/openapi.json`, second refresh in this batch.**
+  Production now serves the Sales Navigator profile `description` relabel
+  (was "About/summary text. Present when populated.", now "Professional
+  headline. Present when populated. Reading it back through Curviate stores
+  it in your tenant's entity records, with no expiry."), which the previous
+  refresh below predated. One description string changed. No command, flag,
+  exit code or output shape changes; the `@curviate/sdk` pin stays exactly
+  `0.34.0`.
 - **Re-vendored `test/fixtures/openapi.json` from the refreshed
   `@curviate/sdk` snapshot.** The previous copy described company-page names,
   company-page follower names and headlines, several Recruiter person fields
