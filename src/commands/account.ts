@@ -781,6 +781,10 @@ async function soleFreeSeat(
   const free: string[] = [];
   let unreadable = false;
   for (const item of result.items) {
+    if (item === null || typeof item !== "object") {
+      unreadable = true;
+      continue;
+    }
     const seat = item as { seat_id?: unknown; occupied?: unknown };
     if (typeof seat.occupied !== "boolean") unreadable = true;
     else if (!seat.occupied) {
@@ -851,9 +855,25 @@ export async function runAccountLink(
   const outOpts = resolveOutputOpts(flags);
 
   // Before any secret is prompted for: a refusal here must not come after the
-  // caller has typed a password. --preview sends nothing, the seats read
+  // caller has typed a password. It is therefore also ahead of buildAuthBody's
+  // own missing-credential refusal, so a call that is short BOTH a credential
+  // flag and a resolvable seat reports the seat first and costs one read.
+  // ponytail: accepted trade-off, reorder only if a flag-presence check can be
+  // had without duplicating buildAuthBody's credentials/cookie/env/stdin rules. --preview sends nothing, the seats read
   // included; --account-id reconnects an account IN PLACE, so the seat it
   // names is the one that account already holds, never a free one.
+  // An EMPTY or blank --seat-id is a value, not an omission. `--seat-id
+  // "$SEAT"` with SEAT unset would otherwise read as "no seat given" and bind
+  // a live account into whatever seat happens to be free, which costs a
+  // disconnect to undo. Same rule as `--account` (lib/account-arg.ts).
+  if (flags["seat-id"] !== undefined && flags["seat-id"].trim() === "") {
+    out.stderr.write(
+      "error: --seat-id was given an empty value. Pass a seat id from `curviate account seats`, " +
+        "or omit the flag entirely to use the only free seat.\n",
+    );
+    process.exit(2);
+  }
+
   let seatId = flags["seat-id"];
   if (!seatId) {
     if (flags.preview) {

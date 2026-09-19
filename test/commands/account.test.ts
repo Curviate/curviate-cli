@@ -839,6 +839,27 @@ describe("account link: sole free seat resolution", () => {
     expect(client.auth.intent).not.toHaveBeenCalled();
   });
 
+  // An EMPTY --seat-id is a value, not an omission: `--seat-id "$SEAT"` with
+  // SEAT unset used to exit 2, and must not now bind a live account into
+  // whatever seat happens to be free. Same rule as --account's empty value.
+  it.each(["", "   "])("--seat-id %p is a usage error, never an omission", async (value) => {
+    const out = makeOut();
+    expect(await runExpectingExit({ ...COOKIE, "seat-id": value } as AccountFlags, out)).toBe(2);
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("a null row in the seats page refuses rather than crashing", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [null, { seat_id: "seat_free", occupied: false, account_id: null }],
+    });
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(2);
+    expect(stderrOf(out)).toContain("could not read");
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
   it("--seat-id given: no seats read at all (control)", async () => {
     const { runAccountLink } = await import("../../src/commands/account.js");
     const out = makeOut();

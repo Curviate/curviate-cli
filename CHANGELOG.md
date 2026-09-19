@@ -22,6 +22,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   before. `--seat-id` is still required with `--preview` (which calls nothing)
   and with `--account-id` (a reconnect keeps the seat that account already
   holds). No API change: the resolution uses the existing public seats read.
+  An EMPTY `--seat-id` stays a usage error rather than becoming an omission,
+  so `--seat-id "$SEAT"` with `SEAT` unset still exits `2` instead of binding
+  the free seat.
 
 ### Fixed
 
