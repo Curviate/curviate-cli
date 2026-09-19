@@ -615,14 +615,19 @@ describe("account link", () => {
     expect(client.auth.intent).not.toHaveBeenCalled();
   });
 
-  it("missing --seat-id exits 2", async () => {
+  it("missing --seat-id with no seat free exits 2", async () => {
     const { runAccountLink } = await import("../../src/commands/account.js");
+    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
     const out = makeOut();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
       throw new Error(`process.exit(${code})`);
     });
     try {
-      await runAccountLink(client as never, { "auth-method": "cookie", "li-at": "val" } as AccountFlags, out);
+      await runAccountLink(
+        client as never,
+        { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1" } as AccountFlags,
+        out,
+      );
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -731,6 +736,164 @@ describe("account link", () => {
 
     const parsed = JSON.parse((out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
     expect(parsed.body).not.toHaveProperty("account_id");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// account link: --seat-id omitted -> the only free seat
+//
+// The first run has no seat id and no way to hold one. `account seats` is the
+// read that answers it, so `account link` asks that read itself when exactly
+// one seat is free. Zero and several both refuse by name and send nothing:
+// binding the wrong seat is a connect the caller has to undo.
+// ---------------------------------------------------------------------------
+
+describe("account link: sole free seat resolution", () => {
+  let client: Client;
+
+  const COOKIE = { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", json: true } as AccountFlags;
+
+  beforeEach(() => {
+    client = makeClient();
+    (client.auth.intent as Mock).mockResolvedValue({ object: "account", account_id: "acc_new" });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Run and capture the exit code the command asked for. */
+  async function runExpectingExit(flags: AccountFlags, out: ReturnType<typeof makeOut>): Promise<number> {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    try {
+      const { runAccountLink } = await import("../../src/commands/account.js");
+      await runAccountLink(client as never, flags, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      const m = /process\.exit\((\d+)\)/.exec((e as Error).message);
+      if (!m) throw e;
+      return Number(m[1]);
+    } finally {
+      exitSpy.mockRestore();
+    }
+    throw new Error("unreachable");
+  }
+
+  const stderrOf = (out: ReturnType<typeof makeOut>) =>
+    (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+
+  it("exactly one free seat: that seat is bound, and the pick is stated", async () => {
+    const { runAccountLink } = await import("../../src/commands/account.js");
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [
+        { seat_id: "seat_taken", occupied: true, account_id: "acc_old" },
+        { seat_id: "seat_free", occupied: false, account_id: null },
+      ],
+    });
+    const out = makeOut();
+    await runAccountLink(client as never, COOKIE, out);
+
+    expect(client.accounts.listSeats).toHaveBeenCalledTimes(1);
+    expect(client.auth.intent).toHaveBeenCalledWith(expect.objectContaining({ seat_id: "seat_free" }));
+    expect(stderrOf(out)).toContain("seat_free");
+  });
+
+  it("zero free seats: exit 2, names `curviate account seats`, sends no connect", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [{ seat_id: "seat_taken", occupied: true, account_id: "acc_old" }],
+    });
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(2);
+    expect(stderrOf(out)).toContain("curviate account seats");
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("several free seats: exit 2, lists every candidate, sends no connect", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [
+        { seat_id: "seat_a", occupied: false, account_id: null },
+        { seat_id: "seat_b", occupied: false, account_id: null },
+      ],
+    });
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(2);
+    const err = stderrOf(out);
+    expect(err).toContain("seat_a");
+    expect(err).toContain("seat_b");
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("a row it cannot read beside one free seat refuses rather than picking", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [
+        { seat_id: "seat_free", occupied: false, account_id: null },
+        { occupied: false, account_id: null },
+      ],
+    });
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(2);
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  // An EMPTY --seat-id is a value, not an omission: `--seat-id "$SEAT"` with
+  // SEAT unset used to exit 2, and must not now bind a live account into
+  // whatever seat happens to be free. Same rule as --account's empty value.
+  it.each(["", "   "])("--seat-id %p is a usage error, never an omission", async (value) => {
+    const out = makeOut();
+    expect(await runExpectingExit({ ...COOKIE, "seat-id": value } as AccountFlags, out)).toBe(2);
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("a null row in the seats page refuses rather than crashing", async () => {
+    (client.accounts.listSeats as Mock).mockResolvedValue({
+      object: "seat_list",
+      items: [null, { seat_id: "seat_free", occupied: false, account_id: null }],
+    });
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(2);
+    expect(stderrOf(out)).toContain("could not read");
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("--seat-id given: no seats read at all (control)", async () => {
+    const { runAccountLink } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountLink(client as never, { ...COOKIE, "seat-id": "seat_x" } as AccountFlags, out);
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
+    expect(client.auth.intent).toHaveBeenCalledWith(expect.objectContaining({ seat_id: "seat_x" }));
+  });
+
+  it("--preview issues no lookup, so it still needs --seat-id", async () => {
+    const out = makeOut();
+    expect(await runExpectingExit({ ...COOKIE, preview: true } as AccountFlags, out)).toBe(2);
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
+  });
+
+  it("--account-id (in-place reconnect) is not a free-seat connect: still needs --seat-id", async () => {
+    const out = makeOut();
+    expect(await runExpectingExit({ ...COOKIE, "account-id": "acc_x" } as AccountFlags, out)).toBe(2);
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
+    expect(client.auth.intent).not.toHaveBeenCalled();
+  });
+
+  it("the seats read failing is reported as itself, and nothing is connected", async () => {
+    const { CurviateError } = await import("@curviate/sdk");
+    (client.accounts.listSeats as Mock).mockRejectedValue(
+      new CurviateError({
+        code: "UNAUTHORIZED",
+        message: "bad key",
+        userFixable: true,
+        retryLikelyToSucceed: false,
+      }),
+    );
+    const out = makeOut();
+    expect(await runExpectingExit(COOKIE, out)).toBe(3);
+    expect(client.auth.intent).not.toHaveBeenCalled();
   });
 });
 

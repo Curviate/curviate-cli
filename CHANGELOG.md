@@ -8,6 +8,24 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Changed
+
+- **`account link --seat-id` is optional: omitted, the only free seat is
+  used.** A first run had no seat id and no way to hold one, so the command
+  refused at argument validation and the documented non-interactive path (exit
+  12, then `curviate account checkpoint solve`) was unreachable. The command
+  now reads `curviate account seats` itself when `--seat-id` is omitted and
+  connects into the single seat listed free, stating which one on stderr. Zero
+  free seats and several free seats both refuse and connect nothing: zero names
+  how to free or add one, several lists every candidate and asks for
+  `--seat-id`. Passing `--seat-id` costs no seats read and behaves exactly as
+  before. `--seat-id` is still required with `--preview` (which calls nothing)
+  and with `--account-id` (a reconnect keeps the seat that account already
+  holds). No API change: the resolution uses the existing public seats read.
+  An EMPTY `--seat-id` stays a usage error rather than becoming an omission,
+  so `--seat-id "$SEAT"` with `SEAT` unset still exits `2` instead of binding
+  the free seat.
+
 ### Fixed
 
 - **Re-vendored `test/fixtures/openapi.json` from the refreshed
