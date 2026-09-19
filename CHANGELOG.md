@@ -8,6 +8,21 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Re-vendored `test/fixtures/openapi.json` from the refreshed
+  `@curviate/sdk` snapshot.** The previous copy described company-page names,
+  company-page follower names and headlines, several Recruiter person fields
+  and the Recruiter `recruiting_profile` object as content that passes through
+  and is never stored. Reading those responses back does store them, in the
+  tenant's entity records, with no expiry, so eight response-field claims were
+  false and are now corrected, along with a Recruiter profile field that was
+  labelled the About section and is in fact the professional headline. 23
+  description strings in all. No command, flag, exit code or output shape
+  changes, and the `@curviate/sdk` pin stays exactly `0.34.0`: the snapshot is
+  a test fixture, not part of the published surface, and the sibling-SDK
+  description check only runs while the pin and the sibling version agree.
+
 ## [0.36.0] - 2026-09-18
 
 ### Fixed

@@ -3521,7 +3521,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The company pages the account administers, each with its per-page admin capability matrix. An account that administers no pages returns an empty list; never a 403. Page names are returned verbatim and are never stored.",
+            "description": "The company pages the account administers, each with its per-page admin capability matrix. An account that administers no pages returns an empty list; never a 403. Page names are returned verbatim and are stored in your tenant's entity records, with no expiry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3588,7 +3588,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Page display name (content pass-through, never stored)."
+                            "description": "Page display name. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
                           },
                           "universal_name": {
                             "type": [
@@ -9082,7 +9082,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A page of the company page's followers; the admin analytics follower list. Follower names and headlines are returned verbatim and are never stored. Page until cursor is null.",
+            "description": "A page of the company page's followers; the admin analytics follower list. Follower names and headlines are returned verbatim and are stored in your tenant's entity records, with no expiry. Page until cursor is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9126,14 +9126,14 @@
                               "string",
                               "null"
                             ],
-                            "description": "Follower display name (content pass-through, never stored)."
+                            "description": "Follower display name. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
                           },
                           "headline": {
                             "type": [
                               "string",
                               "null"
                             ],
-                            "description": "Follower headline (content pass-through, never stored)."
+                            "description": "Follower headline. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
                           },
                           "public_identifier": {
                             "type": [
@@ -11253,7 +11253,7 @@
                       "sent_as": {
                         "kind": "company",
                         "company_id": "112013061",
-                        "name": "RedHire"
+                        "name": "Northwind Talent"
                       }
                     }
                   }
@@ -21856,7 +21856,7 @@
                       "sent_as": {
                         "kind": "company",
                         "company_id": "112013061",
-                        "name": "RedHire"
+                        "name": "Northwind Talent"
                       }
                     }
                   },
@@ -24659,7 +24659,7 @@
                           "id": "COMPANY_83734124_PRIMARY",
                           "kind": "company",
                           "folder": "primary",
-                          "name": "RedHire",
+                          "name": "Northwind Talent",
                           "company_id": "112013061",
                           "mailbox_id": "83734124",
                           "reply_only": true
@@ -41886,7 +41886,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Profile summary/about section. Passes through verbatim, never stored."
+                      "description": "The member's professional headline. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
                     },
                     "location": {
                       "type": "string",
@@ -42491,7 +42491,7 @@
                     },
                     "recruiting_profile": {
                       "type": "object",
-                      "description": "Recruiter-only enrichment: notes, tags, and message-activity events. Passes through verbatim; never stored.",
+                      "description": "Recruiter-only enrichment: notes, tags, and message-activity events. The notes, the tags and each event's message text are removed before anything is written, on every path. The rest of this object is stored in your tenant's entity records, with no expiry.",
                       "properties": {
                         "notes": {
                           "type": [
@@ -43611,7 +43611,7 @@
                           },
                           "headline": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "location": {
                             "type": "string"
@@ -43675,7 +43675,7 @@
                           },
                           "display_name": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "public_identifier": {
                             "type": "string"
@@ -46818,7 +46818,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -46882,7 +46882,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -47527,7 +47527,7 @@
                           },
                           "headline": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "location": {
                             "type": "string"
@@ -47591,7 +47591,7 @@
                           },
                           "display_name": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "public_identifier": {
                             "type": "string"
@@ -48437,7 +48437,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -48501,7 +48501,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -48657,7 +48657,7 @@
                                   },
                                   "headline": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "location": {
                                     "type": "string"
@@ -48721,7 +48721,7 @@
                                   },
                                   "display_name": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "public_identifier": {
                                     "type": "string"
@@ -48877,7 +48877,7 @@
                                   },
                                   "headline": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "location": {
                                     "type": "string"
@@ -48941,7 +48941,7 @@
                                   },
                                   "display_name": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "public_identifier": {
                                     "type": "string"
@@ -54671,7 +54671,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -54735,7 +54735,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -55686,7 +55686,7 @@
                         },
                         "headline": {
                           "type": "string",
-                          "description": "Content, not stored."
+                          "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                         },
                         "location": {
                           "type": "string"
@@ -55750,7 +55750,7 @@
                         },
                         "display_name": {
                           "type": "string",
-                          "description": "Content, not stored."
+                          "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
                         },
                         "public_identifier": {
                           "type": "string"
