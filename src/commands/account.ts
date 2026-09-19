@@ -748,8 +748,82 @@ async function handleAccountConnectResult(
 }
 
 /**
+ * No `--seat-id` on a NEW connect: use the only free seat, or refuse by name.
+ *
+ * `account link` is the step every first run must pass, and a seat id is a
+ * workspace-owned opaque value the caller has no way to hold yet.
+ * `account seats` is the read that answers it, so this asks that read rather
+ * than adding a second resolution: a seat listed `occupied:false` is one the
+ * connect would accept right now, which is the same predicate the server
+ * applies.
+ *
+ * Zero and several both refuse and send nothing. Several is the reason this
+ * cannot auto-pick: a connect binds a live LinkedIn account to a seat, and
+ * undoing a wrong bind costs a disconnect. Same shape as `--account`'s sole
+ * connected account (`lib/account-arg.ts`), including the unreadable-row
+ * refusal: one readable row beside one it cannot read must not look sole.
+ */
+async function soleFreeSeat(
+  client: Curviate,
+  out: OutputStreams,
+  outOpts: ReturnType<typeof resolveOutputOpts>,
+): Promise<string> {
+  let result: SeatList;
+  try {
+    result = readablePage(await client.accounts.listSeats());
+  } catch (err) {
+    await handleError(err, outOpts, out);
+    // Unreachable: handleError exits. Present so `result` is definitely
+    // assigned below (an awaited `never` does not narrow that).
+    throw err;
+  }
+
+  const free: string[] = [];
+  let unreadable = false;
+  for (const item of result.items) {
+    const seat = item as { seat_id?: unknown; occupied?: unknown };
+    if (typeof seat.occupied !== "boolean") unreadable = true;
+    else if (!seat.occupied) {
+      if (typeof seat.seat_id === "string" && seat.seat_id.length > 0) free.push(seat.seat_id);
+      else unreadable = true;
+    }
+  }
+
+  if (unreadable) {
+    out.stderr.write(
+      "error: --seat-id is required: the seat list carried an entry this CLI could not read, " +
+        "so a seat cannot be picked for you. Run `curviate account seats` and pass --seat-id.\n",
+    );
+    process.exit(2);
+  }
+  if (free.length === 0) {
+    out.stderr.write(
+      "error: no free seat to connect into, so --seat-id cannot be picked for you. " +
+        "Run `curviate account seats` to see your seats. A seat is listed free only while a connect into it " +
+        "would be accepted right now, so an empty list can also mean the workspace has no seats or that " +
+        "billing needs attention. Free one with `curviate account disconnect <account_id>`, or add a seat " +
+        "in billing on your dashboard.\n",
+    );
+    process.exit(2);
+  }
+  if (free.length > 1) {
+    out.stderr.write(
+      `error: --seat-id is required: ${free.length} seats are free (${free.join(", ")}). ` +
+        "Pass --seat-id <seat_id> to say which one this account takes.\n",
+    );
+    process.exit(2);
+  }
+
+  const seatId = free[0]!;
+  out.stderr.write(`note: no --seat-id given, connecting into the only free seat ${seatId}.\n`);
+  return seatId;
+}
+
+/**
  * Run `account link <body...>`.
- * Required: --seat-id, --auth-method.
+ * Required: --auth-method. `--seat-id` is optional on a new connect (the only
+ * free seat is used when exactly one is free) and required with `--preview`
+ * or `--account-id`.
  */
 export async function runAccountLink(
   client: Curviate,
@@ -758,10 +832,6 @@ export async function runAccountLink(
   io: CredentialIO = {},
 ): Promise<void> {
   // Validate required fields
-  if (!flags["seat-id"]) {
-    out.stderr.write("error: --seat-id is required for account link.\n");
-    process.exit(2);
-  }
   if (!flags["auth-method"]) {
     out.stderr.write("error: --auth-method is required for account link (credentials | cookie).\n");
     process.exit(2);
@@ -778,6 +848,31 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  const outOpts = resolveOutputOpts(flags);
+
+  // Before any secret is prompted for: a refusal here must not come after the
+  // caller has typed a password. --preview sends nothing, the seats read
+  // included; --account-id reconnects an account IN PLACE, so the seat it
+  // names is the one that account already holds, never a free one.
+  let seatId = flags["seat-id"];
+  if (!seatId) {
+    if (flags.preview) {
+      out.stderr.write(
+        "error: --seat-id is required with --preview, which does not call the API to find it. " +
+          "Run `curviate account seats` to list your seats.\n",
+      );
+      process.exit(2);
+    }
+    if (flags["account-id"]) {
+      out.stderr.write(
+        "error: --seat-id is required with --account-id: a reconnect names the seat that account already " +
+          "holds, so it is not picked for you. Run `curviate account seats` to see it.\n",
+      );
+      process.exit(2);
+    }
+    seatId = await soleFreeSeat(client, out, outOpts);
+  }
+
   const resolvedIo = resolveCredentialIO(io);
   const authBody = await buildAuthBody(flags, {
     out,
@@ -789,15 +884,13 @@ export async function runAccountLink(
   });
 
   const body: Record<string, unknown> = {
-    seat_id: flags["seat-id"],
+    seat_id: seatId,
     ...authBody,
     // --account-id (0.15.0): present -> re-authenticate this existing account in
     // place (reconnect); omit -> connect a new account, with NO account_id key in
     // the body at all (not undefined, not empty).
     ...(flags["account-id"] ? { account_id: flags["account-id"] } : {}),
   };
-
-  const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
     const preview = buildPreviewOutput({ method: "auth.intent", args: {}, body });
@@ -1448,11 +1541,11 @@ const accountLinkCommand = defineCommand({
     name: "link",
     description:
       "Connect a LinkedIn account to an empty seat. " +
-      "If LinkedIn requires verification you'll be prompted for the code interactively. Given --seat-id and --auth-method, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
+      "If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "seat-id": { type: "string", description: "Empty seat to bind the account to, listed by `curviate account seats` (a free seat there is one this call accepts right now).", required: true },
+    "seat-id": { type: "string", description: "Empty seat to bind the account to, listed by `curviate account seats` (a free seat there is one this call accepts right now). Omit it and the only free seat is used; with zero or several free the command says so and connects nothing. Required with --preview (which calls nothing) and with --account-id (a reconnect keeps the seat that account already holds)." },
     "auth-method": { type: "string", description: "Authentication method: credentials | cookie.", required: true },
     email: { type: "string", description: "LinkedIn email (credentials method)." },
     password: { type: "string", description: `LinkedIn password (credentials method). ${PW_WARNING("--password-stdin", "CURVIATE_LINKEDIN_PASSWORD")}` },

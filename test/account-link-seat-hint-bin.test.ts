@@ -1,11 +1,12 @@
 /**
- * `account link` without `--seat-id` must say where a seat id comes from.
+ * `account link` without `--seat-id` must not dead-end a first run.
  *
- * "is required" alone left a first run with no way forward. The
- * missing-argument error now carries the flag's own help description, and
- * that description names `curviate account seats`, the command that lists
- * seat ids. Spawns the built bin: citty's required-argument check and its
- * diagnostic live in the dispatcher.
+ * `--seat-id` is no longer a required argument: omitted, the command
+ * uses the only free seat, and says so by name when zero or several are free.
+ * What remains asserted here is the dispatcher half: the flags that ARE still
+ * required carry their own hint, and the help names `curviate account seats`
+ * as the source of a seat id. Spawns the built bin: citty's required-argument
+ * check and its diagnostic live in the dispatcher.
  */
 
 import { describe, it, expect } from "vitest";
@@ -19,12 +20,12 @@ const xdgHome = mkdtempSync(join(tmpdir(), "curviate-seat-hint-"));
 
 const run = (args: string[]) => runBin(args, xdgHome);
 
-describe("account link: missing --seat-id names where seat ids come from", () => {
-  it("no arguments: exit 2, names --seat-id and `curviate account seats`", () => {
+describe("account link: --seat-id is optional, --auth-method is not", () => {
+  it("no arguments: exit 2 on --auth-method only, never on --seat-id", () => {
     const r = run(["account", "link"]);
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain("--seat-id");
-    expect(r.stderr).toMatch(/curviate account seats/);
+    expect(r.stderr).toContain("Missing required argument: --auth-method");
+    expect(r.stderr).not.toMatch(/Missing required argument.*--seat-id/);
     expect(r.stderr).not.toContain("—");
   });
 
@@ -45,11 +46,12 @@ describe("account link: missing --seat-id names where seat ids come from", () =>
     ]);
   });
 
-  it("--help: --seat-id names `curviate account seats`; the exit-12 note is scoped to after the required flags", async () => {
+  it("--help: --seat-id names `curviate account seats` and is not marked required; the exit-12 note stands", async () => {
     const { accountCommand } = await import("../src/commands/account.js");
     const subs = (await (accountCommand as CommandDef).subCommands) as Record<string, CommandDef>;
     const help = await renderUsage(subs["link"]!);
     expect(help).toMatch(/--seat-id[\s\S]*curviate account seats/);
-    expect(help).toMatch(/--seat-id and --auth-method[^.]*exits 12/);
+    expect(help).not.toMatch(/--seat-id[^\n]*\(required\)/);
+    expect(help).toMatch(/--auth-method[^.]*exits 12/);
   });
 });
