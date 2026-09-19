@@ -57044,7 +57044,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "About/summary text. Present when populated."
+                      "description": "Professional headline. Present when populated. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
                     },
                     "location": {
                       "type": "string",
