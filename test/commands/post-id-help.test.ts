@@ -55,3 +55,46 @@ describe("post <post_id> descriptions — URL acceptance + comment guidance", ()
     expect(subCmds["react"]?.args?.["comment-id"]).toBeUndefined();
   });
 });
+
+/**
+ * A video or image post is a `ugcPost` object wrapped in an activity,
+ * and the two carry different numbers. The share URL carries the wrapper, so
+ * the bare numeric and `urn:li:activity:` forms derived from it read fine and
+ * are REJECTED on a write. The help text named only those three forms, so the
+ * one form that works was undiscoverable and was found by trial, at the cost of
+ * failed live write attempts on a real account.
+ *
+ * The set under test is derived from the command tree at run time, never a hand
+ * list: the old text was three near-copies, and a fourth copy is exactly how
+ * this comes back.
+ */
+describe("every POSTID description names the form that works on a video or image post", () => {
+  async function postIdDescriptions(): Promise<Array<[string, string]>> {
+    const subCmds = await getPostSubCmdArgs();
+    return Object.entries(subCmds)
+      .filter(([, cmd]) => cmd?.args?.["postId"] !== undefined)
+      .map(([name, cmd]) => [name, cmd.args!["postId"]!.description ?? ""]);
+  }
+
+  it("covers every post subcommand that takes a POSTID, and there is more than one", async () => {
+    const found = await postIdDescriptions();
+    // Anti-vacuity: a filter that matched nothing would make every arm below pass.
+    expect(found.length).toBeGreaterThan(4);
+  });
+
+  it("each one names urn:li:ugcPost: and says it is for the write", async () => {
+    for (const [name, desc] of await postIdDescriptions()) {
+      expect(desc, name).toContain("urn:li:ugcPost:");
+      expect(desc.toLowerCase(), name).toContain("video");
+      expect(desc.toLowerCase(), name).toContain("write");
+    }
+  });
+
+  it("each one still names the opaque id a read returns, alongside the three derived forms", async () => {
+    for (const [name, desc] of await postIdDescriptions()) {
+      expect(desc, name).toContain("post get");
+      expect(desc, name).toContain("urn:li:activity:N");
+      expect(desc.toLowerCase(), name).toContain("share url");
+    }
+  });
+});

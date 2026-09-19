@@ -606,15 +606,32 @@ export async function runPostUserReactions(
 // Citty command definitions
 // ---------------------------------------------------------------------------
 
+/**
+ * The POSTID help text, one string for every command that takes one.
+ *
+ * It was three near-copies naming three forms, and it omitted both the opaque
+ * `id` a read returns and the `ugcPost`/`share` URNs the API has accepted since
+ * 0.15.x. Worse, a video or image post is stored as a `ugcPost` object wrapped
+ * in an activity: the number in its share URL is the WRAPPER, so the forms
+ * derived from that URL read fine and are rejected on a write. That cost live
+ * write attempts on a real account before the working form was found by trial,
+ * and nothing in the tool said it.
+ */
+const POST_ID_HELP =
+  "The post's id. Accepted: the id a read returns (post get, post user-posts, feed home), " +
+  "a bare numeric activity id, a urn:li:activity:N, urn:li:ugcPost:N or urn:li:share:N URN, " +
+  "or a full LinkedIn share URL (its activity-<N>- segment is extracted). " +
+  "Video and image posts are the exception: LinkedIn stores one as a ugcPost wrapped in an activity, " +
+  "and the share URL carries the wrapper, so a write sent to that number is rejected. " +
+  "For a write on one of those, run 'post get <post_id>' once and pass the urn it returns (urn:li:ugcPost:N).";
+
 const postGetCommand = defineCommand({
   meta: { name: "get", description: "Get a post by id." },
   args: {
     ...NON_STREAM_FLAGS,
     postId: {
       type: "positional",
-      description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
-        "POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'.",
+      description: POST_ID_HELP + " To list comments on a post, use 'comment list <post_id>'.",
     },
   },
   async run({ args }) {
@@ -675,9 +692,7 @@ const postReactCommand = defineCommand({
     ...WRITE_FLAGS,
     postId: {
       type: "positional",
-      description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
-        "POSTID is always the post's id.",
+      description: POST_ID_HELP,
     },
     reaction: {
       type: "positional",
@@ -723,9 +738,7 @@ const postReactionsCommand = defineCommand({
     ...GLOBAL_FLAGS,
     postId: {
       type: "positional",
-      description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
-        "POSTID is always the post's id.",
+      description: POST_ID_HELP,
     },
   },
   async run({ args }) {
@@ -772,7 +785,7 @@ const postDeleteCommand = defineCommand({
   meta: { name: "delete", description: "Delete a post you own." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
+    postId: { type: "positional", description: POST_ID_HELP },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostDelete);
@@ -783,7 +796,7 @@ const postUnreactCommand = defineCommand({
   meta: { name: "unreact", description: "Remove your reaction from a post." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
+    postId: { type: "positional", description: POST_ID_HELP },
     reaction: { type: "positional", description: "Reaction to remove: like|celebrate|support|love|insightful|funny." },
   },
   async run({ args }) {
@@ -803,7 +816,7 @@ const postSaveCommand = defineCommand({
   meta: { name: "save", description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Idempotent." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+    postId: { type: "positional", description: POST_ID_HELP },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostSave);
@@ -814,7 +827,7 @@ const postUnsaveCommand = defineCommand({
   meta: { name: "unsave", description: "Remove a post from your saved-posts bookmark list. Idempotent." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+    postId: { type: "positional", description: POST_ID_HELP },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostUnsave);
