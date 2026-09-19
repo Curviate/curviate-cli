@@ -8,6 +8,10 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-09-19
+
+Re-vendored from `@curviate/sdk` 0.35.0.
+
 ### Changed
 
 - **`account link --help` states that `--user-agent` is required with `--auth-method cookie`**, and the exit-2 refusal says which string to pass; the flag was documented only by what it is for, so the requirement was undiscoverable from the tool.
