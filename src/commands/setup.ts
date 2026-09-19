@@ -33,7 +33,6 @@
  */
 
 import { defineCommand } from "citty";
-import { createDecipheriv, createECDH, hkdfSync, randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getConfigPath, writeProfile } from "../lib/config.js";
@@ -44,6 +43,12 @@ import { readablePage } from "../lib/paginate.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { readlineSync, type ReadlineStdin } from "../lib/readline.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
+import {
+  generateSessionMaterial,
+  unsealApiKey,
+  type SealedKey,
+  type SessionMaterial,
+} from "../lib/seal.js";
 import { defaultReadStdin, isStdinToken, resolveTextOrStdin } from "../lib/stdin.js";
 
 // ---------------------------------------------------------------------------
@@ -128,67 +133,14 @@ function exchangeUrl(baseUrl: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Session material
+// Session material and sealing
 // ---------------------------------------------------------------------------
 
-/** Bytes of session-id entropy. 18 bytes is 144 bits. */
-const SESSION_ID_BYTES = 18;
-
-const HKDF_INFO = "curviate-cli-setup-v1";
-const SEAL_ALG = "ECDH-P256-HKDF-SHA256-A256GCM";
-const GCM_TAG_BYTES = 16;
-
-export interface SessionMaterial {
-  sessionId: string;
-  /** Raw uncompressed P-256 point, base64url. */
-  publicKey: string;
-  /** The private scalar, base64url. Never displayed, never transmitted. */
-  privateKey: string;
-}
-
-export function generateSessionMaterial(): SessionMaterial {
-  const ecdh = createECDH("prime256v1");
-  ecdh.generateKeys();
-  return {
-    sessionId: randomBytes(SESSION_ID_BYTES).toString("base64url"),
-    publicKey: ecdh.getPublicKey().toString("base64url"),
-    privateKey: ecdh.getPrivateKey().toString("base64url"),
-  };
-}
-
-/** The sealed-key object the exchange returns. */
-export interface SealedKey {
-  alg: string;
-  epk: string;
-  iv: string;
-  ciphertext: string;
-}
-
-/**
- * Recover the API key from the sealed response.
- *
- * ECDH against the server's ephemeral point, HKDF-SHA256 to an AES-256 key,
- * AES-GCM open with no additional data. The authentication tag is the last
- * 16 bytes of `ciphertext`.
- */
-export function unsealApiKey(sealed: SealedKey, privateKey: string): string {
-  if (sealed.alg !== SEAL_ALG) {
-    throw new Error(`Unsupported sealing algorithm "${sealed.alg}".`);
-  }
-  const ecdh = createECDH("prime256v1");
-  ecdh.setPrivateKey(Buffer.from(privateKey, "base64url"));
-  const shared = ecdh.computeSecret(Buffer.from(sealed.epk, "base64url"));
-  const key = Buffer.from(
-    hkdfSync("sha256", shared, Buffer.alloc(0), Buffer.from(HKDF_INFO, "utf8"), 32),
-  );
-  const blob = Buffer.from(sealed.ciphertext, "base64url");
-  if (blob.length <= GCM_TAG_BYTES) throw new Error("Sealed payload is truncated.");
-  const body = blob.subarray(0, blob.length - GCM_TAG_BYTES);
-  const tag = blob.subarray(blob.length - GCM_TAG_BYTES);
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(sealed.iv, "base64url"));
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
-}
+// The wire format itself lives in `../lib/seal.js` — dependency-free, so the
+// service side can round-trip its real sealer against the REAL unsealer here
+// without installing this package. Re-exported so every caller keeps its import.
+export { generateSessionMaterial, unsealApiKey };
+export type { SealedKey, SessionMaterial };
 
 // ---------------------------------------------------------------------------
 // Resume state
