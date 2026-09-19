@@ -10,16 +10,21 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Changed
 
-- **`POSTID` help names every accepted id form, and the one that works on a
-  video or image post.** The text listed three forms (bare numeric,
-  `urn:li:activity:N`, share URL) and omitted both the opaque id a read returns
-  and the `ugcPost`/`share` URNs. LinkedIn stores a video or image post as a
-  `ugcPost` object wrapped in an activity, and the two carry different numbers:
-  the share URL carries the wrapper, so the forms derived from it read fine and
-  are rejected on a write. The help now says so and points at `post get`'s
-  `urn` for the write. One string across every `post` subcommand that takes a
-  POSTID, so the three near-copies cannot drift again. Help text only, no
-  behaviour change.
+- **`POSTID` help names every accepted id form, and what to do when a reaction
+  on a video or image post is rejected.** The text listed three forms (bare
+  numeric, `urn:li:activity:N`, share URL) and omitted both the opaque id a
+  read returns and the `ugcPost`/`share` URNs. LinkedIn stores a video or image
+  post as a `ugcPost` object wrapped in an activity, and the two carry
+  different numbers: the share URL carries the wrapper, so the forms derived
+  from it read fine and a reaction sent to them is rejected. The help now says
+  so and points at `post get`'s `urn` as the fallback for that case, while
+  keeping the id as the default, because the urn names a post's canonical
+  content object and a repost's canonical object is the post it reposted: a
+  reaction sent to a repost's urn lands on the original, with a 200 and nothing
+  to say so. `post save` and `post unsave` reach a different seam where that
+  rejection has never been observed, so they carry the id grammar alone. One
+  string per seam across all seven `post` subcommands that take a POSTID, so
+  the near-copies cannot drift again. Help text only, no behaviour change.
 
 ## [0.37.0] - 2026-09-19
 

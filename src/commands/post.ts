@@ -607,23 +607,50 @@ export async function runPostUserReactions(
 // ---------------------------------------------------------------------------
 
 /**
- * The POSTID help text, one string for every command that takes one.
+ * The POSTID grammar, shared by both help strings below so they cannot drift.
  *
  * It was three near-copies naming three forms, and it omitted both the opaque
- * `id` a read returns and the `ugcPost`/`share` URNs the API has accepted since
- * 0.15.x. Worse, a video or image post is stored as a `ugcPost` object wrapped
- * in an activity: the number in its share URL is the WRAPPER, so the forms
- * derived from that URL read fine and are rejected on a write. That cost live
- * write attempts on a real account before the working form was found by trial,
- * and nothing in the tool said it.
+ * id a read returns and the ugcPost/share URNs the API has accepted since
+ * 0.15.x.
  */
-const POST_ID_HELP =
+const POST_ID_GRAMMAR =
   "The post's id. Accepted: the id a read returns (post get, post user-posts, feed home), " +
   "a bare numeric activity id, a urn:li:activity:N, urn:li:ugcPost:N or urn:li:share:N URN, " +
-  "or a full LinkedIn share URL (its activity-<N>- segment is extracted). " +
-  "Video and image posts are the exception: LinkedIn stores one as a ugcPost wrapped in an activity, " +
-  "and the share URL carries the wrapper, so a write sent to that number is rejected. " +
-  "For a write on one of those, run 'post get <post_id>' once and pass the urn it returns (urn:li:ugcPost:N).";
+  "or a full LinkedIn share URL (its activity-<N>- segment is extracted).";
+
+/**
+ * The help for the post read/react/delete commands.
+ *
+ * A video or image post is stored as a ugcPost object wrapped in an activity:
+ * the number in its share URL is the WRAPPER, so the forms derived from that
+ * URL read fine and a reaction sent to them is rejected. That cost live write
+ * attempts on a real account before the working form was found by trial, and
+ * nothing in the tool said it.
+ *
+ * Two things this text is careful about. Only a REACTION has been observed
+ * failing that way, so it does not claim "a write". And the urn is a fallback,
+ * never the default: the urn names the post's canonical content object, and a
+ * repost's canonical object is the post it reposted, so a reaction sent to a
+ * repost's urn lands on the original with a 200 and nothing to warn the caller.
+ * Recommending the urn by default would trade a visible failure on one post
+ * subtype for a silent wrong-target write on another.
+ */
+const POST_ID_HELP =
+  POST_ID_GRAMMAR +
+  " Prefer the id a read returns. If a reaction on a video or image post is rejected, that post is a " +
+  "ugcPost wrapped in an activity and the share URL carries the wrapper, so run 'post get <post_id>' " +
+  "and pass the urn it returns (urn:li:ugcPost:N) instead. On a repost that urn names the original " +
+  "post rather than the repost, so keep using the id there.";
+
+/**
+ * The help for 'post save' and 'post unsave'. The saved-post state toggle is a
+ * DIFFERENT seam: the server declares this id as a urn and builds a save-state
+ * key out of it rather than calling the posts API, so the reaction rejection
+ * above has never been observed there and the remedy it offers is inert.
+ * Grammar alone. An unmeasured claim repeated on a second seam reads as two
+ * confirmations of one fact.
+ */
+const POST_ID_HELP_SAVED = POST_ID_GRAMMAR;
 
 const postGetCommand = defineCommand({
   meta: { name: "get", description: "Get a post by id." },
@@ -816,7 +843,7 @@ const postSaveCommand = defineCommand({
   meta: { name: "save", description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Idempotent." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: POST_ID_HELP },
+    postId: { type: "positional", description: POST_ID_HELP_SAVED },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostSave);
@@ -827,7 +854,7 @@ const postUnsaveCommand = defineCommand({
   meta: { name: "unsave", description: "Remove a post from your saved-posts bookmark list. Idempotent." },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: POST_ID_HELP },
+    postId: { type: "positional", description: POST_ID_HELP_SAVED },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostUnsave);
