@@ -594,6 +594,22 @@ describe("account link", () => {
     );
   });
 
+  // Same undiscoverable-requirement shape the seat id had: the flag is
+  // required for one auth method and the help said only what it was for.
+  it("--help states that --user-agent is required with cookie auth", async () => {
+    const { renderUsage } = await import("citty");
+    const { accountCommand } = await import("../../src/commands/account.js");
+    const subs = (await (accountCommand as { subCommands: unknown }).subCommands) as Record<
+      string,
+      Parameters<typeof renderUsage>[0]
+    >;
+    const help = await renderUsage(subs["link"]!);
+    const line = help.split("\n").find((l) => l.includes("--user-agent"));
+    expect(line, "the flag must appear in --help").toBeDefined();
+    expect(line).toMatch(/required[\s\S]*cookie/i);
+    expect(help).not.toContain("\u2014");
+  });
+
   it("cookie auth without --user-agent exits 2 before calling accounts.link", async () => {
     const { runAccountLink } = await import("../../src/commands/account.js");
     const out = makeOut();
@@ -613,6 +629,10 @@ describe("account link", () => {
       exitSpy.mockRestore();
     }
     expect(client.auth.intent).not.toHaveBeenCalled();
+    // The refusal has to say what to pass, not only that something is missing.
+    const err = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(err).toMatch(/browser/i);
+    expect(err).not.toContain("\u2014");
   });
 
   it("missing --seat-id with no seat free exits 2", async () => {

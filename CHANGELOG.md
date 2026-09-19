@@ -10,6 +10,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Changed
 
+- **`account link --help` states that `--user-agent` is required with `--auth-method cookie`**, and the exit-2 refusal says which string to pass; the flag was documented only by what it is for, so the requirement was undiscoverable from the tool.
 - **`account link --seat-id` is optional: omitted, the only free seat is
   used.** A first run had no seat id and no way to hold one, so the command
   refused at argument validation and the documented non-interactive path (exit

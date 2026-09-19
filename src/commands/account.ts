@@ -848,7 +848,10 @@ export async function runAccountLink(
   // under --preview, a client-side render must never exit (mirrors the
   // credential-resolution fail-fast's own preview carve-out).
   if (!flags.preview && flags["auth-method"] === "cookie" && !flags["user-agent"]) {
-    out.stderr.write("error: --user-agent is required when --auth-method=cookie.\n");
+    out.stderr.write(
+      "error: --user-agent is required when --auth-method=cookie. Pass the User-Agent string of the " +
+        "browser the li_at cookie was copied from; the cookie only works paired with it.\n",
+    );
     process.exit(2);
   }
 
@@ -1580,7 +1583,7 @@ const accountLinkCommand = defineCommand({
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
-    "user-agent": { type: "string", description: "Browser User-Agent to pin for this account." },
+    "user-agent": { type: "string", description: "Browser User-Agent to pin for this account. Required with --auth-method cookie: a session cookie only works paired with the User-Agent of the browser it was copied from, and the command exits 2 without it. Optional with --auth-method credentials, where it is still pinned for the account when given." },
     "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
     "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
