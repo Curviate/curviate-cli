@@ -7,7 +7,7 @@
  *   search companies [filters...]: search companies (POST body)
  *   search posts [filters...]: search posts (POST body)
  *   search jobs [filters...]: search jobs (POST body)
- *   search parameters --type <t> --keywords <k>: resolve filter IDs (GET)
+ *   search parameters --type <t> --keywords <k> [--cursor] [--all]: resolve filter IDs (GET)
  *   search groups <query>: keyword search LinkedIn groups (GET)
  *   search services [--keywords] [--service-category] [--location] [--connections] [--language], search Services Marketplace providers (POST body)
  *   search service-parameters --keywords <k> [--type <t>]: resolve service-filter IDs (GET)
@@ -17,7 +17,14 @@
  * merged into the method call, the SDK resource handles the split.
  *
  * All read commands reject --preview (exit 2).
- * search parameters rejects --all (non-paginated).
+ * search parameters IS paginated (the API gained a cursor input): it takes
+ * --cursor and streams with --all, like search groups.
+ * search service-parameters still refuses --all and drops --cursor, which is
+ * a KNOWN DEFECT, not a property of the endpoint: the served document gives
+ * it cursor + offset inputs and returns a cursor, and NON_STREAM_FLAGS
+ * declares --cursor, so the flag is accepted and silently ignored. Same shape
+ * on `sales-nav search parameters`. Both want the treatment this command just
+ * got; left alone here to keep one concern per change.
  * List POST searches support --all NDJSON streaming.
  */
 
@@ -582,8 +589,10 @@ export async function runSearchJobs(
 }
 
 /**
- * Run `search parameters --type <t> --keywords <k>`.
- * GET, not paginated; rejects --all (exit 2).
+ * Run `search parameters --type <t> --keywords <k> [--limit] [--cursor] [--all]`.
+ * GET, paginated: the API takes a `cursor` and returns the next one on the
+ * page, so --cursor pages manually and --all streams until the cursor comes
+ * back null. `offset` stays the API's numeric fallback and is not exposed.
  * v2: keywords is required for every type, including EMPLOYMENT_TYPE
  * (the pre-v2 API allowed omitting it there), now an actionable exit 2
  * instead of a server-side 400.
@@ -594,7 +603,7 @@ export async function runSearchParameters(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  rejectAllOnNonPaginated(flags.all, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
     out.stderr.write("error: --type is required.\n");
@@ -608,6 +617,8 @@ export async function runSearchParameters(
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
 
   // `type` is a free-form CLI string flag validated against the served enum
   // server-side, a narrow cast here is the pragmatic alternative to
@@ -617,9 +628,23 @@ export async function runSearchParameters(
     keywords: flags.keywords,
   };
   if (flags.limit) query.limit = parseInt(flags.limit, 10);
+  if (flags.cursor) query.cursor = flags.cursor;
 
   try {
+    if (all) {
+      const fn = (p: SearchParametersQuery) =>
+        ns.search.getParameters(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, query, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        writeNdjsonItem(out, item, outOpts.fields);
+      }
+      return;
+    }
     const result = await ns.search.getParameters(query);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     const { CurviateError } = await import("@curviate/sdk");
@@ -1018,9 +1043,13 @@ const searchJobsCommand = defineCommand({
 });
 
 const searchParametersCommand = defineCommand({
-  meta: { name: "parameters", description: "Resolve human-readable terms to opaque filter IDs." },
+  meta: {
+    name: "parameters",
+    description:
+      "Resolve human-readable terms to opaque filter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+  },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...GLOBAL_FLAGS,
     type: {
       type: "string",
       description:

@@ -171,9 +171,12 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * (1684 after the local commands stopped declaring flags they never read; 1654
  * after the 15 commands that never stream dropped --max-pages and --page-delay;
  * 1660 after `account seats` (READ_SINGLE_FLAGS: api-key, profile, account,
- * base-url, timeout, fields = 6 non-boolean flags) landed).
+ * base-url, timeout, fields = 6 non-boolean flags) landed; 1662 after
+ * `search parameters` became paginated and swapped NON_STREAM_FLAGS for
+ * GLOBAL_FLAGS, gaining --max-pages and --page-delay, the two non-boolean
+ * members of the stream trio, while --all is boolean and never counted).
  */
-const ARGUMENT_SURFACE_COUNT = 1660;
+const ARGUMENT_SURFACE_COUNT = 1662;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

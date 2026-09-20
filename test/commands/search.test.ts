@@ -454,14 +454,18 @@ describe("search companies / posts / jobs", () => {
   });
 });
 
-describe("search parameters — GET, not paginated", () => {
+describe("search parameters — GET, paginated", () => {
   let accountNs: ReturnType<typeof makeAccountNs>;
   let client: ReturnType<typeof makeClient>;
 
   beforeEach(() => {
     accountNs = makeAccountNs();
     client = makeClient(accountNs);
-    (accountNs.search.getParameters as Mock).mockResolvedValue({ parameters: [] });
+    (accountNs.search.getParameters as Mock).mockResolvedValue({
+      object: "search_parameter_list",
+      items: [{ id: "id_1", name: "London" }],
+      cursor: null,
+    });
   });
 
   afterEach(() => {
@@ -522,16 +526,157 @@ describe("search parameters — GET, not paginated", () => {
     }
   });
 
-  it("search parameters --all → usage error exit 2 (non-paginated)", async () => {
+  // The endpoint gained a `cursor` query input, so the command that used to
+  // refuse --all now pages like every sibling paginated search command.
+
+  it("search parameters --cursor — passes the cursor through to the SDK query", async () => {
     const { runSearchParameters } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "london",
+      cursor: "cur_1",
+      limit: "5",
+      account: "acc_1",
+      json: true,
+    } as SearchArgs, out);
+
+    expect(accountNs.search.getParameters).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "LOCATION", keywords: "london", limit: 5, cursor: "cur_1" }),
+    );
+  });
+
+  it("search parameters without --cursor — no cursor key reaches the SDK", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "london",
+      account: "acc_1",
+      json: true,
+    } as SearchArgs, out);
+
+    const arg = (accountNs.search.getParameters as Mock).mock.calls[0]![0] as Record<string, unknown>;
+    expect("cursor" in arg).toBe(false);
+    // Same-path positive control: the query that WAS built is the one asserted
+    // on, so the missing key is a real absence, not an uncaptured call.
+    expect(arg["keywords"]).toBe("london");
+  });
+
+  it("search parameters --cursor '' — empty is an omission, matching every sibling paginated search", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "london",
+      cursor: "",
+      account: "acc_1",
+      json: true,
+    } as SearchArgs, out);
+
+    const arg = (accountNs.search.getParameters as Mock).mock.calls[0]![0] as Record<string, unknown>;
+    expect("cursor" in arg).toBe(false);
+    expect(arg["keywords"]).toBe("london");
+  });
+
+  it("search parameters --all — walks until the cursor comes back null", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.getParameters as Mock)
+      .mockReset()
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "1" }], cursor: "cur_1" })
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "2" }], cursor: "cur_2" })
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "3" }], cursor: null });
+
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "london",
+      account: "acc_1",
+      all: true,
+      "page-delay": "0",
+    } as SearchArgs, out);
+
+    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
+    expect(lines).toHaveLength(3);
+    // It stopped because the cursor went null, not because it ran out of mocks.
+    expect((accountNs.search.getParameters as Mock).mock.calls).toHaveLength(3);
+    // No truncation sentinel on a natural exhaust.
+    expect(lines.some((l) => l.includes("stream_truncated"))).toBe(false);
+    // Each page after the first carried the previous page's cursor.
+    const sent = (accountNs.search.getParameters as Mock).mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"]);
+    expect(sent).toEqual([undefined, "cur_1", "cur_2"]);
+  });
+
+  it("search parameters --cursor with --all — the given cursor starts the walk, responses drive the rest", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.getParameters as Mock)
+      .mockReset()
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "5" }], cursor: "cur_9" })
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "6" }], cursor: null });
+
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "london",
+      cursor: "cur_start",
+      account: "acc_1",
+      all: true,
+      "page-delay": "0",
+    } as SearchArgs, out);
+
+    const sent = (accountNs.search.getParameters as Mock).mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"]);
+    expect(sent).toEqual(["cur_start", "cur_9"]);
+  });
+
+  it("search parameters --all over an empty set — no items, no truncation sentinel, one call", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.getParameters as Mock)
+      .mockReset()
+      .mockResolvedValueOnce({ object: "search_parameter_list", items: [], cursor: null });
+
+    await runSearchParameters(client as never, {
+      type: "LOCATION",
+      keywords: "zzzzz-no-such-place",
+      account: "acc_1",
+      all: true,
+      "page-delay": "0",
+    } as SearchArgs, out);
+
+    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
+    expect(lines).toHaveLength(0);
+    expect((accountNs.search.getParameters as Mock).mock.calls).toHaveLength(1);
+  });
+
+  it("search parameters --cursor <garbage> — the API's 400 surfaces as exit 2", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const { CurviateError } = await import("@curviate/sdk");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.getParameters as Mock).mockReset().mockRejectedValue(
+      new CurviateError({
+        code: "INVALID_REQUEST",
+        message: "cursor is not a valid pagination cursor.",
+        httpStatus: 400,
+        userFixable: true,
+        retryLikelyToSucceed: false,
+      }),
+    );
+
+    const exitSpy = makeExitMock();
     try {
       await runSearchParameters(client as never, {
         type: "LOCATION",
+        keywords: "london",
+        cursor: "not-a-cursor",
         account: "acc_1",
-        all: true,
+        json: true,
       } as SearchArgs, out);
       expect.fail("Should have exited");
     } catch (e) {
@@ -539,6 +684,53 @@ describe("search parameters — GET, not paginated", () => {
     } finally {
       exitSpy.mockRestore();
     }
+    // The garbage reached the API rather than being swallowed client-side.
+    expect(accountNs.search.getParameters).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: "not-a-cursor" }),
+    );
+  });
+
+  it("search parameters — a 2xx that is not a page exits 7, like every sibling list read", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    (accountNs.search.getParameters as Mock).mockReset().mockResolvedValue({ object: "search_parameter_list", cursor: null });
+
+    const exitSpy = makeExitMock();
+    try {
+      await runSearchParameters(client as never, {
+        type: "LOCATION",
+        keywords: "london",
+        account: "acc_1",
+        json: true,
+      } as SearchArgs, out);
+      expect.fail("Should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it("search parameters --max-pages without --all → usage error exit 2", async () => {
+    const { runSearchParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    const exitSpy = makeExitMock();
+
+    try {
+      await runSearchParameters(client as never, {
+        type: "LOCATION",
+        keywords: "london",
+        account: "acc_1",
+        "max-pages": "2",
+      } as SearchArgs, out);
+      expect.fail("Should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(2)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    expect(accountNs.search.getParameters).not.toHaveBeenCalled();
   });
 });
 

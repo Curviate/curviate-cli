@@ -8,6 +8,42 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-09-20
+
+Re-vendored from `@curviate/sdk` 0.36.0.
+
+### Added
+
+- **`search parameters` paginates.** The API gained a `cursor` input on the
+  filter-ID resolver, so the command that used to refuse `--all` now offers
+  the full pagination set: `--cursor` to page manually, `--all` to stream
+  every page as NDJSON, and `--max-pages` / `--page-delay` to bound and pace
+  that stream. It walks until the cursor comes back null, and behaves exactly
+  like `search groups`, down to the NDJSON notice and the truncation
+  sentinel. A call that passes none of these is unchanged.
+
+### Changed
+
+- **`search parameters --help` offers the pagination flags** instead of
+  hiding them, and its one-liner says the command pages. `--all` was
+  previously an unknown flag there and exited 2; it is now accepted.
+- **`--max-pages` / `--page-delay` on `search parameters` without `--all`**
+  is a usage error (exit 2), the same refusal every other streaming command
+  gives, rather than being silently ignored.
+- **A `search parameters` 2xx that is not a page exits 7**, matching every
+  other list read. It previously rendered whatever came back.
+- **Re-vendored `test/fixtures/openapi.json`** from the `@curviate/sdk`
+  0.36.0 snapshot, byte-identical to it. Production now serves a `cursor`
+  query input on the filter-ID resolver, describes `offset` as its numeric
+  fallback, and names a malformed cursor among the causes of that
+  endpoint's `400`.
+
+### Fixed
+
+- The `@curviate/sdk` pin moves from exactly `0.35.0` to exactly `0.36.0`.
+  The command's query type is compiler-coupled to that build, so the two move
+  together.
+
 ## [0.37.0] - 2026-09-19
 
 Re-vendored from `@curviate/sdk` 0.35.0.
