@@ -290,6 +290,15 @@ describe("help-text-only corrections: --type / --seniority / --job-type / --cont
     }
   });
 
+  it("search parameters --help offers the pagination flags it now supports", () => {
+    const text = helpText(["search", "parameters"]);
+    // The endpoint gained a cursor input, so the command pages. A help text
+    // that still hid --all would describe a command that no longer exists.
+    for (const flag of ["--cursor", "--all", "--max-pages"]) {
+      expect(text, `expected --help to offer ${flag}`).toContain(flag);
+    }
+  });
+
   it("search parameters --help enumerates all 11 --type values", () => {
     const text = helpText(["search", "parameters"]);
     for (const token of [

@@ -137,7 +137,8 @@ describe("--all is declared exactly where it streams", async () => {
     ["recruiter", "applicants", "x1", "--channel-id", "c1"],
     ["recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
     ["sales-nav", "search", "parameters", "--type", "LOCATION"],
-    ["search", "parameters", "--type", "LOCATION", "--keywords", "xyz"],
+    // `search parameters` left this list: the API gained a cursor input, so it
+    // streams now and the `declaring` sweep above covers it instead.
     ["search", "service-parameters", "--keywords", "xyz"],
     ["webhook", "get", "w1"],
     ["webhook", "delete", "w1"],

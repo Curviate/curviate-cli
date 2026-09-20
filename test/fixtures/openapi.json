@@ -13980,7 +13980,7 @@
               "type": "integer",
               "minimum": 0
             },
-            "description": "Zero-based pagination offset (default 0)."
+            "description": "Zero-based pagination offset; a numeric fallback for cursor (default 0)."
           },
           {
             "name": "limit",
@@ -13993,6 +13993,16 @@
               "default": 10
             },
             "description": "Number of parameters to return (1-100, default 10)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Opaque pagination cursor returned from a previous response."
           }
         ],
         "responses": {
@@ -14097,7 +14107,7 @@
             }
           },
           "400": {
-            "description": "Missing or empty account_id, missing or empty type, missing keywords, or type not in the classic allowlist.",
+            "description": "Missing or empty account_id, missing or empty type, missing keywords, type not in the classic allowlist, or malformed cursor.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14264,7 +14274,7 @@
             }
           }
         },
-        "description": "Resolves human-readable terms (e.g. 'software development') to opaque filter IDs for use in structured search filters. The type parameter selects the filter category; keywords is required for every type, including EMPLOYMENT_TYPE.",
+        "description": "Resolves human-readable terms (e.g. 'software development') to opaque filter IDs for use in structured search filters. The type parameter selects the filter category; keywords is required for every type, including EMPLOYMENT_TYPE. Results paginate: send the cursor from the previous response to get the next page, and stop when it comes back null.",
         "x-order": 1
       }
     },
