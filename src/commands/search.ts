@@ -17,9 +17,14 @@
  * merged into the method call, the SDK resource handles the split.
  *
  * All read commands reject --preview (exit 2).
- * search service-parameters rejects --all (non-paginated).
  * search parameters IS paginated (the API gained a cursor input): it takes
  * --cursor and streams with --all, like search groups.
+ * search service-parameters still refuses --all and drops --cursor, which is
+ * a KNOWN DEFECT, not a property of the endpoint: the served document gives
+ * it cursor + offset inputs and returns a cursor, and NON_STREAM_FLAGS
+ * declares --cursor, so the flag is accepted and silently ignored. Same shape
+ * on `sales-nav search parameters`. Both want the treatment this command just
+ * got; left alone here to keep one concern per change.
  * List POST searches support --all NDJSON streaming.
  */
 
