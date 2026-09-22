@@ -575,6 +575,44 @@ describe("account checkpoint solve — chained checkpoint_required response", ()
     const parsed = JSON.parse(written);
     expect(parsed).toMatchObject({ status: "checkpoint_required", account_id: "acc_pending_2" });
   });
+
+  // ---------------------------------------------------------------------
+  // readableObject (qa follow-up): before this fix, a
+  // malformed 2xx body rendered first (a bare `null`/scalar/array print to
+  // stdout, matching the same-path positive control above shape-for-shape)
+  // and only THEN crashed on `r.status` — an uncaught TypeError, caught by
+  // the generic catch block and misrouted to exit 1 ("Cannot read
+  // properties of null (reading 'status')") instead of the platform-fault
+  // exit 7 this same malformed-body shape gets everywhere else in the CLI.
+  // ---------------------------------------------------------------------
+  it.each([
+    ["null", null],
+    ["a scalar", "not an object"],
+    ["a bare array", [{ status: "active" }]],
+  ])("a malformed body (%s) is exit 7, never a render-then-crash to exit 1", async (_label, body) => {
+    const { runAccountCheckpointSolve } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    (client.auth.solveCheckpoint as Mock).mockResolvedValue(body);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountCheckpointSolve(
+        client as never,
+        { "account-id": "acc_pending_1", code: "999999", json: true } as AccountFlags,
+        out,
+      );
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+    // The guard fires before renderSuccess ever runs: stdout carries the
+    // JSON error envelope (per the exit-code spec's error-output rule), never the malformed body
+    // rendered as if it were a real checkpoint status.
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(JSON.parse(written)).toMatchObject({ error: { code: "PLATFORM_ERROR" } });
+  });
 });
 
 // ---------------------------------------------------------------------------
