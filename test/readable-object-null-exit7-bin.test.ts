@@ -13,8 +13,15 @@
  * flags is discovered from the live citty registry, invoked against a
  * local stub that answers every request with a `null` 200 body, and
  * classified by the HTTP methods it actually sent: a variant that sent
- * only `GET`s is a read and MUST exit 7; anything else (a write, or a
- * usage error that sent nothing) is not constrained here.
+ * only `GET`s is a read and MUST exit 7; a variant that sent a non-GET is
+ * a write, not constrained here. A variant that sent ZERO requests is not
+ * silently skipped (qa cycle 3): it must be a reviewed, named entry in
+ * `ZERO_REQUEST_ALLOWLIST`, or the sweep reds on it by name — this is what
+ * would have caught `profile <id>` and `recruiter applicant <p> <a>`
+ * escaping the first version of this sweep, both zero-request purely
+ * because their generated argv was wrong, not because they have nothing to
+ * test. `READ_BY_POST` separately covers the small number of reads that
+ * use a non-GET verb, invisible to the GET-only rule.
  *
  * One process at a time (RAM discipline, `test-runtime` skill): the sweep
  * runs sequentially during collection, never fanned out.
@@ -30,10 +37,17 @@ import {
   discoverSweepVariants,
   runAgainstNullStub,
   BINARY_DOWNLOAD_ALLOWLIST,
+  ZERO_REQUEST_ALLOWLIST,
+  READ_BY_POST,
   type SweepResult,
 } from "./helpers/live-command-sweep.js";
 
-type Classified = { key: string; variant: string; kind: "read" | "write-or-usage-error" | "binary-allowlisted"; result: SweepResult };
+type Classified = {
+  key: string;
+  variant: string;
+  kind: "read" | "write" | "zero-request" | "binary-allowlisted";
+  result: SweepResult;
+};
 
 describe("readableObject guard: runtime sweep over the live command registry", async () => {
   const variants = await discoverSweepVariants();
@@ -57,21 +71,40 @@ describe("readableObject guard: runtime sweep over the live command registry", a
     const allGet = result.methods.length > 0 && result.methods.every((m) => m === "GET");
     const kind: Classified["kind"] = BINARY_DOWNLOAD_ALLOWLIST.has(key)
       ? "binary-allowlisted"
-      : allGet
-        ? "read"
-        : "write-or-usage-error";
+      : result.methods.length === 0
+        ? "zero-request"
+        : allGet
+          ? "read"
+          : "write";
     classified.push({ key, variant: v.variant, kind, result });
   }
 
-  it("at least one variant is classified a write or usage error (control: the classifier discriminates)", () => {
-    // Same-path positive control for the classifier itself: proves
-    // "write-or-usage-error" isn't a label nothing ever gets.
-    expect(classified.some((c) => c.kind === "write-or-usage-error")).toBe(true);
+  it("at least one variant is classified a write (control: the classifier discriminates)", () => {
+    // Same-path positive control for the classifier itself: proves "write"
+    // isn't a label nothing ever gets.
+    expect(classified.some((c) => c.kind === "write")).toBe(true);
   });
 
   it("the binary-download allowlist is exactly the commands that hit it (control: no stale or missing entries)", () => {
     const seen = new Set(classified.filter((c) => c.kind === "binary-allowlisted").map((c) => c.key));
     expect(seen).toEqual(BINARY_DOWNLOAD_ALLOWLIST);
+  });
+
+  // Fail closed (qa cycle 3): a leaf that sent zero requests is NOT quietly
+  // "not constrained" — it must be one of the reviewed, named entries, or
+  // the sweep reds on it. This is what would have caught `profile <id>`
+  // silently escaping the sweep the first time (it sent zero requests for
+  // an argv-generation reason, not a legitimate one).
+  it("every zero-request variant is a reviewed, named entry in ZERO_REQUEST_ALLOWLIST", () => {
+    const zeroRequestKeys = classified.filter((c) => c.kind === "zero-request").map((c) => `${c.key} ${c.variant}`);
+    const unexpected = zeroRequestKeys.filter((k) => !ZERO_REQUEST_ALLOWLIST.has(k));
+    expect(unexpected, "a leaf sent zero requests but is not a reviewed allowlist entry").toEqual([]);
+  });
+
+  it("ZERO_REQUEST_ALLOWLIST has no stale entries (control: every named entry actually sends zero requests)", () => {
+    const zeroRequestKeys = new Set(classified.filter((c) => c.kind === "zero-request").map((c) => `${c.key} ${c.variant}`));
+    const stale = [...ZERO_REQUEST_ALLOWLIST].filter((k) => !zeroRequestKeys.has(k));
+    expect(stale, "an allowlist entry no longer sends zero requests — a fixed leaf must be removed from it").toEqual([]);
   });
 
   for (const c of classified) {
@@ -81,6 +114,27 @@ describe("readableObject guard: runtime sweep over the live command registry", a
         c.result.status,
         `stdout=${c.result.stdout} stderr=${c.result.stderr}`,
       ).toBe(7);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST-shaped reads (qa cycle 2 named exceptions: `account checkpoint
+// poll`/`solve` check `--preview` inline instead of `rejectPreviewOnRead`;
+// `recruiter search parameters` is a POST-as-search read): invisible to the
+// GET-only classification above, held to the exit-7 standard by name
+// instead. Each is also verified to genuinely be non-GET, so this list
+// cannot silently duplicate the sweep above or go unnoticed if a future
+// change makes one of them GET (at which point the sweep above would cover
+// it and this entry becomes redundant, not wrong).
+// ---------------------------------------------------------------------------
+
+describe("readableObject guard: named POST-shaped reads", () => {
+  for (const { key, argv } of READ_BY_POST) {
+    it(`${key}: a non-GET read (verified) exits 7 on a null body`, async () => {
+      const result = await runAgainstNullStub(argv);
+      expect(result.methods.some((m) => m !== "GET"), `expected a non-GET request, got methods=${result.methods.join(",")}`).toBe(true);
+      expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(7);
     });
   }
 });
