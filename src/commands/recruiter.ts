@@ -39,7 +39,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
@@ -482,6 +482,7 @@ export async function runRecruiterProfile(
 
   try {
     const result = await ns.recruiter.getProfile(resolvedId, {});
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -599,6 +600,7 @@ export async function runRecruiterSearchParameters(
 
   try {
     const result = await ns.recruiter.searchParameters(body, Object.keys(params).length > 0 ? params : undefined);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -722,6 +724,7 @@ export async function runRecruiterGetProject(
 
   try {
     const result = await ns.recruiter.getProject(projectId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -862,6 +865,7 @@ export async function runRecruiterGetProjectJob(
 
   try {
     const result = await ns.recruiter.getProjectJob(projectId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -887,6 +891,7 @@ export async function runRecruiterGetProjectJobBudget(
 
   try {
     const result = await ns.recruiter.getProjectJobBudget(projectId, jobId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -1356,6 +1361,7 @@ export async function runRecruiterListApplicants(
 
   try {
     const result = await ns.recruiter.listApplicants(projectId, body, Object.keys(params).length > 0 ? params : undefined);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -1385,6 +1391,7 @@ export async function runRecruiterGetJob(
 
   try {
     const result = await ns.recruiter.getJob(jobId);
+    readableObject(result);
     renderSuccess(result, { ...outOpts, slim: slimJob }, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -1411,6 +1418,7 @@ export async function runRecruiterGetApplicant(
 
   try {
     const result = await ns.recruiter.getApplicant(projectId, applicantId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

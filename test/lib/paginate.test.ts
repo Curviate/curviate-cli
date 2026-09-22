@@ -6,6 +6,7 @@ import {
   pageDelayFrom,
   DEFAULT_PAGE_DELAY_MS,
   rejectPaginationModifiersWithoutAll,
+  readableObject,
 } from "../../src/lib/paginate.js";
 
 function makeOut() {
@@ -481,6 +482,37 @@ describe("lib/paginate — pageDelayFrom (flag parsing)", () => {
     expect(pageDelayFrom("abc")).toBeUndefined();
     expect(pageDelayFrom("")).toBeUndefined();
   });
+});
+
+// ---------------------------------------------------------------------------
+// readableObject: the single-object-read sibling of readablePage/readableId.
+// A single-object read's 2xx must be a plain object — null, a
+// scalar, or a bare array is no API answer for a single-resource read, same
+// platform-fault family as the other two guards.
+// ---------------------------------------------------------------------------
+
+describe("lib/paginate — readableObject", () => {
+  it("passes a plain object through unchanged (same-path positive control)", () => {
+    const obj = { id: "x", name: "y" };
+    expect(readableObject(obj)).toBe(obj);
+  });
+
+  it("passes a plain object with an items array through unchanged (a page envelope is still a plain object)", () => {
+    const obj = { items: [{ id: "a" }], cursor: null };
+    expect(readableObject(obj)).toBe(obj);
+  });
+
+  for (const bad of [null, undefined, "a string", 42, true, [], [{ id: "x" }]]) {
+    it(`throws PLATFORM_ERROR for ${JSON.stringify(bad)}`, () => {
+      let threw: unknown;
+      try {
+        readableObject(bad);
+      } catch (e) {
+        threw = e;
+      }
+      expect(threw).toMatchObject({ code: "PLATFORM_ERROR", retryLikelyToSucceed: true });
+    });
+  }
 });
 
 function mockExit() {

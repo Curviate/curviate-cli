@@ -46,7 +46,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile, withRequestedSections } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -333,6 +333,7 @@ export async function runProfileMe(
 
   try {
     const result = await ns.users.get("me", params);
+    readableObject(result);
     const slimOutOpts = { ...outOpts, slim: withRequestedSections(slimProfileMe, params.linkedin_sections) };
     renderSuccess(result, slimOutOpts, out);
   } catch (err: unknown) {
@@ -508,6 +509,7 @@ export async function runProfileGet(
         : resolvedId;
 
       const result = await ns.users.get(getId, params);
+      readableObject(result);
       const getOutOpts = { ...outOpts, slim: withRequestedSections(slimProfile, parsedSections) };
       renderSuccess(result, getOutOpts, out);
     }
@@ -655,6 +657,7 @@ export async function runProfileSubscription(
 
   try {
     const result = await ns.profile.subscription();
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -680,6 +683,7 @@ export async function runProfileAnalytics(
 
   try {
     const result = await ns.profile.analytics();
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -749,6 +753,7 @@ export async function runProfileSsi(
 
   try {
     const result = await ns.profile.ssi();
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

@@ -187,6 +187,35 @@ describe("account connect-session poll — one-shot (no --wait)", () => {
     // session_id is a positional arg, not a body field.
     expect(parsed.args).toMatchObject({ session_id: "cs_1" });
   });
+
+  // -------------------------------------------------------------------------
+  // readableObject follow-up: this command renders a bare
+  // `getSession` result directly, but checks `flags.preview` inline instead
+  // of calling `rejectPreviewOnRead` — the convention the ticket's own
+  // derivation keyed on — so it was missed by the first pass entirely and
+  // silently exited 0 on a malformed 2xx. Same-path positive control
+  // (`resolvedSession()` exits 0) sits right above in the first test of this
+  // describe block.
+  // -------------------------------------------------------------------------
+  it.each([
+    ["null", null],
+    ["a scalar", "not an object"],
+    ["a bare array", [{ status: "resolved" }]],
+  ])("a malformed body (%s) is a platform fault, exit 7 — never a silent exit 0", async (_label, body) => {
+    const { runAccountConnectSessionPoll } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    (client.auth.getSession as Mock).mockResolvedValue(body);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountConnectSessionPoll(client as never, { session: "cs_1", json: true } as AccountFlags, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
 });
 
 describe("account connect-session poll --wait — adaptive-cadence loop", () => {
@@ -301,6 +330,33 @@ describe("account connect-session poll --wait — adaptive-cadence loop", () => 
     );
 
     expect(client.auth.getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("a malformed body during the --wait loop is exit 7 (PLATFORM_ERROR), not an uncaught crash on `.status`", async () => {
+    const { runAccountConnectSessionPoll } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    const clock = makeAdvancingClock();
+    // Before this fix, `result as ConnectSessionEnvelope` then `.status` on
+    // a `null` result threw a raw TypeError, caught by the outer try/catch
+    // and misrouted through handleError to exit 1 (generic internal error)
+    // instead of the platform-fault exit 7 this same shape gets everywhere
+    // else in the CLI.
+    (client.auth.getSession as Mock).mockResolvedValue(null);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountConnectSessionPoll(
+        client as never,
+        { session: "cs_1", json: true, wait: true } as AccountFlags,
+        out,
+        { isOutputTTY: false, sleep: clock.sleep, now: clock.now },
+      );
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
   });
 });
 

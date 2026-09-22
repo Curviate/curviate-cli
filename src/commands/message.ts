@@ -40,7 +40,7 @@ import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output
 import { buildPreviewOutput } from "../lib/preview.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
-import { readableId } from "../lib/paginate.js";
+import { readableId, readableObject } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type MessageFlags = {
@@ -391,6 +391,7 @@ export async function runMessageGet(
 
   try {
     const result = await ns.messaging.getMessage(chatId, messageId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -670,6 +671,7 @@ export async function runMessageInMailBalance(
 
   try {
     const result = await ns.users.getInMailCredits();
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
