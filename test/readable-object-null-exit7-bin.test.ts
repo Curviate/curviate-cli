@@ -4,49 +4,99 @@
  * fault, exit 7 (per the exit-code spec's As-built note), never a silent
  * exit 0 (e.g. `company x1` with a `null` body, the reported bug).
  *
- * The read surface is discovered from the live command tree
- * (`discoverReadableObjectNodes`), never a hand-written list, so a new
- * single-object read is covered automatically and none of them can silently
- * skip the guard.
+ * The authority here is a RUNTIME SWEEP over the live command registry and
+ * observed wire behaviour, not a source-code pattern (the exit-code spec's As-built
+ * amendment, qa cycle 2 — the prior AST-based
+ * derivation was proven fragile to how a read happens to be written; see
+ * `helpers/live-command-sweep.ts`'s module doc for the full list of shapes
+ * that defeated it). Every leaf command and every one of its own boolean
+ * flags is discovered from the live citty registry, invoked against a
+ * local stub that answers every request with a `null` 200 body, and
+ * classified by the HTTP methods it actually sent: a variant that sent
+ * only `GET`s is a read and MUST exit 7; anything else (a write, or a
+ * usage error that sent nothing) is not constrained here.
  *
- * Positive control, same path: the identical command against a server that
- * DOES return a real object exits 0 — proving the guard fires on the bad
- * body specifically, not on the command in general. `--verbose` is added to
- * every argv so the control response bypasses each command's own slim
- * projector (which may assume fields a minimal fixture object doesn't carry)
- * — the guard under test runs before any projection either way, so this
- * cannot mask a guard that failed to fire.
- *
- * `null` and a valid object are swept across EVERY discovered node — this is
- * what proves each call site is actually WIRED (not just that the guard
- * function works, which `test/lib/paginate.test.ts` already covers
- * exhaustively for null/scalar/array/valid in-process, no process spawn).
- * Scalar and array are spot-checked on one representative node only: the
- * guard's `isPlainObject` check treats every non-object shape identically,
- * so a second and third process-spawn per node here would re-prove the same
- * function-level fact 29 more times at real CI wall-clock cost for no added
- * assurance (code-review finding, follow-up trim).
- *
- * A companion regression at the bottom: a WRITE that gets a genuine `204`
- * (null body) must keep exiting 0 — `renderSuccess` is shared between reads
- * and writes, and only a read's call site passes its result through
- * `readableObject`.
+ * One process at a time (RAM discipline, `test-runtime` skill): the sweep
+ * runs sequentially during collection, never fanned out.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawn } from "node:child_process";
-import { createServer, type Server } from "node:http";
+import { describe, it, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
 import { cliPath } from "./helpers/built-cli.js";
-import { discoverReadableObjectNodes, argvForRead } from "./helpers/read-guard-nodes.js";
+import {
+  discoverSweepVariants,
+  runAgainstNullStub,
+  BINARY_DOWNLOAD_ALLOWLIST,
+  type SweepResult,
+} from "./helpers/live-command-sweep.js";
 
-const xdg = mkdtempSync(join(tmpdir(), "curviate-readable-object-"));
+type Classified = { key: string; variant: string; kind: "read" | "write-or-usage-error" | "binary-allowlisted"; result: SweepResult };
+
+describe("readableObject guard: runtime sweep over the live command registry", async () => {
+  const variants = await discoverSweepVariants();
+
+  it("the sweep covers a real, non-trivial command surface", () => {
+    // Guards the guard: if this regresses to 0, the registry walk broke
+    // (moved directory, renamed helper) and every test below would
+    // vacuously pass having checked nothing. 193 variants (168 leaves + own
+    // boolean flags) at authoring time; a wide floor so an unrelated future
+    // command or two doesn't need this bumped.
+    expect(variants.length).toBeGreaterThanOrEqual(150);
+  });
+
+  // Sequential, during collection (RAM discipline): one child process at a
+  // time, same technique the rest of this suite already uses for its
+  // async-describe-computed node lists.
+  const classified: Classified[] = [];
+  for (const v of variants) {
+    const key = v.path.join(" ");
+    const result = await runAgainstNullStub(v.argv);
+    const allGet = result.methods.length > 0 && result.methods.every((m) => m === "GET");
+    const kind: Classified["kind"] = BINARY_DOWNLOAD_ALLOWLIST.has(key)
+      ? "binary-allowlisted"
+      : allGet
+        ? "read"
+        : "write-or-usage-error";
+    classified.push({ key, variant: v.variant, kind, result });
+  }
+
+  it("at least one variant is classified a write or usage error (control: the classifier discriminates)", () => {
+    // Same-path positive control for the classifier itself: proves
+    // "write-or-usage-error" isn't a label nothing ever gets.
+    expect(classified.some((c) => c.kind === "write-or-usage-error")).toBe(true);
+  });
+
+  it("the binary-download allowlist is exactly the commands that hit it (control: no stale or missing entries)", () => {
+    const seen = new Set(classified.filter((c) => c.kind === "binary-allowlisted").map((c) => c.key));
+    expect(seen).toEqual(BINARY_DOWNLOAD_ALLOWLIST);
+  });
+
+  for (const c of classified) {
+    if (c.kind !== "read") continue;
+    it(`${c.key} ${c.variant}: a read-only leaf (methods=${c.result.methods.join(",")}) exits 7 on a null body`, () => {
+      expect(
+        c.result.status,
+        `stdout=${c.result.stdout} stderr=${c.result.stderr}`,
+      ).toBe(7);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// A valid object body is the same-path positive control: the identical
+// argv against a server that DOES return a real object exits 0, proving a
+// green sweep above means the guard fires correctly, not that the command
+// is broken in general (`--verbose` bypasses each command's own slim
+// projector, which may assume fields a minimal fixture object doesn't
+// carry; the guard runs before any projection either way).
+// ---------------------------------------------------------------------------
 
 function run(args: string[], baseUrl: string): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((done, reject) => {
-    const env: NodeJS.ProcessEnv = { ...process.env, XDG_CONFIG_HOME: xdg, NODE_ENV: "production" };
+    const env: NodeJS.ProcessEnv = { ...process.env, XDG_CONFIG_HOME: validObjectXdg, NODE_ENV: "production" };
     delete env["CURVIATE_API_KEY"];
     delete env["CURVIATE_ACCOUNT"];
     delete env["CURVIATE_BASE_URL"];
@@ -61,92 +111,60 @@ function run(args: string[], baseUrl: string): Promise<{ status: number | null; 
   });
 }
 
-/** A server that returns the same 2xx JSON body (or 204 empty) for every request. */
-async function bodyServer(body: string | null): Promise<{ server: Server; baseUrl: string }> {
-  const server = createServer((req, res) => {
-    req.resume();
-    req.on("end", () => {
-      if (body === null) {
-        res.writeHead(204);
-        res.end();
-        return;
-      }
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(body);
-    });
-  });
-  await new Promise<void>((r) => server.listen(0, r));
-  const baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-  return { server, baseUrl };
-}
+const validObjectXdg = mkdtempSync(join(tmpdir(), "curviate-readable-object-control-"));
 
-let nullSrv: { server: Server; baseUrl: string };
-let scalarSrv: { server: Server; baseUrl: string };
-let arraySrv: { server: Server; baseUrl: string };
-let objectSrv: { server: Server; baseUrl: string };
-let emptySrv: { server: Server; baseUrl: string };
+describe("readableObject guard: same-path positive control (one representative node)", async () => {
+  const variants = await discoverSweepVariants();
+  const representative = variants.find((v) => v.path.join(" ") === "company" && v.variant === "read");
 
-beforeAll(async () => {
-  nullSrv = await bodyServer("null");
-  scalarSrv = await bodyServer('"a string"');
-  arraySrv = await bodyServer("[]");
-  objectSrv = await bodyServer(JSON.stringify({ id: "ok_1", name: "ok" }));
-  emptySrv = await bodyServer(null); // genuine 204, empty body -> the SDK reads this as null.
-});
-
-afterAll(async () => {
-  await Promise.all(
-    [nullSrv, scalarSrv, arraySrv, objectSrv, emptySrv].map(
-      ({ server }) => new Promise<void>((r) => server.close(() => r())),
-    ),
-  );
-});
-
-describe("single-object reads: null/scalar/array bodies are exit 7, same guard as readablePage", async () => {
-  const nodes = await discoverReadableObjectNodes();
-
-  it("the sweep covers the single-object read surface", () => {
-    expect(nodes.length).toBeGreaterThanOrEqual(20);
+  it("found the representative node (sanity: the fixture didn't drift)", () => {
+    expect(representative).toBeDefined();
   });
 
-  for (const [i, node] of nodes.entries()) {
-    const path = node.path.join(" ");
-    const argv = [...argvForRead(node), "--verbose"];
-
-    it(`${path}: a null body exits 7`, async () => {
-      const bad = await run(argv, nullSrv.baseUrl);
-      expect(bad.status, `stdout=${bad.stdout} stderr=${bad.stderr}`).toBe(7);
+  it("company <id>: a valid object body exits 0", async () => {
+    const { createServer } = await import("node:http");
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on("end", () => {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ id: "ok_1", name: "ok" }));
+      });
     });
-
-    it(`${path}: a valid object body exits 0 (same-path positive control)`, async () => {
-      const good = await run(argv, objectSrv.baseUrl);
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const good = await run([...representative!.argv, "--verbose"], `http://127.0.0.1:${port}`);
       expect(good.status, `stdout=${good.stdout} stderr=${good.stderr}`).toBe(0);
-    });
-
-    // Scalar/array: representative spot-check on the first node only (see
-    // module doc). isPlainObject rejects null/scalar/array identically, so
-    // this proves the wiring generalizes across shapes without re-spawning
-    // a process per shape per node.
-    if (i === 0) {
-      it(`${path}: a scalar body exits 7 (representative spot-check)`, async () => {
-        const bad = await run(argv, scalarSrv.baseUrl);
-        expect(bad.status, `stdout=${bad.stdout} stderr=${bad.stderr}`).toBe(7);
-      });
-
-      it(`${path}: an array body exits 7 (representative spot-check)`, async () => {
-        const bad = await run(argv, arraySrv.baseUrl);
-        expect(bad.status, `stdout=${bad.stdout} stderr=${bad.stderr}`).toBe(7);
-      });
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
     }
-  }
+  });
 });
+
+// ---------------------------------------------------------------------------
+// A companion regression: a WRITE that gets a genuine `204` (null body)
+// must keep exiting 0 — `renderSuccess` is shared between reads and
+// writes, and only a read's call site passes its result through
+// `readableObject`.
+// ---------------------------------------------------------------------------
 
 describe("writes keep rendering a null 204 body: renderSuccess is shared, only a READ's call site adds readableObject", () => {
   it("comment delete: a genuine 204 (empty body, decodes to null) still exits 0", async () => {
-    const result = await run(
-      ["comment", "delete", "1", "1", "--verbose"],
-      emptySrv.baseUrl,
-    );
-    expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(0);
+    const { createServer } = await import("node:http");
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on("end", () => {
+        res.writeHead(204);
+        res.end();
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const result = await run(["comment", "delete", "1", "1", "--verbose"], `http://127.0.0.1:${port}`);
+      expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(0);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
   });
 });

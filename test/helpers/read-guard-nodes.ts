@@ -1,10 +1,20 @@
 /**
- * The single-object read surface for the `readableObject` guard, at
- * CALL-SITE granularity — not per function, and not keyed on whether the
- * enclosing function calls `streamAll` (qa follow-up): a
- * function can mix a paginated branch (`streamAll`, guarded by
- * `readablePage`) with a plain single-object branch in a SIBLING branch of
- * the same `if`/`else if` chain (`profile <id>`, `profile me`). Gating
+ * HOUSE-PATTERN LINT ONLY (qa cycle 2 amendment)
+ * — feeds `readable-object-guard-source.test.ts`, a fast, no-server,
+ * no-build lint for the common `const IDENT = await ns.x.y(...);
+ * renderSuccess(IDENT, ...)` shape. It is NOT the authority on guard
+ * coverage; that is the runtime sweep in `readable-object-null-exit7-bin
+ * .test.ts` (`live-command-sweep.ts`), which invokes the live command
+ * registry against a stub and reads actual exit codes, so it is immune to
+ * every code-shape blind spot below. Keep this file's checks passing (it
+ * catches the common case in milliseconds), but its silence is never proof
+ * of coverage on its own.
+ *
+ * The single-object read surface, at CALL-SITE granularity — not per
+ * function, and not keyed on whether the enclosing function calls
+ * `streamAll`: a function can mix a paginated branch (`streamAll`, guarded
+ * by `readablePage`) with a plain single-object branch in a SIBLING branch
+ * of the same `if`/`else if` chain (`profile <id>`, `profile me`). Gating
  * candidacy on "does the whole function avoid `streamAll`" excluded the
  * entire function, plain branch included, the moment any branch used it.
  *
@@ -52,7 +62,6 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript";
-import { allNodes, argvFor, type Node } from "./streaming-nodes.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const commandsDir = join(__dirname, "../../src/commands");
@@ -211,51 +220,12 @@ function isCandidate(site: RenderCallSite): boolean {
   return KNOWN_NON_REJECTING_SDK_CALLS.some((call) => site.tracedInitText!.includes(call));
 }
 
-/** The call sites that must pair a `readableObject(IDENT)` call with their `renderSuccess(IDENT, ...)`. */
+/**
+ * The call sites that must pair a `readableObject(IDENT)` call with their
+ * `renderSuccess(IDENT, ...)`. House-pattern lint only (see module doc) —
+ * `readable-object-null-exit7-bin.test.ts`'s runtime sweep is the coverage
+ * authority, and does not consume this function.
+ */
 export function deriveGuardCallSites(): RenderCallSite[] {
   return scanRenderSuccessCallSites().filter(isCandidate);
-}
-
-/**
- * The CLI leaf nodes whose handler delegates to a function that owns at
- * least one guarded call site — walked from the live command tree so a new
- * command is picked up automatically.
- */
-export async function discoverReadableObjectNodes(): Promise<Node[]> {
-  const fnNames = [...new Set(deriveGuardCallSites().map((s) => s.fn))];
-  const nodes = await allNodes();
-  return nodes.filter((n) => {
-    if (!n.run) return false;
-    const src = n.run.toString();
-    // Word-boundary, not a trailing "(": most leaves call their handler
-    // directly (`runCompanyGet(...)`), but several pass it BY REFERENCE to a
-    // shared dispatcher (`withClient(args, runProfileSsi)`), where the name
-    // is never itself followed by "(".
-    return fnNames.some((name) => new RegExp(`\\b${name}\\b`).test(src));
-  });
-}
-
-/**
- * Where the generic `argvFor` (tuned for the STREAMING surface — it forces
- * `--posts` onto `profile`/`profile me` so that sweep reaches the paginated
- * branch) would not reach the guarded call:
- *   - `recruiter project-job` / `recruiter applicant`: a bare group whose
- *     positional is explicitly optional so the SAME command can print
- *     multi-subcommand usage when it is omitted, rather than a hard usage
- *     error. Omitting the id there exits 0 with a usage note, never
- *     reaching the read.
- *   - `profile` / `profile me`: the readableObject-guarded call site is the
- *     PLAIN branch (no activity flag) — the opposite of what the streaming
- *     sweep needs from the same two commands.
- */
-const READ_ARGV_OVERRIDES: Record<string, string[]> = {
-  "recruiter project-job": ["recruiter", "project-job", "1"],
-  "recruiter applicant": ["recruiter", "applicant", "1", "1"],
-  profile: ["profile", "1"],
-  "profile me": ["profile", "me"],
-};
-
-/** `argvFor`, with the above corrected. */
-export function argvForRead(node: Node): string[] {
-  return READ_ARGV_OVERRIDES[node.path.join(" ")] ?? argvFor(node);
 }

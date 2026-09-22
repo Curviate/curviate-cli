@@ -1,17 +1,36 @@
 /**
- * Source check: every single-object read call site must PAIR a
- * `readableObject(IDENT)` call with its `renderSuccess(IDENT, ...)` call,
- * so a new read cannot silently skip the guard — and so a guard call on
- * the WRONG value (qa arm D) is caught, not just its
- * presence somewhere in the function.
+ * HOUSE-PATTERN LINT ONLY — not the authority on guard coverage.
  *
- * Call-site granularity, not per-function (qa arm B): a function that
- * mixes a paginated branch with a plain single-object branch
- * (`profile <id>`, `profile me`) is no longer excluded wholesale just
- * because `streamAll` appears somewhere in it — each `renderSuccess` call
- * site is judged on its own traced value. See `helpers/read-guard-nodes.ts`
- * for the full derivation (AST-based, call-site granularity, plus the
- * named non-`rejectPreviewOnRead` exception for qa arm C).
+ * Per the exit-code spec's As-built amendment (qa cycle 2),
+ * that role belongs to the runtime sweep in
+ * `readable-object-null-exit7-bin.test.ts`: it invokes the live command
+ * registry against a stub and checks actual exit codes, so it cannot be
+ * fooled by how a read happens to be written. This file stays as a fast,
+ * no-server, no-build source scan for the ONE shape this codebase's reads
+ * actually use — `const IDENT = await ns.x.y(...); renderSuccess(IDENT,
+ * ...)` — so that common case gets a red result in milliseconds instead of
+ * waiting on the ~30s sweep.
+ *
+ * KNOWN LIMITS (each defeats this file, none defeats the runtime sweep):
+ * an inline `if (flags.preview) {...}` check that isn't one of the two
+ * named `KNOWN_NON_REJECTING_SDK_CALLS` patterns; `renderSuccess(await
+ * ns.x.y(...))` with no intermediate variable; a property-access render
+ * argument (`renderSuccess(result.data)`); an arrow-function export
+ * (`export const runX = async (...) => {...}`, this scanner only walks
+ * `function` declarations); render via a shared helper's parameter (the
+ * `renderSuccess` call lives in a different function than the SDK call);
+ * and a `readableObject` call reachable only under a conditional that
+ * doesn't cover the render path (this file checks textual presence in a
+ * window, not control-flow reachability).
+ *
+ * Every single-object read call site must PAIR a `readableObject(IDENT)`
+ * call with its `renderSuccess(IDENT, ...)` call — a guard call on the
+ * WRONG value is caught, not just presence somewhere in the function.
+ * Call-site granularity, not per-function: a function that mixes a
+ * paginated branch with a plain single-object branch (`profile <id>`,
+ * `profile me`) is not excluded wholesale just because `streamAll` appears
+ * somewhere in it. See `helpers/read-guard-nodes.ts` for the full
+ * derivation.
  */
 
 import { describe, it, expect } from "vitest";
