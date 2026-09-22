@@ -8,6 +8,69 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-09-22
+
+Pagination flags are honoured and validated on every command that offers
+them, and `message new` can name the chat it starts. No SDK move: the pin
+stays exactly `0.36.0`.
+
+### Added
+
+- **`message new --subject <s>`.** `POST /v1/{account_id}/chats` has always
+  accepted an optional conversation name (at most 200 characters) and
+  round-trips it onto the opening message, and MCP's `start_chat` exposed it,
+  but the CLI never followed, so the capability was unreachable from the
+  command line. The flag passes straight through to the request body. Omitted,
+  the key is left OUT of the body rather than sent as `subject: ""`: the
+  server's schema has no minimum length, so an empty string on the caller's
+  behalf would name the chat "" on the platform instead of leaving it unnamed.
+- **`search service-parameters` and `sales-nav search parameters` paginate.**
+  Both endpoints take a cursor and return one, so both commands now offer the
+  full streaming set: `--cursor` to page manually, `--all` to stream every page
+  as NDJSON, `--max-pages` / `--page-delay` to bound and pace it. They behave
+  exactly like their `search parameters` sibling, down to the NDJSON notice and
+  the truncation sentinel, and `--max-pages` / `--page-delay` without `--all`
+  is the same exit 2 every other streaming command gives.
+
+### Changed
+
+- **`--cursor ""` is a usage error (exit 2), never a silent restart.** Every
+  paginated command guarded the flag with a truthiness check, so an empty or
+  whitespace-only value was dropped client-side and the walk began again at
+  page one: `--cursor "$NEXT"` with `NEXT` unset re-read the first page
+  forever and reported exit 0 every time. A lost cursor is now refused before
+  any request, naming the flag. An omitted `--cursor` still means "start at
+  the first page", unchanged. Same ruling as `account link --seat-id ""` in
+  0.37.0, and the API itself now answers 400 on an empty cursor. Decided once
+  in `lib/paginate.ts` and routed through by all 51 call sites, across 61
+  commands.
+- **`--max-pages` must be a positive integer (exit 2 otherwise).**
+  `--max-pages abc` parsed to `NaN`, and a `>= NaN` comparison is false
+  forever, so a walk asked to stop after a few pages ran unbounded instead:
+  the opposite of what was typed, ending at exit 0. `0`, a negative, a
+  fractional value and an empty string are refused for the same reason: none
+  of them can be a page budget. One shared parse in `lib/paginate.ts`, used by
+  all 60 call sites, across 60 streaming commands.
+
+### Fixed
+
+- **`search parameters --help` named a `--type` value the API rejects.** The
+  enum was renamed `CONNECTIONS` to `RELATION` in v2; the help text and the
+  `search people --connections-of` resolve hint both still said
+  `CONNECTIONS`, so the one lookup those lines exist to make easy answered
+  400. Both now say `RELATION`, which is what the served document lists.
+
+### Known, not changed here
+
+- Eleven commands declare `--cursor` against an endpoint that has no cursor
+  input at all (`company`, `company chat`, `company message`, `post get`,
+  `profile endorse`, `recruiter search parameters`, and the five
+  non-list `webhook` subcommands). They spread the wrong flag set rather than
+  dropping a real cursor, so correcting them removes `--cursor` and `--limit`
+  from those commands' help, which is a separate decision. Pinned by name in
+  `test/cursor-empty-refused-bin.test.ts` so none can drift in or out
+  unnoticed.
+
 ## [0.38.0] - 2026-09-20
 
 Re-vendored from `@curviate/sdk` 0.36.0.
