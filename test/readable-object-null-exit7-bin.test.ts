@@ -1,8 +1,14 @@
 /**
- * A single-object read's 2xx must be a readable object: `null`, a scalar, or
- * a bare array is no API answer for a single-resource read — a platform
- * fault, exit 7 (per the exit-code spec's As-built note), never a silent
- * exit 0 (e.g. `company x1` with a `null` body, the reported bug).
+ * A single-object read's 2xx must be a readable object: `null`, a scalar, a
+ * bare array, or an empty object is no API answer for a single-resource
+ * read — a platform fault, exit 7 (per the exit-code spec's As-built note),
+ * never a silent exit 0 (e.g. `company x1` with a `null` body, the reported
+ * bug) and never a fabricated all-null object (found by qa verifying the prior As-built: an
+ * empty or absent 2xx body decodes to `{}` in the SDK, which the original
+ * `readableObject` let through — `company 1` against an empty body exited 0
+ * printing `{"id":null,"name":null,...}`). Every read variant is swept
+ * against all four unreadable shapes (`null`, an empty 200 body, an empty
+ * 204, and a literal `{}`), below.
  *
  * The authority here is a RUNTIME SWEEP over the live command registry and
  * observed wire behaviour, not a source-code pattern (the exit-code spec's As-built
@@ -36,15 +42,29 @@ import { cliPath } from "./helpers/built-cli.js";
 import {
   discoverSweepVariants,
   runAgainstNullStub,
+  runAgainstStub,
   BINARY_DOWNLOAD_ALLOWLIST,
   ZERO_REQUEST_ALLOWLIST,
   READ_BY_POST,
+  NULL_BODY,
+  EMPTY_200_BODY,
+  EMPTY_204_BODY,
+  EMPTY_OBJECT_BODY,
   type SweepResult,
+  type StubBody,
 } from "./helpers/live-command-sweep.js";
+
+/** The three empty-decoding-to-`{}` shapes, swept alongside the original `null` body. */
+const EMPTY_SHAPES: Array<{ label: string; body: StubBody }> = [
+  { label: "empty 200 body", body: EMPTY_200_BODY },
+  { label: "empty 204 body", body: EMPTY_204_BODY },
+  { label: "literal {} body", body: EMPTY_OBJECT_BODY },
+];
 
 type Classified = {
   key: string;
   variant: string;
+  argv: string[];
   kind: "read" | "write" | "zero-request" | "binary-allowlisted";
   result: SweepResult;
 };
@@ -76,7 +96,7 @@ describe("readableObject guard: runtime sweep over the live command registry", a
         : allGet
           ? "read"
           : "write";
-    classified.push({ key, variant: v.variant, kind, result });
+    classified.push({ key, variant: v.variant, argv: v.argv, kind, result });
   }
 
   it("at least one variant is classified a write (control: the classifier discriminates)", () => {
@@ -116,6 +136,26 @@ describe("readableObject guard: runtime sweep over the live command registry", a
       ).toBe(7);
     });
   }
+
+  // Found by qa verifying the prior As-built: an empty (or absent) 2xx body decodes to `{}`
+  // in the SDK — a second unreadable shape distinct from a literal `null`,
+  // which `readableObject` didn't originally reject. Every read variant,
+  // swept against all three empty-decoding shapes, same as the null sweep
+  // above (sequential, during collection).
+  const emptyResults: Array<{ c: Classified; label: string; result: SweepResult }> = [];
+  for (const c of classified) {
+    if (c.kind !== "read") continue;
+    for (const { label, body } of EMPTY_SHAPES) {
+      const result = await runAgainstStub(c.argv, body);
+      emptyResults.push({ c, label, result });
+    }
+  }
+
+  for (const { c, label, result } of emptyResults) {
+    it(`${c.key} ${c.variant}: a read-only leaf exits 7 on a ${label}`, () => {
+      expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(7);
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -136,6 +176,13 @@ describe("readableObject guard: named POST-shaped reads", () => {
       expect(result.methods.some((m) => m !== "GET"), `expected a non-GET request, got methods=${result.methods.join(",")}`).toBe(true);
       expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(7);
     });
+
+    for (const { label, body } of EMPTY_SHAPES) {
+      it(`${key}: exits 7 on a ${label}`, async () => {
+        const result = await runAgainstStub(argv, body);
+        expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(7);
+      });
+    }
   }
 });
 
@@ -196,29 +243,22 @@ describe("readableObject guard: same-path positive control (one representative n
 });
 
 // ---------------------------------------------------------------------------
-// A companion regression: a WRITE that gets a genuine `204` (null body)
-// must keep exiting 0 — `renderSuccess` is shared between reads and
-// writes, and only a read's call site passes its result through
-// `readableObject`.
+// A companion regression: a WRITE that gets a genuine empty/`{}` body
+// (the empty/{} shapes included) must keep exiting 0 —
+// `renderSuccess` is shared between reads and writes, and only a read's
+// call site passes its result through `readableObject`. Every writes
+// variant is structurally unaffected by this change (they never call
+// `readableObject`), so a representative write (`comment delete`) swept
+// against all four bodies is the proportionate regression check, not an
+// exhaustive re-sweep of the ~66 write variants already proven
+// unconstrained above.
 // ---------------------------------------------------------------------------
 
-describe("writes keep rendering a null 204 body: renderSuccess is shared, only a READ's call site adds readableObject", () => {
-  it("comment delete: a genuine 204 (empty body, decodes to null) still exits 0", async () => {
-    const { createServer } = await import("node:http");
-    const server = createServer((req, res) => {
-      req.resume();
-      req.on("end", () => {
-        res.writeHead(204);
-        res.end();
-      });
-    });
-    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-    const port = (server.address() as { port: number }).port;
-    try {
-      const result = await run(["comment", "delete", "1", "1", "--verbose"], `http://127.0.0.1:${port}`);
+describe("writes keep rendering an empty/`{}` body: renderSuccess is shared, only a READ's call site adds readableObject", () => {
+  for (const { label, body } of [{ label: "null body", body: NULL_BODY }, ...EMPTY_SHAPES]) {
+    it(`comment delete: a genuine write response (${label}) still exits 0`, async () => {
+      const result = await runAgainstStub(["comment", "delete", "1", "1", "--verbose"], body);
       expect(result.status, `stdout=${result.stdout} stderr=${result.stderr}`).toBe(0);
-    } finally {
-      await new Promise<void>((r) => server.close(() => r()));
-    }
-  });
+    });
+  }
 });

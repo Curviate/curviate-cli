@@ -513,6 +513,27 @@ describe("lib/paginate — readableObject", () => {
       expect(threw).toMatchObject({ code: "PLATFORM_ERROR", retryLikelyToSucceed: true });
     });
   }
+
+  // Found by qa verifying the prior As-built: an empty 2xx body decodes to `{}` in the SDK,
+  // which the object/array/scalar check above lets through — same fault as
+  // null (the API answered without a readable object), so a zero-key
+  // object throws too.
+  it("throws PLATFORM_ERROR for {} (empty object — an empty or absent 2xx body decodes to this)", () => {
+    let threw: unknown;
+    try {
+      readableObject({});
+    } catch (e) {
+      threw = e;
+    }
+    expect(threw).toMatchObject({ code: "PLATFORM_ERROR", retryLikelyToSucceed: true });
+  });
+
+  it("still passes a plain object with only inherited/no-own keys stripped correctly (control: a real one-key object is not treated as empty)", () => {
+    // Same-path positive control for the {} check itself: a real object
+    // with exactly one key must NOT be caught by the empty-object rule.
+    const obj = { id: "x" };
+    expect(readableObject(obj)).toBe(obj);
+  });
 });
 
 function mockExit() {

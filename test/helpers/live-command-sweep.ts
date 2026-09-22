@@ -24,8 +24,12 @@
  *     Each gets its own swept variant, alongside the bare one.
  *
  * Classification, per variant: invoke the built CLI against a local stub
- * that answers every request with a `null` 200 body, and record every HTTP
- * method it sent. A variant that sent ONLY `GET` requests is a read; it
+ * that answers every request with a `null` 200 body (`runAgainstStub` also
+ * takes `EMPTY_200_BODY`/`EMPTY_204_BODY`/`EMPTY_OBJECT_BODY` — see
+ * found by qa verifying the prior As-built: an empty or absent 2xx body decodes to `{}` in
+ * the SDK, a second unreadable shape `readableObject` now also rejects),
+ * and record every HTTP method it sent. A variant that sent ONLY `GET`
+ * requests is a read; it
  * MUST exit 7. Any non-GET request means the command can legitimately
  * render a genuine `204`/null body on success (a write) — not constrained
  * here. Zero requests (a usage error, or a bare group that only prints
@@ -180,25 +184,42 @@ export async function discoverSweepVariants(): Promise<SweepVariant[]> {
 
 export type SweepResult = { status: number | null; methods: string[]; stdout: string; stderr: string };
 
+/** A stub HTTP response shape: a status and a raw body text (`null` text = no body written at all). */
+export type StubBody = { status: 200 | 204; text: string | null };
+
+/** A literal JSON `null` (the original single-object-read shape: valid JSON, decodes to the JS value `null`). */
+export const NULL_BODY: StubBody = { status: 200, text: "null" };
+/** A 200 with a genuinely empty body (0 bytes) — the SDK decodes this to `{}`. */
+export const EMPTY_200_BODY: StubBody = { status: 200, text: "" };
+/** A 204, which by convention never carries a body — same empty-decodes-to-`{}` path as EMPTY_200_BODY. */
+export const EMPTY_204_BODY: StubBody = { status: 204, text: null };
+/** A literal JSON `{}` — valid JSON, decodes to a real but zero-key object. */
+export const EMPTY_OBJECT_BODY: StubBody = { status: 200, text: "{}" };
+
 /** One shared xdg dir for every spawn in a sweep run (no login state needed against a stub). */
 const sweepXdg = mkdtempSync(join(tmpdir(), "curviate-sweep-"));
 
 /**
  * Run one CLI invocation against a fresh local stub that answers every
- * request with a 200 `null` JSON body, and report which HTTP methods it
- * sent. One request-serving server per call, torn down before returning —
- * sequential by construction (the caller awaits each), which is also the
- * RAM discipline this sweep needs on this host (`test-runtime` skill): one
+ * request with the given body, and report which HTTP methods it sent. One
+ * request-serving server per call, torn down before returning — sequential
+ * by construction (the caller awaits each), which is also the RAM
+ * discipline this sweep needs on this host (`test-runtime` skill): one
  * child process at a time, never fanned out.
  */
-export async function runAgainstNullStub(argv: string[]): Promise<SweepResult> {
+export async function runAgainstStub(argv: string[], body: StubBody = NULL_BODY): Promise<SweepResult> {
   const methods: string[] = [];
   const server: Server = createServer((req, res) => {
     methods.push(req.method ?? "?");
     req.resume();
     req.on("end", () => {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end("null");
+      if (body.text === null) {
+        res.writeHead(body.status);
+        res.end();
+        return;
+      }
+      res.writeHead(body.status, { "content-type": "application/json" });
+      res.end(body.text);
     });
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -210,10 +231,19 @@ export async function runAgainstNullStub(argv: string[]): Promise<SweepResult> {
     delete env["CURVIATE_ACCOUNT"];
     delete env["CURVIATE_BASE_URL"];
     const result = await new Promise<SweepResult>((resolve, reject) => {
+      // A defensive kill-after-timeout, not a normal path: a `--wait`
+      // command whose malformed-body guard regressed in the future would
+      // fall through to a real 10-minute default wait-window instead of
+      // throwing immediately (found the hard way — mutation-probing this
+      // exact fix with a `--wait` variant in the mix hung a real child
+      // process for minutes before it was caught and killed by hand). 10s
+      // is generous for every real invocation in this sweep (the slowest
+      // observed is ~1.1s, a `--wait` command's fixed initial poll delay).
+      const signal = AbortSignal.timeout(10_000);
       const child = spawn(
         process.execPath,
         [cliPath, ...argv, "--json", "--beta", "--api-key", "cvt_test_x", "--account", "acc_1", "--base-url", `http://127.0.0.1:${port}`],
-        { env },
+        { env, signal },
       );
       let stdout = "";
       let stderr = "";
@@ -228,6 +258,9 @@ export async function runAgainstNullStub(argv: string[]): Promise<SweepResult> {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 }
+
+/** Back-compat name: the original single-shape entry point, now a thin wrapper. */
+export const runAgainstNullStub = (argv: string[]): Promise<SweepResult> => runAgainstStub(argv, NULL_BODY);
 
 /**
  * Commands whose GET(s) are correctly exempt from the exit-7 contract:
