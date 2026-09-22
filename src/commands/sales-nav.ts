@@ -4,7 +4,7 @@
  * Subcommands:
  *   sales-nav search people [--keywords <k>] [--all] [--limit] [--cursor]: search people (POST)
  *   sales-nav search companies [--keywords <k>] [--all] [--limit] [--cursor]: search companies (POST)
- *   sales-nav search parameters --type <t>: get filter parameters (read)
+ *   sales-nav search parameters --type <t> [--all] [--limit] [--cursor]: get filter parameters (read, paginated)
  *   sales-nav message new --to <id> "<text>" [--attach <f>...] [--voice <f>] [--video <f>], start chat (write, multipart)
  *   sales-nav profile <identifier>: get profile (read, resolveIdentifier)
  *   sales-nav save-lead --list <id> <user_id>: save lead into a list (write, v2)
@@ -34,13 +34,13 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import {
   assembleFilters,
@@ -171,9 +171,9 @@ export async function runSalesNavSearchPeople(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   // --filters base body, then --keywords and the curated named flags over it.
   // The rich Sales Navigator filters are mostly nested objects, reachable via --filters.
@@ -241,9 +241,9 @@ export async function runSalesNavSearchCompanies(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   // --filters base body, then --keywords and the curated named flags over it.
   const assembled = await assembleFilters(flags, readers);
@@ -287,8 +287,11 @@ export async function runSalesNavSearchCompanies(
 }
 
 /**
- * Run `sales-nav search parameters --type <t>`.
- * Read command, rejects --preview.
+ * Run `sales-nav search parameters --type <t> [--limit] [--cursor] [--all]`.
+ * Read command, rejects --preview. The endpoint takes a cursor and returns
+ * one, so the command pages: `--cursor` walks manually, `--all` streams every
+ * page as NDJSON. It used to declare `--cursor` (via NON_STREAM_FLAGS) and
+ * never read it, answering page one at exit 0 forever.
  */
 export async function runSalesNavGetParameters(
   client: Curviate,
@@ -296,6 +299,7 @@ export async function runSalesNavGetParameters(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
     out.stderr.write("error: --type is required.\n");
@@ -305,6 +309,8 @@ export async function runSalesNavGetParameters(
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   // `type` is a free-form CLI string flag validated against the served enum
   // server-side, a narrow cast here is the pragmatic alternative to
@@ -312,9 +318,24 @@ export async function runSalesNavGetParameters(
   const params: SNGetParametersQuery = { type: flags.type as SNGetParametersQuery["type"] };
   if (flags.keywords) params.keywords = flags.keywords;
   if (flags.limit) params.limit = parseInt(flags.limit, 10);
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params.cursor = cursor;
 
   try {
+    if (all) {
+      const fn = (p: SNGetParametersQuery) =>
+        ns.salesNavigator.getParameters(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, params, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        writeNdjsonItem(out, item, outOpts.fields);
+      }
+      return;
+    }
     const result = await ns.salesNavigator.getParameters(params);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -340,9 +361,9 @@ export async function runSalesNavSearchFromUrl(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const body: SNSearchFromUrlBody = { url };
   const params: Record<string, unknown> = {};
@@ -551,11 +572,12 @@ export async function runSalesNavAccountLists(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {
@@ -594,11 +616,12 @@ export async function runSalesNavLeadLists(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {
@@ -638,7 +661,7 @@ export async function runSalesNavBrowseAccountList(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const body: Record<string, unknown> = {};
   if (flags.filter) body["filter"] = flags.filter;
@@ -647,7 +670,8 @@ export async function runSalesNavBrowseAccountList(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {
@@ -687,7 +711,7 @@ export async function runSalesNavBrowseLeadList(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const body: Record<string, unknown> = {};
   if (flags.spotlight) body["spotlight"] = flags.spotlight;
@@ -696,7 +720,8 @@ export async function runSalesNavBrowseLeadList(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {
@@ -866,9 +891,13 @@ const salesNavSearchCompaniesCommand = defineCommand({
 });
 
 const salesNavSearchParametersCommand = defineCommand({
-  meta: { name: "parameters", description: "Resolve Sales Navigator filter parameter IDs." },
+  meta: {
+    name: "parameters",
+    description:
+      "Resolve Sales Navigator filter parameter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+  },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...GLOBAL_FLAGS,
     type: {
       type: "string",
       description:

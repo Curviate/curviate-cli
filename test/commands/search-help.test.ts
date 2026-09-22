@@ -243,10 +243,15 @@ describe("search jobs additional named flags help text", () => {
 // ---------------------------------------------------------------------------
 
 describe("search people --connections-of / --followers-of help text", () => {
-  it("--connections-of mentions --type CONNECTIONS", async () => {
+  // The served enum is RELATION, not CONNECTIONS (the v2 rename). A hint
+  // naming the old token sends the caller into a 400 on the very lookup the
+  // hint exists to make easy, so the stale token is asserted ABSENT beside
+  // the positive that the live one is present.
+  it("--connections-of mentions --type RELATION, never the pre-v2 CONNECTIONS", async () => {
     const args = await getSearchSubArgs("people");
     const desc = args["connections-of"]?.description ?? "";
-    expect(desc).toContain("--type CONNECTIONS");
+    expect(desc).toContain("--type RELATION");
+    expect(desc).not.toContain("CONNECTIONS");
   });
 
   it("--followers-of mentions --type PEOPLE", async () => {
@@ -299,12 +304,16 @@ describe("help-text-only corrections: --type / --seniority / --job-type / --cont
     }
   });
 
-  it("search parameters --help enumerates all 11 --type values", () => {
+  it("search parameters --help enumerates all 11 --type values, and none of them is CONNECTIONS", () => {
     const text = helpText(["search", "parameters"]);
+    // The served enum (test/fixtures/openapi.json, GET .../search/parameters)
+    // renamed CONNECTIONS to RELATION in v2; the help text kept the old one,
+    // so every documented lookup of it answered 400.
+    expect(text).not.toContain("CONNECTIONS");
     for (const token of [
       "LOCATION",
       "PEOPLE",
-      "CONNECTIONS",
+      "RELATION",
       "COMPANY",
       "SCHOOL",
       "INDUSTRY",

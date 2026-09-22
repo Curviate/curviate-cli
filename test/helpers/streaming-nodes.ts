@@ -106,12 +106,27 @@ function usageOnly(n: Node): boolean {
   return n.hasSubs && !Object.values(n.defs).some((d) => d.type === "positional") && !OVERRIDES[n.path.join(" ")];
 }
 
+async function allNodes(): Promise<Node[]> {
+  const nodes: Node[] = [];
+  for (const [name, cmd] of await commandGroups()) await walk(cmd, [name], nodes);
+  return nodes;
+}
+
 /**
  * Every leaf command that declares `--all` (the streaming surface),
  * discovered from the live command tree — never a hand-written list.
  */
 export async function discoverStreamingNodes(): Promise<Node[]> {
-  const nodes: Node[] = [];
-  for (const [name, cmd] of await commandGroups()) await walk(cmd, [name], nodes);
-  return nodes.filter((n) => "all" in n.defs && !usageOnly(n));
+  return (await allNodes()).filter((n) => "all" in n.defs && !usageOnly(n));
+}
+
+/**
+ * Every leaf command that declares `--cursor` (the paginated surface), same
+ * live-tree derivation. A SUPERSET of the streaming surface: a command can
+ * take a cursor without offering `--all` (NON_STREAM_FLAGS declares
+ * `--cursor` but not `--all`), and those are precisely the ones that have
+ * historically accepted the flag and dropped it.
+ */
+export async function discoverCursorNodes(): Promise<Node[]> {
+  return (await allNodes()).filter((n) => "cursor" in n.defs && !usageOnly(n));
 }

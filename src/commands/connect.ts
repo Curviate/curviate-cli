@@ -30,7 +30,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type ConnectFlags = {
@@ -147,9 +147,9 @@ export async function runConnectSent(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
   if (cursor) params["cursor"] = cursor;
@@ -201,9 +201,9 @@ export async function runConnectReceived(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
   if (cursor) params["cursor"] = cursor;

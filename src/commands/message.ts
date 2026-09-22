@@ -2,7 +2,7 @@
  * `curviate message`, LinkedIn message operations.
  *
  * Subcommands:
- *   message new --to <url|slug|provider_id> "<text>" [--attach <file>...]: start new chat (write)
+ *   message new --to <url|slug|provider_id> "<text>" [--subject <s>] [--attach <file>...]: start new chat (write)
  *   message <chat_id> "<text>" [--attach <file>...]: send message to chat (write)
  *   message get <chat_id> <message_id>: get a message (read)
  *   message edit <chat_id> <message_id> "<text>": edit a message (write)
@@ -95,6 +95,43 @@ function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): 
   }
 }
 
+/** The served cap on a chat's subject (`POST /v1/{account_id}/chats`, maxLength 200). */
+const CHAT_SUBJECT_MAX_CHARS = 200;
+
+/**
+ * Read `message new --subject` off the parsed flags.
+ *
+ * Omitted means no subject and the key is left OUT of the body: the server's
+ * schema has `max(200)` and no `.min(1)`, so a `subject: ""` sent on the
+ * caller's behalf would be accepted and name the chat "" on the platform
+ * rather than leave it unnamed. An explicitly empty or blank `--subject` is a
+ * lost value, not an omission (`--subject "$S"` with `S` unset) — exit 2,
+ * same ruling as `--cursor ""`.
+ *
+ * The length cap is checked here rather than round-tripped: the limit is
+ * served and stable, and a 400 for a typed-too-long subject costs a request
+ * to learn something the CLI already knows. Same shape as `inbox search`'s
+ * MIN_SEARCH_QUERY_CHARS, which exists because a generated `string` type
+ * cannot carry a length.
+ */
+function readChatSubjectFlag(flags: MessageFlags, out: OutputStreams): string | undefined {
+  const raw = flags.subject;
+  if (raw === undefined) return undefined;
+  if (raw.trim() === "") {
+    out.stderr.write(
+      "error: --subject was given an empty value. Pass the subject line, or omit the flag entirely to start an unnamed chat.\n",
+    );
+    process.exit(2);
+  }
+  if (raw.length > CHAT_SUBJECT_MAX_CHARS) {
+    out.stderr.write(
+      `error: --subject is ${raw.length} characters; the maximum is ${CHAT_SUBJECT_MAX_CHARS}.\n`,
+    );
+    process.exit(2);
+  }
+  return raw;
+}
+
 function resolveOutputOpts(flags: MessageFlags) {
   return {
     json: (flags.json ?? false) || !process.stdout.isTTY,
@@ -170,7 +207,7 @@ export function willSendAsNotice(chatId: string): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Run `message new --to <url|slug|provider_id> "<text>" [--attach <file>...]`.
+ * Run `message new --to <url|slug|provider_id> "<text>" [--subject <s>] [--attach <file>...]`.
  * Write command, supports --preview.
  *
  * --to resolution:
@@ -187,6 +224,7 @@ export async function runMessageNew(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
+  const subject = readChatSubjectFlag(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const rawTo = flags.to ?? "";
   const rawText = flags.text ?? "";
@@ -234,7 +272,7 @@ export async function runMessageNew(
     const preview = buildPreviewOutput({
       method: "messaging.startChat",
       args: { attendees_ids: [providerId!] },
-      body: { attendees_ids: [providerId!], text },
+      body: { attendees_ids: [providerId!], text, ...(subject !== undefined ? { subject } : {}) },
       account: accountId,
       attachments: attachBuffers.map((buf, i) => ({
         name: attachPaths[i] ? attachPaths[i].split("/").pop() ?? attachPaths[i] : `attachment_${i}`,
@@ -248,6 +286,9 @@ export async function runMessageNew(
   const body = {
     attendees_ids: [providerId!],
     text,
+    // Present only when the flag was given: an absent subject must leave the
+    // key out, never send `subject: ""` (the server has no `.min(1)`).
+    ...(subject !== undefined ? { subject } : {}),
     ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
   };
 
@@ -651,6 +692,11 @@ const messageNewCommand = defineCommand({
       required: true,
     },
     text: { type: "positional", stdinArg: true, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
+    subject: {
+      type: "string",
+      description:
+        "Optional conversation name / subject line (at most 200 characters). Omit it for an unnamed chat; an empty value is a usage error.",
+    },
     attach: { type: "string", description: "File to attach (repeatable)." },
   },
   async run({ args }) {
@@ -947,7 +993,7 @@ const MESSAGE_SUBCOMMANDS = [
 ] as const;
 
 const MESSAGE_USAGE =
-  "Usage: curviate message new --to <attendee> \"<text>\" [--attach <file>...]\n" +
+  "Usage: curviate message new --to <attendee> \"<text>\" [--subject <s>] [--attach <file>...]\n" +
   "       curviate message send <chat_id> \"<text>\" [--attach <file>...]\n" +
   "       curviate message <chat_id> \"<text>\" [--attach <file>...]\n" +
   "       curviate message get <chat_id> <message_id>\n" +

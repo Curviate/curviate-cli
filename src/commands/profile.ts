@@ -46,7 +46,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { slimProfileMe, slimProfile, withRequestedSections } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -234,10 +234,11 @@ export async function runProfileMe(
   if (hasActivityFlag) {
     // Self-scoped activity, "me" is passed straight through to the list method.
     const all = flags.all ?? false;
-    const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+    const maxPages = readMaxPagesFlag(flags, out);
     const params: ListQuery = {};
     if (flags.limit) params.limit = parseInt(flags.limit, 10);
-    if (flags.cursor) params.cursor = flags.cursor;
+    const cursor = readCursorFlag(flags, out);
+    if (cursor) params.cursor = cursor;
 
     try {
       // Precedence chain: posts > comments > reactions > followers
@@ -391,9 +392,9 @@ export async function runProfileGet(
 
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   try {
     // Select list method by flag
@@ -538,9 +539,9 @@ export async function runProfileRelations(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = (flags as ProfileFlags).cursor;
+  const cursor = readCursorFlag(flags as ProfileFlags, out);
   const params: ListQuery = {};
   if (limit !== undefined) params.limit = limit;
   if (cursor) params.cursor = cursor;
@@ -702,9 +703,9 @@ export async function runProfileVisitors(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = (flags as ProfileFlags).cursor;
+  const cursor = readCursorFlag(flags as ProfileFlags, out);
   const params: ListQuery = {};
   if (limit !== undefined) params.limit = limit;
   if (cursor) params.cursor = cursor;
@@ -908,10 +909,11 @@ export async function runProfileFollowers(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const params: ListQuery = {};
   if (flags.limit) params.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) params.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params.cursor = cursor;
 
   try {
     if (all) {
@@ -946,10 +948,11 @@ export async function runProfileFollowing(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const params: ListQuery = {};
   if (flags.limit) params.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) params.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params.cursor = cursor;
 
   try {
     if (all) {

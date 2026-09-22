@@ -39,7 +39,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
 import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
@@ -506,9 +506,9 @@ export async function runRecruiterSearchPeople(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   // --filters base body, then --keywords and the curated named flags over it.
   // The rich Recruiter filters are mostly nested objects, reachable via --filters.
@@ -624,9 +624,9 @@ export async function runRecruiterSearchFromUrl(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const body: RecruiterSearchFromUrlBody = { url };
   const params: Record<string, unknown> = {};
@@ -676,9 +676,9 @@ export async function runRecruiterListProjects(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
@@ -796,9 +796,9 @@ export async function runRecruiterListPipeline(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const body: Record<string, unknown> = {};
   if (flags.keywords) body["keywords"] = flags.keywords;
@@ -952,9 +952,9 @@ export async function runRecruiterListJobs(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
@@ -1277,9 +1277,9 @@ export async function runRecruiterSearchTalentPool(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const assembled = await assembleFilters(flags, readers);
   if ("error" in assembled) {
@@ -1351,7 +1351,8 @@ export async function runRecruiterListApplicants(
   const body: RecruiterListApplicantsBody = { channel_id: flags["channel-id"] };
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const result = await ns.recruiter.listApplicants(projectId, body, Object.keys(params).length > 0 ? params : undefined);

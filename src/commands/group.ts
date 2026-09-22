@@ -33,7 +33,7 @@ import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
 type GroupFlags = {
@@ -126,12 +126,13 @@ export async function runGroupList(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (flags.target) params["profile"] = flags.target;
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {
@@ -198,12 +199,13 @@ export async function runGroupMembers(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (flags.name) params["name"] = flags.name;
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (all) {

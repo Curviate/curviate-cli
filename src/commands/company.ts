@@ -56,7 +56,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
-import { streamAll, pageDelayFromFlags, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -243,14 +243,15 @@ export async function runCompanyEmployees(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
   if (flags.keywords) params["keywords"] = flags.keywords;
   if (flags.location) params["location"] = flags.location;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.employees(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -289,12 +290,13 @@ export async function runCompanyPosts(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.posts(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -333,13 +335,14 @@ export async function runCompanyJobs(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
   if (flags.keywords) params["keywords"] = flags.keywords;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.jobs(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -382,12 +385,13 @@ export async function runCompanyInvitableFollowers(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.invitableFollowers(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -476,11 +480,12 @@ export async function runCompanyManaged(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.managed(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -520,12 +525,13 @@ export async function runCompanyFollowers(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.followers(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -565,12 +571,13 @@ export async function runCompanyChats(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.chats(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -641,12 +648,13 @@ export async function runCompanyMessages(
 
   const params: Record<string, unknown> = {};
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.messages(identifier, chatId, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {
@@ -727,12 +735,13 @@ export async function runCompanySearchChats(
   if (flags.topic) params["topic"] = flags.topic;
   if (flags.unread !== undefined) params["unread"] = flags.unread;
   if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     if (flags.all) {
-      const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+      const maxPages = readMaxPagesFlag(flags, out);
       const fn = (p: Record<string, unknown>) =>
         ns.companies.searchChats(identifier, p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(fn, params, {

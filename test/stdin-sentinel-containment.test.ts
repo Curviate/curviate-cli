@@ -174,9 +174,12 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * base-url, timeout, fields = 6 non-boolean flags) landed; 1662 after
  * `search parameters` became paginated and swapped NON_STREAM_FLAGS for
  * GLOBAL_FLAGS, gaining --max-pages and --page-delay, the two non-boolean
- * members of the stream trio, while --all is boolean and never counted).
+ * members of the stream trio, while --all is boolean and never counted; 1667
+ * after `search service-parameters` and `sales-nav search parameters` made
+ * the same NON_STREAM_FLAGS -> GLOBAL_FLAGS swap (+2 each) and `message new`
+ * gained --subject (+1)).
  */
-const ARGUMENT_SURFACE_COUNT = 1662;
+const ARGUMENT_SURFACE_COUNT = 1667;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

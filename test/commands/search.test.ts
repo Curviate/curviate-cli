@@ -565,21 +565,31 @@ describe("search parameters — GET, paginated", () => {
     expect(arg["keywords"]).toBe("london");
   });
 
-  it("search parameters --cursor '' — empty is an omission, matching every sibling paginated search", async () => {
+  it("search parameters --cursor '' — a lost cursor is refused (exit 2), never an omission", async () => {
+    // INVERTED in 0.39.0. This used to assert the empty value was dropped and
+    // the call went out at page one, which is precisely the silent-restart
+    // this release refuses: a paging loop whose variable went unset re-read
+    // page one forever at exit 0. The refusal is now shared by every
+    // paginated command (lib/paginate.ts readCursorFlag).
     const { runSearchParameters } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number | string | null) => {
+      throw new Error(`process.exit(${code})`);
+    }) as never);
 
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      cursor: "",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
+    await expect(
+      runSearchParameters(client as never, {
+        type: "LOCATION",
+        keywords: "london",
+        cursor: "",
+        account: "acc_1",
+        json: true,
+      } as SearchArgs, out),
+    ).rejects.toThrow("process.exit(2)");
 
-    const arg = (accountNs.search.getParameters as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect("cursor" in arg).toBe(false);
-    expect(arg["keywords"]).toBe("london");
+    expect(exit).toHaveBeenCalledWith(2);
+    expect(accountNs.search.getParameters as Mock).not.toHaveBeenCalled();
+    exit.mockRestore();
   });
 
   it("search parameters --all — walks until the cursor comes back null", async () => {
@@ -2426,23 +2436,46 @@ describe("search service-parameters — GET, not paginated", () => {
     }
   });
 
-  it("search service-parameters --all → usage error exit 2 (not paginated)", async () => {
+  it("search service-parameters --all — walks until the cursor comes back null", async () => {
+    // INVERTED in 0.39.0. This used to assert --all was a usage error "(not
+    // paginated)", which was never a property of the endpoint: the served
+    // document gives it a cursor input and it returns a cursor. The command
+    // declared --cursor and dropped it, so it answered page one forever.
     const { runSearchServiceParameters } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
 
-    try {
-      await runSearchServiceParameters(
-        client as never,
-        { keywords: "marke", account: "acc_1", all: true } as SearchArgs,
-        out,
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+    (accountNs.search.getServiceParameters as Mock)
+      .mockReset()
+      .mockResolvedValueOnce({ object: "list", items: [{ id: "1" }], cursor: "cur_1" })
+      .mockResolvedValueOnce({ object: "list", items: [{ id: "2" }], cursor: null });
+
+    await runSearchServiceParameters(
+      client as never,
+      { keywords: "marke", account: "acc_1", all: true, "page-delay": "0", json: true } as SearchArgs,
+      out,
+    );
+
+    expect((accountNs.search.getServiceParameters as Mock).mock.calls).toHaveLength(2);
+    const second = (accountNs.search.getServiceParameters as Mock).mock.calls[1]![0] as Record<string, unknown>;
+    expect(second["cursor"]).toBe("cur_1");
+    const lines = out.stdout.write.mock.calls.map((c) => String(c[0])).join("");
+    expect(lines).toContain('"id":"1"');
+    expect(lines).toContain('"id":"2"');
+  });
+
+  it("search service-parameters --cursor reaches the request", async () => {
+    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+
+    await runSearchServiceParameters(
+      client as never,
+      { keywords: "marke", account: "acc_1", cursor: "cur_9", json: true } as SearchArgs,
+      out,
+    );
+
+    expect(accountNs.search.getServiceParameters).toHaveBeenCalledWith(
+      expect.objectContaining({ keywords: "marke", cursor: "cur_9" }),
+    );
   });
 });
 

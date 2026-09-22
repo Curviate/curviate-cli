@@ -85,6 +85,61 @@ export function rejectPaginationModifiersWithoutAll(
   process.exit(2);
 }
 
+/** The page budget a `--all` walk uses when `--max-pages` is not given. */
+export const DEFAULT_MAX_PAGES = 100;
+
+/**
+ * Read `--cursor` off a command's parsed flags.
+ *
+ * An EMPTY or blank `--cursor` is a value, not an omission. Every paginated
+ * command used to guard it with `if (flags.cursor)`, so `--cursor "$NEXT"`
+ * with `NEXT` unset read as "no cursor given" and silently re-fetched page
+ * one — a paging loop that lost its variable then runs forever at exit 0,
+ * which is the one failure an agent cannot see. A lost cursor never silently
+ * restarts: usage error, exit 2, naming the flag. Same ruling as
+ * `account link --seat-id ""`, and the API itself now answers 400 on an
+ * empty cursor.
+ *
+ * Omitted stays "no cursor". Decided HERE, once, so a call site cannot pick
+ * its own answer: this is the only place `flags.cursor` is read.
+ */
+export function readCursorFlag(flags: { cursor?: string }, out: StreamWriters): string | undefined {
+  const raw = flags.cursor;
+  if (raw === undefined) return undefined;
+  if (raw.trim() === "") {
+    out.stderr.write(
+      "error: --cursor was given an empty value. Pass the cursor from the previous response, " +
+        "or omit the flag entirely to start at the first page.\n",
+    );
+    process.exit(2);
+  }
+  return raw;
+}
+
+/**
+ * Read `--max-pages` off a command's parsed flags as a page budget.
+ *
+ * `parseInt("abc", 10)` is `NaN`, and `pageCount >= NaN` is false forever, so
+ * a bare parse turned a request to STOP after n pages into an unbounded walk
+ * — the opposite of what was typed. `0` and a negative are no budget either.
+ * Positive integer or exit 2, naming the flag; omitted means
+ * DEFAULT_MAX_PAGES.
+ *
+ * Digits-only rather than `Number`: `Number` accepts `" 5 "`, `"5.0"` and
+ * `"0x10"`, none of which a caller meant to type as a page count.
+ */
+export function readMaxPagesFlag(flags: { "max-pages"?: string }, out: StreamWriters): number {
+  const raw = flags["max-pages"];
+  if (raw === undefined) return DEFAULT_MAX_PAGES;
+  if (!/^\d+$/.test(raw) || Number(raw) < 1) {
+    out.stderr.write(
+      `error: --max-pages must be a positive integer (got ${JSON.stringify(raw)}); it is the number of pages --all may fetch.\n`,
+    );
+    process.exit(2);
+  }
+  return Number(raw);
+}
+
 function unreadable(what: string): CurviateError {
   return new CurviateError({
     code: "PLATFORM_ERROR",
@@ -214,7 +269,7 @@ export async function* streamAll<P extends Record<string, unknown>>(
   params: P,
   opts: StreamAllOptions = {},
 ): AsyncGenerator<unknown> {
-  const maxPages = opts.maxPages ?? 100;
+  const maxPages = opts.maxPages ?? DEFAULT_MAX_PAGES;
   const pageDelayMs = opts.pageDelayMs ?? DEFAULT_PAGE_DELAY_MS;
   const sleep = opts.sleep ?? realSleep;
   let cursor: string | undefined | null = undefined;

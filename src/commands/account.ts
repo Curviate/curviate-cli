@@ -43,7 +43,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode, renderNotices } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
 import { readlineSync } from "../lib/readline.js";
 import { defaultReadStdin } from "../lib/stdin.js";
@@ -196,9 +196,9 @@ export async function runAccountList(
 
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const limit = flags.limit ? parseInt(flags.limit, 10) : undefined;
-  const cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
 
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
