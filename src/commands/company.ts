@@ -56,7 +56,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -217,6 +217,7 @@ export async function runCompanyGet(
 
   try {
     const result = await client.account(accountId).companies.get(resolvedId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -622,6 +623,7 @@ export async function runCompanyChat(
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     const result = await ns.companies.chat(identifier, chatId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -706,6 +708,7 @@ export async function runCompanyMessage(
   try {
     const identifier = await resolveCompanyId(ns, flags.id ?? "");
     const result = await ns.companies.message(identifier, chatId, messageId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

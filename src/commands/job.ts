@@ -34,7 +34,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -256,6 +256,7 @@ export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputSt
 
   try {
     const result = await ns.jobs.get(resolvedId);
+    readableObject(result);
     renderSuccess(result, { ...outOpts, slim: slimJob }, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -451,6 +452,7 @@ export async function runJobBudget(client: Curviate, flags: JobFlags, out: Outpu
 
   try {
     const result = await ns.jobs.getBudget(jobId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);
@@ -511,6 +513,7 @@ export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out:
 
   try {
     const result = await ns.jobs.getApplicant(jobId, applicantId);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     await handleSdkError(err, outOpts, out);

@@ -21,7 +21,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
 import { readFileSync } from "node:fs";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
@@ -235,6 +235,7 @@ export async function runWebhookEvents(
 
   try {
     const result = await client.webhooks.listEvents();
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err) {
     await handleError(err, outOpts, out);
@@ -256,6 +257,7 @@ export async function runWebhookGet(
 
   try {
     const result = await client.webhooks.get(id);
+    readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err) {
     await handleError(err, outOpts, out);

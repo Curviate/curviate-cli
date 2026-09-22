@@ -43,7 +43,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode, renderNotices } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
 import { readlineSync } from "../lib/readline.js";
 import { defaultReadStdin } from "../lib/stdin.js";
@@ -241,6 +241,7 @@ export async function runAccountGet(
 
   try {
     const result = await client.accounts.get(accountId);
+    readableObject(result);
     renderSuccess(result, { ...outOpts, slim: slimAccountGet }, out);
   } catch (err) {
     await handleError(err, outOpts, out);
@@ -612,6 +613,7 @@ async function waitForMobileApproval(
     let result: unknown;
     try {
       result = await client.auth.pollCheckpoint(accountId);
+      readableObject(result);
     } catch (err) {
       return await handleError(err, ctx.outOpts, ctx.out);
     }
@@ -988,6 +990,7 @@ async function runConnectSessionWaitLoop(
     // /v1/accounts/connect-sessions/{session_id}. Passing an object here would
     // stringify to `[object Object]` and hit a bogus path.
     const result = await client.auth.getSession(sessionId);
+    readableObject(result);
     const r = result as ConnectSessionEnvelope;
 
     if (r.status === "resolved") return { kind: "resolved", result };
@@ -1066,6 +1069,7 @@ export async function runAccountConnectSessionPoll(
   if (!flags.wait) {
     try {
       const result = await client.auth.getSession(sessionId);
+      readableObject(result);
       renderSuccess(result, outOpts, out);
     } catch (err) {
       await handleError(err, outOpts, out);
@@ -1358,6 +1362,7 @@ async function runCheckpointPollWaitLoop(
 
   for (;;) {
     const result = await client.auth.pollCheckpoint(accountId);
+    readableObject(result);
     const r = result as { status?: string; expires_at?: string };
 
     if (r.status === "active") return { kind: "active", result };
@@ -1417,6 +1422,7 @@ export async function runAccountCheckpointPoll(
   if (!flags.wait) {
     try {
       const result = await client.auth.pollCheckpoint(accountId);
+      readableObject(result);
       renderSuccess(result, outOpts, out);
     } catch (err) {
       await handleError(err, outOpts, out);
