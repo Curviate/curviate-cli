@@ -1258,6 +1258,7 @@ export async function runAccountCheckpointSolve(
   let chained = false;
   try {
     const result = await client.auth.solveCheckpoint(accountId, body);
+    readableObject(result);
     const r = result as CheckpointEnvelope;
     renderSuccess(result, outOpts, out);
     chained = r.status === "checkpoint_required";

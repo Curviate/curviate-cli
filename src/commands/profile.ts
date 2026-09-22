@@ -333,6 +333,7 @@ export async function runProfileMe(
 
   try {
     const result = await ns.users.get("me", params);
+    readableObject(result);
     const slimOutOpts = { ...outOpts, slim: withRequestedSections(slimProfileMe, params.linkedin_sections) };
     renderSuccess(result, slimOutOpts, out);
   } catch (err: unknown) {
@@ -508,6 +509,7 @@ export async function runProfileGet(
         : resolvedId;
 
       const result = await ns.users.get(getId, params);
+      readableObject(result);
       const getOutOpts = { ...outOpts, slim: withRequestedSections(slimProfile, parsedSections) };
       renderSuccess(result, getOutOpts, out);
     }
