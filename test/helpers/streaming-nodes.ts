@@ -14,7 +14,15 @@
 import type { CommandDef } from "citty";
 
 export type ArgDef = { type?: string; required?: boolean };
-export type Node = { path: string[]; defs: Record<string, ArgDef>; hasSubs: boolean };
+export type Node = {
+  path: string[];
+  defs: Record<string, ArgDef>;
+  hasSubs: boolean;
+  /** The leaf's bound citty `run` closure, kept so a consumer can inspect
+   * which exported command function it delegates to (via
+   * `Function.prototype.toString`) without re-walking the tree itself. */
+  run?: CommandDef["run"];
+};
 
 const asCmd = (c: unknown): CommandDef => c as CommandDef;
 
@@ -29,6 +37,7 @@ async function walk(cmd: CommandDef, path: string[], out: Node[]): Promise<void>
       path,
       defs: (await resolveValue(cmd.args ?? {})) as Record<string, ArgDef>,
       hasSubs: Object.keys(subs).length > 0,
+      run: cmd.run,
     });
   }
   for (const [name, sub] of Object.entries(subs)) {
@@ -106,7 +115,8 @@ function usageOnly(n: Node): boolean {
   return n.hasSubs && !Object.values(n.defs).some((d) => d.type === "positional") && !OVERRIDES[n.path.join(" ")];
 }
 
-async function allNodes(): Promise<Node[]> {
+/** Every leaf command in the live tree, whatever surface it belongs to. */
+export async function allNodes(): Promise<Node[]> {
   const nodes: Node[] = [];
   for (const [name, cmd] of await commandGroups()) await walk(cmd, [name], nodes);
   return nodes;

@@ -472,6 +472,32 @@ describe("account link — checkpoint_required, interactive mobile_app_approval"
     const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     expect(stderrText).toContain("checkpoint poll acc_pending_mobile");
   });
+
+  it("a malformed pollCheckpoint body (readableObject follow-up) is exit 7, not an uncaught crash on `.status`", async () => {
+    const { runAccountLink } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    // Before this fix, `(result as {status?}).status` on a `null` result
+    // threw a raw TypeError OUTSIDE this loop's own try/catch (which only
+    // wraps the await itself) — an uncaught crash, not the platform-fault
+    // exit 7 this same malformed-2xx shape gets everywhere else.
+    (client.auth.pollCheckpoint as Mock).mockResolvedValue(null);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountLink(client as never, makeLinkArgs(), out, {
+        isTTY: true,
+        isOutputTTY: true,
+        readline: vi.fn(),
+        sleep: noopSleep,
+        now: constantNow,
+      });
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -823,6 +849,62 @@ describe("account checkpoint poll --wait — adaptive-cadence loop", () => {
       // new mapping needed, and this is NOT the same 9 as the terminal_failure
       // status branch (a resolved "expired" status): this is a rejected call.
       expect((e as Error).message).toContain("process.exit(9)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // readableObject follow-up: both branches of this command
+  // render a bare `pollCheckpoint` result directly, but the command checks
+  // `flags.preview` inline instead of calling `rejectPreviewOnRead` — the
+  // convention the ticket's own derivation keyed on — so it was missed by
+  // the first pass entirely. Same-path positive control (the "without
+  // --wait" test at the top of this describe block resolves a real object
+  // and exits 0 with no assertion failure).
+  // -------------------------------------------------------------------------
+  it.each([
+    ["null", null],
+    ["a scalar", "not an object"],
+    ["a bare array", [{ status: "active" }]],
+  ])("without --wait: a malformed body (%s) is exit 7, never a silent exit 0", async (_label, body) => {
+    const { runAccountCheckpointPoll } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    (client.auth.pollCheckpoint as Mock).mockResolvedValue(body);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountCheckpointPoll(client as never, { "account-id": "acc_pending_1", json: true } as AccountFlags, out);
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it("--wait: a malformed body during the loop is exit 7, not an uncaught crash on `.status`", async () => {
+    const { runAccountCheckpointPoll } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    const clock = makeAdvancingClock();
+    // Before this fix, `(result as {status?}).status` on a `null` result
+    // threw a raw TypeError inside the loop, caught by the OUTER try/catch
+    // and misrouted to exit 1 (generic internal error) instead of the
+    // platform-fault exit 7 this same malformed-2xx shape gets everywhere
+    // else in the CLI.
+    (client.auth.pollCheckpoint as Mock).mockResolvedValue(null);
+
+    const exitSpy = makeExitSpy();
+    try {
+      await runAccountCheckpointPoll(
+        client as never,
+        { "account-id": "acc_pending_1", json: true, wait: true } as AccountFlags,
+        out,
+        { isOutputTTY: false, sleep: clock.sleep, now: clock.now },
+      );
+      expect.fail("should have exited");
+    } catch (e) {
+      expect((e as Error).message).toContain("process.exit(7)");
     } finally {
       exitSpy.mockRestore();
     }
