@@ -8,6 +8,30 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-09-22
+
+Follows `@curviate/sdk` to `0.37.0` and re-vendors the OpenAPI fixture from the
+deployed production document. No command, flag or exit-code changes of its own.
+
+`0.39.0` was prepared in this repository but never published to npm, so `0.40.0`
+is the first release to carry that version's pagination and
+`message new --subject` work to the registry. The `0.39.0` section below still
+describes those changes; nothing in it was reverted.
+
+### Changed
+
+- **SDK pin moves `0.36.0` to exactly `0.37.0`**, as `check:sdk-pin` requires.
+  That SDK release is breaking: `headers[].value_prefix` is removed from every
+  webhook read and a keyed `headers[].value_fingerprint` takes its place. The
+  CLI emits webhook reads as passthrough JSON and never rendered `value_prefix`
+  itself, so no command output wording changed here. The field a caller sees
+  from `webhook get` and `webhook list` is the server's, and only the compiled
+  type surface follows the pin.
+- **`test/fixtures/openapi.json` re-vendored** from `@curviate/sdk@0.37.0`'s
+  `fixtures/openapi.json`, which was generated against production at
+  `9d5eb6583e24928eca0c3c8b162ad664e869af99`. `test/fixtures/VENDORED_FROM.json`
+  records the new `sdkVersion`, its salted `sha256` and that `sourceServerGitSha`.
+
 ## [0.39.0] - 2026-09-22
 
 Pagination flags are honoured and validated on every command that offers

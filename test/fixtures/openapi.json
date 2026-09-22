@@ -4726,7 +4726,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Zero individuals on a page does NOT mean the list is exhausted while `cursor` is non-null (an aggregate-only page may precede more identified viewers); page until `cursor` is null. Heavy pagination consumes a shared, throttled upstream request budget; you own the spend via the cursor."
           }
@@ -28172,7 +28173,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           },
@@ -39383,7 +39385,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Pagination cursor from a previous response."
           }
@@ -40809,7 +40812,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Page until `cursor` is null. There is no `offset` parameter; an unanchored numeric offset is inert upstream, so it is not a product-surface knob."
           }
@@ -69848,13 +69852,16 @@
                                 "key": {
                                   "type": "string"
                                 },
-                                "value_prefix": {
-                                  "type": "string",
-                                  "description": "A masked view of the configured value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter. The full value is never returned; the header name is what identifies which credential is configured."
+                                "value_fingerprint": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "description": "A 8-character keyed fingerprint of the configured value. It carries no part of the value and no indication of its length, but it is not a zero-disclosure field: it is deterministic, so two headers in your account with the same fingerprint hold the same value, and a changed fingerprint means a changed value. Use it to confirm a rotation took effect, or to tell whether two of your webhooks carry the same credential. Fingerprints are scoped to your account and are not comparable with another account's. Null for a header configured before fingerprints existed. The header name is what identifies which credential is configured."
                                 }
                               }
                             },
-                            "description": "Custom headers added to each delivery POST, with the value masked."
+                            "description": "Custom headers added to each delivery POST, with a fingerprint in place of the value."
                           },
                           "events": {
                             "type": "array",
@@ -70127,13 +70134,16 @@
                             "type": "string",
                             "description": "The header name, as configured."
                           },
-                          "value_prefix": {
-                            "type": "string",
-                            "description": "A masked view of the configured value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter. The full value is never returned; the header name is what identifies which credential is configured."
+                          "value_fingerprint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "A 8-character keyed fingerprint of the configured value. It carries no part of the value and no indication of its length, but it is not a zero-disclosure field: it is deterministic, so two headers in your account with the same fingerprint hold the same value, and a changed fingerprint means a changed value. Use it to confirm a rotation took effect, or to tell whether two of your webhooks carry the same credential. Fingerprints are scoped to your account and are not comparable with another account's. Null for a header configured before fingerprints existed. The header name is what identifies which credential is configured."
                           }
                         }
                       },
-                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest, so a read shows the name and a masked value only."
+                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest and no read returns one, so a read shows the name and a fingerprint of the value."
                     },
                     "events": {
                       "type": "array",
@@ -70184,7 +70194,7 @@
                       "headers": [
                         {
                           "key": "Authorization",
-                          "value_prefix": "Bearer a..."
+                          "value_fingerprint": "3f9a1c04"
                         }
                       ],
                       "events": [
@@ -70399,7 +70409,7 @@
                             "value"
                           ]
                         },
-                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a masked value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter, so a short value is never disclosed by its own preview. The header name is what identifies which credential is configured.",
+                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a 8-character keyed fingerprint of the value, which carries no part of the value and no indication of its length. It is deterministic within your account, so a fingerprint confirms a rotation took effect and tells you whether two of your webhooks carry the same credential; fingerprints are not comparable across accounts. The header name is what identifies which credential is configured.",
                         "default": []
                       },
                       "events": {
@@ -70480,7 +70490,7 @@
                             "value"
                           ]
                         },
-                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a masked value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter, so a short value is never disclosed by its own preview. The header name is what identifies which credential is configured.",
+                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a 8-character keyed fingerprint of the value, which carries no part of the value and no indication of its length. It is deterministic within your account, so a fingerprint confirms a rotation took effect and tells you whether two of your webhooks carry the same credential; fingerprints are not comparable across accounts. The header name is what identifies which credential is configured.",
                         "default": []
                       },
                       "events": {
@@ -70563,7 +70573,7 @@
                             "value"
                           ]
                         },
-                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a masked value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter, so a short value is never disclosed by its own preview. The header name is what identifies which credential is configured.",
+                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a 8-character keyed fingerprint of the value, which carries no part of the value and no indication of its length. It is deterministic within your account, so a fingerprint confirms a rotation took effect and tells you whether two of your webhooks carry the same credential; fingerprints are not comparable across accounts. The header name is what identifies which credential is configured.",
                         "default": []
                       },
                       "events": {
@@ -71240,13 +71250,16 @@
                             "type": "string",
                             "description": "The header name, as configured."
                           },
-                          "value_prefix": {
-                            "type": "string",
-                            "description": "A masked view of the configured value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter. The full value is never returned; the header name is what identifies which credential is configured."
+                          "value_fingerprint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "A 8-character keyed fingerprint of the configured value. It carries no part of the value and no indication of its length, but it is not a zero-disclosure field: it is deterministic, so two headers in your account with the same fingerprint hold the same value, and a changed fingerprint means a changed value. Use it to confirm a rotation took effect, or to tell whether two of your webhooks carry the same credential. Fingerprints are scoped to your account and are not comparable with another account's. Null for a header configured before fingerprints existed. The header name is what identifies which credential is configured."
                           }
                         }
                       },
-                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest, so a read shows the name and a masked value only."
+                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest and no read returns one, so a read shows the name and a fingerprint of the value."
                     },
                     "events": {
                       "type": "array",
@@ -71291,7 +71304,7 @@
                       "headers": [
                         {
                           "key": "Authorization",
-                          "value_prefix": "Bearer a..."
+                          "value_fingerprint": "3f9a1c04"
                         }
                       ],
                       "events": [
@@ -71657,13 +71670,16 @@
                             "type": "string",
                             "description": "The header name, as configured."
                           },
-                          "value_prefix": {
-                            "type": "string",
-                            "description": "A masked view of the configured value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter. The full value is never returned; the header name is what identifies which credential is configured."
+                          "value_fingerprint": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "A 8-character keyed fingerprint of the configured value. It carries no part of the value and no indication of its length, but it is not a zero-disclosure field: it is deterministic, so two headers in your account with the same fingerprint hold the same value, and a changed fingerprint means a changed value. Use it to confirm a rotation took effect, or to tell whether two of your webhooks carry the same credential. Fingerprints are scoped to your account and are not comparable with another account's. Null for a header configured before fingerprints existed. The header name is what identifies which credential is configured."
                           }
                         }
                       },
-                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest, so a read shows the name and a masked value only."
+                      "description": "Custom headers added to each delivery POST. Values are encrypted at rest and no read returns one, so a read shows the name and a fingerprint of the value."
                     },
                     "events": {
                       "type": "array",
@@ -71934,7 +71950,7 @@
                         "value"
                       ]
                     },
-                    "description": "Replace the custom headers added to each delivery POST (whole-array). Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a masked value: the first 8 characters followed by \"...\" when the value is at least 24 characters long, and a fixed \"********\" for anything shorter, so a short value is never disclosed by its own preview. The header name is what identifies which credential is configured."
+                    "description": "Replace the custom headers added to each delivery POST (whole-array). Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a 8-character keyed fingerprint of the value, which carries no part of the value and no indication of its length. It is deterministic within your account, so a fingerprint confirms a rotation took effect and tells you whether two of your webhooks carry the same credential; fingerprints are not comparable across accounts. The header name is what identifies which credential is configured."
                   },
                   "data": {
                     "type": "array",
@@ -72034,7 +72050,7 @@
                         "detected",
                         "operator"
                       ],
-                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until the account next connects, or until you send `limit_profile_source: \"default\"` on this operation, which releases it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
+                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until you release it by sending `limit_profile_source: \"default\"` on this operation, on its own (changing `limit_profile` and releasing it in the same request is refused). Nothing else overrides it: a connect, a reconnect and an account read all leave a pinned value exactly as you set it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
                     },
                     "limit_profile_detected_at": {
                       "type": [
@@ -72042,7 +72058,7 @@
                         "null"
                       ],
                       "format": "date-time",
-                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect."
+                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect. While `limit_profile_source` is `operator` neither the value nor this timestamp moves, until you release the pin."
                     },
                     "posture": {
                       "type": "string",
@@ -72657,7 +72673,7 @@
                         "detected",
                         "operator"
                       ],
-                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until the account next connects, or until you send `limit_profile_source: \"default\"` on this operation, which releases it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
+                      "description": "Where `limit_profile` came from. `detected`: Curviate read it from LinkedIn, at `limit_profile_detected_at`. `operator`: it was set through this operation and holds until you release it by sending `limit_profile_source: \"default\"` on this operation, on its own (changing `limit_profile` and releasing it in the same request is refused). Nothing else overrides it: a connect, a reconnect and an account read all leave a pinned value exactly as you set it. `default`: it has never been observed, so the value is the seeded `basic` and says nothing about the account; Curviate detects it on the account's next read or connect."
                     },
                     "limit_profile_detected_at": {
                       "type": [
@@ -72665,7 +72681,7 @@
                         "null"
                       ],
                       "format": "date-time",
-                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect."
+                      "description": "When Curviate last read `limit_profile` from LinkedIn, whether or not the value changed. Null until it has. Curviate re-reads it on connect and, at most once a day, on an account read, so a subscription change reaches the numbers without a reconnect. While `limit_profile_source` is `operator` neither the value nor this timestamp moves, until you release the pin."
                     },
                     "posture": {
                       "type": "string",
@@ -73164,7 +73180,7 @@
             }
           }
         },
-        "description": "The account-level safety-policy write (tenant-wide defaults are set on `PATCH /v1/safety-policy`). Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the tenant default where one is set, the Curviate default otherwise. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here is an operator override of that result, and it holds until the next connect. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
+        "description": "The account-level safety-policy write (tenant-wide defaults are set on `PATCH /v1/safety-policy`). Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the tenant default where one is set, the Curviate default otherwise. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here pins it, and the pin wins from then on: no connect, reconnect or account read moves it again until you release it with `limit_profile_source: \"default\"`, which is sent on its own: changing `limit_profile` and releasing it in the same request is refused. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
         "requestBody": {
           "required": true,
           "content": {
@@ -73180,7 +73196,7 @@
                       "sales_navigator",
                       "recruiter"
                     ],
-                    "description": "Which set of Curviate defaults this account's rows resolve from: `basic`, `premium`, `sales_navigator` or `recruiter`. Each inherits the one before it and raises a few rows. This is the platform product active on the account, NOT the Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it from the platform when the account connects, re-detects it on every reconnect and, at most once a day, on an account read; setting it here is an operator override of that result and holds until the next connect. To undo the override, send `limit_profile_source: \"default\"`: the pin is released, and Curviate re-reads the value from LinkedIn on the account's next read or connect. Sending the value the account already holds changes nothing and pins nothing. The change is recorded in the ledger and it moves the defaults under every row at once, so any row you have configured explicitly keeps your value. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the Sales Navigator and Recruiter operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
+                    "description": "Which set of Curviate defaults this account's rows resolve from: `basic`, `premium`, `sales_navigator` or `recruiter`. Each inherits the one before it and raises a few rows. This is the platform product active on the account, NOT the Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it from the platform when the account connects, re-detects it on every reconnect and, at most once a day, on an account read; setting it here pins it, and the pin wins over detection from then on. None of those paths moves a pinned value, so it holds until you release it. To release the pin, send `limit_profile_source: \"default\"` on its own: Curviate re-reads the value from LinkedIn on the account's next read or connect. Changing `limit_profile` and releasing it in the same request is refused with `INVALID_REQUEST`, because those are opposite intents. Sending the value the account already holds changes nothing and pins nothing. The change is recorded in the ledger and it moves the defaults under every row at once, so any row you have configured explicitly keeps your value. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the Sales Navigator and Recruiter operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
                   },
                   "timezone": {
                     "type": "string",
@@ -73423,7 +73439,7 @@
                       "detected",
                       "operator"
                     ],
-                    "description": "Where `limit_profile` came from: `default` (never observed), `detected` (read from LinkedIn) or `operator` (set through this operation). Sending `default` releases an operator override: the value is re-read from LinkedIn on the account's next read or connect. Sending `detected` or `operator` is accepted and ignored, so the whole document round-trips."
+                    "description": "Where `limit_profile` came from: `default` (never observed), `detected` (read from LinkedIn) or `operator` (pinned through this operation, and nothing but a release moves it). Sending `default` releases a pin: the value is re-read from LinkedIn on the account's next read or connect. Send it on its own; changing `limit_profile` in the same request is refused. Sending `detected` or `operator` is accepted and ignored, so the whole document round-trips."
                   },
                   "limit_profile_detected_at": {
                     "description": "READ-ONLY. When `limit_profile` was last read from LinkedIn, or null if it never has been. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
