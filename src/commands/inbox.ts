@@ -25,7 +25,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { RETRIEVAL_FLAGS, parseRetrievalFlags } from "../lib/retrieval.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 
@@ -93,10 +93,11 @@ function resolveOutputOpts(flags: InboxFlags) {
   };
 }
 
-function buildPaginationParams(flags: InboxFlags): Record<string, unknown> {
+function buildPaginationParams(flags: InboxFlags, out: OutputStreams): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (flags.limit !== undefined) params["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) params["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
   return params;
 }
 
@@ -188,8 +189,8 @@ export async function runInboxList(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const params = buildPaginationParams(flags);
+  const maxPages = readMaxPagesFlag(flags, out);
+  const params = buildPaginationParams(flags, out);
   validateLimitRange(flags.limit, out);
   validateInboxFolder(flags.inbox, out);
 
@@ -322,8 +323,8 @@ export async function runInboxMessages(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const params: Record<string, unknown> = { ...buildPaginationParams(flags), ...retrieval.query };
+  const maxPages = readMaxPagesFlag(flags, out);
+  const params: Record<string, unknown> = { ...buildPaginationParams(flags, out), ...retrieval.query };
   validateLimitRange(flags.limit, out);
 
   // Validate and apply date filters, validation exits 2 before any SDK call
@@ -360,7 +361,7 @@ export async function runInboxMessages(
       // page is never served and never touches the walk, so telling its caller
       // to run `--all` would send them after something that cannot help.
       const servable =
-        flags.before === undefined && flags.after === undefined && flags.cursor === undefined;
+        flags.before === undefined && flags.after === undefined && readCursorFlag(flags, out) === undefined;
       if (servable) {
         out.stderr.write(
           "hint: a stored listing is served only after a walk of the whole chat, which any unfiltered page fetch " +
@@ -409,8 +410,8 @@ export async function runInboxSearch(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const params: Record<string, unknown> = { query, ...buildPaginationParams(flags) };
+  const maxPages = readMaxPagesFlag(flags, out);
+  const params: Record<string, unknown> = { query, ...buildPaginationParams(flags, out) };
 
   try {
     if (all) {

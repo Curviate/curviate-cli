@@ -10,31 +10,29 @@
  *   search parameters --type <t> --keywords <k> [--cursor] [--all]: resolve filter IDs (GET)
  *   search groups <query>: keyword search LinkedIn groups (GET)
  *   search services [--keywords] [--service-category] [--location] [--connections] [--language], search Services Marketplace providers (POST body)
- *   search service-parameters --keywords <k> [--type <t>]: resolve service-filter IDs (GET)
+ *   search service-parameters --keywords <k> [--type <t>] [--cursor] [--all]: resolve service-filter IDs (GET)
  *
  * SDK reality: people/companies/posts/jobs are HTTP POST; cursor+limit go on
  * the query, not the body (the SDK splits them out). The CLI passes cursor+limit
  * merged into the method call, the SDK resource handles the split.
  *
  * All read commands reject --preview (exit 2).
- * search parameters IS paginated (the API gained a cursor input): it takes
- * --cursor and streams with --all, like search groups.
- * search service-parameters still refuses --all and drops --cursor, which is
- * a KNOWN DEFECT, not a property of the endpoint: the served document gives
- * it cursor + offset inputs and returns a cursor, and NON_STREAM_FLAGS
- * declares --cursor, so the flag is accepted and silently ignored. Same shape
- * on `sales-nav search parameters`. Both want the treatment this command just
- * got; left alone here to keep one concern per change.
+ * search parameters and search service-parameters are BOTH paginated: the
+ * served document gives each of them a cursor input and each returns a
+ * cursor, so both take --cursor and stream with --all, like search groups.
+ * service-parameters used to declare --cursor via NON_STREAM_FLAGS and never
+ * read it (page one at exit 0, forever); the same defect on
+ * `sales-nav search parameters` is fixed in the same change.
  * List POST searches support --all NDJSON streaming.
  */
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
-import { streamAll, pageDelayFromFlags, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import {
   assembleFilters,
   splitCsv,
@@ -185,13 +183,6 @@ function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): 
   }
 }
 
-function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
-  if (all) {
-    out.stderr.write("error: --all is not supported on non-paginated commands.\n");
-    process.exit(2);
-  }
-}
-
 function resolveOutputOpts(flags: SearchFlags) {
   return {
     json: (flags.json ?? false) || !process.stdout.isTTY,
@@ -202,10 +193,11 @@ function resolveOutputOpts(flags: SearchFlags) {
 }
 
 /** Apply the common --keywords / pagination flags over a body. */
-function applyCommonSearchFlags(body: Record<string, unknown>, flags: SearchFlags): void {
+function applyCommonSearchFlags(body: Record<string, unknown>, flags: SearchFlags, out: OutputStreams): void {
   if (flags.keywords) body["keywords"] = flags.keywords;
   // cursor + limit go as query params (SDK splits them out of the body)
-  if (flags.cursor) body["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) body["cursor"] = cursor;
   if (flags.limit) body["limit"] = parseInt(flags.limit, 10);
 }
 
@@ -348,11 +340,12 @@ async function buildSearchBody(
   kind: keyof typeof NAMED_FLAG_MAPPERS,
   flags: SearchFlags,
   readers: FilterReaders,
+  out: OutputStreams,
 ): Promise<{ body: Record<string, unknown> } | { error: string }> {
   const assembled = await assembleFilters(flags, readers);
   if ("error" in assembled) return assembled;
   const body = assembled.body;
-  applyCommonSearchFlags(body, flags);
+  applyCommonSearchFlags(body, flags, out);
   const mapperError = NAMED_FLAG_MAPPERS[kind]!(body, flags);
   if (mapperError) return { error: mapperError };
   return { body };
@@ -390,8 +383,8 @@ export async function runSearchPeople(
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const assembled = await buildSearchBody("people", flags, readers);
+  const maxPages = readMaxPagesFlag(flags, out);
+  const assembled = await buildSearchBody("people", flags, readers, out);
   if ("error" in assembled) {
     out.stderr.write(`error: ${assembled.error}\n`);
     process.exit(2);
@@ -444,8 +437,8 @@ export async function runSearchCompanies(
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const assembled = await buildSearchBody("companies", flags, readers);
+  const maxPages = readMaxPagesFlag(flags, out);
+  const assembled = await buildSearchBody("companies", flags, readers, out);
   if ("error" in assembled) {
     out.stderr.write(`error: ${assembled.error}\n`);
     process.exit(2);
@@ -498,8 +491,8 @@ export async function runSearchPosts(
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const assembled = await buildSearchBody("posts", flags, readers);
+  const maxPages = readMaxPagesFlag(flags, out);
+  const assembled = await buildSearchBody("posts", flags, readers, out);
   if ("error" in assembled) {
     out.stderr.write(`error: ${assembled.error}\n`);
     process.exit(2);
@@ -552,8 +545,8 @@ export async function runSearchJobs(
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
-  const assembled = await buildSearchBody("jobs", flags, readers);
+  const maxPages = readMaxPagesFlag(flags, out);
+  const assembled = await buildSearchBody("jobs", flags, readers, out);
   if ("error" in assembled) {
     out.stderr.write(`error: ${assembled.error}\n`);
     process.exit(2);
@@ -618,7 +611,7 @@ export async function runSearchParameters(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   // `type` is a free-form CLI string flag validated against the served enum
   // server-side, a narrow cast here is the pragmatic alternative to
@@ -628,7 +621,8 @@ export async function runSearchParameters(
     keywords: flags.keywords,
   };
   if (flags.limit) query.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) query.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) query.cursor = cursor;
 
   try {
     if (all) {
@@ -687,11 +681,12 @@ export async function runSearchGroups(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const query: SearchGroupsQuery = { keywords };
   if (flags.limit) query.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) query.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) query.cursor = cursor;
 
   try {
     if (all) {
@@ -739,7 +734,7 @@ export async function runSearchServices(
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const body: Record<string, unknown> = {};
   if (flags.keywords) body["keywords"] = flags.keywords;
@@ -750,7 +745,8 @@ export async function runSearchServices(
   }
   if (flags.language) body["language"] = splitCsv(flags.language);
   if (flags.limit) body["limit"] = parseInt(flags.limit, 10);
-  if (flags.cursor) body["cursor"] = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) body["cursor"] = cursor;
 
   try {
     if (all) {
@@ -781,8 +777,12 @@ export async function runSearchServices(
 }
 
 /**
- * Run `search service-parameters --keywords <k> [--type <t>]`, search.getServiceParameters.
- * GET, not paginated in practice (a resolver lookup); rejects --all (exit 2).
+ * Run `search service-parameters --keywords <k> [--type <t>] [--limit]
+ * [--cursor] [--all]`, search.getServiceParameters.
+ * GET. The endpoint takes a cursor and returns one, so the command pages:
+ * `--cursor` walks manually, `--all` streams every page as NDJSON. It used to
+ * declare `--cursor` (via NON_STREAM_FLAGS) and never read it, answering page
+ * one at exit 0 forever.
  * --keywords is required (the SDK's `keywords` query field is required);
  * --type defaults server-side to service_category when omitted.
  */
@@ -792,7 +792,7 @@ export async function runSearchServiceParameters(
   out: OutputStreams,
 ): Promise<void> {
   rejectPreviewOnRead(flags.preview, out);
-  rejectAllOnNonPaginated(flags.all, out);
+  rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.keywords) {
     out.stderr.write("error: --keywords is required.\n");
@@ -802,13 +802,30 @@ export async function runSearchServiceParameters(
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
+  const all = flags.all ?? false;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const query: SearchServiceParametersQuery = { keywords: flags.keywords };
   if (flags.type) query.type = flags.type as SearchServiceParametersQuery["type"];
   if (flags.limit) query.limit = parseInt(flags.limit, 10);
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) query.cursor = cursor;
 
   try {
+    if (all) {
+      const fn = (p: SearchServiceParametersQuery) =>
+        ns.search.getServiceParameters(p) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(fn, query, {
+        maxPages,
+        out,
+        pageDelayMs: pageDelayFromFlags(flags),
+      })) {
+        writeNdjsonItem(out, item, outOpts.fields);
+      }
+      return;
+    }
     const result = await ns.search.getServiceParameters(query);
+    readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
     const { CurviateError } = await import("@curviate/sdk");
@@ -844,11 +861,12 @@ export async function runSearchFromUrl(
   const outOpts = resolveOutputOpts(flags);
   const verbose = flags.verbose ?? false;
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   const body: Record<string, unknown> = { url };
   if (flags.limit) body.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) body.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) body.cursor = cursor;
 
   try {
     if (all) {
@@ -894,7 +912,7 @@ const searchPeopleCommand = defineCommand({
     "past-company": { type: "string", description: "Past company ids (comma-separated)." },
     school: { type: "string", description: "School ids (comma-separated)." },
     "network-distance": { type: "string", description: "Network distance, 1-3 (comma-separated)." },
-    "connections-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type CONNECTIONS --keywords \"<name>\"`)" },
+    "connections-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type RELATION --keywords \"<name>\"`)" },
     "followers-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type PEOPLE --keywords \"<name>\"`)" },
     // People-specific filter flags
     title: { type: "string", description: "Job title keyword filter (maps to advanced_keywords.title)." },
@@ -1053,7 +1071,7 @@ const searchParametersCommand = defineCommand({
     type: {
       type: "string",
       description:
-        "Parameter type: LOCATION, PEOPLE, CONNECTIONS, COMPANY, SCHOOL, INDUSTRY, SERVICE, JOB_FUNCTION, JOB_TITLE, EMPLOYMENT_TYPE, SKILL.",
+        "Parameter type: LOCATION, PEOPLE, RELATION, COMPANY, SCHOOL, INDUSTRY, SERVICE, JOB_FUNCTION, JOB_TITLE, EMPLOYMENT_TYPE, SKILL.",
       required: true,
     },
     keywords: { type: "string", description: "Human term to resolve (required for every --type, incl. EMPLOYMENT_TYPE).", required: true },
@@ -1140,10 +1158,11 @@ const searchServicesCommand = defineCommand({
 const searchServiceParametersCommand = defineCommand({
   meta: {
     name: "service-parameters",
-    description: "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts.",
+    description:
+      "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...GLOBAL_FLAGS,
     type: {
       type: "string",
       description: "Filter type to resolve: service_category (default) or location.",

@@ -99,9 +99,9 @@ Global flags available on every command:
   --json         Force JSON output even when stdout is a TTY
   --fields       Comma-separated list of fields to include in JSON output
   --limit        Maximum number of results to return per page
-  --cursor       Pagination cursor from a previous response
+  --cursor       Pagination cursor from a previous response (an empty value is a usage error, never a restart)
   --all          Stream all pages as NDJSON
-  --max-pages    Cap on the number of pages fetched with --all
+  --max-pages    Cap on the number of pages fetched with --all (a positive integer)
   --page-delay   Milliseconds to pause between pages when --all is used (default 400)
   --preview      Show what would happen without sending any write request
   --verbose      Output the full SDK response instead of the slim default

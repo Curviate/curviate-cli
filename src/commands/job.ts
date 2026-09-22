@@ -34,7 +34,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, ndjsonModeNotice, DEFAULT_PAGE_DELAY_MS, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { slimJob } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -295,7 +295,7 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
   const pageDelayMs = pageDelayFromFlags(flags);
 
   // --state ALL -> a best-effort client-side union over every enum state.
@@ -307,7 +307,8 @@ export async function runJobList(client: Curviate, flags: JobFlags, out: OutputS
 
   const base: { state: string; limit?: number; cursor?: string } = { state };
   if (flags.limit) base.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) base.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) base.cursor = cursor;
 
   try {
     if (all) {
@@ -465,7 +466,7 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
   const ns = client.account(accountId);
   const outOpts = resolveOutputOpts(flags);
   const all = flags.all ?? false;
-  const maxPages = flags["max-pages"] ? parseInt(flags["max-pages"], 10) : 100;
+  const maxPages = readMaxPagesFlag(flags, out);
 
   // Filter body (ratings) + top-level pagination merged into one param object,
   // matching the SDK's POST-as-search convention.
@@ -476,7 +477,8 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
     base.ratings = ratings;
   }
   if (flags.limit) base.limit = parseInt(flags.limit, 10);
-  if (flags.cursor) base.cursor = flags.cursor;
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) base.cursor = cursor;
 
   try {
     if (all) {
