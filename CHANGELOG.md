@@ -12,10 +12,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 - **A single-object read's 2xx must be a readable object, or it's a platform
   fault (exit 7), never a silent exit 0.** `null`, a scalar, a bare array, an
-  empty body, or a `{}` body previously rendered as if it were the resource —
-  `company <id>` against a `null` body printed nothing useful and exited 0;
-  against an empty or absent body it fabricated an all-null object
-  (`{"id":null,"name":null,...}`) and still exited 0. Both shapes now exit 7
+  empty body, or a `{}` body previously rendered as if it were the resource.
+  `company <id>` against a `null`, empty or `{}` body fabricated an all-null
+  object (`{"id":null,"name":null,...}`) and exited 0. All of these now exit 7
   (`PLATFORM_ERROR`) on every affected single-object read command, matching
   the existing list-read and id-resolver contract. Writes are unaffected: a
   genuine `204`/empty/`{}` body on a write still exits 0.
