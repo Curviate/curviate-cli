@@ -69,18 +69,23 @@ export function readableId(entity: unknown): string {
 
 /**
  * A single-object read's 2xx must be a readable object: `null`, a scalar
- * (string/number/boolean), `undefined`, or a bare array is no API answer for
- * a single-resource read — a platform fault, exit 7, the same family as
- * `readablePage`/`readableId` (per the exit-code spec's As-built note). An object with an `items`
- * array (a page envelope) still passes: this checks only that there is a
- * concrete object to render, not its internal shape.
+ * (string/number/boolean), `undefined`, a bare array, or an empty object
+ * (`{}`, no own keys) is no API answer for a single-resource read — a
+ * platform fault, exit 7, the same family as `readablePage`/`readableId`
+ * (per the exit-code spec's As-built note). `{}` is included because an
+ * empty or absent 2xx body decodes to it in the SDK (found by qa verifying the prior As-built:
+ * `readableObject` let it through, so `company 1` against an empty body
+ * rendered a fabricated all-null object and exited 0). An object with an
+ * `items` array (a page envelope) still passes: it has keys, so this
+ * checks only that there is a concrete, non-empty object to render, not
+ * its internal shape.
  *
  * Threaded per read call site, right before `renderSuccess`, never inside
- * `renderSuccess` itself: it is shared with writes that legitimately render a
- * `null` 204 body, and a write must keep exiting 0 on one.
+ * `renderSuccess` itself: it is shared with writes that legitimately render
+ * an empty `{}` 204 body, and a write must keep exiting 0 on one.
  */
 export function readableObject<T>(data: T): T {
-  if (!isPlainObject(data)) throw unreadable("object");
+  if (!isPlainObject(data) || Object.keys(data).length === 0) throw unreadable("object");
   return data;
 }
 
