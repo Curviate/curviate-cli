@@ -8,6 +8,23 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-09-23
+
+Follows `@curviate/sdk` to `0.37.1` and re-vendors the OpenAPI fixture from the
+deployed production document. A minor, not a patch: the fix below changes an
+exit code (0 to 7) for inputs that previously succeeded silently.
+
+### Changed
+
+- **SDK pin moves `0.37.0` to exactly `0.37.1`**, as `check:sdk-pin` requires.
+  That SDK release honours `retry_hint.kind: "never"` in its GET retry decision
+  and treats an empty `Retry-After` as unparseable; its type changes are
+  description-only.
+- **`test/fixtures/openapi.json` re-vendored** from `@curviate/sdk@0.37.1`'s
+  `fixtures/openapi.json`, generated against production at
+  `0b33680536a45681ed5ffe420006cb05c85fe683`. `test/fixtures/VENDORED_FROM.json`
+  records the new `sdkVersion`, its salted `sha256` and that `sourceServerGitSha`.
+
 ### Fixed
 
 - **A single-object read's 2xx must be a readable object, or it's a platform
