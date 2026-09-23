@@ -568,7 +568,7 @@
           },
           "is_sender": {
             "type": "boolean",
-            "description": "True if the connected account sent this message."
+            "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
           },
           "is_seen": {
             "type": "boolean"
@@ -19332,7 +19332,7 @@
                               },
                               "is_sender": {
                                 "type": "boolean",
-                                "description": "True if the connected account sent this message."
+                                "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
                               },
                               "is_seen": {
                                 "type": "boolean"
@@ -20427,7 +20427,7 @@
                         },
                         "is_sender": {
                           "type": "boolean",
-                          "description": "True if the connected account sent this message."
+                          "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
                         },
                         "is_seen": {
                           "type": "boolean"
@@ -21354,7 +21354,7 @@
                           },
                           "is_sender": {
                             "type": "boolean",
-                            "description": "True if the connected account sent this message."
+                            "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
                           },
                           "is_seen": {
                             "type": "boolean"
@@ -22323,7 +22323,7 @@
                     },
                     "is_sender": {
                       "type": "boolean",
-                      "description": "True if the connected account sent this message."
+                      "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
                     },
                     "is_seen": {
                       "type": "boolean"
@@ -25122,7 +25122,7 @@
                               },
                               "is_sender": {
                                 "type": "boolean",
-                                "description": "True if the connected account sent this message."
+                                "description": "True if the connected account sent this message. Omitted when Curviate cannot yet identify the connected account; treat a missing value as unknown, not as received."
                               },
                               "is_seen": {
                                 "type": "boolean"
@@ -34165,7 +34165,7 @@
                 "minLength": 1
               }
             },
-            "description": "Which additional sections to include on the response (e.g. hiring_team, salary, benefits). The exact set of accepted values is not finalized, supply the section names you need, comma-separated for more than one, and they are forwarded verbatim. Omit for the base fields only."
+            "description": "Which additional sections to include on the response (e.g. hiring_team, salary, benefits). The exact set of accepted values is not finalized, supply the section names you need, comma-separated for more than one; each name is trimmed before use. Omit for the base fields only."
           }
         ],
         "responses": {
@@ -44069,7 +44069,7 @@
                   "keywords": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
+                    "description": "Free-text keyword search. Trimmed before use; never persisted."
                   },
                   "spotlights": {
                     "type": "array",
@@ -44330,12 +44330,12 @@
                   "first_name": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by first name (trimmed before use; never persisted)."
                   },
                   "last_name": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by last name (trimmed before use; never persisted)."
                   },
                   "recently_joined": {
                     "type": "boolean",
@@ -44405,7 +44405,7 @@
                   "notes": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by an existing note's content (trimmed before use; never persisted)."
                   },
                   "tags": {
                     "type": "array",
@@ -45131,7 +45131,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Filter by project name (content, forwarded verbatim, never persisted)."
+            "description": "Filter by project name (trimmed before use; never persisted)."
           },
           {
             "name": "limit",
@@ -47994,7 +47994,7 @@
                   "keywords": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
+                    "description": "Free-text keyword search. Trimmed before use; never persisted."
                   },
                   "spotlights": {
                     "type": "array",
@@ -48255,12 +48255,12 @@
                   "first_name": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by first name (trimmed before use; never persisted)."
                   },
                   "last_name": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by last name (trimmed before use; never persisted)."
                   },
                   "recently_joined": {
                     "type": "boolean",
@@ -48330,7 +48330,7 @@
                   "notes": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content, forwarded verbatim, never persisted."
+                    "description": "Filter by an existing note's content (trimmed before use; never persisted)."
                   },
                   "tags": {
                     "type": "array",
@@ -51593,7 +51593,7 @@
                   "project_name": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Content; the new project's name, forwarded verbatim, never persisted."
+                    "description": "The new project's name (trimmed before use); never persisted."
                   }
                 },
                 "required": [
@@ -55176,7 +55176,7 @@
                   "keywords": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Free-text keyword search. Content, forwarded verbatim, never persisted."
+                    "description": "Free-text keyword search. Trimmed before use; never persisted."
                   },
                   "sort_by": {
                     "type": "string",
