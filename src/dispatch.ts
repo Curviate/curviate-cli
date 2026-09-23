@@ -757,11 +757,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // --help / -h : delegate to citty's renderer (exit 0). Resolve the deepest
   // matching node so `curviate profile me --help` shows the right usage.
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
-    const { showUsage, runMain } = await import("citty");
+    const { runMain } = await import("citty");
+    const { showUsageWithExamples } = await import("./lib/examples.js");
     // runMain handles --help by resolving the subcommand and printing usage.
     // We only borrow its help path; routing is ours.
-    void showUsage;
-    await runMain(root, { rawArgs });
+    await runMain(root, { rawArgs, showUsage: showUsageWithExamples });
     return;
   }
 

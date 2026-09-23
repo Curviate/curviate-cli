@@ -475,7 +475,14 @@ export async function runWebhookVerify(
 // ---------------------------------------------------------------------------
 
 const webhookCreateCommand = defineCommand({
-  meta: { name: "create", description: "Register a new webhook endpoint." },
+  meta: {
+    name: "create",
+    description: "Register a new webhook endpoint.",
+    examples: [
+      "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
+      "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID --name status",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
@@ -505,7 +512,13 @@ const webhookCreateCommand = defineCommand({
 });
 
 const webhookListCommand = defineCommand({
-  meta: { name: "list", description: "List registered webhooks." },
+  meta: {
+    name: "list",
+    description: "List registered webhooks.",
+    examples: [
+      "curviate webhook list",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -526,7 +539,13 @@ const webhookListCommand = defineCommand({
 });
 
 const webhookEventsCommand = defineCommand({
-  meta: { name: "events", description: "List the canonical webhook event catalogue." },
+  meta: {
+    name: "events",
+    description: "List the canonical webhook event catalogue.",
+    examples: [
+      "curviate webhook events",
+    ],
+  },
   args: { ...NON_STREAM_FLAGS },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -547,7 +566,13 @@ const webhookEventsCommand = defineCommand({
 });
 
 const webhookGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a single webhook owned by the calling tenant." },
+  meta: {
+    name: "get",
+    description: "Get a single webhook owned by the calling tenant.",
+    examples: [
+      "curviate webhook get wh_YOUR_WEBHOOK_ID",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
@@ -571,7 +596,14 @@ const webhookGetCommand = defineCommand({
 });
 
 const webhookUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Update a webhook in place (source is immutable)." },
+  meta: {
+    name: "update",
+    description: "Update a webhook in place (source is immutable).",
+    examples: [
+      "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
+      "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
@@ -601,7 +633,13 @@ const webhookUpdateCommand = defineCommand({
 });
 
 const webhookDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Permanently remove a webhook subscription." },
+  meta: {
+    name: "delete",
+    description: "Permanently remove a webhook subscription.",
+    examples: [
+      "curviate webhook delete wh_YOUR_WEBHOOK_ID",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
@@ -625,7 +663,13 @@ const webhookDeleteCommand = defineCommand({
 });
 
 const webhookVerifyCommand = defineCommand({
-  meta: { name: "verify", description: "Verify a webhook signature offline (no network call)." },
+  meta: {
+    name: "verify",
+    description: "Verify a webhook signature offline (no network call).",
+    examples: [
+      "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json",
+    ],
+  },
   // Offline: no profile, credential, transport or pagination flag applies.
   args: {
     json: GLOBAL_FLAGS.json,

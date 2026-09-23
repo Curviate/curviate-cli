@@ -901,7 +901,15 @@ export async function runSearchFromUrl(
 // ---------------------------------------------------------------------------
 
 const searchPeopleCommand = defineCommand({
-  meta: { name: "people", description: "Search members with structured filters." },
+  meta: {
+    name: "people",
+    description: "Search members with structured filters.",
+    examples: [
+      "curviate search people --keywords \"AI engineer\"",
+      "curviate search people --keywords \"AI engineer\" --location 106967730",
+      "curviate search people --filters-file filters.json",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Full-text keyword search." },
@@ -938,7 +946,14 @@ const searchPeopleCommand = defineCommand({
 });
 
 const searchCompaniesCommand = defineCommand({
-  meta: { name: "companies", description: "Search companies." },
+  meta: {
+    name: "companies",
+    description: "Search companies.",
+    examples: [
+      "curviate search companies --keywords \"developer tools\"",
+      "curviate search companies --keywords robotics --headcount 11-50,51-200",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Full-text keyword search." },
@@ -972,7 +987,14 @@ const searchCompaniesCommand = defineCommand({
 });
 
 const searchPostsCommand = defineCommand({
-  meta: { name: "posts", description: "Search posts." },
+  meta: {
+    name: "posts",
+    description: "Search posts.",
+    examples: [
+      "curviate search posts --keywords \"agent infrastructure\"",
+      "curviate search posts --keywords \"agent infrastructure\" --date-posted past_week",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Full-text keyword search." },
@@ -1009,7 +1031,14 @@ const searchPostsCommand = defineCommand({
 });
 
 const searchJobsCommand = defineCommand({
-  meta: { name: "jobs", description: "Search jobs." },
+  meta: {
+    name: "jobs",
+    description: "Search jobs.",
+    examples: [
+      "curviate search jobs --keywords \"AI engineer\"",
+      "curviate search jobs --keywords \"AI engineer\" --location 106967730 --presence remote",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Full-text keyword search." },
@@ -1065,6 +1094,10 @@ const searchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve human-readable terms to opaque filter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate search parameters --type LOCATION --keywords Berlin",
+      "curviate search parameters --type COMPANY --keywords Acme",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,
@@ -1096,7 +1129,13 @@ const searchParametersCommand = defineCommand({
 });
 
 const searchGroupsCommand = defineCommand({
-  meta: { name: "groups", description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error." },
+  meta: {
+    name: "groups",
+    description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error.",
+    examples: [
+      "curviate search groups \"gtm engineering\"",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     query: { type: "positional", description: "Search terms (multi-word supported, e.g. 'gtm engineering')." },
@@ -1127,6 +1166,10 @@ const searchServicesCommand = defineCommand({
       "Search Services Marketplace providers with structured filters. At least one of --keywords, " +
       "--service-category, or --location is required. Resolve --service-category/--location values with " +
       "'search service-parameters' first, both take opaque ids, not free text.",
+    examples: [
+      "curviate search services --keywords marketing",
+      "curviate search services --service-category 100 --location 106967730",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,
@@ -1160,6 +1203,9 @@ const searchServiceParametersCommand = defineCommand({
     name: "service-parameters",
     description:
       "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate search service-parameters --type service_category --keywords marketing",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,
@@ -1189,7 +1235,13 @@ const searchServiceParametersCommand = defineCommand({
 });
 
 export const searchCommand = defineCommand({
-  meta: { name: "search", description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly." },
+  meta: {
+    name: "search",
+    description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",
+    examples: [
+      "curviate search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     url: {

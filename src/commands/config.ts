@@ -36,7 +36,13 @@ export const configCommand = defineCommand({
   },
   subCommands: {
     list: defineCommand({
-      meta: { name: "list", description: "List all profiles (keys redacted)." },
+      meta: {
+        name: "list",
+        description: "List all profiles (keys redacted).",
+        examples: [
+          "curviate config list",
+        ],
+      },
       args: { json: GLOBAL_FLAGS.json },
       async run({ args }) {
         // Never refuses: this is how a malformed file gets inspected. A field of
@@ -113,14 +119,26 @@ export const configCommand = defineCommand({
     }),
 
     path: defineCommand({
-      meta: { name: "path", description: "Print the config file path." },
+      meta: {
+        name: "path",
+        description: "Print the config file path.",
+        examples: [
+          "curviate config path",
+        ],
+      },
       async run() {
         process.stdout.write(getConfigPath() + "\n");
       },
     }),
 
     use: defineCommand({
-      meta: { name: "use", description: "Set the active profile." },
+      meta: {
+        name: "use",
+        description: "Set the active profile.",
+        examples: [
+          "curviate config use work",
+        ],
+      },
       args: {
         name: { type: "positional", description: "Profile name to activate." },
       },
@@ -139,7 +157,13 @@ export const configCommand = defineCommand({
     }),
 
     rename: defineCommand({
-      meta: { name: "rename", description: "Rename a profile." },
+      meta: {
+        name: "rename",
+        description: "Rename a profile.",
+        examples: [
+          "curviate config rename default personal",
+        ],
+      },
       args: {
         old: { type: "positional", description: "Current profile name." },
         new: { type: "positional", description: "New profile name." },
@@ -163,6 +187,9 @@ export const configCommand = defineCommand({
       meta: {
         name: "set-account",
         description: "Set the default account on a profile.",
+        examples: [
+          "curviate config set-account acc_YOUR_ACCOUNT_ID",
+        ],
       },
       args: {
         profile: GLOBAL_FLAGS.profile,
@@ -196,6 +223,10 @@ export const configCommand = defineCommand({
       meta: {
         name: "set-base-url",
         description: "Set or clear the base URL on a profile.",
+        examples: [
+          "curviate config set-base-url https://api.curviate.com",
+          "curviate config set-base-url --reset",
+        ],
       },
       args: {
         profile: GLOBAL_FLAGS.profile,
@@ -254,6 +285,10 @@ export const configCommand = defineCommand({
       meta: {
         name: "reset",
         description: "Remove the config file (or a single profile).",
+        examples: [
+          "curviate config reset --profile work --yes",
+          "curviate config reset --yes",
+        ],
       },
       args: {
         json: GLOBAL_FLAGS.json,

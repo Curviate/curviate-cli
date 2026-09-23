@@ -295,6 +295,10 @@ export const doctorCommand = defineCommand({
     name: "doctor",
     description:
       "Check that this machine can call the API: config, credential source, workspace, reachability and connected accounts.",
+    examples: [
+      "curviate doctor",
+      "curviate doctor --json",
+    ],
   },
   args: {
     profile: GLOBAL_FLAGS.profile,

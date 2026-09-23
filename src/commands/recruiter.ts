@@ -1466,7 +1466,13 @@ export async function runRecruiterDownloadResume(
 // ---------------------------------------------------------------------------
 
 const recruiterMessageNewCommand = defineCommand({
-  meta: { name: "new", description: "Start a new Recruiter chat with a member." },
+  meta: {
+    name: "new",
+    description: "Start a new Recruiter chat with a member.",
+    examples: [
+      "curviate recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -1514,7 +1520,13 @@ const recruiterMessageCommand = defineCommand({
 });
 
 const recruiterProfileCommand = defineCommand({
-  meta: { name: "profile", description: "Get a Recruiter enriched member profile." },
+  meta: {
+    name: "profile",
+    description: "Get a Recruiter enriched member profile.",
+    examples: [
+      "curviate recruiter profile https://www.linkedin.com/in/janesmith",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -1540,7 +1552,14 @@ const recruiterProfileCommand = defineCommand({
 });
 
 const recruiterSearchPeopleCommand = defineCommand({
-  meta: { name: "people", description: "Search Recruiter member profiles." },
+  meta: {
+    name: "people",
+    description: "Search Recruiter member profiles.",
+    examples: [
+      "curviate recruiter search people --keywords \"staff engineer\"",
+      "curviate recruiter search people --filters-file filters.json",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
@@ -1570,7 +1589,13 @@ const recruiterSearchPeopleCommand = defineCommand({
 });
 
 const recruiterSearchParametersCommand = defineCommand({
-  meta: { name: "parameters", description: "Resolve Recruiter filter parameter IDs (POST, source-scoped)." },
+  meta: {
+    name: "parameters",
+    description: "Resolve Recruiter filter parameter IDs (POST, source-scoped).",
+    examples: [
+      "curviate recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     source: {
@@ -1609,7 +1634,13 @@ const recruiterSearchParametersCommand = defineCommand({
 });
 
 const recruiterSearchCommand = defineCommand({
-  meta: { name: "search", description: "Recruiter search operations. Also runs a pasted Recruiter search/talent-pool/applicant URL directly." },
+  meta: {
+    name: "search",
+    description: "Recruiter search operations. Also runs a pasted Recruiter search/talent-pool/applicant URL directly.",
+    examples: [
+      "curviate recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\"",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     url: {
@@ -1653,7 +1684,14 @@ const recruiterSearchCommand = defineCommand({
 });
 
 const recruiterProjectsCommand = defineCommand({
-  meta: { name: "projects", description: "List Recruiter hiring projects." },
+  meta: {
+    name: "projects",
+    description: "List Recruiter hiring projects.",
+    examples: [
+      "curviate recruiter projects",
+      "curviate recruiter projects --all",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as RecruiterFlags;
@@ -1675,7 +1713,14 @@ const recruiterProjectsCommand = defineCommand({
 });
 
 const recruiterProjectUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Edit a Recruiter project's config. All fields optional; omitted fields are left unchanged." },
+  meta: {
+    name: "update",
+    description: "Edit a Recruiter project's config. All fields optional; omitted fields are left unchanged.",
+    examples: [
+      "curviate recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
+      "curviate recruiter project update PROJECT_ID --visibility PRIVATE",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -1710,7 +1755,13 @@ const recruiterProjectUpdateCommand = defineCommand({
 });
 
 const recruiterProjectCommand = defineCommand({
-  meta: { name: "project", description: "Get a Recruiter hiring project by ID." },
+  meta: {
+    name: "project",
+    description: "Get a Recruiter hiring project by ID.",
+    examples: [
+      "curviate recruiter project PROJECT_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -1746,7 +1797,14 @@ const recruiterProjectCommand = defineCommand({
 });
 
 const recruiterPipelineCommand = defineCommand({
-  meta: { name: "pipeline", description: "List candidates in a project's pipeline (POST-as-list)." },
+  meta: {
+    name: "pipeline",
+    description: "List candidates in a project's pipeline (POST-as-list).",
+    examples: [
+      "curviate recruiter pipeline PROJECT_ID",
+      "curviate recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID." },
@@ -1775,7 +1833,13 @@ const recruiterPipelineCommand = defineCommand({
 });
 
 const recruiterSaveCandidateCommand = defineCommand({
-  meta: { name: "save-candidate", description: "Save a candidate to a project's pipeline at a given stage." },
+  meta: {
+    name: "save-candidate",
+    description: "Save a candidate to a project's pipeline at a given stage.",
+    examples: [
+      "curviate recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -1803,7 +1867,14 @@ const recruiterSaveCandidateCommand = defineCommand({
 });
 
 const recruiterJobsCommand = defineCommand({
-  meta: { name: "jobs", description: "List Recruiter job postings." },
+  meta: {
+    name: "jobs",
+    description: "List Recruiter job postings.",
+    examples: [
+      "curviate recruiter jobs",
+      "curviate recruiter jobs --all",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as RecruiterFlags;
@@ -1847,7 +1918,13 @@ const RECRUITER_JOB_BODY_FLAGS = {
 };
 
 const recruiterJobCreateCommand = defineCommand({
-  meta: { name: "create", description: "Create a Recruiter job posting draft, opening a brand-new hiring project." },
+  meta: {
+    name: "create",
+    description: "Create a Recruiter job posting draft, opening a brand-new hiring project.",
+    examples: [
+      "curviate recruiter job create --project-name \"Staff Engineer 2026\" --body-file job.json",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -1874,7 +1951,13 @@ const recruiterJobCreateCommand = defineCommand({
 });
 
 const recruiterJobPublishCommand = defineCommand({
-  meta: { name: "publish", description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope." },
+  meta: {
+    name: "publish",
+    description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
+    examples: [
+      "curviate recruiter job publish PROJECT_ID JOB_ID --mode FREE",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -1905,7 +1988,13 @@ const recruiterJobPublishCommand = defineCommand({
 });
 
 const recruiterApplicantsCommand = defineCommand({
-  meta: { name: "applicants", description: "List applicants in a Recruiter project's talent pool." },
+  meta: {
+    name: "applicants",
+    description: "List applicants in a Recruiter project's talent pool.",
+    examples: [
+      "curviate recruiter applicants PROJECT_ID --channel-id CHANNEL_ID",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID." },
@@ -1931,7 +2020,14 @@ const recruiterApplicantsCommand = defineCommand({
 });
 
 const recruiterJobGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a job posting via the Recruiter lens (any public posting, not only your own)." },
+  meta: {
+    name: "get",
+    description: "Get a job posting via the Recruiter lens (any public posting, not only your own).",
+    examples: [
+      "curviate recruiter job get 4100000000",
+      "curviate recruiter job get https://www.linkedin.com/jobs/view/4100000000",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     jobId: { type: "positional", description: "Job URL (e.g. https://www.linkedin.com/jobs/view/4428113858) or a bare numeric job id." },
@@ -1956,7 +2052,13 @@ const recruiterJobGetCommand = defineCommand({
 });
 
 const recruiterJobCloseCommand = defineCommand({
-  meta: { name: "close", description: "Stop a project's job posting from accepting applications (irreversible once LISTED)." },
+  meta: {
+    name: "close",
+    description: "Stop a project's job posting from accepting applications (irreversible once LISTED).",
+    examples: [
+      "curviate recruiter job close PROJECT_ID JOB_ID",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -2002,7 +2104,13 @@ const recruiterJobCommand = defineCommand({
 });
 
 const recruiterProjectJobGetCommand = defineCommand({
-  meta: { name: "get", description: "Get the single job posting attached to a project (404 when none is attached)." },
+  meta: {
+    name: "get",
+    description: "Get the single job posting attached to a project (404 when none is attached).",
+    examples: [
+      "curviate recruiter project-job get PROJECT_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -2028,7 +2136,13 @@ const recruiterProjectJobGetCommand = defineCommand({
 });
 
 const recruiterProjectJobCreateCommand = defineCommand({
-  meta: { name: "create", description: "Create a job-posting draft attached to an existing project." },
+  meta: {
+    name: "create",
+    description: "Create a job-posting draft attached to an existing project.",
+    examples: [
+      "curviate recruiter project-job create PROJECT_ID --body-file job.json",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -2055,7 +2169,13 @@ const recruiterProjectJobCreateCommand = defineCommand({
 });
 
 const recruiterProjectJobBudgetCommand = defineCommand({
-  meta: { name: "budget", description: "Get pricing to publish a project's job posting." },
+  meta: {
+    name: "budget",
+    description: "Get pricing to publish a project's job posting.",
+    examples: [
+      "curviate recruiter project-job budget PROJECT_ID JOB_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -2082,7 +2202,13 @@ const recruiterProjectJobBudgetCommand = defineCommand({
 });
 
 const recruiterProjectJobUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Apply a partial update to a project's job posting." },
+  meta: {
+    name: "update",
+    description: "Apply a partial update to a project's job posting.",
+    examples: [
+      "curviate recruiter project-job update PROJECT_ID JOB_ID --workplace-type HYBRID",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -2110,7 +2236,13 @@ const recruiterProjectJobUpdateCommand = defineCommand({
 });
 
 const recruiterProjectJobCommand = defineCommand({
-  meta: { name: "project-job", description: "The single job posting attached to a Recruiter project." },
+  meta: {
+    name: "project-job",
+    description: "The single job posting attached to a Recruiter project.",
+    examples: [
+      "curviate recruiter project-job PROJECT_ID",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID.", required: false },
@@ -2150,7 +2282,14 @@ const recruiterProjectJobCommand = defineCommand({
 });
 
 const recruiterTalentSearchCommand = defineCommand({
-  meta: { name: "talent-search", description: "Search a project's talent pool." },
+  meta: {
+    name: "talent-search",
+    description: "Search a project's talent pool.",
+    examples: [
+      "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
+      "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     projectId: { type: "positional", description: "Recruiter project ID." },
@@ -2179,7 +2318,13 @@ const recruiterTalentSearchCommand = defineCommand({
 });
 
 const recruiterApplicantResumeCommand = defineCommand({
-  meta: { name: "resume", description: "Download a job applicant's resume." },
+  meta: {
+    name: "resume",
+    description: "Download a job applicant's resume.",
+    examples: [
+      "curviate recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -2212,7 +2357,13 @@ const recruiterApplicantResumeCommand = defineCommand({
 });
 
 const recruiterApplicantCommand = defineCommand({
-  meta: { name: "applicant", description: "Recruiter job applicant operations." },
+  meta: {
+    name: "applicant",
+    description: "Recruiter job applicant operations.",
+    examples: [
+      "curviate recruiter applicant PROJECT_ID APPLICANT_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,

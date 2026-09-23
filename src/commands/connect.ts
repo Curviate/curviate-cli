@@ -381,6 +381,10 @@ const connectSentCommand = defineCommand({
       "`created_at` is the platform's own ISO-8601 timestamp (not an approximation). " +
       "No total count is available; use `connect sent --all` and count client-side. " +
       "A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+    examples: [
+      "curviate connect sent",
+      "curviate connect sent --all",
+    ],
   },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
@@ -410,6 +414,10 @@ const connectReceivedCommand = defineCommand({
       "The `user.*` fields (`public_identifier`, `display_name`, `first_name`, `last_name`) identify who sent the request. " +
       "Use the `id` field with `connect accept` or `connect decline`. " +
       "A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+    examples: [
+      "curviate connect received",
+      "curviate connect received --json",
+    ],
   },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
@@ -432,7 +440,13 @@ const connectReceivedCommand = defineCommand({
 });
 
 const connectAcceptCommand = defineCommand({
-  meta: { name: "accept", description: "Accept a received invitation." },
+  meta: {
+    name: "accept",
+    description: "Accept a received invitation.",
+    examples: [
+      "curviate connect accept INVITATION_ID",
+    ],
+  },
   args: {
     ...WRITE_FLAGS,
     id: {
@@ -460,7 +474,13 @@ const connectAcceptCommand = defineCommand({
 });
 
 const connectDeclineCommand = defineCommand({
-  meta: { name: "decline", description: "Decline a received invitation." },
+  meta: {
+    name: "decline",
+    description: "Decline a received invitation.",
+    examples: [
+      "curviate connect decline INVITATION_ID",
+    ],
+  },
   args: {
     ...WRITE_FLAGS,
     id: {
@@ -488,7 +508,13 @@ const connectDeclineCommand = defineCommand({
 });
 
 const connectCancelCommand = defineCommand({
-  meta: { name: "cancel", description: "Cancel a sent invitation." },
+  meta: {
+    name: "cancel",
+    description: "Cancel a sent invitation.",
+    examples: [
+      "curviate connect cancel INVITATION_ID",
+    ],
+  },
   args: {
     ...WRITE_FLAGS,
     id: { type: "positional", description: "Invitation id to cancel." },
@@ -562,6 +588,10 @@ export const connectCommand = defineCommand({
     description:
       "Send or manage connection invitations. " +
       "Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
+    examples: [
+      "curviate connect janesmith",
+      "curviate connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\"",
+    ],
   },
   args: {
     ...WRITE_FLAGS,

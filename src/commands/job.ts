@@ -747,7 +747,14 @@ const JOB_BODY_FLAGS = {
 };
 
 const jobGetCommand = defineCommand({
-  meta: { name: "get", description: "Retrieve one public LinkedIn job posting's full detail." },
+  meta: {
+    name: "get",
+    description: "Retrieve one public LinkedIn job posting's full detail.",
+    examples: [
+      "curviate job get 4100000000",
+      "curviate job get https://www.linkedin.com/jobs/view/4100000000",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     id: { type: "positional", description: "Job URL or a bare numeric job id." },
@@ -758,7 +765,14 @@ const jobGetCommand = defineCommand({
 });
 
 const jobListCommand = defineCommand({
-  meta: { name: "list", description: "List your own classic job postings by state." },
+  meta: {
+    name: "list",
+    description: "List your own classic job postings by state.",
+    examples: [
+      "curviate job list --state OPEN",
+      "curviate job list --state DRAFT --all",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     state: { type: "string", description: "Filter by state (required): DRAFT|OPEN|CLOSED|REVIEW|SUSPENDED, or ALL for a best-effort client-side union across every state (each state queried, re-filtered, merged and de-duplicated by id; no unified cursor). Best-effort on LinkedIn's side -- verify item.state. The CLI re-filters returned items against their own state (dropped items are noted on stderr), but the upstream page walk itself is unfiltered, so --all may fetch more pages than the filtered item count implies.", required: true },
@@ -769,7 +783,13 @@ const jobListCommand = defineCommand({
 });
 
 const jobCreateCommand = defineCommand({
-  meta: { name: "create", description: "Create a classic job-posting draft (never publishes, never spends)." },
+  meta: {
+    name: "create",
+    description: "Create a classic job-posting draft (never publishes, never spends).",
+    examples: [
+      "curviate job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     ...JOB_BODY_FLAGS,
@@ -780,7 +800,14 @@ const jobCreateCommand = defineCommand({
 });
 
 const jobUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Apply a partial update to a job posting you own." },
+  meta: {
+    name: "update",
+    description: "Apply a partial update to a job posting you own.",
+    examples: [
+      "curviate job update 4100000000 --workplace-type HYBRID",
+      "curviate job update 4100000000 --description \"$(cat description.txt)\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to update." },
@@ -792,7 +819,13 @@ const jobUpdateCommand = defineCommand({
 });
 
 const jobBudgetCommand = defineCommand({
-  meta: { name: "budget", description: "Price a publish before committing any money." },
+  meta: {
+    name: "budget",
+    description: "Price a publish before committing any money.",
+    examples: [
+      "curviate job budget 4100000000",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to price." },
@@ -803,7 +836,13 @@ const jobBudgetCommand = defineCommand({
 });
 
 const jobPublishCommand = defineCommand({
-  meta: { name: "publish", description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope." },
+  meta: {
+    name: "publish",
+    description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
+    examples: [
+      "curviate job publish 4100000000 --mode FREE",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to publish." },
@@ -818,7 +857,13 @@ const jobPublishCommand = defineCommand({
 });
 
 const jobCloseCommand = defineCommand({
-  meta: { name: "close", description: "Stop a posting from accepting applications (irreversible once LISTED)." },
+  meta: {
+    name: "close",
+    description: "Stop a posting from accepting applications (irreversible once LISTED).",
+    examples: [
+      "curviate job close 4100000000",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to close." },
@@ -829,7 +874,14 @@ const jobCloseCommand = defineCommand({
 });
 
 const jobApplicantsCommand = defineCommand({
-  meta: { name: "applicants", description: "List applicants to a posting you own (POST-as-search)." },
+  meta: {
+    name: "applicants",
+    description: "List applicants to a posting you own (POST-as-search).",
+    examples: [
+      "curviate job applicants 4100000000",
+      "curviate job applicants 4100000000 --ratings GOOD_FIT,MAYBE",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Job id to list applicants for." },
@@ -841,7 +893,13 @@ const jobApplicantsCommand = defineCommand({
 });
 
 const jobApplicantGetCommand = defineCommand({
-  meta: { name: "get", description: "Get one applicant's full detail, including contact info." },
+  meta: {
+    name: "get",
+    description: "Get one applicant's full detail, including contact info.",
+    examples: [
+      "curviate job applicant get 4100000000 APPLICANT_ID",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id the applicant applied to." },
@@ -853,7 +911,13 @@ const jobApplicantGetCommand = defineCommand({
 });
 
 const jobApplicantResumeCommand = defineCommand({
-  meta: { name: "resume", description: "Download an applicant's résumé (binary)." },
+  meta: {
+    name: "resume",
+    description: "Download an applicant's résumé (binary).",
+    examples: [
+      "curviate job applicant resume 4100000000 APPLICANT_ID -o resume.pdf",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id the applicant applied to." },

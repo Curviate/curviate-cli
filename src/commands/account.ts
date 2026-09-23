@@ -1493,7 +1493,14 @@ export async function runAccountCheckpointPoll(
 // ---------------------------------------------------------------------------
 
 const accountListCommand = defineCommand({
-  meta: { name: "list", description: "List connected LinkedIn accounts." },
+  meta: {
+    name: "list",
+    description: "List connected LinkedIn accounts.",
+    examples: [
+      "curviate account list",
+      "curviate account list --json --fields items.account_id,items.status",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as AccountFlags;
@@ -1514,7 +1521,13 @@ const accountListCommand = defineCommand({
 });
 
 const accountGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a connected LinkedIn account." },
+  meta: {
+    name: "get",
+    description: "Get a connected LinkedIn account.",
+    examples: [
+      "curviate account get acc_YOUR_ACCOUNT_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -1546,6 +1559,9 @@ const accountSeatsCommand = defineCommand({
       "occupied:false (free) is a seat_id `curviate account link --seat-id` accepts right now. Not paginated " +
       "(bounded by purchased seats), --all is not supported. An empty result can mean the workspace has " +
       "no seats, or that billing needs attention.",
+    examples: [
+      "curviate account seats",
+    ],
   },
   args: { ...READ_SINGLE_FLAGS },
   async run({ args }) {
@@ -1572,6 +1588,10 @@ const accountLinkCommand = defineCommand({
     description:
       "Connect a LinkedIn account to an empty seat. " +
       "If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
+    examples: [
+      "curviate account link --auth-method credentials --email jane@example.com --password-stdin",
+      "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -1625,6 +1645,10 @@ const accountConnectSessionPollCommand = defineCommand({
       "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single " +
       "poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
       "With --wait: block on the same adaptive cadence as `account link` until a terminal state.",
+    examples: [
+      "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
+      "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -1678,7 +1702,14 @@ const accountConnectSessionCommand = defineCommand({
 });
 
 const accountUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Update an account's metadata and/or custom-proxy configuration." },
+  meta: {
+    name: "update",
+    description: "Update an account's metadata and/or custom-proxy configuration.",
+    examples: [
+      "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
+      "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     "account-id": { type: "positional", description: "Account id (acc_...)." },
@@ -1709,7 +1740,13 @@ const accountUpdateCommand = defineCommand({
 });
 
 const accountDisconnectCommand = defineCommand({
-  meta: { name: "disconnect", description: "Hard-disconnect a LinkedIn account and release its seat." },
+  meta: {
+    name: "disconnect",
+    description: "Hard-disconnect a LinkedIn account and release its seat.",
+    examples: [
+      "curviate account disconnect acc_YOUR_ACCOUNT_ID",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     "account-id": { type: "positional", description: "Account id (acc_...)." },
@@ -1733,7 +1770,13 @@ const accountDisconnectCommand = defineCommand({
 });
 
 const accountCheckpointSolveCommand = defineCommand({
-  meta: { name: "solve", description: "Solve a checkpoint challenge with an OTP / 2FA code." },
+  meta: {
+    name: "solve",
+    description: "Solve a checkpoint challenge with an OTP / 2FA code.",
+    examples: [
+      "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     "account-id": {
@@ -1770,6 +1813,10 @@ const accountCheckpointPollCommand = defineCommand({
     description:
       "Poll for mobile-app approval of a pending checkpoint challenge. " +
       "With --wait, blocks on an adaptive cadence until a terminal state (or --timeout elapses) instead of a single poll.",
+    examples: [
+      "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
+      "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -1819,6 +1866,9 @@ const accountCheckpointRequestCommand = defineCommand({
       "code, or mobile-app approval push). Not every challenge type supports it; an authenticator- " +
       "app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new " +
       "notification actually went out; the command still exits 0 either way.",
+    examples: [
+      "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,

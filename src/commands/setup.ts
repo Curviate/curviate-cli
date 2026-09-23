@@ -636,6 +636,11 @@ export const setupCommand = defineCommand({
     name: "setup",
     description:
       "Connect this machine to your workspace: opens the dashboard, takes the code it shows you, and saves an API key.",
+    examples: [
+      "curviate setup",
+      "curviate setup --json",
+      "curviate setup --code -",
+    ],
   },
   args: {
     profile: GLOBAL_FLAGS.profile,

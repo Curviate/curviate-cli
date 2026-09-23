@@ -787,7 +787,13 @@ export async function runSalesNavSaveAccount(
 // ---------------------------------------------------------------------------
 
 const salesNavMessageNewCommand = defineCommand({
-  meta: { name: "new", description: "Start a new Sales Navigator chat." },
+  meta: {
+    name: "new",
+    description: "Start a new Sales Navigator chat.",
+    examples: [
+      "curviate sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -834,7 +840,14 @@ const salesNavMessageCommand = defineCommand({
 });
 
 const salesNavSearchPeopleCommand = defineCommand({
-  meta: { name: "people", description: "Search Sales Navigator member profiles." },
+  meta: {
+    name: "people",
+    description: "Search Sales Navigator member profiles.",
+    examples: [
+      "curviate sales-nav search people --keywords \"head of data\"",
+      "curviate sales-nav search people --filters-file filters.json",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
@@ -865,7 +878,13 @@ const salesNavSearchPeopleCommand = defineCommand({
 });
 
 const salesNavSearchCompaniesCommand = defineCommand({
-  meta: { name: "companies", description: "Search Sales Navigator companies." },
+  meta: {
+    name: "companies",
+    description: "Search Sales Navigator companies.",
+    examples: [
+      "curviate sales-nav search companies --keywords fintech",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     keywords: { type: "string", description: "Keyword search string." },
@@ -896,6 +915,9 @@ const salesNavSearchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve Sales Navigator filter parameter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate sales-nav search parameters --type REGION --keywords Berlin",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,
@@ -927,7 +949,13 @@ const salesNavSearchParametersCommand = defineCommand({
 });
 
 const salesNavSearchCommand = defineCommand({
-  meta: { name: "search", description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly." },
+  meta: {
+    name: "search",
+    description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly.",
+    examples: [
+      "curviate sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     url: {
@@ -973,7 +1001,13 @@ const salesNavSearchCommand = defineCommand({
 });
 
 const salesNavProfileCommand = defineCommand({
-  meta: { name: "profile", description: "Get a Sales Navigator enriched member profile." },
+  meta: {
+    name: "profile",
+    description: "Get a Sales Navigator enriched member profile.",
+    examples: [
+      "curviate sales-nav profile https://www.linkedin.com/in/janesmith",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...READ_SINGLE_FLAGS,
@@ -999,7 +1033,13 @@ const salesNavProfileCommand = defineCommand({
 });
 
 const salesNavSaveLeadCommand = defineCommand({
-  meta: { name: "save-lead", description: "Save a Sales Navigator member into a lead list." },
+  meta: {
+    name: "save-lead",
+    description: "Save a Sales Navigator member into a lead list.",
+    examples: [
+      "curviate sales-nav save-lead ACwAAA1234567 --list 987654",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -1030,7 +1070,13 @@ const salesNavSaveLeadCommand = defineCommand({
 // ---------------------------------------------------------------------------
 
 const salesNavAccountListsCommand = defineCommand({
-  meta: { name: "account-lists", description: "List the saved-account (company) lists on the operator's Sales Navigator seat." },
+  meta: {
+    name: "account-lists",
+    description: "List the saved-account (company) lists on the operator's Sales Navigator seat.",
+    examples: [
+      "curviate sales-nav account-lists",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as SalesNavFlags;
@@ -1052,7 +1098,13 @@ const salesNavAccountListsCommand = defineCommand({
 });
 
 const salesNavLeadListsCommand = defineCommand({
-  meta: { name: "lead-lists", description: "List the saved-lead (member) lists on the operator's Sales Navigator seat." },
+  meta: {
+    name: "lead-lists",
+    description: "List the saved-lead (member) lists on the operator's Sales Navigator seat.",
+    examples: [
+      "curviate sales-nav lead-lists",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as SalesNavFlags;
@@ -1074,7 +1126,14 @@ const salesNavLeadListsCommand = defineCommand({
 });
 
 const salesNavBrowseAccountListCommand = defineCommand({
-  meta: { name: "browse-account-list", description: "Browse the saved accounts (companies) in one account list." },
+  meta: {
+    name: "browse-account-list",
+    description: "Browse the saved accounts (companies) in one account list.",
+    examples: [
+      "curviate sales-nav browse-account-list 987654",
+      "curviate sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     listId: { type: "positional", description: "The account-list id (from `sales-nav account-lists`)." },
@@ -1102,7 +1161,14 @@ const salesNavBrowseAccountListCommand = defineCommand({
 });
 
 const salesNavBrowseLeadListCommand = defineCommand({
-  meta: { name: "browse-lead-list", description: "Browse the saved leads (members) in one lead list." },
+  meta: {
+    name: "browse-lead-list",
+    description: "Browse the saved leads (members) in one lead list.",
+    examples: [
+      "curviate sales-nav browse-lead-list 987654",
+      "curviate sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     listId: { type: "positional", description: "The lead-list id (from `sales-nav lead-lists`)." },
@@ -1130,7 +1196,13 @@ const salesNavBrowseLeadListCommand = defineCommand({
 });
 
 const salesNavSaveAccountCommand = defineCommand({
-  meta: { name: "save-account", description: "Save a LinkedIn company into an account list." },
+  meta: {
+    name: "save-account",
+    description: "Save a LinkedIn company into an account list.",
+    examples: [
+      "curviate sales-nav save-account 1234567 --list 987654",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,

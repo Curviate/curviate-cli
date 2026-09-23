@@ -200,7 +200,14 @@ export async function runNotificationShowLess(
 // ---------------------------------------------------------------------------
 
 const notificationListCommand = defineCommand({
-  meta: { name: "list", description: "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark." },
+  meta: {
+    name: "list",
+    description: "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark.",
+    examples: [
+      "curviate notification list",
+      "curviate notification list --filter mentions",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     filter: {
@@ -228,7 +235,13 @@ const notificationListCommand = defineCommand({
 });
 
 const notificationDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Delete one of your notification cards by its card urn. Self-action, idempotent, cannot be undone." },
+  meta: {
+    name: "delete",
+    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone.",
+    examples: [
+      "curviate notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     cardUrn: { type: "positional", description: "The card_urn field of a `notification list` item (not object_urn)." },
@@ -257,7 +270,10 @@ const notificationShowLessCommand = defineCommand({
     name: "show-less",
     description:
       "Apply 'show less like this' to the source of one of your notification cards. For network-activity cards " +
-      "this removes the card, same as delete. Self-action, idempotent, cannot be undone.",
+      "this removes the card, same as delete. Self-action, safe to repeat, cannot be undone.",
+    examples: [
+      "curviate notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,

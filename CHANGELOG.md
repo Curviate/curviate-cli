@@ -8,6 +8,21 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Added
+
+- **Examples in `--help`.** Every command you can run now prints one to three
+  example invocations under an `EXAMPLES` heading in its `--help`. The same
+  lines appear on the command's page on docs.curviate.com.
+- **`commands.json`**, the command surface as data (each command's
+  description, arguments, accepted global flags and examples), which the docs
+  site generates its CLI reference from. Not shipped in the package;
+  regenerate it with `pnpm manifest`.
+
+### Changed
+
+- `post save`, `post unsave`, `notification delete`, `notification show-less`
+  and `profile unfollow` describe what a repeat does in plain words.
+
 ## [0.41.0] - 2026-09-23
 
 Follows `@curviate/sdk` to `0.37.1` and re-vendors the OpenAPI fixture from the

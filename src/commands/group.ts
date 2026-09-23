@@ -234,7 +234,14 @@ export async function runGroupMembers(
 // ---------------------------------------------------------------------------
 
 const groupListCommand = defineCommand({
-  meta: { name: "list", description: "List the groups the connected account belongs to. Pass --target to enumerate another member's groups instead (a partial, interests-only read)." },
+  meta: {
+    name: "list",
+    description: "List the groups the connected account belongs to. Pass --target to enumerate another member's groups instead (a partial, interests-only read).",
+    examples: [
+      "curviate group list",
+      "curviate group list --target janesmith",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     target: {
@@ -262,7 +269,13 @@ const groupListCommand = defineCommand({
 });
 
 const groupGetCommand = defineCommand({
-  meta: { name: "get", description: "Get one LinkedIn group's full detail: name, member count, description, admin contact, and write-feasibility gates." },
+  meta: {
+    name: "get",
+    description: "Get one LinkedIn group's full detail: name, member count, description, admin contact, and write-feasibility gates.",
+    examples: [
+      "curviate group get 12345678",
+    ],
+  },
   args: {
     ...READ_SINGLE_FLAGS,
     groupId: { type: "positional", description: "Numeric group id, or a full group URL (e.g. https://www.linkedin.com/groups/9123014/)." },
@@ -290,6 +303,10 @@ const groupMembersCommand = defineCommand({
   meta: {
     name: "members",
     description: "List (or search by name) a group's members: id, profile URL, name, headline, and relationship signal. Requires the connected account be a member of the group.",
+    examples: [
+      "curviate group members 12345678",
+      "curviate group members 12345678 --name sophie",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,

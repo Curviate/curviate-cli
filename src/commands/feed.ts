@@ -160,7 +160,15 @@ const FEED_ARGS = {
 };
 
 const feedHomeCommand = defineCommand({
-  meta: { name: "home", description: "Read the connected account's LinkedIn home feed as agent-actionable posts." },
+  meta: {
+    name: "home",
+    description: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
+    examples: [
+      "curviate feed home",
+      "curviate feed home --sort relevant",
+      "curviate feed home --all --max-pages 3",
+    ],
+  },
   args: FEED_ARGS,
   async run({ args }) {
     const flags = args as FeedFlags;

@@ -984,7 +984,14 @@ export async function runProfileFollowing(
 // ---------------------------------------------------------------------------
 
 const profileMeCommand = defineCommand({
-  meta: { name: "me", description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers." },
+  meta: {
+    name: "me",
+    description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers.",
+    examples: [
+      "curviate profile me",
+      "curviate profile me --mode live --json",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     ...RETRIEVAL_FLAGS,
@@ -1038,7 +1045,14 @@ const profileMeCommand = defineCommand({
 });
 
 const profileRelationsCommand = defineCommand({
-  meta: { name: "relations", description: "List your 1st-degree connections." },
+  meta: {
+    name: "relations",
+    description: "List your 1st-degree connections.",
+    examples: [
+      "curviate profile relations",
+      "curviate profile relations --all",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     const flags = args as ProfileFlags;
@@ -1060,7 +1074,13 @@ const profileRelationsCommand = defineCommand({
 });
 
 const profileEndorseCommand = defineCommand({
-  meta: { name: "endorse", description: "Endorse a skill on a member's profile." },
+  meta: {
+    name: "endorse",
+    description: "Endorse a skill on a member's profile.",
+    examples: [
+      "curviate profile endorse janesmith --endorsement-id 12345",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
@@ -1111,7 +1131,14 @@ async function withClient(
 }
 
 const profileUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Update your own profile (headline, bio, name, skills, photos)." },
+  meta: {
+    name: "update",
+    description: "Update your own profile (headline, bio, name, skills, photos).",
+    examples: [
+      "curviate profile update --headline \"Building agent infrastructure\"",
+      "curviate profile update --skills \"TypeScript,Agents\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     headline: { type: "string", description: "New headline." },
@@ -1128,7 +1155,13 @@ const profileUpdateCommand = defineCommand({
 });
 
 const profileFollowCommand = defineCommand({
-  meta: { name: "follow", description: "Follow a member (sends a connect request if their profile is private)." },
+  meta: {
+    name: "follow",
+    description: "Follow a member (sends a connect request if their profile is private).",
+    examples: [
+      "curviate profile follow janesmith",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, provider id)." },
@@ -1139,7 +1172,13 @@ const profileFollowCommand = defineCommand({
 });
 
 const profileUnfollowCommand = defineCommand({
-  meta: { name: "unfollow", description: "Unfollow a member (idempotent)." },
+  meta: {
+    name: "unfollow",
+    description: "Unfollow a member. Unfollowing someone you do not follow changes nothing.",
+    examples: [
+      "curviate profile unfollow janesmith",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, provider id)." },
@@ -1150,7 +1189,14 @@ const profileUnfollowCommand = defineCommand({
 });
 
 const profileFollowersCommand = defineCommand({
-  meta: { name: "followers", description: "List a member's followers (accepts 'me')." },
+  meta: {
+    name: "followers",
+    description: "List a member's followers (accepts 'me').",
+    examples: [
+      "curviate profile followers me",
+      "curviate profile followers janesmith --limit 20",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
@@ -1161,7 +1207,14 @@ const profileFollowersCommand = defineCommand({
 });
 
 const profileFollowingCommand = defineCommand({
-  meta: { name: "following", description: "List who a member follows (accepts 'me')." },
+  meta: {
+    name: "following",
+    description: "List who a member follows (accepts 'me').",
+    examples: [
+      "curviate profile following me",
+      "curviate profile following me --all",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
@@ -1172,7 +1225,13 @@ const profileFollowingCommand = defineCommand({
 });
 
 const profileSubscriptionCommand = defineCommand({
-  meta: { name: "subscription", description: "Read your premium subscription: entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false)." },
+  meta: {
+    name: "subscription",
+    description: "Read your premium subscription: entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false).",
+    examples: [
+      "curviate profile subscription",
+    ],
+  },
   args: { ...READ_SINGLE_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileSubscription);
@@ -1180,7 +1239,13 @@ const profileSubscriptionCommand = defineCommand({
 });
 
 const profileAnalyticsCommand = defineCommand({
-  meta: { name: "analytics", description: "Read your performance headline metrics: profile viewers, followers, post impressions, and search appearances (fixed LinkedIn reporting windows, no window selector)." },
+  meta: {
+    name: "analytics",
+    description: "Read your performance headline metrics: profile viewers, followers, post impressions, and search appearances (fixed LinkedIn reporting windows, no window selector).",
+    examples: [
+      "curviate profile analytics",
+    ],
+  },
   args: { ...READ_SINGLE_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileAnalytics);
@@ -1188,7 +1253,14 @@ const profileAnalyticsCommand = defineCommand({
 });
 
 const profileVisitorsCommand = defineCommand({
-  meta: { name: "visitors", description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate; Premium sees more identified viewers)." },
+  meta: {
+    name: "visitors",
+    description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate; Premium sees more identified viewers).",
+    examples: [
+      "curviate profile visitors",
+      "curviate profile visitors --limit 20",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileVisitors);
@@ -1196,7 +1268,13 @@ const profileVisitorsCommand = defineCommand({
 });
 
 const profileSsiCommand = defineCommand({
-  meta: { name: "ssi", description: "Read your Social Selling Index: the overall score, its four pillar breakdowns, and industry/network percentile ranks." },
+  meta: {
+    name: "ssi",
+    description: "Read your Social Selling Index: the overall score, its four pillar breakdowns, and industry/network percentile ranks.",
+    examples: [
+      "curviate profile ssi",
+    ],
+  },
   args: { ...READ_SINGLE_FLAGS },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileSsi);
@@ -1204,7 +1282,15 @@ const profileSsiCommand = defineCommand({
 });
 
 export const profileCommand = defineCommand({
-  meta: { name: "profile", description: "LinkedIn profile operations." },
+  meta: {
+    name: "profile",
+    description: "LinkedIn profile operations.",
+    examples: [
+      "curviate profile janesmith",
+      "curviate profile https://www.linkedin.com/in/janesmith --posts",
+      "curviate profile janesmith --sections experience,skills",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     id: { type: "positional", description: "Member identifier (URL, slug, or URN). Optional for subcommands.", required: false },

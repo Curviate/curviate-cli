@@ -609,7 +609,14 @@ export async function runPostUserReactions(
 // ---------------------------------------------------------------------------
 
 const postGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a post by id." },
+  meta: {
+    name: "get",
+    description: "Get a post by id.",
+    examples: [
+      "curviate post get 7290000000000000000",
+      "curviate post get urn:li:activity:7290000000000000000",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     postId: {
@@ -639,7 +646,14 @@ const postGetCommand = defineCommand({
 });
 
 const postCreateCommand = defineCommand({
-  meta: { name: "create", description: "Create a new post." },
+  meta: {
+    name: "create",
+    description: "Create a new post.",
+    examples: [
+      "curviate post create \"We just shipped webhooks for inbox events.\"",
+      "curviate post create \"Our latest product update.\" --attach screenshot.png",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -671,7 +685,14 @@ const postCreateCommand = defineCommand({
 });
 
 const postReactCommand = defineCommand({
-  meta: { name: "react", description: "React to a post." },
+  meta: {
+    name: "react",
+    description: "React to a post.",
+    examples: [
+      "curviate post react 7290000000000000000 like",
+      "curviate post react 7290000000000000000 celebrate --as-organization 1234567",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -720,7 +741,14 @@ const postReactCommand = defineCommand({
 });
 
 const postReactionsCommand = defineCommand({
-  meta: { name: "reactions", description: "List reactions on a post." },
+  meta: {
+    name: "reactions",
+    description: "List reactions on a post.",
+    examples: [
+      "curviate post reactions 7290000000000000000",
+      "curviate post reactions 7290000000000000000 --all",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     postId: {
@@ -771,7 +799,13 @@ async function withClient(
 }
 
 const postDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Delete a post you own." },
+  meta: {
+    name: "delete",
+    description: "Delete a post you own.",
+    examples: [
+      "curviate post delete 7290000000000000000",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
@@ -782,7 +816,13 @@ const postDeleteCommand = defineCommand({
 });
 
 const postUnreactCommand = defineCommand({
-  meta: { name: "unreact", description: "Remove your reaction from a post." },
+  meta: {
+    name: "unreact",
+    description: "Remove your reaction from a post.",
+    examples: [
+      "curviate post unreact 7290000000000000000 like",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
@@ -794,7 +834,13 @@ const postUnreactCommand = defineCommand({
 });
 
 const postSavedCommand = defineCommand({
-  meta: { name: "saved", description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars)." },
+  meta: {
+    name: "saved",
+    description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars).",
+    examples: [
+      "curviate post saved",
+    ],
+  },
   args: { ...GLOBAL_FLAGS },
   async run({ args }) {
     await withClient(args as PostFlags, runPostSaved);
@@ -802,7 +848,13 @@ const postSavedCommand = defineCommand({
 });
 
 const postSaveCommand = defineCommand({
-  meta: { name: "save", description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Idempotent." },
+  meta: {
+    name: "save",
+    description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Saving a saved post changes nothing.",
+    examples: [
+      "curviate post save 7290000000000000000",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
@@ -813,7 +865,13 @@ const postSaveCommand = defineCommand({
 });
 
 const postUnsaveCommand = defineCommand({
-  meta: { name: "unsave", description: "Remove a post from your saved-posts bookmark list. Idempotent." },
+  meta: {
+    name: "unsave",
+    description: "Remove a post from your saved-posts bookmark list. Unsaving a post that is not saved changes nothing.",
+    examples: [
+      "curviate post unsave 7290000000000000000",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
@@ -824,7 +882,14 @@ const postUnsaveCommand = defineCommand({
 });
 
 const postUserPostsCommand = defineCommand({
-  meta: { name: "user-posts", description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately." },
+  meta: {
+    name: "user-posts",
+    description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately.",
+    examples: [
+      "curviate post user-posts me",
+      "curviate post user-posts janesmith --limit 10",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
@@ -835,7 +900,14 @@ const postUserPostsCommand = defineCommand({
 });
 
 const postUserReactionsCommand = defineCommand({
-  meta: { name: "user-reactions", description: "List a member's own reactions (accepts 'me'). Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page." },
+  meta: {
+    name: "user-reactions",
+    description: "List a member's own reactions (accepts 'me'). Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page.",
+    examples: [
+      "curviate post user-reactions me",
+      "curviate post user-reactions me --all",
+    ],
+  },
   args: {
     ...GLOBAL_FLAGS,
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },

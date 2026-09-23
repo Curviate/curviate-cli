@@ -204,7 +204,14 @@ export async function runInboxesChats(
 // ---------------------------------------------------------------------------
 
 const inboxesListCommand = defineCommand({
-  meta: { name: "list", description: "Discover the account's inboxes (personal + company pages)." },
+  meta: {
+    name: "list",
+    description: "Discover the account's inboxes (personal + company pages).",
+    examples: [
+      "curviate inboxes list",
+      "curviate inboxes list --kind company",
+    ],
+  },
   args: {
     // Single-object-shaped read: READ_SINGLE_FLAGS omits pagination flags
     // (this response carries no cursor, every inbox comes back in one call).
@@ -244,6 +251,10 @@ const inboxesChatsCommand = defineCommand({
       "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. " +
       "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
+    examples: [
+      "curviate inboxes chats CLASSIC_PRIMARY",
+      "curviate inboxes chats COMPANY_1234567_PRIMARY --limit 10",
+    ],
   },
   args: {
     ...GLOBAL_FLAGS,
