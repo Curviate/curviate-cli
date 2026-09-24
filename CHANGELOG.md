@@ -8,6 +8,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-09-23
+
+Adds examples to every command's help and the manifest the docs site
+generates its CLI reference from. No exit code changes.
+
 ### Added
 
 - **Examples in `--help`.** Every command you can run now prints one to three
