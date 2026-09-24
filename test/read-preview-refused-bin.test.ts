@@ -48,5 +48,16 @@ describe("--preview on a command that does not declare it", () => {
     const r = await stub.run("curviate post delete 7290000000000000000 --no-preview", { fresh: true });
     expect(r.code, r.stderr).toBe(0);
   });
+
+  // One predicate for "false": a spelling that previews a write is refused on
+  // a read, and a spelling that sends a write runs a read.
+  it.each(["false", "FALSE", "0", "no", "true", "TRUE", "1", "yes"])("--preview=%s: the read and the write agree", async (v) => {
+    const write = await stub.run(`curviate post delete 7290000000000000000 --account acc_1 --json --preview=${v}`, { fresh: true });
+    const read = await stub.run(`curviate account list --preview=${v}`, { fresh: true });
+    const previewed = write.code === 0 && write.stdout.includes('"method":"posts.delete"');
+    const refused = read.code === 2 && read.stderr.includes("--preview is only valid on write commands");
+    expect(write.code, write.stderr).toBe(0);
+    expect(refused, `write previewed=${previewed}; read exit ${read.code}: ${read.stderr}`).toBe(previewed);
+  });
 });
 

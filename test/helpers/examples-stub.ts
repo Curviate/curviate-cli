@@ -35,7 +35,7 @@ const SEATS = { object: "seat_list", items: [{ seat_id: "seat_free", occupied: f
 export type ExamplesStub = {
   baseUrl: string;
   /** Run one shell line. `fresh`: in its own copy of the seeded config, so earlier runs cannot change what it sees. */
-  run(line: string, opts?: { fresh?: boolean }): Promise<{ code: number | null; stderr: string }>;
+  run(line: string, opts?: { fresh?: boolean }): Promise<{ code: number | null; stdout: string; stderr: string }>;
   stop(): Promise<void>;
 };
 
@@ -111,8 +111,8 @@ export async function startExamplesStub(): Promise<ExamplesStub> {
         runEnv = { ...env, XDG_CONFIG_HOME: own };
       }
       return new Promise((resolve) => {
-        const child = execFile("bash", ["-c", line], { cwd: workDir, env: runEnv, timeout: 15_000 }, (err, _stdout, stderr) => {
-          resolve({ code: err ? (typeof err.code === "number" ? err.code : null) : 0, stderr });
+        const child = execFile("bash", ["-c", line], { cwd: workDir, env: runEnv, timeout: 15_000 }, (err, stdout, stderr) => {
+          resolve({ code: err ? (typeof err.code === "number" ? err.code : null) : 0, stdout, stderr });
         });
         child.stdin?.end("stdin-fixture\n");
       });

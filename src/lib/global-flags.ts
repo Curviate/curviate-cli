@@ -61,12 +61,12 @@ export const GLOBAL_FLAGS = {
   },
   "max-pages": {
     type: "string" as const,
-    description: "Maximum number of pages to fetch when --all is used.",
+    description: "Maximum number of pages to fetch when --all is used. Refused (exit 2) without --all.",
   },
   "page-delay": {
     type: "string" as const,
     description:
-      "Milliseconds to pause between pages when --all is used (default 400; pass 0 to disable). A modest delay keeps a long stream under the platform rate gate.",
+      "Milliseconds to pause between pages when --all is used (default 400; pass 0 to disable). A modest delay keeps a long stream under the platform rate gate. Refused (exit 2) without --all.",
   },
   preview: {
     type: "boolean" as const,

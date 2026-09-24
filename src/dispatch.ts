@@ -33,7 +33,7 @@
  * this pre-dispatch, and citty 0.1.6 cannot express it natively.
  */
 
-import { runCommand, type CommandDef } from "citty";
+import { parseArgs, runCommand, type CommandDef } from "citty";
 import {
   STDIN_SENTINEL,
   restoreLiteralDashes,
@@ -520,15 +520,18 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
 
 /**
  * An API read does not declare `--preview` (lib/global-flags.ts readOnly),
- * yet an explicit false (`--no-preview`, `--preview=false`) always ran the
- * read, and still does: those tokens are dropped as the no-op they are.
- * Only a truthy `--preview` reaches the unknown-flag check and is refused.
+ * yet an explicit false always ran the read, and still does: those tokens are
+ * dropped as the no-op they are. "False" is whatever the parser a write
+ * command's `--preview` goes through reads as false (citty's parseArgs on the
+ * declared boolean), so a spelling that previews a write is never dropped
+ * from a read, and the read refuses it instead.
  */
 function dropFalsePreview(args: string[], walk: TokenWalk, declared: Set<string>): string[] {
   if (declared.has("preview") || !declared.has("beta")) return args;
+  const readsFalse = (token: string) => parseArgs([token], { preview: GLOBAL_FLAGS.preview }).preview === false;
   const drop = new Set(
     walk.flags
-      .filter(({ token, name }) => name === "no-preview" || (name === "preview" && /^--preview=false$/i.test(token)))
+      .filter(({ token, name }) => (name === "preview" || name === "no-preview") && readsFalse(token))
       .map(({ index }) => index),
   );
   return drop.size ? args.filter((_, i) => !drop.has(i)) : args;

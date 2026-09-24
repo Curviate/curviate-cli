@@ -28,8 +28,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   a read was refused before and still is (exit 2, same message, now followed
   by "Run `curviate --help` for usage."); the refusal now comes from the
   flag declaration, so `--help` and the docs stop listing it on reads. An
-  explicit false (`--preview=false`, `--no-preview`) still runs the read, as
-  before.
+  explicit false still runs the read, as before: exactly the spellings a
+  write reads as false (`--preview=false`, `--no-preview`). Any other value
+  (`--preview=FALSE`, `=0`, `=no`) previews a write, so a read refuses it.
 - **`job create` declares its required flags** (`--workplace-type`,
   `--location`, `--employment-status`, `--description`, `--apply-method`),
   and `company follow-invite` declares `--invitee`. Still exit 2 when one is
