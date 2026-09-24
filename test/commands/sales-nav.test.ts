@@ -296,25 +296,6 @@ describe("sales-nav search people", () => {
     expect(ns.salesNavigator.searchPeople).not.toHaveBeenCalled();
   });
 
-  it("--preview exits 2 (search is a write shape via POST — but for reads it should exit 2)", async () => {
-    // Search is invoked as POST body with optional filters; per spec it is a write-style operation
-    // but --preview on a read-classified command exits 2. Since search returns data (read behavior),
-    // --preview is rejected.
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchPeople(client as never, { account: "acc_1", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.searchPeople).not.toHaveBeenCalled();
-  });
-
   it("--all streams all pages", async () => {
     (ns.salesNavigator.searchPeople as Mock)
       .mockResolvedValueOnce({ items: [{ id: "p1" }], cursor: "cursor_1" })
@@ -438,22 +419,6 @@ describe("sales-nav search parameters", () => {
 
     expect(ns.salesNavigator.getParameters).toHaveBeenCalledWith({ type: "LOCATION", keywords: "Berlin", limit: 10 });
   });
-
-  it("--preview on read: exits 2", async () => {
-    const { runSalesNavGetParameters } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavGetParameters(client as never, { account: "acc_1", type: "LOCATION", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.getParameters).not.toHaveBeenCalled();
-  });
 });
 
 // ─── sales-nav search <url> ────────────────────────────────────────────────
@@ -520,22 +485,6 @@ describe("sales-nav search <url>", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("\n");
     const lines = written.trim().split("\n").filter(Boolean);
     expect(lines.length).toBe(2);
-  });
-
-  it("rejects --preview (read command)", async () => {
-    const { runSalesNavSearchFromUrl } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchFromUrl(client as never, { account: "acc_1", url: "https://linkedin.com/x", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.searchFromUrl).not.toHaveBeenCalled();
   });
 });
 
@@ -760,22 +709,6 @@ describe("sales-nav profile", () => {
     }, out);
 
     expect(ns.salesNavigator.getProfile).toHaveBeenCalledWith("jdoe", expect.anything());
-  });
-
-  it("--preview on read: exits 2", async () => {
-    const { runSalesNavProfile } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavProfile(client as never, { account: "acc_1", identifier: "jdoe", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.getProfile).not.toHaveBeenCalled();
   });
 });
 

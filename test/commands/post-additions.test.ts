@@ -124,20 +124,6 @@ describe("post user-posts / user-reactions (paginated reads)", () => {
     expect(accountNs.posts.listUserReactions).toHaveBeenCalledWith("me", {});
   });
 
-  it("post user-posts rejects --preview (exit 2, no SDK call)", async () => {
-    const { runPostUserPosts } = await import("../../src/commands/post.js");
-    const exitSpy = mockExit();
-    try {
-      await runPostUserPosts(client as never, { userId: "me", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.posts.listUserPosts).not.toHaveBeenCalled();
-  });
-
   // D7: post user-posts/user-reactions 400 on a raw slug (only "me" + a
   // provider id route) — resolve a slug/URL to the provider id via a
   // users.get READ first, same pattern as the D6 follow/unfollow fix.

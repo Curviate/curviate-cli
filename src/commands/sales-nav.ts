@@ -34,7 +34,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -118,12 +118,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: SalesNavFlags) {
   return {
@@ -164,7 +158,6 @@ export async function runSalesNavSearchPeople(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -234,7 +227,6 @@ export async function runSalesNavSearchCompanies(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -298,7 +290,6 @@ export async function runSalesNavGetParameters(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
@@ -353,7 +344,6 @@ export async function runSalesNavSearchFromUrl(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -495,7 +485,6 @@ export async function runSalesNavProfile(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const rawId = flags.identifier ?? "";
@@ -566,7 +555,6 @@ export async function runSalesNavAccountLists(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -610,7 +598,6 @@ export async function runSalesNavLeadLists(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -654,7 +641,6 @@ export async function runSalesNavBrowseAccountList(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -704,7 +690,6 @@ export async function runSalesNavBrowseLeadList(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -849,7 +834,7 @@ const salesNavSearchPeopleCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
@@ -886,7 +871,7 @@ const salesNavSearchCompaniesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
@@ -920,7 +905,7 @@ const salesNavSearchParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description:
@@ -957,7 +942,7 @@ const salesNavSearchCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     url: {
       type: "positional",
       required: false,
@@ -1010,7 +995,7 @@ const salesNavProfileCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     identifier: { type: "positional", description: "LinkedIn URL, slug, or native id." },
   },
   async run({ args }) {
@@ -1077,7 +1062,7 @@ const salesNavAccountListsCommand = defineCommand({
       "curviate sales-nav account-lists",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as SalesNavFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1105,7 +1090,7 @@ const salesNavLeadListsCommand = defineCommand({
       "curviate sales-nav lead-lists",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as SalesNavFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1135,7 +1120,7 @@ const salesNavBrowseAccountListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     listId: { type: "positional", description: "The account-list id (from `sales-nav account-lists`)." },
     filter: { type: "string", description: "Restrict to a saved-account subset: STARRED, GROWTH_ALERTS, or RISK_ALERTS." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED or NAME. Defaults to NAME." },
@@ -1170,7 +1155,7 @@ const salesNavBrowseLeadListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     listId: { type: "positional", description: "The lead-list id (from `sales-nav lead-lists`)." },
     spotlight: { type: "string", description: "Restrict to a spotlighted lead subset: RECENT_POSITION_CHANGE, RECENTLY_POSTED_ON_LINKEDIN, FOLLOW_YOUR_COMPANY, or SHARE_EXPERIENCE." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED, ACCOUNT, NAME, or OUTREACH_ACTIVITY. Defaults to DATE_ADDED." },

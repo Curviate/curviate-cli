@@ -16,7 +16,7 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -78,12 +78,6 @@ type OutputStreams = {
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -186,7 +180,6 @@ export async function runWebhookList(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const outOpts = resolveOutputOpts(flags);
@@ -228,7 +221,6 @@ export async function runWebhookEvents(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const outOpts = resolveOutputOpts(flags);
@@ -250,7 +242,6 @@ export async function runWebhookGet(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const id = flags.id ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -519,7 +510,7 @@ const webhookListCommand = defineCommand({
       "curviate webhook list",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -546,7 +537,7 @@ const webhookEventsCommand = defineCommand({
       "curviate webhook events",
     ],
   },
-  args: { ...NON_STREAM_FLAGS },
+  args: { ...readOnly(NON_STREAM_FLAGS) },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -574,7 +565,7 @@ const webhookGetCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
@@ -665,7 +656,7 @@ const webhookDeleteCommand = defineCommand({
 const webhookVerifyCommand = defineCommand({
   meta: {
     name: "verify",
-    description: "Verify a webhook signature offline (no network call).",
+    description: "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
     examples: [
       "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json",
     ],

@@ -92,19 +92,6 @@ describe("company managed", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyManaged(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runCompanyManaged } = await import("../../src/commands/company.js");
     const exitSpy = mockExit();
@@ -153,19 +140,6 @@ describe("company followers", () => {
     await runCompanyFollowers(client as never, { id: "112013061", account: "acc_1", all: true } as Args, out);
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
     expect(lines).toHaveLength(2);
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyFollowers } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyFollowers(client as never, { id: "112013061", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 });
 
@@ -226,19 +200,6 @@ describe("company chat", () => {
     const exitSpy = mockExit();
     try {
       await runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", all: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyChat } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", preview: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -324,23 +285,6 @@ describe("company message (single-message GET, distinct from company reply)", ()
       exitSpy.mockRestore();
     }
   });
-
-  it("--preview → usage error exit 2 (read command — company message never calls sendMessage)", async () => {
-    const { runCompanyMessage } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyMessage(
-        client as never,
-        { id: "112013061", chatId: "2-abc", messageId: "msg_1", account: "acc_1", preview: true } as Args,
-        makeOut(),
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("company search-chats", () => {
@@ -392,22 +336,5 @@ describe("company search-chats", () => {
     await runCompanySearchChats(client as never, { id: "112013061", query: "sophie", account: "acc_1", all: true } as Args, out);
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
     expect(lines).toHaveLength(2);
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanySearchChats } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanySearchChats(
-        client as never,
-        { id: "112013061", query: "sophie", account: "acc_1", preview: true } as Args,
-        makeOut(),
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 });

@@ -229,20 +229,6 @@ describe("profile followers / following (paginated reads)", () => {
     await runProfileFollowing(client as never, { id: "me", limit: "3", cursor: "c1", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.users.listFollowing).toHaveBeenCalledWith("me", { limit: 3, cursor: "c1" });
   });
-
-  it("a followers read rejects --preview (exit 2, no SDK call)", async () => {
-    const { runProfileFollowers } = await import("../../src/commands/profile.js");
-    const exitSpy = mockExit();
-    try {
-      await runProfileFollowers(client as never, { id: "me", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.users.listFollowers).not.toHaveBeenCalled();
-  });
 });
 
 describe("profile command surface", () => {

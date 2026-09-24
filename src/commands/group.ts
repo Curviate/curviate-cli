@@ -29,7 +29,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { normalizeGroupId } from "../lib/identifier.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -70,12 +70,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -119,7 +113,6 @@ export async function runGroupList(
   flags: GroupFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -165,7 +158,6 @@ export async function runGroupGet(
   flags: GroupFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -192,7 +184,6 @@ export async function runGroupMembers(
   flags: GroupFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -243,7 +234,7 @@ const groupListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     target: {
       type: "string" as const,
       description: "Target another LinkedIn member's groups instead of your own: a vanity slug or full /in/{vanity} URL. Omit to enumerate your own groups (a complete read).",
@@ -277,7 +268,7 @@ const groupGetCommand = defineCommand({
     ],
   },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     groupId: { type: "positional", description: "Numeric group id, or a full group URL (e.g. https://www.linkedin.com/groups/9123014/)." },
   },
   async run({ args }) {
@@ -309,7 +300,7 @@ const groupMembersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     groupId: { type: "positional", description: "Numeric group id, or a full group URL." },
     name: {
       type: "string" as const,

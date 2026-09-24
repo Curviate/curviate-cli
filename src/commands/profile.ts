@@ -37,7 +37,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { parseSectionsFlag } from "../lib/sections.js";
@@ -122,12 +122,6 @@ type ListQuery = { limit?: number; cursor?: string };
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -206,7 +200,6 @@ export async function runProfileMe(
   flags: ProfileFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const hasActivityFlag = !!(flags.posts || flags.comments || flags.reactions || flags.followers);
@@ -357,7 +350,6 @@ export async function runProfileGet(
   flags: ProfileFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   // --sections is a usage error on the default (users.get) branch when
@@ -534,7 +526,6 @@ export async function runProfileRelations(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -648,7 +639,6 @@ export async function runProfileSubscription(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -674,7 +664,6 @@ export async function runProfileAnalytics(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -700,7 +689,6 @@ export async function runProfileVisitors(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -744,7 +732,6 @@ export async function runProfileSsi(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -907,7 +894,6 @@ export async function runProfileFollowers(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
@@ -946,7 +932,6 @@ export async function runProfileFollowing(
   flags: SubFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveIdentifier(flags.id ?? "");
@@ -989,11 +974,11 @@ const profileMeCommand = defineCommand({
     description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers.",
     examples: [
       "curviate profile me",
-      "curviate profile me --mode live --json",
+      "curviate profile me --posts",
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     ...RETRIEVAL_FLAGS,
     sections: {
       type: "string",
@@ -1053,7 +1038,7 @@ const profileRelationsCommand = defineCommand({
       "curviate profile relations --all",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as ProfileFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1198,7 +1183,7 @@ const profileFollowersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {
@@ -1216,7 +1201,7 @@ const profileFollowingCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {
@@ -1232,7 +1217,7 @@ const profileSubscriptionCommand = defineCommand({
       "curviate profile subscription",
     ],
   },
-  args: { ...READ_SINGLE_FLAGS },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileSubscription);
   },
@@ -1246,7 +1231,7 @@ const profileAnalyticsCommand = defineCommand({
       "curviate profile analytics",
     ],
   },
-  args: { ...READ_SINGLE_FLAGS },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileAnalytics);
   },
@@ -1261,7 +1246,7 @@ const profileVisitorsCommand = defineCommand({
       "curviate profile visitors --limit 20",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileVisitors);
   },
@@ -1275,7 +1260,7 @@ const profileSsiCommand = defineCommand({
       "curviate profile ssi",
     ],
   },
-  args: { ...READ_SINGLE_FLAGS },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
   async run({ args }) {
     await withClient(args as SubFlags, runProfileSsi);
   },
@@ -1292,7 +1277,7 @@ export const profileCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Member identifier (URL, slug, or URN). Optional for subcommands.", required: false },
     posts: { type: "boolean", description: "List the profile's posts.", default: false },
     comments: { type: "boolean", description: "List the profile's comments.", default: false },

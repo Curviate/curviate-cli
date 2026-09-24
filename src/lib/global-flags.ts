@@ -195,3 +195,16 @@ export type ReadSingleFlags = Omit<GlobalFlags, "limit" | "cursor" | "all" | "ma
 export const WRITE_SINGLE_FLAGS = READ_SINGLE_FLAGS;
 
 export type WriteSingleFlags = ReadSingleFlags;
+
+/**
+ * A read command's flag set: `--preview` renders a write's request, so a read
+ * does not declare it, and the dispatcher's unknown-flag check refuses it
+ * (exit 2) before any handler runs. The declaration is the only record of
+ * which commands take `--preview`: `--help`, `commands.json` and the docs
+ * all read it.
+ */
+export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "preview"> {
+  const rest = { ...flags };
+  delete rest.preview;
+  return rest;
+}

@@ -32,7 +32,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -70,12 +70,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: FeedFlags) {
   return {
@@ -111,7 +105,6 @@ export async function runFeedHome(
   flags: FeedFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -152,7 +145,7 @@ export async function runFeedHome(
 // ---------------------------------------------------------------------------
 
 const FEED_ARGS = {
-  ...GLOBAL_FLAGS,
+  ...readOnly(GLOBAL_FLAGS),
   sort: {
     type: "string" as const,
     description: "Sort order: recent (default, reverse-chronological, always available) or relevant (LinkedIn's ranked 'top' feed, shared throttled budget). Ignored when --cursor is supplied.",
@@ -162,7 +155,7 @@ const FEED_ARGS = {
 const feedHomeCommand = defineCommand({
   meta: {
     name: "home",
-    description: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
+    description: "Read the connected account's LinkedIn home feed as agent-actionable posts. On the default recent sort the feed is an index: each post's text is null and only the author's name resolves, so fetch a body with `curviate post get <id>`. --sort relevant fills text and engagement.",
     examples: [
       "curviate feed home",
       "curviate feed home --sort relevant",

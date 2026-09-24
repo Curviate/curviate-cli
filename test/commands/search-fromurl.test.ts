@@ -54,20 +54,6 @@ describe("search <url> -> search.fromUrl", () => {
     expect(accountNs.search.fromUrl).toHaveBeenCalledWith({ url: URL, limit: 20, cursor: "c1" });
   });
 
-  it("rejects --preview (read command, exit 2, no SDK call)", async () => {
-    const { runSearchFromUrl } = await import("../../src/commands/search.js");
-    const exitSpy = mockExit();
-    try {
-      await runSearchFromUrl(client as never, { url: URL, account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.fromUrl).not.toHaveBeenCalled();
-  });
-
   it("without --account exits 2 before any SDK call", async () => {
     const { runSearchFromUrl } = await import("../../src/commands/search.js");
     const exitSpy = mockExit();

@@ -20,8 +20,20 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Changed
 
+- **Read commands no longer declare `--preview`.** It was always refused on
+  a read (exit 2, same message); the refusal now comes from the flag
+  declaration, so `--help` and the docs stop listing a flag the command
+  refuses.
+- **`job create` declares its required flags** (`--workplace-type`,
+  `--location`, `--employment-status`, `--description`, `--apply-method`),
+  and `company follow-invite` declares `--invitee`. Still exit 2 when one is
+  missing; `--help` now marks them required and the message reads
+  `Missing required argument: --<flag>`.
 - `post save`, `post unsave`, `notification delete`, `notification show-less`
   and `profile unfollow` describe what a repeat does in plain words.
+- `account get`, `feed home`, `notification delete` and `webhook verify`
+  descriptions state their status values, the null text on the recent feed,
+  re-injected promotional cards and the verify exit codes.
 
 ## [0.41.0] - 2026-09-23
 

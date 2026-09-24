@@ -19,7 +19,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { normalizeChatId } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -71,12 +71,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -182,7 +176,6 @@ export async function runInboxList(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -237,7 +230,6 @@ export async function runInboxGet(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   // Same pre-flight as `inbox messages`: the API refuses `cache_only` with
@@ -306,7 +298,6 @@ export async function runInboxMessages(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   // The retrieval pair, validated BEFORE any network call: the API refuses
@@ -387,7 +378,6 @@ export async function runInboxSearch(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -450,7 +440,7 @@ const inboxListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     unread: {
       type: "boolean" as const,
@@ -492,7 +482,7 @@ const inboxGetCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     ...RETRIEVAL_FLAGS,
     chatId: { type: "positional", description: "Chat ID." },
   },
@@ -558,7 +548,7 @@ const inboxMessagesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     ...RETRIEVAL_FLAGS,
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     chatId: { type: "positional", description: "Chat ID." },
@@ -601,7 +591,7 @@ const inboxSearchCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-100, default 20)." },
     query: { type: "positional", description: "Search term (e.g. a name or a phrase from a message)." },
   },

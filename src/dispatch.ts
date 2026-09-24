@@ -811,7 +811,13 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
-      usageError(`unknown flag ${unknown}.`);
+      // A read does not declare --preview (lib/global-flags.ts readOnly), so
+      // this is where a read refuses it; say why.
+      usageError(
+        unknown === "`--preview`"
+          ? "--preview is only valid on write commands (mutations). Reads just run."
+          : `unknown flag ${unknown}.`,
+      );
     }
     // Refused by name, never by value: the value may be a secret.
     const repeated = await repeatedFlag(leaf, walk.flags);

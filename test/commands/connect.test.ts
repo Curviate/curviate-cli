@@ -203,21 +203,6 @@ describe("connect sent / received — list reads", () => {
     expect(item).not.toHaveProperty("items");
   });
 
-  it("connect sent --preview → usage error exit 2", async () => {
-    const { runConnectSent } = await import("../../src/commands/connect.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runConnectSent(client as never, { account: "acc_1", preview: true } as ConnectArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("connect received — calls invites.listReceived", async () => {
     const { runConnectReceived } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };

@@ -455,23 +455,6 @@ describe("message get / edit / delete", () => {
     expect(ns.messaging.getMessage).toHaveBeenCalledWith("chat_abc", "msg_xyz");
   });
 
-  it("message get --preview — exits 2 (read command)", async () => {
-    const { runMessageGet } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageGet(client as never, { chatId: "chat_abc", messageId: "msg_xyz", account: "acc_1", preview: true } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("message edit <chat_id> <message_id> '<text>' — calls editMessage with chat_id, message_id, and text body", async () => {
     const { runMessageEdit } = await import("../../src/commands/message.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -645,29 +628,6 @@ describe("message attachment (binary)", () => {
       exitSpy.mockRestore();
     }
   });
-
-  it("message attachment --preview — exits 2 (read command)", async () => {
-    const { runMessageAttachment } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageAttachment(client as never, {
-        chatId: "chat_abc",
-        messageId: "msg_1",
-        attachmentId: "att_1",
-        account: "acc_1",
-        preview: true,
-      } as MessageArgs, out, false);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("message inmail / inmail-balance", () => {
@@ -822,23 +782,6 @@ describe("message inmail / inmail-balance", () => {
     await runMessageInMailBalance(client as never, { account: "acc_1", json: true } as MessageArgs, out);
 
     expect(ns.users.getInMailCredits).toHaveBeenCalled();
-  });
-
-  it("message inmail-balance --preview — exits 2 (read command)", async () => {
-    const { runMessageInMailBalance } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageInMailBalance(client as never, { account: "acc_1", preview: true } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("message inmail-balance --all — exits 2 (not paginated)", async () => {

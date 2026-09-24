@@ -69,7 +69,7 @@ describe("readableObject guard: every candidate call site pairs the guard with t
     expect(fns).toContain("profile.ts:runProfileGet");
   });
 
-  it("the inline-preview (non-rejectPreviewOnRead) reads are covered (control: the arm-C signal fires)", () => {
+  it("the inline-preview reads (which accept --preview) are covered (control: the arm-C signal fires)", () => {
     const fns = sites.map((s) => `${s.file}:${s.fn}`);
     expect(fns).toContain("account.ts:runAccountConnectSessionPoll");
     expect(fns).toContain("account.ts:runAccountCheckpointPoll");

@@ -28,7 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -84,12 +84,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -144,7 +138,6 @@ export async function runPostGet(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -301,7 +294,6 @@ export async function runPostReactions(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -344,7 +336,6 @@ export async function runPostSaved(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -515,7 +506,6 @@ export async function runPostUserPosts(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -565,7 +555,6 @@ export async function runPostUserReactions(
   flags: PostFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -618,7 +607,7 @@ const postGetCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     postId: {
       type: "positional",
       description:
@@ -750,7 +739,7 @@ const postReactionsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: {
       type: "positional",
       description:
@@ -841,7 +830,7 @@ const postSavedCommand = defineCommand({
       "curviate post saved",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     await withClient(args as PostFlags, runPostSaved);
   },
@@ -891,7 +880,7 @@ const postUserPostsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {
@@ -909,7 +898,7 @@ const postUserReactionsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {

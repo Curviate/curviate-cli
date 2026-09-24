@@ -22,7 +22,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { nearestSubcommand } from "../lib/bare-form-guard.js";
 import { slimInviteSent, slimInviteReceived, slimInviteSentItem, slimInviteReceivedItem } from "../lib/slim.js";
 import { resolveIdentifier } from "../lib/identifier.js";
@@ -64,12 +64,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: ConnectFlags) {
   return {
@@ -140,7 +134,6 @@ export async function runConnectSent(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -194,7 +187,6 @@ export async function runConnectReceived(
   flags: ConnectFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -386,7 +378,7 @@ const connectSentCommand = defineCommand({
       "curviate connect sent --all",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as ConnectFlags;
     const cfg = await resolveEffectiveConfig({
@@ -419,7 +411,7 @@ const connectReceivedCommand = defineCommand({
       "curviate connect received --json",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as ConnectFlags;
     const cfg = await resolveEffectiveConfig({

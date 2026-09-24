@@ -33,7 +33,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -174,12 +174,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: RecruiterFlags) {
   return {
@@ -472,7 +466,6 @@ export async function runRecruiterProfile(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const rawId = flags.identifier ?? "";
@@ -500,7 +493,6 @@ export async function runRecruiterSearchPeople(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -572,7 +564,6 @@ export async function runRecruiterSearchParameters(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   if (!flags.source) {
     out.stderr.write("error: --source is required (APPLICANTS, PIPELINE, SEARCH, JOB_POSTING, or JOBS).\n");
@@ -618,7 +609,6 @@ export async function runRecruiterSearchFromUrl(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -671,7 +661,6 @@ export async function runRecruiterListProjects(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -715,7 +704,6 @@ export async function runRecruiterGetProject(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -791,7 +779,6 @@ export async function runRecruiterListPipeline(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -856,7 +843,6 @@ export async function runRecruiterGetProjectJob(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -881,7 +867,6 @@ export async function runRecruiterGetProjectJobBudget(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -950,7 +935,6 @@ export async function runRecruiterListJobs(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -1269,7 +1253,6 @@ export async function runRecruiterSearchTalentPool(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags["channel-id"]) {
@@ -1341,7 +1324,6 @@ export async function runRecruiterListApplicants(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   if (!flags["channel-id"]) {
     out.stderr.write("error: --channel-id is required.\n");
@@ -1381,7 +1363,6 @@ export async function runRecruiterGetJob(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const rawJobId = flags.jobId ?? "";
@@ -1408,7 +1389,6 @@ export async function runRecruiterGetApplicant(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -1437,7 +1417,6 @@ export async function runRecruiterDownloadResume(
   out: OutputStreams,
   isTTY: boolean,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
@@ -1529,7 +1508,7 @@ const recruiterProfileCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     identifier: { type: "positional", description: "LinkedIn URL, slug, or native id." },
   },
   async run({ args }) {
@@ -1561,7 +1540,7 @@ const recruiterSearchPeopleCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
@@ -1597,7 +1576,7 @@ const recruiterSearchParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     source: {
       type: "string",
       description:
@@ -1642,7 +1621,7 @@ const recruiterSearchCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     url: {
       type: "positional",
       required: false,
@@ -1692,7 +1671,7 @@ const recruiterProjectsCommand = defineCommand({
       "curviate recruiter projects --all",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as RecruiterFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1764,7 +1743,7 @@ const recruiterProjectCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
   },
   subCommands: {
@@ -1806,7 +1785,7 @@ const recruiterPipelineCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     keywords: { type: "string", description: "Free-text keyword search." },
     "stage-id": { type: "string", description: "Filter to a single pipeline stage id." },
@@ -1875,7 +1854,7 @@ const recruiterJobsCommand = defineCommand({
       "curviate recruiter jobs --all",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as RecruiterFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1996,7 +1975,7 @@ const recruiterApplicantsCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },
   },
@@ -2029,7 +2008,7 @@ const recruiterJobGetCommand = defineCommand({
     ],
   },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     jobId: { type: "positional", description: "Job URL (e.g. https://www.linkedin.com/jobs/view/4428113858) or a bare numeric job id." },
   },
   async run({ args }) {
@@ -2113,7 +2092,7 @@ const recruiterProjectJobGetCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
   },
   async run({ args }) {
@@ -2178,7 +2157,7 @@ const recruiterProjectJobBudgetCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     jobId: { type: "positional", description: "Job posting ID." },
   },
@@ -2244,7 +2223,7 @@ const recruiterProjectJobCommand = defineCommand({
     ],
   },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID.", required: false },
   },
   subCommands: {
@@ -2291,7 +2270,7 @@ const recruiterTalentSearchCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's RECRUITER_SEARCH talent-pool channel ID (required).", required: true },
     keywords: { type: "string", description: "Free-text keyword search." },
@@ -2327,7 +2306,7 @@ const recruiterApplicantResumeCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     applicantId: { type: "positional", description: "Applicant ID." },
     output: { type: "string", alias: "o", description: "Path to write the resume file." },
@@ -2366,7 +2345,7 @@ const recruiterApplicantCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID.", required: false },
     applicantId: { type: "positional", description: "Applicant ID.", required: false },
   },

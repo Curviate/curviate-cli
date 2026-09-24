@@ -28,12 +28,12 @@
  * consumes its own `const result`, adjacent in the file).
  *
  * A call site is a `readableObject` candidate when either:
- *   - its enclosing function calls `rejectPreviewOnRead` (the majority
- *     "read refuses --preview" convention) — the ORIGINAL signal, now
- *     applied per call site, not as a whole-function gate; or
+ *   - its enclosing function never mentions `preview` (a read does not
+ *     declare `--preview`, so its handler has no preview branch; the
+ *     dispatcher refuses the flag) — applied per call site, not as a
+ *     whole-function gate; or
  *   - its traced initializer is one of `KNOWN_NON_REJECTING_SDK_CALLS`
- *     below: reads that check `flags.preview` inline instead of calling
- *     `rejectPreviewOnRead`, verified against the vendored OpenAPI fixture
+ *     below: reads that accept `--preview` and check it inline, verified against the vendored OpenAPI fixture
  *     to always return a real object (no `204`), so a malformed body is a
  *     platform fault regardless of the R/W label. Named by exact SDK call,
  *     not a name guess — see that constant's doc for why this can't safely
@@ -71,8 +71,8 @@ export type RenderCallSite = {
   fn: string;
   /** The exact text of `renderSuccess`'s first argument, e.g. "result". */
   argText: string;
-  /** True if the enclosing function calls `rejectPreviewOnRead`. */
-  fnCallsRejectPreviewOnRead: boolean;
+  /** True if the enclosing function never mentions `preview`: a read (reads do not declare --preview). */
+  fnIsRead: boolean;
   /** The traced nearest-preceding declaration/reassignment of `argText`, or null if untraceable. */
   tracedInitText: string | null;
   /**
@@ -110,7 +110,7 @@ export function scanRenderSuccessCallSites(): RenderCallSite[] {
 
     function scanFunction(fnName: string, body: ts.Block): void {
       const bodyText = body.getText(sf);
-      const fnCallsRejectPreviewOnRead = /rejectPreviewOnRead\s*\(/.test(bodyText);
+      const fnIsRead = !/\bpreview\b/.test(bodyText);
       const bodyStart = body.getStart(sf);
 
       // Every declaration/reassignment of a plain identifier within this
@@ -169,7 +169,7 @@ export function scanRenderSuccessCallSites(): RenderCallSite[] {
               file,
               fn: fnName,
               argText: argExpr.text,
-              fnCallsRejectPreviewOnRead,
+              fnIsRead,
               tracedInitText: decl ? decl.initText : null,
               window,
             });
@@ -187,8 +187,8 @@ export function scanRenderSuccessCallSites(): RenderCallSite[] {
 }
 
 /**
- * Reads that check `flags.preview` inline (`buildPreviewOutput`) instead of
- * calling `rejectPreviewOnRead`, so the primary per-function signal cannot
+ * Reads that accept `--preview` and check it inline (`buildPreviewOutput`),
+ * so the primary per-function signal (no `preview` mention) cannot
  * see them — found by code review, not exhaustively
  * enumerable from source shape alone (see this module's doc for why). Each
  * verified against `test/fixtures/openapi.json`: the operation's response
@@ -216,7 +216,7 @@ function isCandidate(site: RenderCallSite): boolean {
   // `readablePage(result)`), and sometimes IS the assignment
   // (`result = readablePage(await ...)`, account.ts's `account seats`).
   if (/readablePage\s*\(/.test(site.window)) return false;
-  if (site.fnCallsRejectPreviewOnRead) return true;
+  if (site.fnIsRead) return true;
   return KNOWN_NON_REJECTING_SDK_CALLS.some((call) => site.tracedInitText!.includes(call));
 }
 

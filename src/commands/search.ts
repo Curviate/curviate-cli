@@ -28,7 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -176,12 +176,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: SearchFlags) {
   return {
@@ -365,7 +359,6 @@ export async function runSearchPeople(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   // Reject flags that are only valid for jobs / Sales Navigator (not classic people search)
@@ -429,7 +422,6 @@ export async function runSearchCompanies(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -483,7 +475,6 @@ export async function runSearchPosts(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -537,7 +528,6 @@ export async function runSearchJobs(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -595,7 +585,6 @@ export async function runSearchParameters(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
@@ -668,7 +657,6 @@ export async function runSearchGroups(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const keywords = flags.query ?? "";
@@ -727,7 +715,6 @@ export async function runSearchServices(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -791,7 +778,6 @@ export async function runSearchServiceParameters(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.keywords) {
@@ -853,7 +839,6 @@ export async function runSearchFromUrl(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
@@ -911,7 +896,7 @@ const searchPeopleCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -955,7 +940,7 @@ const searchCompaniesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -996,7 +981,7 @@ const searchPostsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     "sort-by": { type: "string", description: "Sort order (e.g. relevance, date)." },
@@ -1040,7 +1025,7 @@ const searchJobsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     // On jobs, --location maps to the geo region filter (not a location array, different API shape for jobs vs people)
@@ -1100,7 +1085,7 @@ const searchParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description:
@@ -1137,7 +1122,7 @@ const searchGroupsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     query: { type: "positional", description: "Search terms (multi-word supported, e.g. 'gtm engineering')." },
   },
   async run({ args }) {
@@ -1172,7 +1157,7 @@ const searchServicesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Free-text keyword match." },
     "service-category": { type: "string", description: "Opaque service-category ids (comma-separated; resolve via `curviate search service-parameters --type service_category`)." },
     location: { type: "string", description: "Opaque location ids (comma-separated; resolve via `curviate search service-parameters --type location`)." },
@@ -1208,7 +1193,7 @@ const searchServiceParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description: "Filter type to resolve: service_category (default) or location.",
@@ -1243,7 +1228,7 @@ export const searchCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     url: {
       type: "positional",
       required: false,

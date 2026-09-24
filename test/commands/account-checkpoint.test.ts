@@ -895,7 +895,7 @@ describe("account checkpoint poll --wait — adaptive-cadence loop", () => {
   // -------------------------------------------------------------------------
   // readableObject follow-up: both branches of this command
   // render a bare `pollCheckpoint` result directly, but the command checks
-  // `flags.preview` inline instead of calling `rejectPreviewOnRead` — the
+  // `flags.preview` inline instead of refusing it (the since-retired rejectPreviewOnRead) — the
   // convention the ticket's own derivation keyed on — so it was missed by
   // the first pass entirely. Same-path positive control (the "without
   // --wait" test at the top of this describe block resolves a real object

@@ -29,7 +29,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -90,12 +90,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: CommentFlags) {
   return {
@@ -149,7 +143,6 @@ function assertReaction(reaction: string, out: OutputStreams): asserts reaction 
 
 /** Run `comment list <post_id>`, posts.listComments (paginated read). */
 export async function runCommentList(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -181,7 +174,6 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
 
 /** Run `comment replies <post_id> <comment_id>`, comments.listReplies (paginated read). */
 export async function runCommentReplies(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -214,7 +206,6 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
 
 /** Run `comment reactions <post_id> <comment_id>`, comments.listReactions (paginated read). */
 export async function runCommentReactions(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -252,7 +243,6 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
  * id via a users.get READ (contact-safe, notifies no one).
  */
 export async function runCommentUser(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -572,7 +562,7 @@ const commentListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id (or share URN) to list comments for." },
   },
   async run({ args }) {
@@ -590,7 +580,7 @@ const commentRepliesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to list replies for." },
   },
@@ -608,7 +598,7 @@ const commentReactionsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to list reactions for." },
   },
@@ -627,7 +617,7 @@ const commentUserCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {

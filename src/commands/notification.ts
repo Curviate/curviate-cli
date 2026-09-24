@@ -21,7 +21,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -61,12 +61,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: NotificationFlags) {
   return {
@@ -102,7 +96,6 @@ export async function runNotificationList(
   flags: NotificationFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -209,7 +202,7 @@ const notificationListCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     filter: {
       type: "string" as const,
       description: "Which notification stream to read (default all): all | jobs | mentions | my_posts | my_posts_comments | my_posts_reactions | my_posts_reposts.",
@@ -237,7 +230,7 @@ const notificationListCommand = defineCommand({
 const notificationDeleteCommand = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone.",
+    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `show-less` is the reliable way to suppress those.",
     examples: [
       "curviate notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],

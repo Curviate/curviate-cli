@@ -112,21 +112,6 @@ describe("profile command — routing", () => {
     expect(accountNs.users.get).toHaveBeenCalledWith("me", {});
   });
 
-  it("profile me — --preview is a usage error (exit 2)", async () => {
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runProfileMe(client as never, { account: "acc_1", preview: true } as ProfileCommandArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("profile me — --all is a usage error (exit 2)", async () => {
     const { runProfileMe } = await import("../../src/commands/profile.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -211,21 +196,6 @@ describe("profile command — routing", () => {
     await runProfileGet(client as never, { id: "jdoe", followers: true, account: "acc_1", json: true } as ProfileCommandArgs, out);
 
     expect(accountNs.users.listFollowers).toHaveBeenCalledWith("jdoe", expect.any(Object));
-  });
-
-  it("profile <id> read flag + --preview → usage error (exit 2)", async () => {
-    const { runProfileGet } = await import("../../src/commands/profile.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runProfileGet(client as never, { id: "jdoe", account: "acc_1", preview: true } as ProfileCommandArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("profile relations — calls listRelations()", async () => {

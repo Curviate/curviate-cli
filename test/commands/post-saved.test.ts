@@ -81,19 +81,6 @@ describe("post saved", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runPostSaved } = await import("../../src/commands/post.js");
-    const exitSpy = mockExit();
-    try {
-      await runPostSaved(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runPostSaved } = await import("../../src/commands/post.js");
     const exitSpy = mockExit();

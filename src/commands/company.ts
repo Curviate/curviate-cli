@@ -55,7 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -118,12 +118,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: CompanyFlags) {
   return {
@@ -199,7 +193,6 @@ export async function runCompanyGet(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -235,7 +228,6 @@ export async function runCompanyEmployees(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -282,7 +274,6 @@ export async function runCompanyPosts(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -327,7 +318,6 @@ export async function runCompanyJobs(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -377,7 +367,6 @@ export async function runCompanyInvitableFollowers(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -472,7 +461,6 @@ export async function runCompanyManaged(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -517,7 +505,6 @@ export async function runCompanyFollowers(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -563,7 +550,6 @@ export async function runCompanyChats(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -609,7 +595,6 @@ export async function runCompanyChat(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -640,7 +625,6 @@ export async function runCompanyMessages(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -693,7 +677,6 @@ export async function runCompanyMessage(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -726,7 +709,6 @@ export async function runCompanySearchChats(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -859,7 +841,7 @@ const companyEmployeesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across employee profile fields." },
     location: { type: "string", description: "Opaque location id from `curviate search parameters --type LOCATION`." },
@@ -893,7 +875,7 @@ const companyPostsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -925,7 +907,7 @@ const companyJobsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across job postings." },
   },
@@ -961,7 +943,7 @@ const companyInvitableFollowersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -1002,6 +984,7 @@ const companyFollowInviteCommand = defineCommand({
     invitee: {
       type: "string",
       description: "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      required: true,
     },
   },
   async run({ args }) {
@@ -1031,7 +1014,7 @@ const companyManagedCommand = defineCommand({
       "curviate company managed",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as CompanyFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1061,7 +1044,7 @@ const companyFollowersCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -1093,7 +1076,7 @@ const companyChatsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -1124,7 +1107,7 @@ const companyChatCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1156,7 +1139,7 @@ const companyMessagesCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1188,7 +1171,7 @@ const companyMessageCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
@@ -1224,7 +1207,7 @@ const companySearchChatsCommand = defineCommand({
     ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     query: { type: "positional", required: false, description: "Free-text term, matches participant names and message content." },
     topic: { type: "string", description: "Filter mode, one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other)." },
@@ -1300,7 +1283,7 @@ export const companyCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or native id)." },
     sections: { type: "string" as const, description: "Not supported on company commands; a usage error (exit 2) if supplied." },
   },

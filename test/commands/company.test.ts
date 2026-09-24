@@ -140,21 +140,6 @@ describe("company command (retrieve)", () => {
     expect(accountNs.companies.get).not.toHaveBeenCalled();
   });
 
-  it("company --preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyGet } = await import("../../src/commands/company.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runCompanyGet(client as never, { id: "t-systems", account: "acc_1", preview: true } as CompanyArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("company --all → usage error exit 2 (non-paginated)", async () => {
     const { runCompanyGet } = await import("../../src/commands/company.js");
     const out = makeOut();
@@ -380,21 +365,6 @@ describe("company employees command", () => {
     expect((result["items"] as unknown[])).toHaveLength(1);
     expect(result["paging"]).toEqual({ total_count: 1 });
     expect(result["cursor"]).toBeNull();
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyEmployees } = await import("../../src/commands/company.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runCompanyEmployees(client as never, { id: "112013061", account: "acc_1", preview: true } as CompanyArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("company employees <slug> resolves the slug to the numeric id via companies.get, then lists (D4b)", async () => {
@@ -723,22 +693,6 @@ describe("company invitable-followers command", () => {
     await runCompanyInvitableFollowers(client as never, { id: "112013061", account: "acc_1", json: true } as CompanyArgs, out);
 
     expect(accountNs.companies.get).not.toHaveBeenCalled();
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runCompanyInvitableFollowers } = await import("../../src/commands/company.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runCompanyInvitableFollowers(client as never, { id: "112013061", account: "acc_1", preview: true } as CompanyArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.companies.invitableFollowers).not.toHaveBeenCalled();
   });
 
   it("without --account → exit 2", async () => {

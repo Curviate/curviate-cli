@@ -38,7 +38,7 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode, renderNotices } from "../lib/output.js";
@@ -140,12 +140,6 @@ type OutputStreams = {
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -191,7 +185,6 @@ export async function runAccountList(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const outOpts = resolveOutputOpts(flags);
@@ -233,7 +226,6 @@ export async function runAccountGet(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = flags["account-id"] ?? "";
@@ -283,7 +275,6 @@ export async function runAccountSeats(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const outOpts = resolveOutputOpts(flags);
 
@@ -1501,7 +1492,7 @@ const accountListCommand = defineCommand({
       "curviate account list --json --fields items.account_id,items.status",
     ],
   },
-  args: { ...GLOBAL_FLAGS },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as AccountFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1523,14 +1514,14 @@ const accountListCommand = defineCommand({
 const accountGetCommand = defineCommand({
   meta: {
     name: "get",
-    description: "Get a connected LinkedIn account.",
+    description: "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
     examples: [
       "curviate account get acc_YOUR_ACCOUNT_ID",
     ],
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     "account-id": { type: "positional", description: "Account id (acc_...)." },
   },
   async run({ args }) {
@@ -1563,7 +1554,7 @@ const accountSeatsCommand = defineCommand({
       "curviate account seats",
     ],
   },
-  args: { ...READ_SINGLE_FLAGS },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
   async run({ args }) {
     const flags = args as AccountFlags;
     const cfg = await resolveEffectiveConfig({

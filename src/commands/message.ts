@@ -30,7 +30,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
@@ -81,12 +81,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -380,7 +374,6 @@ export async function runMessageGet(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -542,7 +535,6 @@ export async function runMessageAttachment(
   out: OutputStreams,
   isTTY: boolean,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
@@ -662,7 +654,6 @@ export async function runMessageInMailBalance(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -736,7 +727,7 @@ const messageGetCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     chatId: { type: "positional", description: "Chat ID or LinkedIn messaging thread URL." },
     messageId: { type: "positional", description: "Message ID." },
   },
@@ -875,7 +866,7 @@ const messageAttachmentCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     chatId: { type: "positional", description: "Chat ID or LinkedIn messaging thread URL." },
     messageId: { type: "positional", description: "Message ID." },
     attachmentId: { type: "positional", description: "Attachment ID." },
@@ -1007,7 +998,7 @@ const messageInMailBalanceCommand = defineCommand({
   },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
   },
   async run({ args }) {
     const flags = args as MessageFlags;

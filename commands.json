@@ -317,7 +317,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -388,13 +387,12 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
       "examples": [
         "curviate profile me",
-        "curviate profile me --mode live --json"
+        "curviate profile me --posts"
       ]
     },
     {
@@ -418,7 +416,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -613,7 +610,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -649,7 +645,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -674,7 +669,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -698,7 +692,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -727,7 +720,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -752,7 +744,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -788,7 +779,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -834,7 +824,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -870,7 +859,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -911,7 +899,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -947,7 +934,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -971,7 +957,8 @@
         {
           "name": "invitee",
           "type": "string",
-          "description": "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request."
+          "description": "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+          "required": true
         }
       ],
       "globals": [
@@ -1055,7 +1042,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1090,7 +1076,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1126,7 +1111,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1163,7 +1147,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1203,7 +1186,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1245,7 +1227,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1296,7 +1277,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1348,7 +1328,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1385,7 +1364,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1425,27 +1403,32 @@
         {
           "name": "workplace-type",
           "type": "string",
-          "description": "Workplace arrangement: ON_SITE|HYBRID|REMOTE."
+          "description": "Workplace arrangement: ON_SITE|HYBRID|REMOTE.",
+          "required": true
         },
         {
           "name": "location",
           "type": "string",
-          "description": "A LOCATION parameter id (from search parameters)."
+          "description": "A LOCATION parameter id (from search parameters).",
+          "required": true
         },
         {
           "name": "employment-status",
           "type": "string",
-          "description": "Employment type: FULL_TIME|PART_TIME|CONTRACT|TEMPORARY|OTHER|VOLUNTEER|INTERNSHIP."
+          "description": "Employment type: FULL_TIME|PART_TIME|CONTRACT|TEMPORARY|OTHER|VOLUNTEER|INTERNSHIP.",
+          "required": true
         },
         {
           "name": "description",
           "type": "string",
-          "description": "Full job description (required; minimum 200 characters, enforced server-side)."
+          "description": "Full job description (required; minimum 200 characters, enforced server-side).",
+          "required": true
         },
         {
           "name": "apply-method",
           "type": "string",
-          "description": "How candidates apply: linkedin|external."
+          "description": "How candidates apply: linkedin|external.",
+          "required": true
         },
         {
           "name": "notification-email",
@@ -1592,7 +1575,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1713,7 +1695,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1772,7 +1753,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1814,7 +1794,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1878,7 +1857,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -1908,7 +1886,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2031,7 +2008,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2127,7 +2103,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2195,7 +2170,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2297,7 +2271,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2434,7 +2407,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2477,7 +2449,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2513,7 +2484,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2568,7 +2538,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2610,7 +2579,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2664,7 +2632,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2706,7 +2673,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2795,7 +2761,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2836,7 +2801,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2881,7 +2845,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -2921,7 +2884,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3085,7 +3047,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3251,7 +3212,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3317,7 +3277,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3359,7 +3318,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3478,7 +3436,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3573,7 +3530,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3668,7 +3624,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3704,7 +3659,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3766,7 +3720,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -3970,7 +3923,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4051,7 +4003,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4126,7 +4077,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4166,7 +4116,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4180,7 +4129,7 @@
         "account",
         "get"
       ],
-      "description": "Get a connected LinkedIn account.",
+      "description": "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
       "usageOnly": false,
       "args": [
         {
@@ -4197,7 +4146,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4221,7 +4169,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4729,7 +4676,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4755,7 +4701,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4787,7 +4732,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -4895,7 +4839,7 @@
         "webhook",
         "verify"
       ],
-      "description": "Verify a webhook signature offline (no network call).",
+      "description": "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
       "usageOnly": false,
       "args": [
         {
@@ -5068,7 +5012,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5135,7 +5078,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5183,7 +5125,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5225,7 +5166,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5255,7 +5195,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5319,7 +5258,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5348,7 +5286,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5398,7 +5335,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5449,7 +5385,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5631,7 +5566,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5667,7 +5601,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5729,7 +5662,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5785,7 +5717,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5814,7 +5745,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5845,7 +5775,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -5977,7 +5906,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6009,7 +5937,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6040,7 +5967,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6188,7 +6114,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6362,7 +6287,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6442,7 +6366,6 @@
         "fields",
         "limit",
         "cursor",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6471,7 +6394,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6735,7 +6657,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6773,7 +6694,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6815,7 +6735,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6860,7 +6779,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6891,7 +6809,6 @@
         "timeout",
         "json",
         "fields",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6931,7 +6848,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -6955,7 +6871,7 @@
         "feed",
         "home"
       ],
-      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts.",
+      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts. On the default recent sort the feed is an index: each post's text is null and only the author's name resolves, so fetch a body with `curviate post get <id>`. --sort relevant fills text and engagement.",
       "usageOnly": false,
       "args": [
         {
@@ -6977,7 +6893,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -7024,7 +6939,6 @@
         "all",
         "max-pages",
         "page-delay",
-        "preview",
         "verbose",
         "beta"
       ],
@@ -7038,7 +6952,7 @@
         "notification",
         "delete"
       ],
-      "description": "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone.",
+      "description": "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `show-less` is the reliable way to suppress those.",
       "usageOnly": false,
       "args": [
         {
