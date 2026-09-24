@@ -14,16 +14,22 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   example invocations under an `EXAMPLES` heading in its `--help`. The same
   lines appear on the command's page on docs.curviate.com.
 - **`commands.json`**, the command surface as data (each command's
-  description, arguments, accepted global flags and examples), which the docs
+  description, arguments, accepted global flags, examples and requires), which the docs
   site generates its CLI reference from. Not shipped in the package;
   regenerate it with `pnpm manifest`.
+- **`requires` in `--help`.** A command with conditional requirements (one
+  of two flags, a `--body-file` alternative, at least one of several, a flag
+  that only applies with another) lists them under `REQUIRES`, and the docs
+  page shows them under the usage line.
 
 ### Changed
 
-- **Read commands no longer declare `--preview`.** It was always refused on
-  a read (exit 2, same message); the refusal now comes from the flag
-  declaration, so `--help` and the docs stop listing a flag the command
-  refuses.
+- **Read commands no longer declare `--preview`.** A truthy `--preview` on
+  a read was refused before and still is (exit 2, same message, now followed
+  by "Run `curviate --help` for usage."); the refusal now comes from the
+  flag declaration, so `--help` and the docs stop listing it on reads. An
+  explicit false (`--preview=false`, `--no-preview`) still runs the read, as
+  before.
 - **`job create` declares its required flags** (`--workplace-type`,
   `--location`, `--employment-status`, `--description`, `--apply-method`),
   and `company follow-invite` declares `--invitee`. Still exit 2 when one is

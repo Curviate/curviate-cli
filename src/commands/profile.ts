@@ -976,6 +976,9 @@ const profileMeCommand = defineCommand({
       "curviate profile me",
       "curviate profile me --posts",
     ],
+    requires: [
+      "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers.",
+    ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
@@ -1122,6 +1125,9 @@ const profileUpdateCommand = defineCommand({
     examples: [
       "curviate profile update --headline \"Building agent infrastructure\"",
       "curviate profile update --skills \"TypeScript,Agents\"",
+    ],
+    requires: [
+      "At least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture.",
     ],
   },
   args: {
@@ -1274,6 +1280,9 @@ export const profileCommand = defineCommand({
       "curviate profile janesmith",
       "curviate profile https://www.linkedin.com/in/janesmith --posts",
       "curviate profile janesmith --sections experience,skills",
+    ],
+    requires: [
+      "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers.",
     ],
   },
   args: {

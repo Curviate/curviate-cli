@@ -26,7 +26,7 @@ export const GLOBAL_FLAGS = {
   },
   account: {
     type: "string" as const,
-    description: "Account id for account-scoped commands. Optional when exactly one account is connected.",
+    description: "Account id for account-scoped commands. Optional when exactly one account is connected, and required with --preview.",
   },
   "base-url": {
     type: "string" as const,

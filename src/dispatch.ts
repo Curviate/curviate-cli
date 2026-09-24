@@ -519,6 +519,22 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
 }
 
 /**
+ * An API read does not declare `--preview` (lib/global-flags.ts readOnly),
+ * yet an explicit false (`--no-preview`, `--preview=false`) always ran the
+ * read, and still does: those tokens are dropped as the no-op they are.
+ * Only a truthy `--preview` reaches the unknown-flag check and is refused.
+ */
+function dropFalsePreview(args: string[], walk: TokenWalk, declared: Set<string>): string[] {
+  if (declared.has("preview") || !declared.has("beta")) return args;
+  const drop = new Set(
+    walk.flags
+      .filter(({ token, name }) => name === "no-preview" || (name === "preview" && /^--preview=false$/i.test(token)))
+      .map(({ index }) => index),
+  );
+  return drop.size ? args.filter((_, i) => !drop.has(i)) : args;
+}
+
+/**
  * Validate that every `--flag` / `-x` in rawArgs is a declared argument on the
  * resolved leaf. Unknown flags are a usage error (exit 2) per the CLI contract.
  * Returns the offending flag token, or null if all flags are known.
@@ -795,12 +811,12 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // The resolved leaf, kept for the missing-argument hint below.
   let hintLeaf: AnyCommand | undefined;
   try {
-    const { leaf, leafArgs } = await resolveLeaf(root, argsAfterBeta);
+    const { leaf, leafArgs: resolvedArgs } = await resolveLeaf(root, argsAfterBeta);
     hintLeaf = leaf;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).
-    if (hasEmptyFields(leafArgs)) {
+    if (hasEmptyFields(resolvedArgs)) {
       usageError("--fields must not be empty.");
     }
     // Leaf-precise sets (no global union, see the constants above): whether a
@@ -808,6 +824,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // happens to be a global flag elsewhere in the tree.
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
+    const leafArgs = dropFalsePreview(resolvedArgs, walkTokens(resolvedArgs, booleanFlags, declared), declared);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {

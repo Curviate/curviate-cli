@@ -1574,6 +1574,9 @@ const recruiterSearchParametersCommand = defineCommand({
     examples: [
       "curviate recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin",
     ],
+    requires: [
+      "--project-id with --source APPLICANTS or PIPELINE.",
+    ],
   },
   args: {
     ...readOnly(NON_STREAM_FLAGS),
@@ -1903,6 +1906,9 @@ const recruiterJobCreateCommand = defineCommand({
     examples: [
       "curviate recruiter job create --project-name \"Staff Engineer 2026\" --body-file job.json",
     ],
+    requires: [
+      "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
+    ],
   },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
@@ -1935,6 +1941,9 @@ const recruiterJobPublishCommand = defineCommand({
     description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
     examples: [
       "curviate recruiter job publish PROJECT_ID JOB_ID --mode FREE",
+    ],
+    requires: [
+      "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS.",
     ],
   },
   args: {
@@ -2120,6 +2129,9 @@ const recruiterProjectJobCreateCommand = defineCommand({
     description: "Create a job-posting draft attached to an existing project.",
     examples: [
       "curviate recruiter project-job create PROJECT_ID --body-file job.json",
+    ],
+    requires: [
+      "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
     ],
   },
   args: {

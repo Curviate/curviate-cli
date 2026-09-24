@@ -28,6 +28,8 @@ export type ManifestCommand = {
   args: Array<{ name: string } & Def>;
   globals: string[];
   examples: string[];
+  /** Conditional requirements, one line each (see src/lib/examples.ts). */
+  requires: string[];
 };
 
 async function value<T>(v: T | (() => T) | (() => Promise<T>)): Promise<T> {
@@ -35,7 +37,7 @@ async function value<T>(v: T | (() => T) | (() => Promise<T>)): Promise<T> {
 }
 
 async function walk(cmd: CommandDef, path: string[], out: ManifestCommand[]): Promise<void> {
-  const meta = (await value(cmd.meta ?? {})) as { description?: string; examples?: string[] };
+  const meta = (await value(cmd.meta ?? {})) as { description?: string; examples?: string[]; requires?: string[] };
   const defs = (await value(cmd.args ?? {})) as Record<string, Def>;
   const subs = (await value(cmd.subCommands ?? {})) as Record<string, unknown>;
   const own = Object.entries(defs).filter(([n, d]) => d !== (GLOBAL_FLAGS as Record<string, unknown>)[n]);
@@ -47,6 +49,7 @@ async function walk(cmd: CommandDef, path: string[], out: ManifestCommand[]): Pr
       args: own.map(([name, d]) => ({ name, ...d })),
       globals: Object.keys(defs).filter((n) => !own.some(([o]) => o === n)),
       examples: meta.examples ?? [],
+      requires: meta.requires ?? [],
     });
   }
   for (const [name, sub] of Object.entries(subs)) {

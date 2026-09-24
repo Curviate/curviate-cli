@@ -760,6 +760,9 @@ const jobListCommand = defineCommand({
       "curviate job list --state OPEN",
       "curviate job list --state DRAFT --all",
     ],
+    requires: [
+      "--max-pages and --page-delay only with --all.",
+    ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
@@ -776,6 +779,11 @@ const jobCreateCommand = defineCommand({
     description: "Create a classic job-posting draft (never publishes, never spends).",
     examples: [
       "curviate job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
+    ],
+    requires: [
+      "--job-title or --job-title-id.",
+      "--company or --company-id.",
+      "--notification-email with --apply-method linkedin; --website-url with --apply-method external.",
     ],
   },
   args: {
@@ -801,6 +809,9 @@ const jobUpdateCommand = defineCommand({
     examples: [
       "curviate job update 4100000000 --workplace-type HYBRID",
       "curviate job update 4100000000 --description \"$(cat description.txt)\"",
+    ],
+    requires: [
+      "--notification-email with --apply-method linkedin; --website-url with --apply-method external.",
     ],
   },
   args: {
@@ -836,6 +847,9 @@ const jobPublishCommand = defineCommand({
     description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
     examples: [
       "curviate job publish 4100000000 --mode FREE",
+    ],
+    requires: [
+      "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS.",
     ],
   },
   args: {

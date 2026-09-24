@@ -34,4 +34,19 @@ describe("--preview on a command that does not declare it", () => {
     }
     expect(wrong).toEqual([]);
   }, 600_000);
+
+  it.each([
+    ["--preview", 2],
+    ["--preview=false", 0],
+    ["--no-preview", 0],
+  ])("a read with %s exits %i: an explicit false is a no-op, as on 0.41.0", async (flag, code) => {
+    const r = await stub.run(`curviate account list ${flag}`, { fresh: true });
+    expect(r.code, r.stderr).toBe(code);
+  });
+
+  it("a write still takes --no-preview and sends (control)", async () => {
+    const r = await stub.run("curviate post delete 7290000000000000000 --no-preview", { fresh: true });
+    expect(r.code, r.stderr).toBe(0);
+  });
 });
+

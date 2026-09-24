@@ -29,7 +29,8 @@
         "curviate setup",
         "curviate setup --json",
         "curviate setup --code -"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -48,7 +49,8 @@
       "examples": [
         "curviate doctor",
         "curviate doctor --json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -82,7 +84,8 @@
       "examples": [
         "curviate login",
         "curviate login --api-key - --profile work"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -92,7 +95,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -107,7 +111,8 @@
       ],
       "examples": [
         "curviate config list"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -120,7 +125,8 @@
       "globals": [],
       "examples": [
         "curviate config path"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -139,7 +145,8 @@
       "globals": [],
       "examples": [
         "curviate config use work"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -163,7 +170,8 @@
       "globals": [],
       "examples": [
         "curviate config rename default personal"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -185,7 +193,8 @@
       ],
       "examples": [
         "curviate config set-account acc_YOUR_ACCOUNT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -215,7 +224,8 @@
       "examples": [
         "curviate config set-base-url https://api.curviate.com",
         "curviate config set-base-url --reset"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -243,7 +253,8 @@
       "examples": [
         "curviate config reset --profile work --yes",
         "curviate config reset --yes"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -324,6 +335,9 @@
         "curviate profile janesmith",
         "curviate profile https://www.linkedin.com/in/janesmith --posts",
         "curviate profile janesmith --sections experience,skills"
+      ],
+      "requires": [
+        "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers."
       ]
     },
     {
@@ -393,6 +407,9 @@
       "examples": [
         "curviate profile me",
         "curviate profile me --posts"
+      ],
+      "requires": [
+        "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers."
       ]
     },
     {
@@ -422,7 +439,8 @@
       "examples": [
         "curviate profile relations",
         "curviate profile relations --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -460,7 +478,8 @@
       ],
       "examples": [
         "curviate profile endorse janesmith --endorsement-id 12345"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -521,6 +540,9 @@
       "examples": [
         "curviate profile update --headline \"Building agent infrastructure\"",
         "curviate profile update --skills \"TypeScript,Agents\""
+      ],
+      "requires": [
+        "At least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture."
       ]
     },
     {
@@ -551,7 +573,8 @@
       ],
       "examples": [
         "curviate profile follow janesmith"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -581,7 +604,8 @@
       ],
       "examples": [
         "curviate profile unfollow janesmith"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -616,7 +640,8 @@
       "examples": [
         "curviate profile followers me",
         "curviate profile followers janesmith --limit 20"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -651,7 +676,8 @@
       "examples": [
         "curviate profile following me",
         "curviate profile following me --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -674,7 +700,8 @@
       ],
       "examples": [
         "curviate profile subscription"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -697,7 +724,8 @@
       ],
       "examples": [
         "curviate profile analytics"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -726,7 +754,8 @@
       "examples": [
         "curviate profile visitors",
         "curviate profile visitors --limit 20"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -749,7 +778,8 @@
       ],
       "examples": [
         "curviate profile ssi"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -785,7 +815,8 @@
       "examples": [
         "curviate company acmecorp",
         "curviate company https://www.linkedin.com/company/acmecorp"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -830,7 +861,8 @@
       "examples": [
         "curviate company employees acmecorp",
         "curviate company employees 1234567 --keywords \"machine learning\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -865,7 +897,8 @@
       "examples": [
         "curviate company posts acmecorp",
         "curviate company posts 1234567 --limit 5"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -905,7 +938,8 @@
       "examples": [
         "curviate company jobs acmecorp",
         "curviate company jobs 1234567 --keywords engineer"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -939,7 +973,8 @@
       ],
       "examples": [
         "curviate company invitable-followers 1234567"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -974,7 +1009,8 @@
       ],
       "examples": [
         "curviate company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1019,7 +1055,8 @@
       ],
       "examples": [
         "curviate company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1047,7 +1084,8 @@
       ],
       "examples": [
         "curviate company managed"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1082,7 +1120,8 @@
       "examples": [
         "curviate company followers 1234567",
         "curviate company followers 1234567 --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1116,7 +1155,8 @@
       ],
       "examples": [
         "curviate company chats 1234567"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1152,7 +1192,8 @@
       ],
       "examples": [
         "curviate company chat 1234567 2-YTQ3ODU3Njgt"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1191,7 +1232,8 @@
       ],
       "examples": [
         "curviate company messages 1234567 2-YTQ3ODU3Njgt"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1232,7 +1274,8 @@
       ],
       "examples": [
         "curviate company message 1234567 2-YTQ3ODU3Njgt MSG_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1283,7 +1326,8 @@
       "examples": [
         "curviate company search-chats 1234567 sophie",
         "curviate company search-chats 1234567 sophie --unread"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1304,7 +1348,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -1334,7 +1379,8 @@
       "examples": [
         "curviate job get 4100000000",
         "curviate job get https://www.linkedin.com/jobs/view/4100000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1370,6 +1416,9 @@
       "examples": [
         "curviate job list --state OPEN",
         "curviate job list --state DRAFT --all"
+      ],
+      "requires": [
+        "--max-pages and --page-delay only with --all."
       ]
     },
     {
@@ -1460,6 +1509,11 @@
       ],
       "examples": [
         "curviate job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\""
+      ],
+      "requires": [
+        "--job-title or --job-title-id.",
+        "--company or --company-id.",
+        "--notification-email with --apply-method linkedin; --website-url with --apply-method external."
       ]
     },
     {
@@ -1551,6 +1605,9 @@
       "examples": [
         "curviate job update 4100000000 --workplace-type HYBRID",
         "curviate job update 4100000000 --description \"$(cat description.txt)\""
+      ],
+      "requires": [
+        "--notification-email with --apply-method linkedin; --website-url with --apply-method external."
       ]
     },
     {
@@ -1580,7 +1637,8 @@
       ],
       "examples": [
         "curviate job budget 4100000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1631,6 +1689,9 @@
       ],
       "examples": [
         "curviate job publish 4100000000 --mode FREE"
+      ],
+      "requires": [
+        "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS."
       ]
     },
     {
@@ -1661,7 +1722,8 @@
       ],
       "examples": [
         "curviate job close 4100000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1701,7 +1763,8 @@
       "examples": [
         "curviate job applicants 4100000000",
         "curviate job applicants 4100000000 --ratings GOOD_FIT,MAYBE"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1723,7 +1786,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -1758,7 +1822,8 @@
       ],
       "examples": [
         "curviate job applicant get 4100000000 APPLICANT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1799,7 +1864,8 @@
       ],
       "examples": [
         "curviate job applicant resume 4100000000 APPLICANT_ID -o resume.pdf"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1834,7 +1900,8 @@
       "examples": [
         "curviate connect janesmith",
         "curviate connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1863,7 +1930,8 @@
       "examples": [
         "curviate connect sent",
         "curviate connect sent --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1892,7 +1960,8 @@
       "examples": [
         "curviate connect received",
         "curviate connect received --json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1921,7 +1990,8 @@
       ],
       "examples": [
         "curviate connect accept INVITATION_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1950,7 +2020,8 @@
       ],
       "examples": [
         "curviate connect decline INVITATION_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -1979,7 +2050,8 @@
       ],
       "examples": [
         "curviate connect cancel INVITATION_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2013,7 +2085,8 @@
       ],
       "examples": [
         "curviate search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2110,7 +2183,8 @@
         "curviate search people --keywords \"AI engineer\"",
         "curviate search people --keywords \"AI engineer\" --location 106967730",
         "curviate search people --filters-file filters.json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2176,7 +2250,8 @@
       "examples": [
         "curviate search companies --keywords \"developer tools\"",
         "curviate search companies --keywords robotics --headcount 11-50,51-200"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2277,7 +2352,8 @@
       "examples": [
         "curviate search posts --keywords \"agent infrastructure\"",
         "curviate search posts --keywords \"agent infrastructure\" --date-posted past_week"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2413,7 +2489,8 @@
       "examples": [
         "curviate search jobs --keywords \"AI engineer\"",
         "curviate search jobs --keywords \"AI engineer\" --location 106967730 --presence remote"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2455,7 +2532,8 @@
       "examples": [
         "curviate search parameters --type LOCATION --keywords Berlin",
         "curviate search parameters --type COMPANY --keywords Acme"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2489,7 +2567,8 @@
       ],
       "examples": [
         "curviate search groups \"gtm engineering\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2544,6 +2623,9 @@
       "examples": [
         "curviate search services --keywords marketing",
         "curviate search services --service-category 100 --location 106967730"
+      ],
+      "requires": [
+        "At least one of --keywords, --service-category or --location."
       ]
     },
     {
@@ -2584,7 +2666,8 @@
       ],
       "examples": [
         "curviate search service-parameters --type service_category --keywords marketing"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2594,7 +2677,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -2639,7 +2723,8 @@
         "curviate inbox list",
         "curviate inbox list --unread",
         "curviate inbox list --inbox archived --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2678,7 +2763,8 @@
       ],
       "examples": [
         "curviate inbox get 2-YTQ3ODU3Njgt"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2708,7 +2794,8 @@
       ],
       "examples": [
         "curviate inbox mark-read 2-YTQ3ODU3Njgt"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2768,7 +2855,8 @@
         "curviate inbox messages 2-YTQ3ODU3Njgt",
         "curviate inbox messages 2-YTQ3ODU3Njgt --limit 20",
         "curviate inbox messages 2-YTQ3ODU3Njgt --after 2026-06-01T00:00:00Z"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2806,7 +2894,8 @@
       ],
       "examples": [
         "curviate inbox search sophie"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2816,7 +2905,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -2851,7 +2941,8 @@
       "examples": [
         "curviate inboxes list",
         "curviate inboxes list --kind company"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2890,7 +2981,8 @@
       "examples": [
         "curviate inboxes chats CLASSIC_PRIMARY",
         "curviate inboxes chats COMPANY_1234567_PRIMARY --limit 10"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2932,7 +3024,8 @@
       "examples": [
         "curviate message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
         "curviate message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -2978,7 +3071,8 @@
       ],
       "examples": [
         "curviate message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3018,7 +3112,8 @@
       ],
       "examples": [
         "curviate message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3052,7 +3147,8 @@
       ],
       "examples": [
         "curviate message get 2-YTQ3ODU3Njgt MSG_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3092,7 +3188,8 @@
       ],
       "examples": [
         "curviate message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3126,7 +3223,8 @@
       ],
       "examples": [
         "curviate message delete 2-YTQ3ODU3Njgt MSG_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3172,6 +3270,9 @@
       ],
       "examples": [
         "curviate message react 2-YTQ3ODU3Njgt MSG_ID 👍"
+      ],
+      "requires": [
+        "The reaction: the <emoji> argument or --emoji."
       ]
     },
     {
@@ -3217,7 +3318,8 @@
       ],
       "examples": [
         "curviate message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3259,7 +3361,8 @@
       ],
       "examples": [
         "curviate message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3282,7 +3385,8 @@
       ],
       "examples": [
         "curviate message inmail-balance"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3292,7 +3396,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -3324,7 +3429,8 @@
       "examples": [
         "curviate post get 7290000000000000000",
         "curviate post get urn:li:activity:7290000000000000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3360,7 +3466,8 @@
       "examples": [
         "curviate post create \"We just shipped webhooks for inbox events.\"",
         "curviate post create \"Our latest product update.\" --attach screenshot.png"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3407,7 +3514,8 @@
       "examples": [
         "curviate post react 7290000000000000000 like",
         "curviate post react 7290000000000000000 celebrate --as-organization 1234567"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3442,7 +3550,8 @@
       "examples": [
         "curviate post reactions 7290000000000000000",
         "curviate post reactions 7290000000000000000 --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3472,7 +3581,8 @@
       ],
       "examples": [
         "curviate post delete 7290000000000000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3507,7 +3617,8 @@
       ],
       "examples": [
         "curviate post unreact 7290000000000000000 like"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3535,7 +3646,8 @@
       ],
       "examples": [
         "curviate post saved"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3565,7 +3677,8 @@
       ],
       "examples": [
         "curviate post save 7290000000000000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3595,7 +3708,8 @@
       ],
       "examples": [
         "curviate post unsave 7290000000000000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3630,7 +3744,8 @@
       "examples": [
         "curviate post user-posts me",
         "curviate post user-posts janesmith --limit 10"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3665,7 +3780,8 @@
       "examples": [
         "curviate post user-reactions me",
         "curviate post user-reactions me --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3691,7 +3807,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -3726,7 +3843,8 @@
       "examples": [
         "curviate comment list 7290000000000000000",
         "curviate comment list 7290000000000000000 --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3767,7 +3885,8 @@
       ],
       "examples": [
         "curviate comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3813,7 +3932,8 @@
       ],
       "examples": [
         "curviate comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3854,7 +3974,8 @@
       ],
       "examples": [
         "curviate comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3889,7 +4010,8 @@
       ],
       "examples": [
         "curviate comment delete 7290000000000000000 COMMENT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3929,7 +4051,8 @@
       "examples": [
         "curviate comment replies 7290000000000000000 COMMENT_ID",
         "curviate comment replies 7290000000000000000 COMMENT_ID --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -3969,7 +4092,8 @@
       ],
       "examples": [
         "curviate comment react 7290000000000000000 COMMENT_ID insightful"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4008,7 +4132,8 @@
       ],
       "examples": [
         "curviate comment reactions 7290000000000000000 COMMENT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4048,7 +4173,8 @@
       ],
       "examples": [
         "curviate comment unreact 7290000000000000000 COMMENT_ID insightful"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4083,7 +4209,8 @@
       "examples": [
         "curviate comment user me",
         "curviate comment user janesmith --limit 10"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4093,7 +4220,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4122,7 +4250,8 @@
       "examples": [
         "curviate account list",
         "curviate account list --json --fields items.account_id,items.status"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4151,7 +4280,8 @@
       ],
       "examples": [
         "curviate account get acc_YOUR_ACCOUNT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4174,7 +4304,8 @@
       ],
       "examples": [
         "curviate account seats"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4304,6 +4435,11 @@
       "examples": [
         "curviate account link --auth-method credentials --email jane@example.com --password-stdin",
         "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID"
+      ],
+      "requires": [
+        "--user-agent with --auth-method cookie.",
+        "--seat-id with --preview or --account-id, and when zero or several seats are free.",
+        "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie."
       ]
     },
     {
@@ -4315,7 +4451,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4358,7 +4495,8 @@
       "examples": [
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4425,7 +4563,8 @@
       "examples": [
         "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
         "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4455,7 +4594,8 @@
       ],
       "examples": [
         "curviate account disconnect acc_YOUR_ACCOUNT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4466,7 +4606,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4503,7 +4644,8 @@
       ],
       "examples": [
         "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4545,7 +4687,8 @@
       "examples": [
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4576,7 +4719,8 @@
       ],
       "examples": [
         "curviate account checkpoint request acc_YOUR_ACCOUNT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4586,7 +4730,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4653,7 +4798,8 @@
       "examples": [
         "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID --name status"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4681,7 +4827,8 @@
       ],
       "examples": [
         "curviate webhook list"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4706,7 +4853,8 @@
       ],
       "examples": [
         "curviate webhook events"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4737,7 +4885,8 @@
       ],
       "examples": [
         "curviate webhook get wh_YOUR_WEBHOOK_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4800,7 +4949,8 @@
       "examples": [
         "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
         "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4832,7 +4982,8 @@
       ],
       "examples": [
         "curviate webhook delete wh_YOUR_WEBHOOK_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4872,7 +5023,8 @@
       ],
       "examples": [
         "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -4898,7 +5050,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4925,7 +5078,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -4982,7 +5136,8 @@
       ],
       "examples": [
         "curviate sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5017,7 +5172,8 @@
       ],
       "examples": [
         "curviate sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5084,7 +5240,8 @@
       "examples": [
         "curviate sales-nav search people --keywords \"head of data\"",
         "curviate sales-nav search people --filters-file filters.json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5130,7 +5287,8 @@
       ],
       "examples": [
         "curviate sales-nav search companies --keywords fintech"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5171,7 +5329,8 @@
       ],
       "examples": [
         "curviate sales-nav search parameters --type REGION --keywords Berlin"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5200,7 +5359,8 @@
       ],
       "examples": [
         "curviate sales-nav profile https://www.linkedin.com/in/janesmith"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5235,7 +5395,8 @@
       ],
       "examples": [
         "curviate sales-nav save-lead ACwAAA1234567 --list 987654"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5263,7 +5424,8 @@
       ],
       "examples": [
         "curviate sales-nav account-lists"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5291,7 +5453,8 @@
       ],
       "examples": [
         "curviate sales-nav lead-lists"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5341,7 +5504,8 @@
       "examples": [
         "curviate sales-nav browse-account-list 987654",
         "curviate sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5391,7 +5555,8 @@
       "examples": [
         "curviate sales-nav browse-lead-list 987654",
         "curviate sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5426,7 +5591,8 @@
       ],
       "examples": [
         "curviate sales-nav save-account 1234567 --list 987654"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5452,7 +5618,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -5479,7 +5646,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -5542,7 +5710,8 @@
       ],
       "examples": [
         "curviate recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5571,7 +5740,8 @@
       ],
       "examples": [
         "curviate recruiter profile https://www.linkedin.com/in/janesmith"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5606,7 +5776,8 @@
       ],
       "examples": [
         "curviate recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5668,7 +5839,8 @@
       "examples": [
         "curviate recruiter search people --keywords \"staff engineer\"",
         "curviate recruiter search people --filters-file filters.json"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5722,6 +5894,9 @@
       ],
       "examples": [
         "curviate recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin"
+      ],
+      "requires": [
+        "--project-id with --source APPLICANTS or PIPELINE."
       ]
     },
     {
@@ -5751,7 +5926,8 @@
       "examples": [
         "curviate recruiter projects",
         "curviate recruiter projects --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5780,7 +5956,8 @@
       ],
       "examples": [
         "curviate recruiter project PROJECT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5857,7 +6034,8 @@
       "examples": [
         "curviate recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
         "curviate recruiter project update PROJECT_ID --visibility PRIVATE"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5912,7 +6090,8 @@
       "examples": [
         "curviate recruiter pipeline PROJECT_ID",
         "curviate recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5942,7 +6121,8 @@
       ],
       "examples": [
         "curviate recruiter project-job PROJECT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -5972,7 +6152,8 @@
       ],
       "examples": [
         "curviate recruiter project-job get PROJECT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6084,6 +6265,9 @@
       ],
       "examples": [
         "curviate recruiter project-job create PROJECT_ID --body-file job.json"
+      ],
+      "requires": [
+        "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method."
       ]
     },
     {
@@ -6119,7 +6303,8 @@
       ],
       "examples": [
         "curviate recruiter project-job budget PROJECT_ID JOB_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6236,7 +6421,8 @@
       ],
       "examples": [
         "curviate recruiter project-job update PROJECT_ID JOB_ID --workplace-type HYBRID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6293,7 +6479,8 @@
       "examples": [
         "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
         "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6334,7 +6521,8 @@
       ],
       "examples": [
         "curviate recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6371,7 +6559,8 @@
       ],
       "examples": [
         "curviate recruiter applicants PROJECT_ID --channel-id CHANNEL_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6400,7 +6589,8 @@
       "examples": [
         "curviate recruiter jobs",
         "curviate recruiter jobs --all"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6427,7 +6617,8 @@
         "verbose",
         "beta"
       ],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -6539,6 +6730,9 @@
       ],
       "examples": [
         "curviate recruiter job create --project-name \"Staff Engineer 2026\" --body-file job.json"
+      ],
+      "requires": [
+        "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method."
       ]
     },
     {
@@ -6596,6 +6790,9 @@
       ],
       "examples": [
         "curviate recruiter job publish PROJECT_ID JOB_ID --mode FREE"
+      ],
+      "requires": [
+        "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS."
       ]
     },
     {
@@ -6632,7 +6829,8 @@
       ],
       "examples": [
         "curviate recruiter job close PROJECT_ID JOB_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6663,7 +6861,8 @@
       "examples": [
         "curviate recruiter job get 4100000000",
         "curviate recruiter job get https://www.linkedin.com/jobs/view/4100000000"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6699,7 +6898,8 @@
       ],
       "examples": [
         "curviate recruiter applicant PROJECT_ID APPLICANT_ID"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6740,7 +6940,8 @@
       ],
       "examples": [
         "curviate recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6750,7 +6951,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -6785,7 +6987,8 @@
       "examples": [
         "curviate group list",
         "curviate group list --target janesmith"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6814,7 +7017,8 @@
       ],
       "examples": [
         "curviate group get 12345678"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6854,7 +7058,8 @@
       "examples": [
         "curviate group members 12345678",
         "curviate group members 12345678 --name sophie"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6864,7 +7069,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -6900,7 +7106,8 @@
         "curviate feed home",
         "curviate feed home --sort relevant",
         "curviate feed home --all --max-pages 3"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6910,7 +7117,8 @@
       "usageOnly": true,
       "args": [],
       "globals": [],
-      "examples": []
+      "examples": [],
+      "requires": []
     },
     {
       "path": [
@@ -6945,7 +7153,8 @@
       "examples": [
         "curviate notification list",
         "curviate notification list --filter mentions"
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -6975,7 +7184,8 @@
       ],
       "examples": [
         "curviate notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\""
-      ]
+      ],
+      "requires": []
     },
     {
       "path": [
@@ -7005,7 +7215,8 @@
       ],
       "examples": [
         "curviate notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\""
-      ]
+      ],
+      "requires": []
     }
   ]
 }

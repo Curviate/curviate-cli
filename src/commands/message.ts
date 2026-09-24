@@ -824,6 +824,9 @@ const messageReactCommand = defineCommand({
     examples: [
       "curviate message react 2-YTQ3ODU3Njgt MSG_ID 👍",
     ],
+    requires: [
+      "The reaction: the <emoji> argument or --emoji.",
+    ],
   },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags

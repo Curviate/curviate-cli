@@ -1155,6 +1155,9 @@ const searchServicesCommand = defineCommand({
       "curviate search services --keywords marketing",
       "curviate search services --service-category 100 --location 106967730",
     ],
+    requires: [
+      "At least one of --keywords, --service-category or --location.",
+    ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),

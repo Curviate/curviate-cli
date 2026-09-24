@@ -15,7 +15,7 @@ import { pkgRoot } from "./helpers/built-cli.js";
 
 const xdg = mkdtempSync(join(tmpdir(), "curviate-help-examples-"));
 const manifest = JSON.parse(readFileSync(join(pkgRoot, "commands.json"), "utf8")) as {
-  commands: Array<{ path: string[]; examples: string[] }>;
+  commands: Array<{ path: string[]; examples: string[]; requires: string[] }>;
 };
 const examplesOf = (path: string) => manifest.commands.find((c) => c.path.join(" ") === path)!.examples;
 
@@ -36,4 +36,12 @@ describe("--help prints examples", () => {
     expect(r.status).toBe(0);
     expect(r.stdout).not.toContain("EXAMPLES");
   });
+
+  it("prints a command's conditional requirements under REQUIRES, before EXAMPLES", () => {
+    const requires = manifest.commands.find((c) => c.path.join(" ") === "job create")!.requires;
+    expect(requires.length).toBeGreaterThan(0);
+    const out = runBin(["job", "create", "--help"], xdg).stdout;
+    expect(out).toContain(`REQUIRES\n\n${requires.map((l) => `  ${l}`).join("\n")}\n\nEXAMPLES`);
+  });
 });
+

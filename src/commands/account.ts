@@ -1583,6 +1583,11 @@ const accountLinkCommand = defineCommand({
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin",
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
     ],
+    requires: [
+      "--user-agent with --auth-method cookie.",
+      "--seat-id with --preview or --account-id, and when zero or several seats are free.",
+      "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie.",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
