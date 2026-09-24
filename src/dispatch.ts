@@ -811,10 +811,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
-      // A read does not declare --preview (lib/global-flags.ts readOnly), so
-      // this is where a read refuses it; say why.
+      // An API read does not declare --preview (lib/global-flags.ts readOnly),
+      // so this is where it refuses it; say why. A local command (declares no
+      // --beta: login, config, webhook verify) keeps the plain message.
       usageError(
-        unknown === "`--preview`"
+        unknown === "`--preview`" && declared.has("beta")
           ? "--preview is only valid on write commands (mutations). Reads just run."
           : `unknown flag ${unknown}.`,
       );

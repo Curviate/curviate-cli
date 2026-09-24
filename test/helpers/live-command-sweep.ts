@@ -292,7 +292,7 @@ export const BINARY_DOWNLOAD_ALLOWLIST = new Set([
  * 2. A write whose real validation lives in application code, not citty's
  *    `required`/positional metadata — a reaction enum checked against a
  *    fixed list (`comment react`, `post react`, ...), a "give me at least
- *    one of X/Y" cross-field rule (`company follow-invite`, `job create`,
+ *    one of X/Y" cross-field rule (`job create`,
  *    `profile update`, ...), or a flag-pair exclusivity rule (`account
  *    link --li-at-stdin` needs `--auth-method cookie`, and this sweep's
  *    per-flag-alone variant generation tests it against the bare
@@ -309,7 +309,6 @@ export const ZERO_REQUEST_ALLOWLIST = new Set([
   "comment read",
   "comment react read",
   "comment unreact read",
-  "company follow-invite read",
   "connect read",
   "feed read",
   "group read",
