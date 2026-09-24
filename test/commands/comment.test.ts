@@ -171,20 +171,6 @@ describe("comment reads — method + args", () => {
     expect(accountNs.comments.listUserComments).not.toHaveBeenCalled();
   });
 
-  it("a read command rejects --preview with exit 2 and makes no SDK call", async () => {
-    const { runCommentList } = await import("../../src/commands/comment.js");
-    const exitSpy = mockExit();
-    try {
-      await runCommentList(client as never, { postId: "p1", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.posts.listComments).not.toHaveBeenCalled();
-  });
-
   it("a read command without --account is a usage error (exit 2)", async () => {
     const { runCommentReplies } = await import("../../src/commands/comment.js");
     const exitSpy = mockExit();

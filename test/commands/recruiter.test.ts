@@ -493,22 +493,6 @@ describe("recruiter profile", () => {
 
     expect(ns.recruiter.getProfile).toHaveBeenCalledWith("jdoe", expect.anything());
   });
-
-  it("--preview on read: exits 2", async () => {
-    const { runRecruiterProfile } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterProfile(client as never, { account: "acc_1", identifier: "jdoe", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.getProfile).not.toHaveBeenCalled();
-  });
 });
 
 // ─── recruiter search people ───────────────────────────────────────────────
@@ -587,22 +571,6 @@ describe("recruiter search people", () => {
 
     try {
       await runRecruiterSearchPeople(client as never, { account: "acc_1", filters: "{bad" }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.searchPeople).not.toHaveBeenCalled();
-  });
-
-  it("--preview exits 2", async () => {
-    const { runRecruiterSearchPeople } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterSearchPeople(client as never, { account: "acc_1", preview: true }, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");
@@ -766,22 +734,6 @@ describe("recruiter search <url>", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("\n");
     const lines = written.trim().split("\n").filter(Boolean);
     expect(lines.length).toBe(2);
-  });
-
-  it("rejects --preview (read command)", async () => {
-    const { runRecruiterSearchFromUrl } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterSearchFromUrl(client as never, { account: "acc_1", url: "https://linkedin.com/x", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.searchFromUrl).not.toHaveBeenCalled();
   });
 });
 
@@ -971,22 +923,6 @@ describe("recruiter pipeline", () => {
     const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("\n");
     const lines = written.trim().split("\n").filter(Boolean);
     expect(lines.length).toBe(2);
-  });
-
-  it("rejects --preview (read command)", async () => {
-    const { runRecruiterListPipeline } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterListPipeline(client as never, { account: "acc_1", projectId: "proj_9", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.listPipeline).not.toHaveBeenCalled();
   });
 });
 
@@ -1914,26 +1850,6 @@ describe("recruiter job get", () => {
     expect(ns.recruiter.getJob).toHaveBeenCalledWith("4428113858");
   });
 
-  it("--preview is a usage error on this read command; no SDK call is made", async () => {
-    const { runRecruiterGetJob } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterGetJob(client as never, {
-        account: "acc_1",
-        jobId: "4428113858",
-        preview: true,
-      }, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.getJob).not.toHaveBeenCalled();
-  });
-
   it("slim output has exactly the 10 documented fields, excludes hiring_team/cost", async () => {
     const { runRecruiterGetJob } = await import("../../src/commands/recruiter.js");
     const out = makeOut();
@@ -2133,26 +2049,6 @@ describe("recruiter applicant resume", () => {
     } finally {
       exitSpy.mockRestore();
     }
-  });
-
-  it("--preview on read: exits 2", async () => {
-    const { runRecruiterDownloadResume } = await import("../../src/commands/recruiter.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runRecruiterDownloadResume(client as never, {
-        account: "acc_1",
-        applicantId: "app_1",
-        preview: true,
-      }, out, false);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.recruiter.downloadResume).not.toHaveBeenCalled();
   });
 });
 

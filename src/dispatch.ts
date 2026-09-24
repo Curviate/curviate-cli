@@ -33,7 +33,7 @@
  * this pre-dispatch, and citty 0.1.6 cannot express it natively.
  */
 
-import { runCommand, type CommandDef } from "citty";
+import { parseArgs, runCommand, type CommandDef } from "citty";
 import {
   STDIN_SENTINEL,
   restoreLiteralDashes,
@@ -519,6 +519,25 @@ async function declaredArgNames(cmd: AnyCommand): Promise<Set<string>> {
 }
 
 /**
+ * An API read does not declare `--preview` (lib/global-flags.ts readOnly),
+ * yet an explicit false always ran the read, and still does: those tokens are
+ * dropped as the no-op they are. "False" is whatever the parser a write
+ * command's `--preview` goes through reads as false (citty's parseArgs on the
+ * declared boolean), so a spelling that previews a write is never dropped
+ * from a read, and the read refuses it instead.
+ */
+function dropFalsePreview(args: string[], walk: TokenWalk, declared: Set<string>): string[] {
+  if (declared.has("preview") || !declared.has("beta")) return args;
+  const readsFalse = (token: string) => parseArgs([token], { preview: GLOBAL_FLAGS.preview }).preview === false;
+  const drop = new Set(
+    walk.flags
+      .filter(({ token, name }) => (name === "preview" || name === "no-preview") && readsFalse(token))
+      .map(({ index }) => index),
+  );
+  return drop.size ? args.filter((_, i) => !drop.has(i)) : args;
+}
+
+/**
  * Validate that every `--flag` / `-x` in rawArgs is a declared argument on the
  * resolved leaf. Unknown flags are a usage error (exit 2) per the CLI contract.
  * Returns the offending flag token, or null if all flags are known.
@@ -757,11 +776,11 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // --help / -h : delegate to citty's renderer (exit 0). Resolve the deepest
   // matching node so `curviate profile me --help` shows the right usage.
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
-    const { showUsage, runMain } = await import("citty");
+    const { runMain } = await import("citty");
+    const { showUsageWithExamples } = await import("./lib/examples.js");
     // runMain handles --help by resolving the subcommand and printing usage.
     // We only borrow its help path; routing is ours.
-    void showUsage;
-    await runMain(root, { rawArgs });
+    await runMain(root, { rawArgs, showUsage: showUsageWithExamples });
     return;
   }
 
@@ -795,12 +814,12 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // The resolved leaf, kept for the missing-argument hint below.
   let hintLeaf: AnyCommand | undefined;
   try {
-    const { leaf, leafArgs } = await resolveLeaf(root, argsAfterBeta);
+    const { leaf, leafArgs: resolvedArgs } = await resolveLeaf(root, argsAfterBeta);
     hintLeaf = leaf;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).
-    if (hasEmptyFields(leafArgs)) {
+    if (hasEmptyFields(resolvedArgs)) {
       usageError("--fields must not be empty.");
     }
     // Leaf-precise sets (no global union, see the constants above): whether a
@@ -808,10 +827,18 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // happens to be a global flag elsewhere in the tree.
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
+    const leafArgs = dropFalsePreview(resolvedArgs, walkTokens(resolvedArgs, booleanFlags, declared), declared);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
     if (unknown !== null) {
-      usageError(`unknown flag ${unknown}.`);
+      // An API read does not declare --preview (lib/global-flags.ts readOnly),
+      // so this is where it refuses it; say why. A local command (declares no
+      // --beta: login, config, webhook verify) keeps the plain message.
+      usageError(
+        unknown === "`--preview`" && declared.has("beta")
+          ? "--preview is only valid on write commands (mutations). Reads just run."
+          : `unknown flag ${unknown}.`,
+      );
     }
     // Refused by name, never by value: the value may be a secret.
     const repeated = await repeatedFlag(leaf, walk.flags);

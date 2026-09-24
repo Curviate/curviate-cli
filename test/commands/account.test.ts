@@ -149,22 +149,6 @@ describe("account list", () => {
     expect(JSON.parse(ndjson[0]!)).toEqual({ account_id: "acc_1" });
     expect(JSON.parse(ndjson[2]!)).toEqual({ account_id: "acc_3" });
   });
-
-  it("--preview on a read command exits 2", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountList(client as never, { preview: true } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -194,22 +178,6 @@ describe("account get", () => {
     // Weird value — should pass through unchanged, not normalized
     await runAccountGet(client as never, { "account-id": "acc_abc123", json: true } as AccountFlags, out);
     expect(client.accounts.get).toHaveBeenCalledWith("acc_abc123");
-  });
-
-  it("--preview on a read command exits 2", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountGet(client as never, { "account-id": "acc_1", preview: true } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 });
 
@@ -297,22 +265,6 @@ describe("account seats", () => {
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(7)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
-  it("--preview on a read command exits 2", async () => {
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountSeats(client as never, { preview: true } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
     } finally {
       exitSpy.mockRestore();
     }

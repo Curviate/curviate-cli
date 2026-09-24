@@ -80,23 +80,6 @@ describe("post get", () => {
     expect(ns.posts.get).toHaveBeenCalledWith("7332661864792854528");
   });
 
-  it("post get --preview — exits 2 (read command)", async () => {
-    const { runPostGet } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runPostGet(client as never, { postId: "post_1", account: "acc_1", preview: true } as PostArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("post get --all — exits 2 (not paginated)", async () => {
     const { runPostGet } = await import("../../src/commands/post.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -298,22 +281,5 @@ describe("post react / reactions", () => {
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
     const ndjson = lines.filter((l) => l.trim().startsWith("{"));
     expect(ndjson).toHaveLength(3);
-  });
-
-  it("post reactions --preview — exits 2 (read command)", async () => {
-    const { runPostReactions } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runPostReactions(client as never, { postId: "post_abc", account: "acc_1", preview: true } as PostArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 });

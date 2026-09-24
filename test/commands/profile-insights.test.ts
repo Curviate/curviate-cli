@@ -78,19 +78,6 @@ describe("profile subscription", () => {
     }
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runProfileSubscription } = await import("../../src/commands/profile.js");
-    const exitSpy = mockExit();
-    try {
-      await runProfileSubscription(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runProfileSubscription } = await import("../../src/commands/profile.js");
     const exitSpy = mockExit();
@@ -147,19 +134,6 @@ describe("profile analytics", () => {
       exitSpy.mockRestore();
     }
   });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runProfileAnalytics } = await import("../../src/commands/profile.js");
-    const exitSpy = mockExit();
-    try {
-      await runProfileAnalytics(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("profile visitors", () => {
@@ -205,19 +179,6 @@ describe("profile visitors", () => {
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
     expect(lines).toHaveLength(2);
   });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runProfileVisitors } = await import("../../src/commands/profile.js");
-    const exitSpy = mockExit();
-    try {
-      await runProfileVisitors(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("profile ssi", () => {
@@ -249,19 +210,6 @@ describe("profile ssi", () => {
     const exitSpy = mockExit();
     try {
       await runProfileSsi(client as never, { account: "acc_1", all: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runProfileSsi } = await import("../../src/commands/profile.js");
-    const exitSpy = mockExit();
-    try {
-      await runProfileSsi(client as never, { account: "acc_1", preview: true } as Args, makeOut());
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

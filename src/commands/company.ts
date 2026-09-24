@@ -55,7 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -118,12 +118,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: CompanyFlags) {
   return {
@@ -199,7 +193,6 @@ export async function runCompanyGet(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -235,7 +228,6 @@ export async function runCompanyEmployees(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -282,7 +274,6 @@ export async function runCompanyPosts(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -327,7 +318,6 @@ export async function runCompanyJobs(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -377,7 +367,6 @@ export async function runCompanyInvitableFollowers(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -472,7 +461,6 @@ export async function runCompanyManaged(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -517,7 +505,6 @@ export async function runCompanyFollowers(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -563,7 +550,6 @@ export async function runCompanyChats(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -609,7 +595,6 @@ export async function runCompanyChat(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -640,7 +625,6 @@ export async function runCompanyMessages(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -693,7 +677,6 @@ export async function runCompanyMessage(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   if (flags.all) {
     out.stderr.write("error: --all is not supported on non-paginated commands.\n");
     process.exit(2);
@@ -726,7 +709,6 @@ export async function runCompanySearchChats(
   flags: CompanyFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -850,9 +832,16 @@ export async function runCompanyReply(
 // ---------------------------------------------------------------------------
 
 const companyEmployeesCommand = defineCommand({
-  meta: { name: "employees", description: "List people who currently work at the company." },
+  meta: {
+    name: "employees",
+    description: "List people who currently work at the company.",
+    examples: [
+      "curviate company employees acmecorp",
+      "curviate company employees 1234567 --keywords \"machine learning\"",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across employee profile fields." },
     location: { type: "string", description: "Opaque location id from `curviate search parameters --type LOCATION`." },
@@ -877,9 +866,16 @@ const companyEmployeesCommand = defineCommand({
 });
 
 const companyPostsCommand = defineCommand({
-  meta: { name: "posts", description: "List the company's posts." },
+  meta: {
+    name: "posts",
+    description: "List the company's posts.",
+    examples: [
+      "curviate company posts acmecorp",
+      "curviate company posts 1234567 --limit 5",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -902,9 +898,16 @@ const companyPostsCommand = defineCommand({
 });
 
 const companyJobsCommand = defineCommand({
-  meta: { name: "jobs", description: "List the company's open job postings." },
+  meta: {
+    name: "jobs",
+    description: "List the company's open job postings.",
+    examples: [
+      "curviate company jobs acmecorp",
+      "curviate company jobs 1234567 --keywords engineer",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across job postings." },
   },
@@ -935,9 +938,12 @@ const companyInvitableFollowersCommand = defineCommand({
       "This is the read that seeds `company follow-invite`. Items carry no name or headline (a wire limitation), " +
       "so hydrate a candidate via `profile <id>` before deciding who to invite. " +
       "`invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
+    examples: [
+      "curviate company invitable-followers 1234567",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -968,6 +974,9 @@ const companyFollowInviteCommand = defineCommand({
       "Pass the AC... member ids from `company invitable-followers`, one --invitee per invitee. " +
       "All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. " +
       "Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
+    examples: [
+      "curviate company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP",
+    ],
   },
   args: {
     ...WRITE_FLAGS,
@@ -975,6 +984,7 @@ const companyFollowInviteCommand = defineCommand({
     invitee: {
       type: "string",
       description: "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      required: true,
     },
   },
   async run({ args }) {
@@ -997,8 +1007,14 @@ const companyFollowInviteCommand = defineCommand({
 });
 
 const companyManagedCommand = defineCommand({
-  meta: { name: "managed", description: "List the company pages the connected account administers. An empty result is valid, the account administers no pages." },
-  args: { ...GLOBAL_FLAGS },
+  meta: {
+    name: "managed",
+    description: "List the company pages the connected account administers. An empty result is valid, the account administers no pages.",
+    examples: [
+      "curviate company managed",
+    ],
+  },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as CompanyFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1019,9 +1035,16 @@ const companyManagedCommand = defineCommand({
 });
 
 const companyFollowersCommand = defineCommand({
-  meta: { name: "followers", description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`)." },
+  meta: {
+    name: "followers",
+    description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`).",
+    examples: [
+      "curviate company followers 1234567",
+      "curviate company followers 1234567 --all",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -1048,9 +1071,12 @@ const companyChatsCommand = defineCommand({
     name: "chats",
     description:
       "List the conversations in a company page's admin message inbox, newest-activity-first. Admin-gated. Beta.",
+    examples: [
+      "curviate company chats 1234567",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
   },
   async run({ args }) {
@@ -1076,9 +1102,12 @@ const companyChatCommand = defineCommand({
   meta: {
     name: "chat",
     description: "Retrieve one conversation from a company page's admin inbox. Admin-gated.",
+    examples: [
+      "curviate company chat 1234567 2-YTQ3ODU3Njgt",
+    ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1105,9 +1134,12 @@ const companyMessagesCommand = defineCommand({
   meta: {
     name: "messages",
     description: "List a company-inbox conversation's messages, newest first. Admin-gated.",
+    examples: [
+      "curviate company messages 1234567 2-YTQ3ODU3Njgt",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1134,9 +1166,12 @@ const companyMessageCommand = defineCommand({
   meta: {
     name: "message",
     description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
+    examples: [
+      "curviate company message 1234567 2-YTQ3ODU3Njgt MSG_ID",
+    ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
@@ -1166,9 +1201,13 @@ const companySearchChatsCommand = defineCommand({
     description:
       "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
       "or --unread; mutually exclusive, enforced server-side. Admin-gated. Beta.",
+    examples: [
+      "curviate company search-chats 1234567 sophie",
+      "curviate company search-chats 1234567 sophie --unread",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     query: { type: "positional", required: false, description: "Free-text term, matches participant names and message content." },
     topic: { type: "string", description: "Filter mode, one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other)." },
@@ -1201,6 +1240,9 @@ const companyReplyCommand = defineCommand({
       "the page). Takes the normal 2-... chat id from `company chats`; the endpoint resolves the page mailbox " +
       "internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. " +
       "See also: `company chats` (the read that returns the chat id) and `message send` (the personal equivalent).",
+    examples: [
+      "curviate company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\"",
+    ],
   },
   args: {
     ...WRITE_FLAGS,
@@ -1232,9 +1274,16 @@ const companyReplyCommand = defineCommand({
 });
 
 export const companyCommand = defineCommand({
-  meta: { name: "company", description: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources." },
+  meta: {
+    name: "company",
+    description: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources.",
+    examples: [
+      "curviate company acmecorp",
+      "curviate company https://www.linkedin.com/company/acmecorp",
+    ],
+  },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or native id)." },
     sections: { type: "string" as const, description: "Not supported on company commands; a usage error (exit 2) if supplied." },
   },

@@ -80,24 +80,6 @@ describe("sales-nav account-lists", () => {
     const parsed = JSON.parse(written);
     expect(parsed.object).toBe("sn_account_list_result");
   });
-
-  it("--preview on read: exits 2", async () => {
-    const { runSalesNavAccountLists } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-
-    try {
-      await runSalesNavAccountLists(client as never, { account: "acc_a", preview: true }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.accountLists).not.toHaveBeenCalled();
-  });
 });
 
 // ─── sales-nav lead-lists ───────────────────────────────────────────────────

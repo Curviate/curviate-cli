@@ -141,22 +141,6 @@ describe("job get — usage errors", () => {
     vi.restoreAllMocks();
   });
 
-  it("job get --preview is a usage error (read command); no SDK call is made", async () => {
-    const { runJobGet } = await import("../../src/commands/job.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runJobGet(client as never, { id: "4428113858", account: "acc_1", preview: true } as JobArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.jobs.get).not.toHaveBeenCalled();
-  });
-
   it("job get without --account is a usage error", async () => {
     const { runJobGet } = await import("../../src/commands/job.js");
     const out = makeOut();

@@ -1,0 +1,63 @@
+/**
+ * A read does not declare `--preview` (lib/global-flags.ts `readOnly`), so the
+ * dispatcher refuses it before any handler runs: exit 2, saying why (an API
+ * read) or as an unknown flag (a local command: login, config, webhook verify). Replaces
+ * the per-handler `--preview` refusal tests, which exercised a check that
+ * now lives in the declaration. The writes that do declare it are covered by
+ * globals-accepted-bin.test.ts.
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { INTERACTIVE_ONLY, readManifest, startExamplesStub, type ExamplesStub } from "./helpers/examples-stub.js";
+
+let stub: ExamplesStub;
+beforeAll(async () => {
+  stub = await startExamplesStub();
+}, 60_000);
+afterAll(() => stub.stop());
+
+describe("--preview on a command that does not declare it", () => {
+  it("is refused with exit 2 on every such command, with the write-only message on API reads", async () => {
+    const commands = readManifest().filter((c) => !c.usageOnly && c.examples[0] && !INTERACTIVE_ONLY.has(c.examples[0]));
+    const without = commands.filter((c) => !c.globals.includes("preview"));
+    // Positive control on the manifest itself: writes still declare it.
+    expect(commands.some((c) => c.path.join(" ") === "post create" && c.globals.includes("preview"))).toBe(true);
+    expect(without.map((c) => c.path.join(" "))).toEqual(expect.arrayContaining(["post get", "account list", "feed home"]));
+    const wrong: string[] = [];
+    for (const c of without) {
+      const r = await stub.run(`${c.examples[0]} --preview`, { fresh: true });
+      const api = c.globals.includes("beta");
+      const message = api ? "--preview is only valid on write commands" : "unknown flag `--preview`";
+      if (r.code !== 2 || !r.stderr.includes(message)) {
+        wrong.push(`${c.path.join(" ")}: exit ${r.code}, ${r.stderr.trim().split("\n")[0]}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  }, 600_000);
+
+  it.each([
+    ["--preview", 2],
+    ["--preview=false", 0],
+    ["--no-preview", 0],
+  ])("a read with %s exits %i: an explicit false is a no-op, as on 0.41.0", async (flag, code) => {
+    const r = await stub.run(`curviate account list ${flag}`, { fresh: true });
+    expect(r.code, r.stderr).toBe(code);
+  });
+
+  it("a write still takes --no-preview and sends (control)", async () => {
+    const r = await stub.run("curviate post delete 7290000000000000000 --no-preview", { fresh: true });
+    expect(r.code, r.stderr).toBe(0);
+  });
+
+  // One predicate for "false": a spelling that previews a write is refused on
+  // a read, and a spelling that sends a write runs a read.
+  it.each(["false", "FALSE", "0", "no", "true", "TRUE", "1", "yes"])("--preview=%s: the read and the write agree", async (v) => {
+    const write = await stub.run(`curviate post delete 7290000000000000000 --account acc_1 --json --preview=${v}`, { fresh: true });
+    const read = await stub.run(`curviate account list --preview=${v}`, { fresh: true });
+    const previewed = write.code === 0 && write.stdout.includes('"method":"posts.delete"');
+    const refused = read.code === 2 && read.stderr.includes("--preview is only valid on write commands");
+    expect(write.code, write.stderr).toBe(0);
+    expect(refused, `write previewed=${previewed}; read exit ${read.code}: ${read.stderr}`).toBe(previewed);
+  });
+});
+

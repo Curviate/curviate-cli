@@ -29,7 +29,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -90,12 +90,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: CommentFlags) {
   return {
@@ -149,7 +143,6 @@ function assertReaction(reaction: string, out: OutputStreams): asserts reaction 
 
 /** Run `comment list <post_id>`, posts.listComments (paginated read). */
 export async function runCommentList(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -181,7 +174,6 @@ export async function runCommentList(client: Curviate, flags: CommentFlags, out:
 
 /** Run `comment replies <post_id> <comment_id>`, comments.listReplies (paginated read). */
 export async function runCommentReplies(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -214,7 +206,6 @@ export async function runCommentReplies(client: Curviate, flags: CommentFlags, o
 
 /** Run `comment reactions <post_id> <comment_id>`, comments.listReactions (paginated read). */
 export async function runCommentReactions(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const postId = flags.postId ?? "";
@@ -252,7 +243,6 @@ export async function runCommentReactions(client: Curviate, flags: CommentFlags,
  * id via a users.get READ (contact-safe, notifies no one).
  */
 export async function runCommentUser(client: Curviate, flags: CommentFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const ns = client.account(accountId);
@@ -563,9 +553,16 @@ async function withClient(
 }
 
 const commentListCommand = defineCommand({
-  meta: { name: "list", description: "List the comments on a post. A very recent add/delete may take a few minutes to appear or clear here (LinkedIn-side indexing)." },
+  meta: {
+    name: "list",
+    description: "List the comments on a post. A very recent add/delete may take a few minutes to appear or clear here (LinkedIn-side indexing).",
+    examples: [
+      "curviate comment list 7290000000000000000",
+      "curviate comment list 7290000000000000000 --all",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id (or share URN) to list comments for." },
   },
   async run({ args }) {
@@ -574,9 +571,16 @@ const commentListCommand = defineCommand({
 });
 
 const commentRepliesCommand = defineCommand({
-  meta: { name: "replies", description: "List the replies to a comment." },
+  meta: {
+    name: "replies",
+    description: "List the replies to a comment.",
+    examples: [
+      "curviate comment replies 7290000000000000000 COMMENT_ID",
+      "curviate comment replies 7290000000000000000 COMMENT_ID --all",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to list replies for." },
   },
@@ -586,9 +590,15 @@ const commentRepliesCommand = defineCommand({
 });
 
 const commentReactionsCommand = defineCommand({
-  meta: { name: "reactions", description: "List the reactions on a comment." },
+  meta: {
+    name: "reactions",
+    description: "List the reactions on a comment.",
+    examples: [
+      "curviate comment reactions 7290000000000000000 COMMENT_ID",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     postId: { type: "positional", description: "Post id the comment belongs to." },
     commentId: { type: "positional", description: "Comment id to list reactions for." },
   },
@@ -598,9 +608,16 @@ const commentReactionsCommand = defineCommand({
 });
 
 const commentUserCommand = defineCommand({
-  meta: { name: "user", description: "List the comments authored by a user (accepts 'me')." },
+  meta: {
+    name: "user",
+    description: "List the comments authored by a user (accepts 'me').",
+    examples: [
+      "curviate comment user me",
+      "curviate comment user janesmith --limit 10",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     userId: { type: "positional", description: "Member identifier (URL, slug, provider id, or 'me')." },
   },
   async run({ args }) {
@@ -609,7 +626,13 @@ const commentUserCommand = defineCommand({
 });
 
 const commentAddCommand = defineCommand({
-  meta: { name: "add", description: "Publish a comment on a post." },
+  meta: {
+    name: "add",
+    description: "Publish a comment on a post.",
+    examples: [
+      "curviate comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id to comment on." },
@@ -622,7 +645,13 @@ const commentAddCommand = defineCommand({
 });
 
 const commentReplyCommand = defineCommand({
-  meta: { name: "reply", description: "Reply to a comment." },
+  meta: {
+    name: "reply",
+    description: "Reply to a comment.",
+    examples: [
+      "curviate comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
@@ -636,7 +665,13 @@ const commentReplyCommand = defineCommand({
 });
 
 const commentEditCommand = defineCommand({
-  meta: { name: "edit", description: "Edit your own comment." },
+  meta: {
+    name: "edit",
+    description: "Edit your own comment.",
+    examples: [
+      "curviate comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\"",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
@@ -649,7 +684,13 @@ const commentEditCommand = defineCommand({
 });
 
 const commentDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Delete your own comment." },
+  meta: {
+    name: "delete",
+    description: "Delete your own comment.",
+    examples: [
+      "curviate comment delete 7290000000000000000 COMMENT_ID",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
@@ -661,7 +702,13 @@ const commentDeleteCommand = defineCommand({
 });
 
 const commentReactCommand = defineCommand({
-  meta: { name: "react", description: "React to a comment (like|celebrate|support|love|insightful|funny)." },
+  meta: {
+    name: "react",
+    description: "React to a comment (like|celebrate|support|love|insightful|funny).",
+    examples: [
+      "curviate comment react 7290000000000000000 COMMENT_ID insightful",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },
@@ -674,7 +721,13 @@ const commentReactCommand = defineCommand({
 });
 
 const commentUnreactCommand = defineCommand({
-  meta: { name: "unreact", description: "Remove your reaction from a comment." },
+  meta: {
+    name: "unreact",
+    description: "Remove your reaction from a comment.",
+    examples: [
+      "curviate comment unreact 7290000000000000000 COMMENT_ID insightful",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     postId: { type: "positional", description: "Post id the comment belongs to." },

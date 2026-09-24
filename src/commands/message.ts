@@ -30,7 +30,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
@@ -81,12 +81,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -380,7 +374,6 @@ export async function runMessageGet(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -542,7 +535,6 @@ export async function runMessageAttachment(
   out: OutputStreams,
   isTTY: boolean,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const chatId = normalizeChatId(flags.chatId ?? "");
@@ -662,7 +654,6 @@ export async function runMessageInMailBalance(
   flags: MessageFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -683,7 +674,13 @@ export async function runMessageInMailBalance(
 // ---------------------------------------------------------------------------
 
 const messageNewCommand = defineCommand({
-  meta: { name: "new", description: "Start a new chat with one or more members." },
+  meta: {
+    name: "new",
+    description: "Start a new chat with one or more members.",
+    examples: [
+      "curviate message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -721,10 +718,16 @@ const messageNewCommand = defineCommand({
 });
 
 const messageGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a message by ID." },
+  meta: {
+    name: "get",
+    description: "Get a message by ID.",
+    examples: [
+      "curviate message get 2-YTQ3ODU3Njgt MSG_ID",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     chatId: { type: "positional", description: "Chat ID or LinkedIn messaging thread URL." },
     messageId: { type: "positional", description: "Message ID." },
   },
@@ -748,7 +751,13 @@ const messageGetCommand = defineCommand({
 });
 
 const messageEditCommand = defineCommand({
-  meta: { name: "edit", description: "Edit a message (within the allowed window)." },
+  meta: {
+    name: "edit",
+    description: "Edit a message (within the allowed window).",
+    examples: [
+      "curviate message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -776,7 +785,13 @@ const messageEditCommand = defineCommand({
 });
 
 const messageDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Delete a message." },
+  meta: {
+    name: "delete",
+    description: "Delete a message.",
+    examples: [
+      "curviate message delete 2-YTQ3ODU3Njgt MSG_ID",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -803,7 +818,16 @@ const messageDeleteCommand = defineCommand({
 });
 
 const messageReactCommand = defineCommand({
-  meta: { name: "react", description: "Add an emoji reaction to a message." },
+  meta: {
+    name: "react",
+    description: "Add an emoji reaction to a message.",
+    examples: [
+      "curviate message react 2-YTQ3ODU3Njgt MSG_ID 👍",
+    ],
+    requires: [
+      "The reaction: the <emoji> argument or --emoji.",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -836,10 +860,16 @@ const messageReactCommand = defineCommand({
 });
 
 const messageAttachmentCommand = defineCommand({
-  meta: { name: "attachment", description: "Download a message attachment." },
+  meta: {
+    name: "attachment",
+    description: "Download a message attachment.",
+    examples: [
+      "curviate message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     chatId: { type: "positional", description: "Chat ID or LinkedIn messaging thread URL." },
     messageId: { type: "positional", description: "Message ID." },
     attachmentId: { type: "positional", description: "Attachment ID." },
@@ -870,7 +900,13 @@ const messageAttachmentCommand = defineCommand({
 });
 
 const messageInMailCommand = defineCommand({
-  meta: { name: "inmail", description: "Send an InMail to a member." },
+  meta: {
+    name: "inmail",
+    description: "Send an InMail to a member.",
+    examples: [
+      "curviate message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -920,6 +956,9 @@ const messageSendCommand = defineCommand({
       "identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints " +
       "nothing new. See also: `inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
       "page guide.",
+    examples: [
+      "curviate message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+    ],
   },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
@@ -953,10 +992,16 @@ const messageSendCommand = defineCommand({
 });
 
 const messageInMailBalanceCommand = defineCommand({
-  meta: { name: "inmail-balance", description: "Get InMail credit balance." },
+  meta: {
+    name: "inmail-balance",
+    description: "Get InMail credit balance.",
+    examples: [
+      "curviate message inmail-balance",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
   },
   async run({ args }) {
     const flags = args as MessageFlags;
@@ -1051,6 +1096,10 @@ export const messageCommand = defineCommand({
     description:
       "Send and manage LinkedIn messages. A COMPANY_ chat id (from `inboxes chats`) sends as that " +
       "company page instead of yourself; see `message send --help`.",
+    examples: [
+      "curviate message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+      "curviate message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf",
+    ],
   },
   args: {
     // Write command (message send): WRITE_FLAGS omits pagination/projection flags

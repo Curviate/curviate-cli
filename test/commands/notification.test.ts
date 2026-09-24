@@ -89,19 +89,6 @@ describe("notification list", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runNotificationList } = await import("../../src/commands/notification.js");
-    const exitSpy = mockExit();
-    try {
-      await runNotificationList(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runNotificationList } = await import("../../src/commands/notification.js");
     const exitSpy = mockExit();

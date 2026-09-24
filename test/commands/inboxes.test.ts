@@ -106,23 +106,6 @@ describe("inboxes list", () => {
     }
   });
 
-  it("inboxes list --preview — usage error exit 2 (preview on read)", async () => {
-    const { runInboxesList } = await import("../../src/commands/inboxes.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxesList(client as never, { account: "acc_1", preview: true } as InboxesArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("inboxes list — missing account exits 2", async () => {
     const { runInboxesList } = await import("../../src/commands/inboxes.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -238,27 +221,6 @@ describe("inboxes chats", () => {
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
     const ndjson = lines.filter((l) => l.trim().startsWith("{"));
     expect(ndjson).toHaveLength(3);
-  });
-
-  it("inboxes chats --preview — usage error exit 2", async () => {
-    const { runInboxesChats } = await import("../../src/commands/inboxes.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxesChats(
-        client as never,
-        { inboxId: "CLASSIC_PRIMARY", account: "acc_1", preview: true } as InboxesArgs,
-        out,
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("inboxes chats — missing account exits 2", async () => {

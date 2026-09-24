@@ -160,7 +160,7 @@ describe("readableObject guard: runtime sweep over the live command registry", a
 
 // ---------------------------------------------------------------------------
 // POST-shaped reads (qa cycle 2 named exceptions: `account checkpoint
-// poll`/`solve` check `--preview` inline instead of `rejectPreviewOnRead`;
+// poll`/`solve` check `--preview` inline instead of refusing it;
 // `recruiter search parameters` is a POST-as-search read): invisible to the
 // GET-only classification above, held to the exit-7 standard by name
 // instead. Each is also verified to genuinely be non-GET, so this list

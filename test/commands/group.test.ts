@@ -87,19 +87,6 @@ describe("group list", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runGroupList } = await import("../../src/commands/group.js");
-    const exitSpy = mockExit();
-    try {
-      await runGroupList(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runGroupList } = await import("../../src/commands/group.js");
     const exitSpy = mockExit();
@@ -150,19 +137,6 @@ describe("group get", () => {
       exitSpy.mockRestore();
     }
   });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runGroupGet } = await import("../../src/commands/group.js");
-    const exitSpy = mockExit();
-    try {
-      await runGroupGet(client as never, { groupId: "9123014", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("group members", () => {
@@ -196,18 +170,5 @@ describe("group members", () => {
     await runGroupMembers(client as never, { groupId: "9123014", account: "acc_1", all: true } as Args, out);
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
     expect(lines).toHaveLength(2);
-  });
-
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runGroupMembers } = await import("../../src/commands/group.js");
-    const exitSpy = mockExit();
-    try {
-      await runGroupMembers(client as never, { groupId: "9123014", account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 });

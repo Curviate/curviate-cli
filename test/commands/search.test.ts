@@ -151,21 +151,6 @@ describe("search people", () => {
     );
   });
 
-  it("search people --preview → usage error exit 2 (read command)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runSearchPeople(client as never, { account: "acc_1", preview: true } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("search people --all — streams NDJSON over 2 pages", async () => {
     const { runSearchPeople } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -2230,21 +2215,6 @@ describe("search groups — GET, keyword-only", () => {
     }
     expect(accountNs.search.groups).not.toHaveBeenCalled();
   });
-
-  it("search groups --preview → usage error exit 2", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchGroups(client as never, { query: "gtm", account: "acc_1", preview: true } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
 });
 
 describe("search services — POST body", () => {
@@ -2325,21 +2295,6 @@ describe("search services — POST body", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("search services --preview → usage error exit 2", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchServices(client as never, { keywords: "marketing", account: "acc_1", preview: true } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("search services — missing account exits 2", async () => {
     const { runSearchServices } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -2415,25 +2370,6 @@ describe("search service-parameters — GET, not paginated", () => {
       exitSpy.mockRestore();
     }
     expect(accountNs.search.getServiceParameters).not.toHaveBeenCalled();
-  });
-
-  it("search service-parameters --preview → usage error exit 2", async () => {
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchServiceParameters(
-        client as never,
-        { keywords: "marke", account: "acc_1", preview: true } as SearchArgs,
-        out,
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("search service-parameters --all — walks until the cursor comes back null", async () => {

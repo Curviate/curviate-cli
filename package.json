@@ -1,6 +1,6 @@
 {
   "name": "@curviate/cli",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "private": false,
   "description": "Official command-line interface for the Curviate API.",
   "license": "MIT",
@@ -36,6 +36,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
+    "manifest": "WRITE_COMMANDS_MANIFEST=1 vitest run test/commands-manifest.test.ts",
     "check:clean": "node scripts/check-clean.mjs",
     "check:clean:commits": "node scripts/check-clean.mjs --commits",
     "check:clean:dist": "node scripts/check-clean.mjs --dist",

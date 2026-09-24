@@ -88,19 +88,6 @@ describe("feed home", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("--preview → usage error exit 2 (read command)", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    const exitSpy = mockExit();
-    try {
-      await runFeedHome(client as never, { account: "acc_1", preview: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("missing account → exit 2", async () => {
     const { runFeedHome } = await import("../../src/commands/feed.js");
     const exitSpy = mockExit();

@@ -34,7 +34,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -118,12 +118,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: SalesNavFlags) {
   return {
@@ -164,7 +158,6 @@ export async function runSalesNavSearchPeople(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -234,7 +227,6 @@ export async function runSalesNavSearchCompanies(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -298,7 +290,6 @@ export async function runSalesNavGetParameters(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
@@ -353,7 +344,6 @@ export async function runSalesNavSearchFromUrl(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -495,7 +485,6 @@ export async function runSalesNavProfile(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const accountId = await requireAccount(client, flags, out);
   const rawId = flags.identifier ?? "";
@@ -566,7 +555,6 @@ export async function runSalesNavAccountLists(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -610,7 +598,6 @@ export async function runSalesNavLeadLists(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -654,7 +641,6 @@ export async function runSalesNavBrowseAccountList(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -704,7 +690,6 @@ export async function runSalesNavBrowseLeadList(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -787,7 +772,13 @@ export async function runSalesNavSaveAccount(
 // ---------------------------------------------------------------------------
 
 const salesNavMessageNewCommand = defineCommand({
-  meta: { name: "new", description: "Start a new Sales Navigator chat." },
+  meta: {
+    name: "new",
+    description: "Start a new Sales Navigator chat.",
+    examples: [
+      "curviate sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\"",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -834,9 +825,16 @@ const salesNavMessageCommand = defineCommand({
 });
 
 const salesNavSearchPeopleCommand = defineCommand({
-  meta: { name: "people", description: "Search Sales Navigator member profiles." },
+  meta: {
+    name: "people",
+    description: "Search Sales Navigator member profiles.",
+    examples: [
+      "curviate sales-nav search people --keywords \"head of data\"",
+      "curviate sales-nav search people --filters-file filters.json",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
@@ -865,9 +863,15 @@ const salesNavSearchPeopleCommand = defineCommand({
 });
 
 const salesNavSearchCompaniesCommand = defineCommand({
-  meta: { name: "companies", description: "Search Sales Navigator companies." },
+  meta: {
+    name: "companies",
+    description: "Search Sales Navigator companies.",
+    examples: [
+      "curviate sales-nav search companies --keywords fintech",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
@@ -896,9 +900,12 @@ const salesNavSearchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve Sales Navigator filter parameter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate sales-nav search parameters --type REGION --keywords Berlin",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description:
@@ -927,9 +934,15 @@ const salesNavSearchParametersCommand = defineCommand({
 });
 
 const salesNavSearchCommand = defineCommand({
-  meta: { name: "search", description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly." },
+  meta: {
+    name: "search",
+    description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly.",
+    examples: [
+      "curviate sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     url: {
       type: "positional",
       required: false,
@@ -973,10 +986,16 @@ const salesNavSearchCommand = defineCommand({
 });
 
 const salesNavProfileCommand = defineCommand({
-  meta: { name: "profile", description: "Get a Sales Navigator enriched member profile." },
+  meta: {
+    name: "profile",
+    description: "Get a Sales Navigator enriched member profile.",
+    examples: [
+      "curviate sales-nav profile https://www.linkedin.com/in/janesmith",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     identifier: { type: "positional", description: "LinkedIn URL, slug, or native id." },
   },
   async run({ args }) {
@@ -999,7 +1018,13 @@ const salesNavProfileCommand = defineCommand({
 });
 
 const salesNavSaveLeadCommand = defineCommand({
-  meta: { name: "save-lead", description: "Save a Sales Navigator member into a lead list." },
+  meta: {
+    name: "save-lead",
+    description: "Save a Sales Navigator member into a lead list.",
+    examples: [
+      "curviate sales-nav save-lead ACwAAA1234567 --list 987654",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,
@@ -1030,8 +1055,14 @@ const salesNavSaveLeadCommand = defineCommand({
 // ---------------------------------------------------------------------------
 
 const salesNavAccountListsCommand = defineCommand({
-  meta: { name: "account-lists", description: "List the saved-account (company) lists on the operator's Sales Navigator seat." },
-  args: { ...GLOBAL_FLAGS },
+  meta: {
+    name: "account-lists",
+    description: "List the saved-account (company) lists on the operator's Sales Navigator seat.",
+    examples: [
+      "curviate sales-nav account-lists",
+    ],
+  },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as SalesNavFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1052,8 +1083,14 @@ const salesNavAccountListsCommand = defineCommand({
 });
 
 const salesNavLeadListsCommand = defineCommand({
-  meta: { name: "lead-lists", description: "List the saved-lead (member) lists on the operator's Sales Navigator seat." },
-  args: { ...GLOBAL_FLAGS },
+  meta: {
+    name: "lead-lists",
+    description: "List the saved-lead (member) lists on the operator's Sales Navigator seat.",
+    examples: [
+      "curviate sales-nav lead-lists",
+    ],
+  },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as SalesNavFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1074,9 +1111,16 @@ const salesNavLeadListsCommand = defineCommand({
 });
 
 const salesNavBrowseAccountListCommand = defineCommand({
-  meta: { name: "browse-account-list", description: "Browse the saved accounts (companies) in one account list." },
+  meta: {
+    name: "browse-account-list",
+    description: "Browse the saved accounts (companies) in one account list.",
+    examples: [
+      "curviate sales-nav browse-account-list 987654",
+      "curviate sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     listId: { type: "positional", description: "The account-list id (from `sales-nav account-lists`)." },
     filter: { type: "string", description: "Restrict to a saved-account subset: STARRED, GROWTH_ALERTS, or RISK_ALERTS." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED or NAME. Defaults to NAME." },
@@ -1102,9 +1146,16 @@ const salesNavBrowseAccountListCommand = defineCommand({
 });
 
 const salesNavBrowseLeadListCommand = defineCommand({
-  meta: { name: "browse-lead-list", description: "Browse the saved leads (members) in one lead list." },
+  meta: {
+    name: "browse-lead-list",
+    description: "Browse the saved leads (members) in one lead list.",
+    examples: [
+      "curviate sales-nav browse-lead-list 987654",
+      "curviate sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     listId: { type: "positional", description: "The lead-list id (from `sales-nav lead-lists`)." },
     spotlight: { type: "string", description: "Restrict to a spotlighted lead subset: RECENT_POSITION_CHANGE, RECENTLY_POSTED_ON_LINKEDIN, FOLLOW_YOUR_COMPANY, or SHARE_EXPERIENCE." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED, ACCOUNT, NAME, or OUTREACH_ACTIVITY. Defaults to DATE_ADDED." },
@@ -1130,7 +1181,13 @@ const salesNavBrowseLeadListCommand = defineCommand({
 });
 
 const salesNavSaveAccountCommand = defineCommand({
-  meta: { name: "save-account", description: "Save a LinkedIn company into an account list." },
+  meta: {
+    name: "save-account",
+    description: "Save a LinkedIn company into an account list.",
+    examples: [
+      "curviate sales-nav save-account 1234567 --list 987654",
+    ],
+  },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
     ...WRITE_FLAGS,

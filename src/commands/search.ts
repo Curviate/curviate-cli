@@ -28,7 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -176,12 +176,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: SearchFlags) {
   return {
@@ -365,7 +359,6 @@ export async function runSearchPeople(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   // Reject flags that are only valid for jobs / Sales Navigator (not classic people search)
@@ -429,7 +422,6 @@ export async function runSearchCompanies(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -483,7 +475,6 @@ export async function runSearchPosts(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -537,7 +528,6 @@ export async function runSearchJobs(
   out: OutputStreams,
   readers: FilterReaders = DEFAULT_FILTER_READERS,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -595,7 +585,6 @@ export async function runSearchParameters(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.type) {
@@ -668,7 +657,6 @@ export async function runSearchGroups(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const keywords = flags.query ?? "";
@@ -727,7 +715,6 @@ export async function runSearchServices(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -791,7 +778,6 @@ export async function runSearchServiceParameters(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   if (!flags.keywords) {
@@ -853,7 +839,6 @@ export async function runSearchFromUrl(
   flags: SearchFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const url = flags.url ?? "";
@@ -901,9 +886,17 @@ export async function runSearchFromUrl(
 // ---------------------------------------------------------------------------
 
 const searchPeopleCommand = defineCommand({
-  meta: { name: "people", description: "Search members with structured filters." },
+  meta: {
+    name: "people",
+    description: "Search members with structured filters.",
+    examples: [
+      "curviate search people --keywords \"AI engineer\"",
+      "curviate search people --keywords \"AI engineer\" --location 106967730",
+      "curviate search people --filters-file filters.json",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -938,9 +931,16 @@ const searchPeopleCommand = defineCommand({
 });
 
 const searchCompaniesCommand = defineCommand({
-  meta: { name: "companies", description: "Search companies." },
+  meta: {
+    name: "companies",
+    description: "Search companies.",
+    examples: [
+      "curviate search companies --keywords \"developer tools\"",
+      "curviate search companies --keywords robotics --headcount 11-50,51-200",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -972,9 +972,16 @@ const searchCompaniesCommand = defineCommand({
 });
 
 const searchPostsCommand = defineCommand({
-  meta: { name: "posts", description: "Search posts." },
+  meta: {
+    name: "posts",
+    description: "Search posts.",
+    examples: [
+      "curviate search posts --keywords \"agent infrastructure\"",
+      "curviate search posts --keywords \"agent infrastructure\" --date-posted past_week",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     "sort-by": { type: "string", description: "Sort order (e.g. relevance, date)." },
@@ -1009,9 +1016,16 @@ const searchPostsCommand = defineCommand({
 });
 
 const searchJobsCommand = defineCommand({
-  meta: { name: "jobs", description: "Search jobs." },
+  meta: {
+    name: "jobs",
+    description: "Search jobs.",
+    examples: [
+      "curviate search jobs --keywords \"AI engineer\"",
+      "curviate search jobs --keywords \"AI engineer\" --location 106967730 --presence remote",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     // On jobs, --location maps to the geo region filter (not a location array, different API shape for jobs vs people)
@@ -1065,9 +1079,13 @@ const searchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve human-readable terms to opaque filter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate search parameters --type LOCATION --keywords Berlin",
+      "curviate search parameters --type COMPANY --keywords Acme",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description:
@@ -1096,9 +1114,15 @@ const searchParametersCommand = defineCommand({
 });
 
 const searchGroupsCommand = defineCommand({
-  meta: { name: "groups", description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error." },
+  meta: {
+    name: "groups",
+    description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error.",
+    examples: [
+      "curviate search groups \"gtm engineering\"",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     query: { type: "positional", description: "Search terms (multi-word supported, e.g. 'gtm engineering')." },
   },
   async run({ args }) {
@@ -1127,9 +1151,16 @@ const searchServicesCommand = defineCommand({
       "Search Services Marketplace providers with structured filters. At least one of --keywords, " +
       "--service-category, or --location is required. Resolve --service-category/--location values with " +
       "'search service-parameters' first, both take opaque ids, not free text.",
+    examples: [
+      "curviate search services --keywords marketing",
+      "curviate search services --service-category 100 --location 106967730",
+    ],
+    requires: [
+      "At least one of --keywords, --service-category or --location.",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Free-text keyword match." },
     "service-category": { type: "string", description: "Opaque service-category ids (comma-separated; resolve via `curviate search service-parameters --type service_category`)." },
     location: { type: "string", description: "Opaque location ids (comma-separated; resolve via `curviate search service-parameters --type location`)." },
@@ -1160,9 +1191,12 @@ const searchServiceParametersCommand = defineCommand({
     name: "service-parameters",
     description:
       "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    examples: [
+      "curviate search service-parameters --type service_category --keywords marketing",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     type: {
       type: "string",
       description: "Filter type to resolve: service_category (default) or location.",
@@ -1189,9 +1223,15 @@ const searchServiceParametersCommand = defineCommand({
 });
 
 export const searchCommand = defineCommand({
-  meta: { name: "search", description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly." },
+  meta: {
+    name: "search",
+    description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",
+    examples: [
+      "curviate search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     url: {
       type: "positional",
       required: false,

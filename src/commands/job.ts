@@ -28,7 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -164,12 +164,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function resolveOutputOpts(flags: JobFlags) {
   return {
@@ -248,7 +242,6 @@ function buildApplyMethod(flags: JobFlags, out: OutputStreams): { method: string
  * Read command, rejects --preview (exit 2), no SDK call in that case.
  */
 export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   const accountId = await requireAccount(client, flags, out);
   const resolvedId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
@@ -274,7 +267,6 @@ export async function runJobGet(client: Curviate, flags: JobFlags, out: OutputSt
  * walks exactly the same upstream pages it always did.
  */
 export async function runJobList(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   const state = requireFlag(flags.state, "--state", out);
 
   // --state ALL's union paces its per-state fetches with --page-delay even
@@ -444,7 +436,6 @@ async function runJobListAllStates(
 
 /** Run `job budget <id>`, jobs.getBudget (single read). */
 export async function runJobBudget(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   const accountId = await requireAccount(client, flags, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const ns = client.account(accountId);
@@ -461,7 +452,6 @@ export async function runJobBudget(client: Curviate, flags: JobFlags, out: Outpu
 
 /** Run `job applicants <id>`, jobs.listApplicants (POST-as-search, paginated read). */
 export async function runJobApplicants(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
   const accountId = await requireAccount(client, flags, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
@@ -504,7 +494,6 @@ export async function runJobApplicants(client: Curviate, flags: JobFlags, out: O
 
 /** Run `job applicant get <id> <app_id>`, jobs.getApplicant (single read). */
 export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out: OutputStreams): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   const accountId = await requireAccount(client, flags, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const applicantId = flags.applicantId ?? "";
@@ -526,7 +515,6 @@ export async function runJobApplicantGet(client: Curviate, flags: JobFlags, out:
  * @param isTTY injectable for tests.
  */
 export async function runJobApplicantResume(client: Curviate, flags: JobFlags, out: OutputStreams, isTTY: boolean): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   const accountId = await requireAccount(client, flags, out);
   const jobId = resolveJobIdentifier(flags.id ?? "");
   const applicantId = flags.applicantId ?? "";
@@ -747,9 +735,16 @@ const JOB_BODY_FLAGS = {
 };
 
 const jobGetCommand = defineCommand({
-  meta: { name: "get", description: "Retrieve one public LinkedIn job posting's full detail." },
+  meta: {
+    name: "get",
+    description: "Retrieve one public LinkedIn job posting's full detail.",
+    examples: [
+      "curviate job get 4100000000",
+      "curviate job get https://www.linkedin.com/jobs/view/4100000000",
+    ],
+  },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Job URL or a bare numeric job id." },
   },
   async run({ args }) {
@@ -758,9 +753,19 @@ const jobGetCommand = defineCommand({
 });
 
 const jobListCommand = defineCommand({
-  meta: { name: "list", description: "List your own classic job postings by state." },
+  meta: {
+    name: "list",
+    description: "List your own classic job postings by state.",
+    examples: [
+      "curviate job list --state OPEN",
+      "curviate job list --state DRAFT --all",
+    ],
+    requires: [
+      "--max-pages and --page-delay only with --all.",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     state: { type: "string", description: "Filter by state (required): DRAFT|OPEN|CLOSED|REVIEW|SUSPENDED, or ALL for a best-effort client-side union across every state (each state queried, re-filtered, merged and de-duplicated by id; no unified cursor). Best-effort on LinkedIn's side -- verify item.state. The CLI re-filters returned items against their own state (dropped items are noted on stderr), but the upstream page walk itself is unfiltered, so --all may fetch more pages than the filtered item count implies.", required: true },
   },
   async run({ args }) {
@@ -769,10 +774,28 @@ const jobListCommand = defineCommand({
 });
 
 const jobCreateCommand = defineCommand({
-  meta: { name: "create", description: "Create a classic job-posting draft (never publishes, never spends)." },
+  meta: {
+    name: "create",
+    description: "Create a classic job-posting draft (never publishes, never spends).",
+    examples: [
+      "curviate job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
+    ],
+    requires: [
+      "--job-title or --job-title-id.",
+      "--company or --company-id.",
+      "--notification-email with --apply-method linkedin; --website-url with --apply-method external.",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     ...JOB_BODY_FLAGS,
+    // Required on create (update takes any subset). The declaration is what
+    // the parser enforces and what --help and the docs print.
+    "workplace-type": { ...JOB_BODY_FLAGS["workplace-type"], required: true },
+    location: { ...JOB_BODY_FLAGS.location, required: true },
+    "employment-status": { ...JOB_BODY_FLAGS["employment-status"], required: true },
+    description: { ...JOB_BODY_FLAGS.description, required: true },
+    "apply-method": { ...JOB_BODY_FLAGS["apply-method"], required: true },
   },
   async run({ args }) {
     await withClient(args as JobFlags, runJobCreate);
@@ -780,7 +803,17 @@ const jobCreateCommand = defineCommand({
 });
 
 const jobUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Apply a partial update to a job posting you own." },
+  meta: {
+    name: "update",
+    description: "Apply a partial update to a job posting you own.",
+    examples: [
+      "curviate job update 4100000000 --workplace-type HYBRID",
+      "curviate job update 4100000000 --description \"$(cat description.txt)\"",
+    ],
+    requires: [
+      "--notification-email with --apply-method linkedin; --website-url with --apply-method external.",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to update." },
@@ -792,9 +825,15 @@ const jobUpdateCommand = defineCommand({
 });
 
 const jobBudgetCommand = defineCommand({
-  meta: { name: "budget", description: "Price a publish before committing any money." },
+  meta: {
+    name: "budget",
+    description: "Price a publish before committing any money.",
+    examples: [
+      "curviate job budget 4100000000",
+    ],
+  },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Job id to price." },
   },
   async run({ args }) {
@@ -803,7 +842,16 @@ const jobBudgetCommand = defineCommand({
 });
 
 const jobPublishCommand = defineCommand({
-  meta: { name: "publish", description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope." },
+  meta: {
+    name: "publish",
+    description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
+    examples: [
+      "curviate job publish 4100000000 --mode FREE",
+    ],
+    requires: [
+      "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS.",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to publish." },
@@ -818,7 +866,13 @@ const jobPublishCommand = defineCommand({
 });
 
 const jobCloseCommand = defineCommand({
-  meta: { name: "close", description: "Stop a posting from accepting applications (irreversible once LISTED)." },
+  meta: {
+    name: "close",
+    description: "Stop a posting from accepting applications (irreversible once LISTED).",
+    examples: [
+      "curviate job close 4100000000",
+    ],
+  },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Job id to close." },
@@ -829,9 +883,16 @@ const jobCloseCommand = defineCommand({
 });
 
 const jobApplicantsCommand = defineCommand({
-  meta: { name: "applicants", description: "List applicants to a posting you own (POST-as-search)." },
+  meta: {
+    name: "applicants",
+    description: "List applicants to a posting you own (POST-as-search).",
+    examples: [
+      "curviate job applicants 4100000000",
+      "curviate job applicants 4100000000 --ratings GOOD_FIT,MAYBE",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Job id to list applicants for." },
     ratings: { type: "string", description: "Comma-separated rating filter: UNRATED|NOT_A_FIT|MAYBE|GOOD_FIT. Omit for the full funnel." },
   },
@@ -841,9 +902,15 @@ const jobApplicantsCommand = defineCommand({
 });
 
 const jobApplicantGetCommand = defineCommand({
-  meta: { name: "get", description: "Get one applicant's full detail, including contact info." },
+  meta: {
+    name: "get",
+    description: "Get one applicant's full detail, including contact info.",
+    examples: [
+      "curviate job applicant get 4100000000 APPLICANT_ID",
+    ],
+  },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Job id the applicant applied to." },
     applicantId: { type: "positional", description: "Applicant id." },
   },
@@ -853,9 +920,15 @@ const jobApplicantGetCommand = defineCommand({
 });
 
 const jobApplicantResumeCommand = defineCommand({
-  meta: { name: "resume", description: "Download an applicant's résumé (binary)." },
+  meta: {
+    name: "resume",
+    description: "Download an applicant's résumé (binary).",
+    examples: [
+      "curviate job applicant resume 4100000000 APPLICANT_ID -o resume.pdf",
+    ],
+  },
   args: {
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Job id the applicant applied to." },
     applicantId: { type: "positional", description: "Applicant id." },
     output: { type: "string", alias: "o", description: "Path to write the résumé file to." },

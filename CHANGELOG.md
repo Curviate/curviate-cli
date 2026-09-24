@@ -8,6 +8,45 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-09-23
+
+Adds examples to every command's help and the manifest the docs site
+generates its CLI reference from. No exit code changes.
+
+### Added
+
+- **Examples in `--help`.** Every command you can run now prints one to three
+  example invocations under an `EXAMPLES` heading in its `--help`. The same
+  lines appear on the command's page on docs.curviate.com.
+- **`commands.json`**, the command surface as data (each command's
+  description, arguments, accepted global flags, examples and requires), which the docs
+  site generates its CLI reference from. Not shipped in the package;
+  regenerate it with `pnpm manifest`.
+- **`requires` in `--help`.** A command with conditional requirements (one
+  of two flags, a `--body-file` alternative, at least one of several, a flag
+  that only applies with another) lists them under `REQUIRES`, and the docs
+  page shows them under the usage line.
+
+### Changed
+
+- **Read commands no longer declare `--preview`.** A truthy `--preview` on
+  a read was refused before and still is (exit 2, same message, now followed
+  by "Run `curviate --help` for usage."); the refusal now comes from the
+  flag declaration, so `--help` and the docs stop listing it on reads. An
+  explicit false still runs the read, as before: exactly the spellings a
+  write reads as false (`--preview=false`, `--no-preview`). Any other value
+  (`--preview=FALSE`, `=0`, `=no`) previews a write, so a read refuses it.
+- **`job create` declares its required flags** (`--workplace-type`,
+  `--location`, `--employment-status`, `--description`, `--apply-method`),
+  and `company follow-invite` declares `--invitee`. Still exit 2 when one is
+  missing; `--help` now marks them required and the message reads
+  `Missing required argument: --<flag>`.
+- `post save`, `post unsave`, `notification delete`, `notification show-less`
+  and `profile unfollow` describe what a repeat does in plain words.
+- `account get`, `feed home`, `notification delete` and `webhook verify`
+  descriptions state their status values, the null text on the recent feed,
+  re-injected promotional cards and the verify exit codes.
+
 ## [0.41.0] - 2026-09-23
 
 Follows `@curviate/sdk` to `0.37.1` and re-vendors the OpenAPI fixture from the

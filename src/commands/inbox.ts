@@ -19,7 +19,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { normalizeChatId } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -71,12 +71,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -182,7 +176,6 @@ export async function runInboxList(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -237,7 +230,6 @@ export async function runInboxGet(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   // Same pre-flight as `inbox messages`: the API refuses `cache_only` with
@@ -306,7 +298,6 @@ export async function runInboxMessages(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   // The retrieval pair, validated BEFORE any network call: the API refuses
@@ -387,7 +378,6 @@ export async function runInboxSearch(
   flags: InboxFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -440,9 +430,17 @@ export async function runInboxSearch(
 // ---------------------------------------------------------------------------
 
 const inboxListCommand = defineCommand({
-  meta: { name: "list", description: "List inbox chats." },
+  meta: {
+    name: "list",
+    description: "List inbox chats.",
+    examples: [
+      "curviate inbox list",
+      "curviate inbox list --unread",
+      "curviate inbox list --inbox archived --all",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     unread: {
       type: "boolean" as const,
@@ -475,10 +473,16 @@ const inboxListCommand = defineCommand({
 });
 
 const inboxGetCommand = defineCommand({
-  meta: { name: "get", description: "Get details of a single chat." },
+  meta: {
+    name: "get",
+    description: "Get details of a single chat.",
+    examples: [
+      "curviate inbox get 2-YTQ3ODU3Njgt",
+    ],
+  },
   args: {
     // Single-object read: READ_SINGLE_FLAGS omits pagination flags, keeps --fields
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     ...RETRIEVAL_FLAGS,
     chatId: { type: "positional", description: "Chat ID." },
   },
@@ -502,7 +506,13 @@ const inboxGetCommand = defineCommand({
 });
 
 const inboxMarkReadCommand = defineCommand({
-  meta: { name: "mark-read", description: "Mark a chat as read." },
+  meta: {
+    name: "mark-read",
+    description: "Mark a chat as read.",
+    examples: [
+      "curviate inbox mark-read 2-YTQ3ODU3Njgt",
+    ],
+  },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
     ...WRITE_SINGLE_FLAGS,
@@ -528,9 +538,17 @@ const inboxMarkReadCommand = defineCommand({
 });
 
 const inboxMessagesCommand = defineCommand({
-  meta: { name: "messages", description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store." },
+  meta: {
+    name: "messages",
+    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+    examples: [
+      "curviate inbox messages 2-YTQ3ODU3Njgt",
+      "curviate inbox messages 2-YTQ3ODU3Njgt --limit 20",
+      "curviate inbox messages 2-YTQ3ODU3Njgt --after 2026-06-01T00:00:00Z",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     ...RETRIEVAL_FLAGS,
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     chatId: { type: "positional", description: "Chat ID." },
@@ -565,9 +583,15 @@ const inboxMessagesCommand = defineCommand({
 });
 
 const inboxSearchCommand = defineCommand({
-  meta: { name: "search", description: "Free-text search the account's own inbox (matches participant names and message content)." },
+  meta: {
+    name: "search",
+    description: "Free-text search the account's own inbox (matches participant names and message content).",
+    examples: [
+      "curviate inbox search sophie",
+    ],
+  },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-100, default 20)." },
     query: { type: "positional", description: "Search term (e.g. a name or a phrase from a message)." },
   },

@@ -16,7 +16,7 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, NON_STREAM_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -78,12 +78,6 @@ type OutputStreams = {
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -186,7 +180,6 @@ export async function runWebhookList(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const outOpts = resolveOutputOpts(flags);
@@ -228,7 +221,6 @@ export async function runWebhookEvents(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const outOpts = resolveOutputOpts(flags);
@@ -250,7 +242,6 @@ export async function runWebhookGet(
   flags: WebhookFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
 
   const id = flags.id ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -475,7 +466,14 @@ export async function runWebhookVerify(
 // ---------------------------------------------------------------------------
 
 const webhookCreateCommand = defineCommand({
-  meta: { name: "create", description: "Register a new webhook endpoint." },
+  meta: {
+    name: "create",
+    description: "Register a new webhook endpoint.",
+    examples: [
+      "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
+      "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID --name status",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
@@ -505,8 +503,14 @@ const webhookCreateCommand = defineCommand({
 });
 
 const webhookListCommand = defineCommand({
-  meta: { name: "list", description: "List registered webhooks." },
-  args: { ...GLOBAL_FLAGS },
+  meta: {
+    name: "list",
+    description: "List registered webhooks.",
+    examples: [
+      "curviate webhook list",
+    ],
+  },
+  args: { ...readOnly(GLOBAL_FLAGS) },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -526,8 +530,14 @@ const webhookListCommand = defineCommand({
 });
 
 const webhookEventsCommand = defineCommand({
-  meta: { name: "events", description: "List the canonical webhook event catalogue." },
-  args: { ...NON_STREAM_FLAGS },
+  meta: {
+    name: "events",
+    description: "List the canonical webhook event catalogue.",
+    examples: [
+      "curviate webhook events",
+    ],
+  },
+  args: { ...readOnly(NON_STREAM_FLAGS) },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -547,9 +557,15 @@ const webhookEventsCommand = defineCommand({
 });
 
 const webhookGetCommand = defineCommand({
-  meta: { name: "get", description: "Get a single webhook owned by the calling tenant." },
+  meta: {
+    name: "get",
+    description: "Get a single webhook owned by the calling tenant.",
+    examples: [
+      "curviate webhook get wh_YOUR_WEBHOOK_ID",
+    ],
+  },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...readOnly(NON_STREAM_FLAGS),
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
@@ -571,7 +587,14 @@ const webhookGetCommand = defineCommand({
 });
 
 const webhookUpdateCommand = defineCommand({
-  meta: { name: "update", description: "Update a webhook in place (source is immutable)." },
+  meta: {
+    name: "update",
+    description: "Update a webhook in place (source is immutable).",
+    examples: [
+      "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
+      "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
@@ -601,7 +624,13 @@ const webhookUpdateCommand = defineCommand({
 });
 
 const webhookDeleteCommand = defineCommand({
-  meta: { name: "delete", description: "Permanently remove a webhook subscription." },
+  meta: {
+    name: "delete",
+    description: "Permanently remove a webhook subscription.",
+    examples: [
+      "curviate webhook delete wh_YOUR_WEBHOOK_ID",
+    ],
+  },
   args: {
     ...NON_STREAM_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
@@ -625,7 +654,13 @@ const webhookDeleteCommand = defineCommand({
 });
 
 const webhookVerifyCommand = defineCommand({
-  meta: { name: "verify", description: "Verify a webhook signature offline (no network call)." },
+  meta: {
+    name: "verify",
+    description: "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
+    examples: [
+      "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json",
+    ],
+  },
   // Offline: no profile, credential, transport or pagination flag applies.
   args: {
     json: GLOBAL_FLAGS.json,

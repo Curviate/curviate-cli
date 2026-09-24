@@ -191,7 +191,7 @@ describe("account connect-session poll — one-shot (no --wait)", () => {
   // -------------------------------------------------------------------------
   // readableObject follow-up: this command renders a bare
   // `getSession` result directly, but checks `flags.preview` inline instead
-  // of calling `rejectPreviewOnRead` — the convention the ticket's own
+  // of refusing it (the since-retired rejectPreviewOnRead) — the convention the ticket's own
   // derivation keyed on — so it was missed by the first pass entirely and
   // silently exited 0 on a malformed 2xx. Same-path positive control
   // (`resolvedSession()` exits 0) sits right above in the first test of this

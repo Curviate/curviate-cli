@@ -26,7 +26,7 @@ export const GLOBAL_FLAGS = {
   },
   account: {
     type: "string" as const,
-    description: "Account id for account-scoped commands. Optional when exactly one account is connected.",
+    description: "Account id for account-scoped commands. Optional when exactly one account is connected, and required with --preview.",
   },
   "base-url": {
     type: "string" as const,
@@ -61,12 +61,12 @@ export const GLOBAL_FLAGS = {
   },
   "max-pages": {
     type: "string" as const,
-    description: "Maximum number of pages to fetch when --all is used.",
+    description: "Maximum number of pages to fetch when --all is used. Refused (exit 2) without --all.",
   },
   "page-delay": {
     type: "string" as const,
     description:
-      "Milliseconds to pause between pages when --all is used (default 400; pass 0 to disable). A modest delay keeps a long stream under the platform rate gate.",
+      "Milliseconds to pause between pages when --all is used (default 400; pass 0 to disable). A modest delay keeps a long stream under the platform rate gate. Refused (exit 2) without --all.",
   },
   preview: {
     type: "boolean" as const,
@@ -195,3 +195,16 @@ export type ReadSingleFlags = Omit<GlobalFlags, "limit" | "cursor" | "all" | "ma
 export const WRITE_SINGLE_FLAGS = READ_SINGLE_FLAGS;
 
 export type WriteSingleFlags = ReadSingleFlags;
+
+/**
+ * A read command's flag set: `--preview` renders a write's request, so a read
+ * does not declare it, and the dispatcher's unknown-flag check refuses it
+ * (exit 2) before any handler runs. The declaration is the only record of
+ * which commands take `--preview`: `--help`, `commands.json` and the docs
+ * all read it.
+ */
+export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "preview"> {
+  const rest = { ...flags };
+  delete rest.preview;
+  return rest;
+}

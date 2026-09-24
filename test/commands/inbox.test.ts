@@ -109,23 +109,6 @@ describe("inbox list", () => {
     expect(ndjson).toHaveLength(3);
   });
 
-  it("inbox list --preview — usage error exit 2 (preview on read)", async () => {
-    const { runInboxList } = await import("../../src/commands/inbox.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxList(client as never, { account: "acc_1", preview: true } as InboxArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("inbox list — missing account exits 2", async () => {
     const { runInboxList } = await import("../../src/commands/inbox.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -214,23 +197,6 @@ describe("inbox get", () => {
     expect(ns.messaging.getChat).toHaveBeenCalledWith("chat_abc", {});
   });
 
-  it("inbox get — rejects --preview (read command)", async () => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxGet(client as never, { chatId: "chat_abc", account: "acc_1", preview: true } as InboxArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
   it("inbox get — rejects --all (not paginated)", async () => {
     const { runInboxGet } = await import("../../src/commands/inbox.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
@@ -303,23 +269,6 @@ describe("inbox messages", () => {
     const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
     const ndjson = lines.filter((l) => l.trim().startsWith("{"));
     expect(ndjson).toHaveLength(2);
-  });
-
-  it("inbox messages --preview — usage error exit 2", async () => {
-    const { runInboxMessages } = await import("../../src/commands/inbox.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxMessages(client as never, { chatId: "chat_xyz", account: "acc_1", preview: true } as InboxArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
   });
 
   it("inbox messages --limit 40 — exits 2 with a clear range message before any SDK call (AX P1: qa finding)", async () => {
@@ -764,23 +713,6 @@ describe("inbox search", () => {
     });
     try {
       await runInboxSearch(noConnectedAccounts(client) as never, { query: "sophie", json: true } as InboxArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
-  it("inbox search --preview — usage error exit 2 (preview on read)", async () => {
-    const { runInboxSearch } = await import("../../src/commands/inbox.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runInboxSearch(client as never, { account: "acc_1", query: "sophie", preview: true } as InboxArgs, out);
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(2)");

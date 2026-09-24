@@ -24,7 +24,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, READ_SINGLE_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -64,12 +64,6 @@ function buildOutputStreams(): OutputStreams {
   };
 }
 
-function rejectPreviewOnRead(preview: boolean | undefined, out: OutputStreams): void {
-  if (preview) {
-    out.stderr.write("error: --preview is only valid on write commands (mutations). Reads just run.\n");
-    process.exit(2);
-  }
-}
 
 function rejectAllOnNonPaginated(all: boolean | undefined, out: OutputStreams): void {
   if (all) {
@@ -128,7 +122,6 @@ export async function runInboxesList(
   flags: InboxesFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectAllOnNonPaginated(flags.all, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -162,7 +155,6 @@ export async function runInboxesChats(
   flags: InboxesFlags,
   out: OutputStreams,
 ): Promise<void> {
-  rejectPreviewOnRead(flags.preview, out);
   rejectPaginationModifiersWithoutAll(flags, out);
 
   const accountId = await requireAccount(client, flags, out);
@@ -204,11 +196,18 @@ export async function runInboxesChats(
 // ---------------------------------------------------------------------------
 
 const inboxesListCommand = defineCommand({
-  meta: { name: "list", description: "Discover the account's inboxes (personal + company pages)." },
+  meta: {
+    name: "list",
+    description: "Discover the account's inboxes (personal + company pages).",
+    examples: [
+      "curviate inboxes list",
+      "curviate inboxes list --kind company",
+    ],
+  },
   args: {
     // Single-object-shaped read: READ_SINGLE_FLAGS omits pagination flags
     // (this response carries no cursor, every inbox comes back in one call).
-    ...READ_SINGLE_FLAGS,
+    ...readOnly(READ_SINGLE_FLAGS),
     kind: {
       type: "string" as const,
       description: "Filter to only personal or only company inboxes: personal | company. Omit to list both.",
@@ -244,9 +243,13 @@ const inboxesChatsCommand = defineCommand({
       "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. " +
       "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
+    examples: [
+      "curviate inboxes chats CLASSIC_PRIMARY",
+      "curviate inboxes chats COMPANY_1234567_PRIMARY --limit 10",
+    ],
   },
   args: {
-    ...GLOBAL_FLAGS,
+    ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
     inboxId: { type: "positional", description: "Inbox id from `inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)." },
   },

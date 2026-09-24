@@ -92,6 +92,10 @@ export const loginCommand = defineCommand({
     name: "login",
     description:
       "Save an API key to a local profile. Run `curviate profile me` to verify.",
+    examples: [
+      "curviate login",
+      "curviate login --api-key - --profile work",
+    ],
   },
   // Only what login acts on: it makes no request, so pagination, projection,
   // preview and transport flags would be accepted and do nothing. `--json` is
