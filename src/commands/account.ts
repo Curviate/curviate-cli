@@ -673,6 +673,7 @@ async function runInteractiveCheckpointLoop(
     // A method choice, not a code: there is nothing to type at a prompt. Show
     // the choices and hand off to the command that answers it.
     if ((current.challenge_type as string) === "challenge_selection") {
+      readableObject(current);
       renderSuccess(current, ctx.outOpts, ctx.out);
       ctx.out.stderr.write(
         `Choose how LinkedIn verifies this sign-in: curviate account checkpoint request ${accountId} --challenge <id> (an id from challenges).\n`,

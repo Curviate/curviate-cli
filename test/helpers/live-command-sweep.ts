@@ -145,6 +145,9 @@ const SWEEP_ARGV_OVERRIDES: Record<string, string[]> = {
   "profile me": ["profile", "me"],
   "recruiter project-job": ["recruiter", "project-job", "1"],
   "recruiter applicant": ["recruiter", "applicant", "1", "1"],
+  // messaging (the generic first enum value) now needs --account-ids;
+  // account_status is the one source that sends with only the required flags.
+  "webhook create": ["webhook", "create", "--source", "account_status", "--request-url", "https://h.test/x"],
 };
 
 /** Minimal required positionals/flags, no branch-selecting booleans. */

@@ -240,14 +240,20 @@ const PARITY_MANIFEST: Record<string, string> = {
 const EXPECTED_MANIFEST_COUNT = 146;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
-const EXPECTED_SDK_METHOD_COUNT = 146;
+const EXPECTED_SDK_METHOD_COUNT = 149;
 
 /**
  * Pre-existing SDK methods with no CLI command yet — see the file-header
  * doc comment. Each entry here must be a real, currently-uncovered SDK
  * method (checked below) — this is a documented backlog, not a loophole.
  */
-const KNOWN_GAP_METHODS: readonly string[] = [];
+// Seat add/cancel/revert are REST + SDK only by product ruling: no CLI
+// command, ever. A deliberate gap rather than a backlog item.
+const KNOWN_GAP_METHODS: readonly string[] = [
+  "accounts.addSeats",
+  "accounts.cancelSeat",
+  "accounts.revertSeatCancellation",
+];
 
 // ---------------------------------------------------------------------------
 // SDK method enumeration via client instance prototype inspection

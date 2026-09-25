@@ -153,7 +153,7 @@ export async function runWebhookCreate(
     body["account_ids"] = accountIds;
   } else if (flags.source !== "account_status") {
     out.stderr.write(
-      "error: --account-ids is required for --source messaging and user (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
+      "error: --account-ids is required when --source is messaging or user (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
     );
     process.exit(2);
   }

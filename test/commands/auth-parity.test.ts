@@ -55,7 +55,7 @@ describe("webhook create, tenant-wide account_status", () => {
     const c = client();
     const out = makeOut();
     await expectExit(2, () => runWebhookCreate(c as never, { source, "request-url": "https://example.com/h" } as never, out));
-    expect(text(out.stderr.write)).toContain("--account-ids is required for --source messaging and user");
+    expect(text(out.stderr.write)).toContain("--account-ids is required when --source is messaging or user");
     expect(c.webhooks.create).not.toHaveBeenCalled();
   });
 
