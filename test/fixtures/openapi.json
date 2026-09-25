@@ -134,6 +134,10 @@
     {
       "name": "Safety",
       "description": "Read and configure an account's safety limits: per-budget-row ceilings and bands, counting windows, enforcement posture, the activity window, warm-up state and character caps. Every number is seeded configuration and every one of them is settable."
+    },
+    {
+      "name": "Seats",
+      "description": "Buy or manage the seats a workspace's subscription holds: add seats, and schedule or revert a seat's cancellation. Use GET /v1/accounts/seats to find a free seat to connect an account into."
     }
   ],
   "x-tagGroups": [
@@ -251,6 +255,12 @@
       "name": "Safety",
       "tags": [
         "Safety"
+      ]
+    },
+    {
+      "name": "Seats",
+      "tags": [
+        "Seats"
       ]
     }
   ],
@@ -724,7 +734,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "\"me\" for the caller's own account, or another LinkedIn user's public identifier, member ID, or profile URL. Note on the skills section: a skill's `endorsement_id` (the value needed to endorse that skill) is returned only for users you are eligible to endorse; i.e. your 1st-degree connections. For users outside your network, and on your own profile, the skills section still lists each skill (name, endorsement_count, endorsed, insights) but omits `endorsement_id`. This depends on the connection, not on the identifier form used to look the user up."
+            "description": "\"me\" for the caller, or a public identifier, member ID, or profile URL. endorsement_id appears only for connections eligible to endorse."
           },
           {
             "name": "linkedin_sections",
@@ -737,7 +747,7 @@
                 "minLength": 1
               }
             },
-            "description": "Which profile sections to fetch (repeatable, flat). Pass one or more of: linkedin_experience, linkedin_education, linkedin_languages, linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, linkedin_interests (or linkedin_* for all), plus each value's _preview variant. Omit for base fields only."
+            "description": "Profile sections to fetch, repeatable: linkedin_experience, linkedin_skills, and others (each has a _preview variant). Omit for base fields only."
           },
           {
             "name": "mode",
@@ -752,7 +762,7 @@
                 "cache_only"
               ]
             },
-            "description": "How willing this read is to reach LinkedIn. `auto` (default) serves a stored copy while it is within the resource's freshness threshold; `live` always fetches; `refill` serves a stored copy at any age and fetches once when this read has no stored copy yet; `cache_only` never fetches and returns NOT_STORED when nothing is stored. `cache_only` cannot be combined with max_age. A 502 under `cache_only` means the store could not be read, not that nothing is stored: no request was made to LinkedIn, and the same read is worth retrying."
+            "description": "How willing this read is to reach LinkedIn: auto (default), live, refill, or cache_only. Details: /reference/getting-started/cache."
           },
           {
             "name": "max_age",
@@ -763,7 +773,7 @@
               "minimum": 0,
               "maximum": 31536000
             },
-            "description": "Maximum age, in seconds, of a stored copy this read will accept. Overrides the `auto`, `live` and `refill` presets in both directions; `0` is the same as `mode=live`. Not accepted with `mode=cache_only`, whose guarantee is not a freshness threshold."
+            "description": "Maximum age in seconds of a stored copy this read accepts; overrides mode in both directions. Not with cache_only. Details: /reference/getting-started/cache."
           }
         ],
         "responses": {
@@ -3441,7 +3451,7 @@
             }
           }
         },
-        "description": "Endorses one specific skill on a target member's profile. You can only endorse the skills of your 1st-degree connections. To obtain the endorsement_id: (1) GET /v1/{account_id}/users/{user_id}?linkedin_sections=linkedin_skills, (2) read the target skill's endorsement_id from the skills section, this field is present ONLY for connections you are eligible to endorse (it is omitted for users outside your network and on your own profile, so this workflow requires the target to be a 1st-degree connection), (3) call this endpoint with that value. user_id must be the LinkedIn member ID (ACo... format); a public identifier does not resolve on this endpoint.",
+        "description": "Endorses one skill on a target member's profile. Only skills of your 1st-degree connections can be endorsed, using the endorsement_id from their profile's skills section (GET users/{user_id}?linkedin_sections=linkedin_skills).",
         "requestBody": {
           "required": true,
           "content": {
@@ -4719,7 +4729,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Maximum viewers to return in this page (1-100, default 20). The server may walk a few internal pages to fill one page, and never slices a fetched page down to a smaller limit, so the returned count can exceed this value; the response text says so and includes a cursor to continue when it does."
+            "description": "Maximum viewers per page (1-100, default 20). The returned count can exceed this; the response includes a cursor to continue."
           },
           {
             "name": "cursor",
@@ -4729,7 +4739,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Zero individuals on a page does NOT mean the list is exhausted while `cursor` is non-null (an aggregate-only page may precede more identified viewers); page until `cursor` is null. Heavy pagination consumes a shared, throttled upstream request budget; you own the spend via the cursor."
+            "description": "Opaque cursor from a prior response's cursor; omit for the first page. Page until cursor is null, even on a page with zero people."
           }
         ],
         "responses": {
@@ -5055,7 +5065,7 @@
             }
           }
         },
-        "description": "Returns a cursor-paginated list of the account's recent profile viewers, each classified by disclosure fidelity (identified, semi-anonymous, or an aggregate rollup). A Premium account can see identified viewers; a free account is capped at semi-anonymous fidelity; an in-band result, never an error. Page until cursor is null.",
+        "description": "Returns a cursor-paginated list of the account's recent profile viewers, each classified by disclosure fidelity (identified, semi-anonymous, or aggregate). A free account is capped at semi-anonymous; Premium sees identified. Page until cursor is null.",
         "x-order": 13
       }
     },
@@ -6100,7 +6110,7 @@
             }
           }
         },
-        "description": "Returns a paginated list of LinkedIn accounts this user follows. LinkedIn only allows listing the connected account's OWN following list, user_id MUST be \"me\"; any other value returns a non-retryable error (this is a permanent LinkedIn platform limitation, not a gap in this endpoint). To list another user's followers instead, use GET /v1/{account_id}/users/{user_id}/followers, which does accept an explicit user_id.",
+        "description": "Lists accounts this user follows. LinkedIn allows only the connected account's own list: user_id must be \"me\". To list another user's followers, use the followers endpoint instead.",
         "x-order": 5
       }
     },
@@ -6699,7 +6709,7 @@
             }
           }
         },
-        "description": "Unfollows a LinkedIn user. Idempotent, unfollowing a user this account does not currently follow still returns 200.",
+        "description": "Unfollows a LinkedIn user. Unfollowing a user this account does not currently follow still returns 200, not an error.",
         "x-order": 7
       }
     },
@@ -6732,7 +6742,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company to retrieve. Accepts the company's public handle (the slug in `linkedin.com/company/<handle>`, e.g. t-systems) or its numeric id (e.g. 1234567). The numeric id field returned on each POST /v1/{account_id}/search/companies result, or the id field of this endpoint's own response, can be passed here directly."
+            "description": "The company to retrieve: its public handle (the `linkedin.com/company/<handle>` slug) or numeric id. Both come back on a search/companies result."
           }
         ],
         "responses": {
@@ -7255,7 +7265,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -7717,7 +7727,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -8196,7 +8206,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -8649,12 +8659,12 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           }
         ],
         "responses": {
           "200": {
-            "description": "One per-invitee outcome for each requested member, in request order, for an all-valid request. If any invitee id is invalid, the whole request is rejected (404), with no partial success. Re-inviting an already-invited member returns the same invitation id with status \"already_invited\", an idempotent no-op, never a duplicate. Only identifiers transit; nothing is stored.",
+            "description": "One per-invitee outcome for each requested member, in request order, for an all-valid request. If any invitee id is invalid, the whole request is rejected (404), with no partial success. Re-inviting an already-invited member returns the same invitation id with status \"already_invited\"; calling again never creates a duplicate. Only identifiers transit; nothing is stored.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8703,7 +8713,7 @@
                               "ineligible",
                               "not_found"
                             ],
-                            "description": "Per-invitee outcome. \"invited\": a new follow-invitation was created. \"already_invited\": a pending invitation already existed (idempotent no-op; the same invitation_id is returned, never a duplicate). \"ineligible\": the member is not an invitable 1st-degree connection. \"not_found\": the member id did not resolve."
+                            "description": "Per-invitee outcome. \"invited\": a new follow-invitation was created. \"already_invited\": a pending invitation already existed; calling again returns the same invitation_id, never a duplicate. \"ineligible\": the member is not an invitable 1st-degree connection. \"not_found\": the member id did not resolve."
                           },
                           "invitation_id": {
                             "type": [
@@ -8739,7 +8749,7 @@
                 },
                 "examples": {
                   "companyFollowInviteResult": {
-                    "summary": "A batch: one fresh invite + one already-invited (idempotent)",
+                    "summary": "A batch: one fresh invite + one already-invited (repeat call, same id)",
                     "value": {
                       "object": "company_follow_invite_result",
                       "results": [
@@ -8982,7 +8992,7 @@
             }
           }
         },
-        "description": "Invites one or more of the connected account's 1st-degree connections to follow a company page it administers with the invite-to-follow entitlement. Pass the AC... member ids from an invitable-followers read. Returns one outcome per invitee, in request order, for an all-valid request. If any invitee id is invalid, the whole request is rejected (404), with no partial success. Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate). Only identifiers transit. Nothing is stored.",
+        "description": "Invites one or more of the connected account's 1st-degree connections to follow a company page it administers, using member ids from an invitable-followers read. All-or-nothing: one invalid invitee id rejects the whole request (404). Re-inviting an already-invited member is a safe no-op.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9056,7 +9066,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -9441,7 +9451,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -9784,7 +9794,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "limit",
@@ -9815,7 +9825,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -10252,7 +10262,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Returns the conversations in a company page's admin message inbox, newest-activity-first. The connected account must administer the page. Content passes through and is never stored. Beta: deep pagination is being validated at scale. Single-page listing and termination are verified; deep pagination (many pages / large cursor round-trips) is provisional until validated against a busier inbox.",
+        "description": "Lists a company page's admin-inbox conversations, newest-activity-first. The connected account must administer the page. Content is never stored. Beta: single-page results are verified; deep pagination across many pages is still being validated at scale.",
         "x-order": 8
       }
     },
@@ -10285,7 +10295,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "chat_id",
@@ -10303,7 +10313,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -10698,7 +10708,7 @@
             }
           }
         },
-        "description": "Returns a single conversation from a company page's admin inbox by id; the same shape as a list item. The connected account must administer the page.",
+        "description": "Returns a single conversation from a company page's admin inbox by id, the same shape as a list item. The connected account must administer the page.",
         "x-order": 9
       }
     },
@@ -10731,7 +10741,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "chat_id",
@@ -10771,7 +10781,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -11163,7 +11173,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "chat_id",
@@ -11501,7 +11511,7 @@
             }
           }
         },
-        "description": "Sends a message into an existing company-inbox conversation, as the page. chat_id is the conversation id from GET /v1/{account_id}/companies/{identifier}/chats, the same 2-... id this group's chat reads return, passed verbatim. The connected account must administer the page. Reply-only: a page can never start a new conversation, only answer an existing one. Send application/json with text, base64 attachments (max 5 MiB per file, and 9 MiB for the whole request body; base64 makes a file about a third larger in the body than on disk), or both; at least one of text or attachments is required. Message content passes through to the platform and is never stored. The response's sent_as field names the acting identity that was actually used.",
+        "description": "Sends a message into an existing company-inbox conversation, as the page. Reply-only: a page can never start a new conversation, only answer one. Send text, base64 attachments (5 MiB per file, 9 MiB per request), or both. The connected account must administer the page.",
         "requestBody": {
           "required": true,
           "content": {
@@ -11547,7 +11557,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments (base64-encoded)."
+                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
                   }
                 },
                 "additionalProperties": false
@@ -11608,7 +11618,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "chat_id",
@@ -11635,7 +11645,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -11995,7 +12005,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The company's numeric id (e.g. 112013061), the id field of GET /v1/{account_id}/companies/{identifier} or a POST /v1/{account_id}/search/companies result. A public handle or URN is not accepted here; pass the numeric id."
+            "description": "The company's numeric id (e.g. 112013061), the id field from GET .../companies/{identifier} or a search/companies result. A handle or URN is not accepted here."
           },
           {
             "name": "query",
@@ -12053,7 +12063,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -12529,7 +12539,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Free-text search (query) OR one topic/unread filter over the admin inbox: exactly one mode per call. topic accepts 1-5 or a name (Service request, Request a demo, Support, Careers, Other). filter_effective is present only in topic/unread mode. The connected account must administer the page. Beta: deep pagination is being validated at scale. Single-page listing and termination are verified; deep pagination (many pages / large cursor round-trips) is provisional until validated against a busier inbox.",
+        "description": "Free-text search (query) or one topic/unread filter over the admin inbox, exactly one mode per call. The connected account must administer the page. Beta: single-page results are verified; deep pagination across many pages is still being validated at scale.",
         "x-order": 12
       }
     },
@@ -12562,7 +12572,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Target any other LinkedIn user's groups instead of the acting account's own, a vanity slug or a full /in/{vanity} URL. Omit to enumerate the acting account's own groups (a complete read). A profile target is a documented partial read (that target's interests-groups section only)."
+            "description": "Target another LinkedIn user's groups instead of your own (vanity slug or /in/{vanity} URL). Partial read: interests-groups section only."
           },
           {
             "name": "limit",
@@ -12574,7 +12584,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Maximum items to return per page (1-100, default 20). list_group_members walks fixed-size internal pages and cannot go below one page, so its returned count can exceed this value; the response text says so and includes a cursor to continue when it does."
+            "description": "Maximum items per page (1-100, default 20). The returned count can exceed this; the response includes a cursor to continue."
           },
           {
             "name": "cursor",
@@ -13096,7 +13106,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The group to look up. Accepts a numeric group id (e.g. 9123014) or a full group URL (e.g. https://www.linkedin.com/groups/9123014/, .../members/). The numeric id is extracted from either form, pass the id field returned by GET /v1/{account_id}/profile/groups or this endpoint's own response."
+            "description": "The group to look up: a numeric group id (e.g. 9123014) or its full group URL; the id is extracted from either form."
           }
         ],
         "responses": {
@@ -13528,7 +13538,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The group to look up. Accepts a numeric group id (e.g. 9123014) or a full group URL (e.g. https://www.linkedin.com/groups/9123014/, .../members/). The numeric id is extracted from either form, pass the id field returned by GET /v1/{account_id}/profile/groups or this endpoint's own response."
+            "description": "The group to look up: a numeric group id (e.g. 9123014) or its full group URL; the id is extracted from either form."
           },
           {
             "name": "name",
@@ -13537,7 +13547,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Filter members by name, prefix/substring, multi-word, case-insensitive (e.g. 'raphael red' matches \"Raphael Redmer\"). Folds in member search as this SAME endpoint, not a separate one. Omit (or pass an empty string) for the full roster."
+            "description": "Filter members by name, prefix/substring, case-insensitive. Folds in member search as this endpoint, not a separate one."
           },
           {
             "name": "limit",
@@ -13549,7 +13559,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Maximum items to return per page (1-100, default 20). list_group_members walks fixed-size internal pages and cannot go below one page, so its returned count can exceed this value; the response text says so and includes a cursor to continue when it does."
+            "description": "Maximum items per page (1-100, default 20). The returned count can exceed this; the response includes a cursor to continue."
           },
           {
             "name": "cursor",
@@ -13559,7 +13569,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Opaque pagination cursor from a prior response's cursor. Omit for the first page. Scoped to the `name` value it was minted under, replaying it alongside a different `name` is rejected."
+            "description": "Opaque cursor from a prior response's cursor. Omit for the first page. Scoped to the name value it was minted under."
           }
         ],
         "responses": {
@@ -13962,7 +13972,7 @@
                 "SKILL"
               ]
             },
-            "description": "Parameter type to resolve. Classic types: LOCATION, PEOPLE, RELATION, COMPANY, SCHOOL, INDUSTRY, SERVICE, JOB_FUNCTION, JOB_TITLE, EMPLOYMENT_TYPE, SKILL. Non-classic types (e.g. GROUPS, SALES_INDUSTRY) are rejected."
+            "description": "Parameter type to resolve. Non-classic types (e.g. GROUPS, SALES_INDUSTRY) are rejected."
           },
           {
             "name": "keywords",
@@ -14275,7 +14285,7 @@
             }
           }
         },
-        "description": "Resolves human-readable terms (e.g. 'software development') to opaque filter IDs for use in structured search filters. The type parameter selects the filter category; keywords is required for every type, including EMPLOYMENT_TYPE. Results paginate: send the cursor from the previous response to get the next page, and stop when it comes back null.",
+        "description": "Resolves human-readable terms (e.g. 'software development') to opaque filter IDs for structured search filters. type selects the category; keywords is required for every type. Paginate with cursor until it returns null.",
         "x-order": 1
       }
     },
@@ -17713,7 +17723,7 @@
             }
           }
         },
-        "description": "Runs a pasted LinkedIn search URL directly. url is the only accepted body field, this is the sole home of URL-mode; the structured people/companies/posts/jobs endpoints no longer accept url. The response is polymorphic: each item is discriminated individually by its own kind (a person, a company, a post, or a job).",
+        "description": "Runs a pasted LinkedIn search URL directly; url is the only accepted body field, the sole home of URL-mode. The response is polymorphic: each item is discriminated by its own kind (person, company, post, or job).",
         "requestBody": {
           "required": true,
           "content": {
@@ -19149,7 +19159,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -20052,7 +20062,7 @@
             }
           }
         },
-        "description": "Starts a new chat with one or more members from a connected account. Send application/json; attach files as base64-encoded attachments (max 5 MiB per file, and 9 MiB for the whole request body; base64 makes a file about a third larger in the body than on disk). This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. Company pages are reply-only and cannot start a conversation; reply using a `COMPANY_` chat id from GET /v1/{account_id}/inboxes/{inbox_id}/chats instead.",
+        "description": "Starts a chat with members. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. Company pages are reply-only: a COMPANY_ id cannot start one.",
         "requestBody": {
           "required": true,
           "content": {
@@ -20107,7 +20117,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments (base64-encoded)."
+                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
                   },
                   "topic": {
                     "type": "string",
@@ -20230,7 +20240,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           },
           {
             "name": "mode",
@@ -20245,7 +20255,7 @@
                 "cache_only"
               ]
             },
-            "description": "How willing this read is to reach LinkedIn. `auto` (default) serves a stored copy while it is within the resource's freshness threshold; `live` always fetches; `refill` serves a stored copy at any age and fetches once when this read has no stored copy yet; `cache_only` never fetches and returns NOT_STORED when nothing is stored. `cache_only` cannot be combined with max_age. A 502 under `cache_only` means the store could not be read, not that nothing is stored: no request was made to LinkedIn, and the same read is worth retrying."
+            "description": "How willing this read is to reach LinkedIn: auto (default), live, refill, or cache_only. Details: /reference/getting-started/cache."
           },
           {
             "name": "max_age",
@@ -20256,7 +20266,7 @@
               "minimum": 0,
               "maximum": 31536000
             },
-            "description": "Maximum age, in seconds, of a stored copy this read will accept. Overrides the `auto`, `live` and `refill` presets in both directions; `0` is the same as `mode=live`. Not accepted with `mode=cache_only`, whose guarantee is not a freshness threshold."
+            "description": "Maximum age in seconds of a stored copy this read accepts; overrides mode in both directions. Not with cache_only. Details: /reference/getting-started/cache."
           }
         ],
         "responses": {
@@ -21186,7 +21196,7 @@
                 "cache_only"
               ]
             },
-            "description": "How willing this read is to reach LinkedIn. `auto` (default) serves a stored copy while it is within the resource's freshness threshold; `live` always fetches; `refill` serves a stored copy at any age and fetches once when this read has no stored copy yet; `cache_only` never fetches and returns NOT_STORED when nothing is stored. `cache_only` cannot be combined with max_age. A 502 under `cache_only` means the store could not be read, not that nothing is stored: no request was made to LinkedIn, and the same read is worth retrying."
+            "description": "How willing this read is to reach LinkedIn: auto (default), live, refill, or cache_only. Details: /reference/getting-started/cache."
           },
           {
             "name": "max_age",
@@ -21197,7 +21207,7 @@
               "minimum": 0,
               "maximum": 31536000
             },
-            "description": "Maximum age, in seconds, of a stored copy this read will accept. Overrides the `auto`, `live` and `refill` presets in both directions; `0` is the same as `mode=live`. Not accepted with `mode=cache_only`, whose guarantee is not a freshness threshold."
+            "description": "Maximum age in seconds of a stored copy this read accepts; overrides mode in both directions. Not with cache_only. Details: /reference/getting-started/cache."
           },
           {
             "name": "user_id",
@@ -21255,7 +21265,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -21775,7 +21785,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The unique identifier of the chat to send the message to. A COMPANY_ chat id (e.g. 'COMPANY_83734124_2-YTQ3ODU3Njgt', from the inboxes endpoints) sends this message as that company page instead of the connected member."
+            "description": "The chat to send to. A COMPANY_ chat id (from the inboxes endpoints) sends as that company page instead of the connected member."
           }
         ],
         "responses": {
@@ -22105,7 +22115,7 @@
             }
           }
         },
-        "description": "Sends a message into an existing chat. Send application/json with text, base64 attachments (max 5 MiB per file, and 9 MiB for the whole request body; base64 makes a file about a third larger in the body than on disk), or both; at least one of text or attachments is required. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. Sending on behalf of a company page: use a COMPANY_ chat id (from GET /v1/{account_id}/inboxes/{inbox_id}/chats) and the message sends AS THE PAGE, no separate parameter needed. The response's sent_as field names the acting identity that was actually used. Company pages are reply-only: this endpoint can answer an existing conversation on a page's behalf, but a page can never start a new one.",
+        "description": "Sends a message into a chat: text, attachments, or both. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. COMPANY_ chat ids send as the page.",
         "requestBody": {
           "required": true,
           "content": {
@@ -22151,7 +22161,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments (base64-encoded)."
+                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
                   }
                 },
                 "additionalProperties": false
@@ -22236,7 +22246,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -23746,7 +23756,7 @@
               "type": "string",
               "minLength": 3
             },
-            "description": "The search term: matches both participant names and message content (e.g. 'sophie keller'). Minimum 3 characters. A shorter term cannot use the search index and is rejected with INVALID_REQUEST."
+            "description": "Search term, matches participant names and message content. Minimum 3 characters."
           },
           {
             "name": "limit",
@@ -24164,7 +24174,7 @@
             }
           }
         },
-        "description": "Free-text search of the connected account's own inbox. Matches both participant names and message content. A no-match term returns an empty list, not an error.\n\nServed from the chats and messages already retrieved for this account, so it costs no platform call and draws down no budget. A chat that has never been retrieved cannot match. The `coverage` block on the response says how complete the searched corpus is.",
+        "description": "Free-text search of the connected account's own inbox, matching participant names and message content. Served from chats and messages already retrieved, so it costs no platform call. A chat never retrieved cannot match; the response's coverage block says how complete that is.",
         "x-order": 12
       }
     },
@@ -24875,7 +24885,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Returns the account's personal inbox plus, when the company product is attached, one entry per company page x folder (id like 'COMPANY_83734124_PRIMARY'). Company inboxes carry reply_only:true; company pages can only reply to existing conversations, never start one. company_id is resolved by correlating the page name against the account's managed pages; an uncorrelatable page returns company_id:null, never a fabricated id. When no company inbox exists, hint names the Company Pages reconnect requirement instead of returning silently empty.",
+        "description": "Lists the account's personal inbox plus, when the company product is attached, one entry per company page and folder. Company inboxes are reply-only. company_id is null when the page can't be correlated to a managed page.",
         "x-order": 13
       }
     },
@@ -24939,7 +24949,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Additional response fields to resolve, comma-separated in a single value (for example expand=public_identifier). Accepted values: public_identifier. When requested, the field is present on every user object in the response, carrying either a value or null. Omit for the base fields only. Pass the parameter once; repeating it drops values. At most 25 people per request need an extra lookup to resolve; anyone beyond that carries null, so ask for a smaller page to resolve them all."
+            "description": "Extra fields to resolve, comma-separated in one value (expand=public_identifier). Present on every result as a value or null; repeating the key drops values."
           }
         ],
         "responses": {
@@ -25548,7 +25558,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Returns a paginated list of an inbox's conversations, newest-activity-first. Each chat's id is send-ready: pass it directly to the send-message endpoint to reply; a company inbox's chat id (e.g. 'COMPANY_83734124_2-...') replies AS THE PAGE, no separate parameter needed. Works identically for personal (CLASSIC_) inboxes. Company pages are reply-only (reply_only:true on the inbox, from GET /inboxes); they cannot start a new conversation. A malformed inbox_id returns 400 INVALID_REQUEST; a well-formed id for a mailbox this account does not administer returns 403 RESOURCE_ACCESS_RESTRICTED (no existence disclosure); there is no 404 for this endpoint.",
+        "description": "Lists an inbox's conversations, newest first. Each chat id is send-ready: pass it to the send-message endpoint to reply; a company id replies as that page. Company inboxes are reply-only. A mailbox this account doesn't administer returns 403, never 404.",
         "x-order": 14
       }
     },
@@ -25586,7 +25596,7 @@
               ],
               "default": "recent"
             },
-            "description": "Sort order. `recent` (default) = reverse-chronological, always available. `relevant` = LinkedIn's ranked 'top' feed, which draws on a shared, throttled request budget and can rate-limit. When a `cursor` is supplied the sort is taken from the cursor and this is ignored."
+            "description": "Sort order. recent (default) is reverse-chronological. relevant can rate-limit. Ignored when cursor is supplied; the sort comes from the cursor."
           },
           {
             "name": "limit",
@@ -25598,7 +25608,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Lower bound on the posts returned in this page (1-100, default 20). The server walks fixed internal pages and returns whole pages up to the next boundary at or beyond this value, so a page may return slightly more; page until `cursor` is null."
+            "description": "Minimum posts per page (1-100, default 20); the returned count can exceed this. Page until cursor is null."
           },
           {
             "name": "cursor",
@@ -25608,7 +25618,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Self-describing of its sort: when present, the sort is taken from the cursor. Pass it back verbatim; the `relevant` cursor expires (~1h). Page until `cursor` is null."
+            "description": "Opaque cursor from a prior response's cursor; omit for the first page, self-describing of its sort. The relevant cursor expires after about an hour."
           }
         ],
         "responses": {
@@ -26094,7 +26104,7 @@
             }
           }
         },
-        "description": "Returns the connected account's LinkedIn home feed as agent-actionable posts. `sort=recent` (default) is reverse-chronological and always available; `sort=relevant` is LinkedIn's ranked 'top' feed, which draws on a shared, throttled request budget and can rate-limit. Each post carries the numeric activity id you pass to the Posts group to react, comment, or fetch detail. Page until cursor is null.",
+        "description": "Returns the account's LinkedIn home feed as agent-actionable posts. sort=recent (default) is always available; sort=relevant can rate-limit. Each post carries the activity id for the Posts group. Page until cursor is null.",
         "x-order": 1
       }
     },
@@ -26137,7 +26147,7 @@
               ],
               "default": "all"
             },
-            "description": "Which notification stream to read (default all): all | jobs | mentions | my_posts | my_posts_comments | my_posts_reactions | my_posts_reposts. Any other value is a 400."
+            "description": "Which notification stream to read (default all): jobs, mentions, my_posts, my_posts_comments/reactions/reposts. Any other value is a 400."
           },
           {
             "name": "limit",
@@ -26149,7 +26159,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Lower bound on the notifications returned in this page (1-100, default 20). The server walks fixed internal pages and returns whole pages up to the next boundary at or beyond this value; page until cursor is null."
+            "description": "Minimum notifications per page (1-100, default 20); the server returns whole pages up to this boundary. Page until cursor is null."
           },
           {
             "name": "cursor",
@@ -26159,7 +26169,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Pass it back verbatim. This feed throttles hard under fast polling: poll `unread_count` rather than deep-paging."
+            "description": "Opaque cursor from a prior response's cursor; omit for the first page, pass back verbatim. Poll unread_count instead of deep-paging."
           }
         ],
         "responses": {
@@ -26547,7 +26557,7 @@
             }
           }
         },
-        "description": "Returns the connected account's notification cards as a cursor-paginated list, plus the account-level unread badge (unread_count) and a newest-notification watermark (latest_published_at) for cheap polling. Injected/promo cards are included and flagged. Each post-related card carries the numeric activity id you pass to the Posts group. Page until cursor is null.",
+        "description": "Returns the account's notification cards, cursor-paginated, plus unread_count and a latest_published_at watermark for cheap polling. Each post-related card carries the activity id for the Posts group. Page until cursor is null.",
         "x-order": 1
       }
     },
@@ -26580,12 +26590,12 @@
             "schema": {
               "type": "string"
             },
-            "description": "The card urn to delete, the `card_urn` field of a GET /v1/{account_id}/notifications item (urn:li:fsd_notificationCard:...). Pass the card urn, NOT object_urn (which targets the wrong notification). Percent-encode it into the path. This cannot be undone."
+            "description": "The card_urn field of a notifications list item (not object_urn). Percent-encode it into the path. This cannot be undone."
           }
         ],
         "responses": {
           "200": {
-            "description": "The notification card was deleted. This cannot be undone.\n\n**Safe to retry.** This operation is idempotent: deleting a card that you have already deleted succeeds with 200, it is not an error, and it does not delete anything else. A client that retries after a network timeout is never punished for it. (A `card_urn` that never existed on this account is a 404; that distinguishes a wrong handle from a repeat.)\n\n**Timing.** The removal takes effect within a few seconds; a notifications list read immediately after this call may still include the card for a moment. If you need to confirm removal, re-read after a short delay rather than instantly; but the 200 is already your confirmation that the card was resolved and the removal accepted.",
+            "description": "The notification card was deleted. This cannot be undone.\n\n**Safe to retry.** Deleting a card you already deleted succeeds with 200 again, it is not an error, and it does not delete anything else. A client that retries after a network timeout is never punished for it. (A `card_urn` that never existed on this account is a 404; that distinguishes a wrong handle from a repeat.)\n\n**Timing.** The removal takes effect within a few seconds; a notifications list read immediately after this call may still include the card for a moment. If you need to confirm removal, re-read after a short delay rather than instantly; but the 200 is already your confirmation that the card was resolved and the removal accepted.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26843,12 +26853,12 @@
             "schema": {
               "type": "string"
             },
-            "description": "The card urn, the `card_urn` field of a GET /v1/{account_id}/notifications item. For network-activity cards (a repost, comment, or reaction by your network) 'show less' removes the card; the same effect as deleting it; because LinkedIn exposes no separate softer signal for these cards. This cannot be undone."
+            "description": "The card_urn field of a notifications list item. For network-activity cards this removes the card, same as deleting it. This cannot be undone."
           }
         ],
         "responses": {
           "200": {
-            "description": "The 'show less like this' action was applied, the card is removed, exactly as `delete_notification` removes it. This cannot be undone.\n\n**This is the same operation as delete.** LinkedIn's own web client sends an identical request for both its 'Delete notification' and its 'Show less like this' menu item, on every card type that offers them; there is no separate, softer signal available to send. This endpoint exists so the calling intent reads clearly; it does not behave differently. If you want fewer cards like this one in future, change the account's notification preferences on LinkedIn instead.\n\n**Safe to retry**, and same timing as `delete_notification`: idempotent (a repeat is a 200, not an error), effective within a few seconds.",
+            "description": "The 'show less like this' action was applied, the card is removed, exactly as `delete_notification` removes it. This cannot be undone.\n\n**This is the same operation as delete.** LinkedIn's own web client sends an identical request for both its 'Delete notification' and its 'Show less like this' menu item, on every card type that offers them; there is no separate, softer signal available to send. This endpoint exists so the calling intent reads clearly; it does not behave differently. If you want fewer cards like this one in future, change the account's notification preferences on LinkedIn instead.\n\n**Safe to retry**, and same timing as `delete_notification`: a repeat call returns 200 again, not an error, effective within a few seconds.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27073,7 +27083,7 @@
             }
           }
         },
-        "description": "Applies 'show less like this' to the source of one of the connected account's own notification cards. For network-activity cards (a repost, comment, or reaction by your network) this removes the card, the same effect as deleting it, because LinkedIn exposes no separate softer signal for these cards. This is a self-action and cannot be undone. No request body.",
+        "description": "Applies 'show less like this' to the source of one of the account's own notification cards. For network-activity cards this removes the card, the same as deleting it. Self-action, cannot be undone. No request body.",
         "x-order": 3
       }
     },
@@ -27652,7 +27662,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
@@ -28154,7 +28164,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "limit",
@@ -28593,7 +28603,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -29047,7 +29057,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -29281,7 +29291,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -29776,7 +29786,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -30211,7 +30221,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -30553,7 +30563,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -30882,7 +30892,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "comment_id",
@@ -32362,7 +32372,7 @@
                     }
                   },
                   "notFound": {
-                    "summary": "Connect-request not found (idempotent absence)",
+                    "summary": "Connect-request not found (already absent, not an error)",
                     "value": {
                       "object": "invitation_accepted",
                       "invitation_id": "RECEIVED_unknown",
@@ -32638,7 +32648,7 @@
                     }
                   },
                   "notFound": {
-                    "summary": "Connect-request not found (idempotent absence)",
+                    "summary": "Connect-request not found (already absent, not an error)",
                     "value": {
                       "object": "invitation_declined",
                       "invitation_id": "RECEIVED_unknown",
@@ -32914,7 +32924,7 @@
                     }
                   },
                   "notFound": {
-                    "summary": "Connect-request not found (idempotent absence)",
+                    "summary": "Connect-request not found (already absent, not an error)",
                     "value": {
                       "object": "invitation_withdrawn",
                       "invitation_id": "SENT_unknown",
@@ -33152,7 +33162,7 @@
                 "SUSPENDED"
               ]
             },
-            "description": "Filter by posting lifecycle state (request vocabulary). Required. Filtering is applied by LinkedIn and is best-effort: OPEN commonly returns the same postings as DRAFT, and no query is guaranteed to return an item whose own `state` is LISTED even though LISTED is a valid value of that field. Callers needing a strict filter should re-filter on each returned item's own `state`."
+            "description": "Filter by posting lifecycle state (required). Best-effort: results may not match exactly, re-filter on each item's own state."
           },
           {
             "name": "limit",
@@ -34152,7 +34162,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           },
           {
             "name": "with_sections",
@@ -34165,7 +34175,7 @@
                 "minLength": 1
               }
             },
-            "description": "Which additional sections to include on the response (e.g. hiring_team, salary, benefits). The exact set of accepted values is not finalized, supply the section names you need, comma-separated for more than one; each name is trimmed before use. Omit for the base fields only."
+            "description": "Extra sections to include (e.g. hiring_team, salary, benefits), comma-separated for more than one. Omit for base fields only."
           }
         ],
         "responses": {
@@ -34629,7 +34639,7 @@
             }
           }
         },
-        "description": "Returns one classic LinkedIn job posting at full detail, title, company, location, description, applicant count, and budget when set. Any posting reachable by its numeric id can be retrieved; including public postings not owned by the connected account. Pass `with_sections` to request additional sections such as hiring team, salary, or benefits.",
+        "description": "Returns one classic job posting at full detail. Any posting reachable by its numeric id can be retrieved, including one not owned by the connected account. Pass `with_sections` for extra sections.",
         "x-order": 1
       },
       "patch": {
@@ -34660,7 +34670,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           }
         ],
         "responses": {
@@ -35119,7 +35129,7 @@
             }
           }
         },
-        "description": "Applies a partial update to a classic job posting the connected account owns, only the fields you include are changed; everything else is left as-is. This can affect real money: editing a posting that is already published (LISTED) changes a live, money-spending listing, and the connected account may be billed differently as a result. Only postings the connected account owns can be edited.",
+        "description": "Applies a partial update to a job posting the connected account owns; only included fields change. Editing an already-published (LISTED) posting affects a live, money-spending listing.",
         "requestBody": {
           "required": true,
           "content": {
@@ -35306,7 +35316,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           }
         ],
         "responses": {
@@ -35665,7 +35675,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           }
         ],
         "responses": {
@@ -35935,7 +35945,7 @@
             }
           }
         },
-        "description": "Publishes a classic job posting draft. THIS CAN SPEND REAL MONEY: publishing with mode PROMOTED or PROMOTED_PLUS charges the connected account's LinkedIn payment method for the budget you provide, providing `budget` on those modes IS the explicit opt-in to spend. FREE publishing spends nothing but requires free-posting eligibility (check GET .../budget's free.eligible first). Returns either the published posting or a verification checkpoint that must be resolved before the posting goes live.",
+        "description": "Publishes a job posting draft. PROMOTED or PROMOTED_PLUS with a budget charges the account's LinkedIn payment method; providing budget is the opt-in to spend. FREE publishing needs free-posting eligibility (check the budget endpoint first). May return a checkpoint to resolve first.",
         "requestBody": {
           "required": true,
           "content": {
@@ -36134,7 +36144,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           }
         ],
         "responses": {
@@ -36424,7 +36434,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           },
           {
             "name": "limit",
@@ -36995,7 +37005,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           },
           {
             "name": "applicant_id",
@@ -37425,7 +37435,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The numeric id of the job posting, e.g. 4100000000. This is the number in a LinkedIn job URL (https://www.linkedin.com/jobs/view/4100000000) and the job_urn value in a POST /v1/{account_id}/search/jobs result. Pass the number only, a full URL is not accepted by the API (the SDK and CLI extract the id from a URL for you)."
+            "description": "The job posting's numeric id, e.g. 4100000000 (from the LinkedIn job URL or a search/jobs result). A full URL is not accepted here."
           },
           {
             "name": "applicant_id",
@@ -37697,7 +37707,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
@@ -38213,7 +38223,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
@@ -38738,7 +38748,7 @@
                   },
                   "quoted_post_id": {
                     "type": "string",
-                    "description": "The post to quote or repost. Empty text + quoted_post_id = a simple repost; non-empty text + quoted_post_id = a quote-post. The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+                    "description": "The post to quote or repost. Empty text + quoted_post_id = a simple repost; non-empty text + quoted_post_id = a quote-post. The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
                   },
                   "can_read": {
                     "type": "string",
@@ -39366,7 +39376,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           },
           {
             "name": "limit",
@@ -39721,7 +39731,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
@@ -40046,7 +40056,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
@@ -40805,7 +40815,7 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Page-size lower bound (1-100, default 20); returns AT LEAST this many items, up to the next upstream page boundary (a page may return slightly more). Paginate with the returned cursor and walk until `cursor` is null for the complete list."
+            "description": "Minimum items per page (1-100, default 20); a page may return slightly more. Walk with cursor until it is null for the complete list."
           },
           {
             "name": "cursor",
@@ -40815,7 +40825,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Opaque pagination cursor from a prior response's `cursor`; omit for the first page. Page until `cursor` is null. There is no `offset` parameter; an unanchored numeric offset is inert upstream, so it is not a product-surface knob."
+            "description": "Opaque cursor from a prior response's cursor; omit for the first page. Page until cursor is null. There is no offset parameter."
           }
         ],
         "responses": {
@@ -41204,7 +41214,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The post is now saved (a private bookmark, no notification to the author, never visible to third parties). Re-saving an already-saved post is idempotent.",
+            "description": "The post is now saved (a private bookmark, no notification to the author, never visible to third parties). Re-saving an already-saved post just returns 200 again, not an error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -41468,7 +41478,7 @@
                   "post_id": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+                    "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
                   }
                 },
                 "required": [
@@ -41525,12 +41535,12 @@
             "schema": {
               "type": "string"
             },
-            "description": "The post's `id`, as returned by `get_post` or any list response (`list_user_posts`, `list_profile_activity`, `get_feed`). A bare numeric activity id (`7332661864792854528`), a URN (`urn:li:activity:<id>`, `urn:li:ugcPost:<id>`, `urn:li:share:<id>`), and a full LinkedIn share URL are all accepted and mean the same post."
+            "description": "The post's id from get_post or any list response. A bare activity id, a URN (activity/ugcPost/share), or a full share URL all work."
           }
         ],
         "responses": {
           "200": {
-            "description": "The post is no longer saved. Unsaving a not-currently-saved post is idempotent.",
+            "description": "The post is no longer saved. Unsaving a not-currently-saved post just returns 200 again, not an error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -41831,7 +41841,7 @@
                 ]
               }
             },
-            "description": "Which recruiter profile sections to fetch (repeatable, flat). Allowed values: linkedin_*, linkedin_experience, linkedin_education, linkedin_languages, linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, linkedin_interests, linkedin_recruiting_activity, and the _preview variant of each. Omit for base fields only."
+            "description": "Recruiter profile sections to fetch, repeatable: linkedin_experience, linkedin_skills, and others (each has a _preview variant). Omit for base fields only."
           }
         ],
         "responses": {
@@ -43242,7 +43252,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Send an opening InMail-style message to one or more Recruiter member IDs (AE... format). subject and signature are REQUIRED for Recruiter (InMail-based messaging). Accepts optional base64-encoded file / voice / video attachments (application/json only; multipart is not supported). Recruiter PRO: optionally schedule a follow-up. Requires a Recruiter seat.",
+        "description": "Sends an opening InMail-style message to one or more Recruiter member IDs. subject and signature are required. Accepts optional base64 attachments (JSON only, no multipart). Requires a Recruiter seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -44856,7 +44866,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Resolve human-readable terms to opaque Recruiter filter ids for use in pipeline, search, and applicant requests. The request body is a discriminated union on source: APPLICANTS and PIPELINE require project_id (a bad or missing project_id on these sources returns 404/400 respectively); SEARCH, JOB_POSTING, and JOBS do not take project_id. Each source has its own type enum; an out-of-family type value is rejected with 400 before any external call. Requires a Recruiter seat.",
+        "description": "Resolves human-readable terms to opaque Recruiter filter ids for pipeline, search, and applicant requests. Body is discriminated by source: APPLICANTS/PIPELINE require project_id, others do not. Requires a Recruiter seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -47983,7 +47993,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Search a Recruiter project's talent pool. A POST body carries the required channel_id (the project's own RECRUITER_SEARCH talent-pool channel, read it off talent_pool.channels[] of GET .../recruiter/projects/{project_id}) plus the (all-optional) people-search filter set. Pagination is driven by the limit (1-100) and cursor query params. Requires a Recruiter seat.",
+        "description": "Searches a Recruiter project's talent pool. Requires channel_id (the project's RECRUITER_SEARCH talent-pool channel, from talent_pool.channels[]) plus optional filters. Requires a Recruiter seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -52993,7 +53003,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "MONEY WARNING: if this job posting is already PUBLISHED (LISTED/REVIEW/SUSPENDED), editing it mutates a live, money-spending listing; the posting keeps running and spending under the edited fields. Partial update: every field is optional, and any field you omit is left unchanged. Requires a Recruiter seat.",
+        "description": "MONEY WARNING: editing an already-published (LISTED/REVIEW/SUSPENDED) posting mutates a live, money-spending listing. Partial update: omitted fields are unchanged. Requires a Recruiter seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -53670,7 +53680,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "REAL MONEY: PROMOTED and PROMOTED_PLUS spend on the connected account's LinkedIn payment method. Providing budget IS the explicit opt-in to spend, there is no separate confirm flag. FREE requires free-posting eligibility (check GET .../budget's free.eligible first). bypass_email_verification skips the on-behalf-of-company posting eligibility check (replaces the retired publish-verification checkpoint, there is no separate checkpoint-solve step). Requires a Recruiter seat.",
+        "description": "REAL MONEY: PROMOTED/PROMOTED_PLUS spend on the account's LinkedIn payment method; providing budget is the opt-in to spend. FREE requires free-posting eligibility (check the budget endpoint first). Requires a Recruiter seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -56435,7 +56445,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Stream the résumé file for a talent-pool applicant as raw bytes. Curviate never caches, stores, or logs the résumé body. Gated by has_resume on the applicant detail. An applicant with no résumé on file -> 404 RESOURCE_NOT_FOUND; a résumé still generating upstream -> 503 (retry shortly). Requires a Recruiter seat.",
+        "description": "Streams the résumé file as raw bytes; Curviate never caches, stores, or logs it. Gated by has_resume. No résumé on file returns 404; still generating returns 503 (retry). Requires a Recruiter seat.",
         "x-order": 23
       }
     },
@@ -56802,7 +56812,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Send an opening InMail-style message to one or more Sales Navigator members (ACw... IDs). subject is REQUIRED for Sales Navigator (InMail-based messaging). Accepts optional base64-encoded file / voice / video attachments (application/json only; multipart is not supported). Requires a Sales Navigator seat.",
+        "description": "Sends an opening InMail-style message to one or more Sales Navigator members. subject is required. Accepts optional base64 attachments (JSON only, no multipart). Requires a Sales Navigator seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -56990,7 +57000,7 @@
                 ]
               }
             },
-            "description": "Which Sales Navigator profile sections to fetch (repeatable, flat). Allowed values: linkedin_*, linkedin_experience, linkedin_education, linkedin_languages, linkedin_skills, linkedin_certifications, linkedin_volunteer_experience, linkedin_projects, linkedin_recommendations, linkedin_interests, linkedin_recruiting_activity, and the _preview variant of each. Omit for base fields only."
+            "description": "Sales Navigator sections to fetch, repeatable: linkedin_experience, linkedin_skills, others (each has a _preview variant). Omit for base fields only."
           }
         ],
         "responses": {
@@ -60824,7 +60834,7 @@
                 "PROFILE_LANGUAGE"
               ]
             },
-            "description": "The Sales Navigator filter parameter family to resolve. Exactly one of: COMPANY, ACCOUNT_LIST, LEAD_LIST, LOCATION, POSTAL_CODE, JOB_FUNCTION, JOB_TITLE, INDUSTRY, GROUP, SCHOOL, RELATION, PERSONA, SAVED_PEOPLE_SEARCH, SAVED_COMPANY_SEARCH, RECENT_SEARCH, PROFILE_LANGUAGE. Any other value is rejected with 400."
+            "description": "The Sales Navigator filter parameter family to resolve. Any value outside the enum is rejected with 400."
           },
           {
             "name": "keywords",
@@ -61202,7 +61212,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Resolve human-readable terms to opaque Sales Navigator filter IDs for use in people or company search requests. The type parameter selects the filter family; type must be one of the 16 Sales Navigator values. Any other value is rejected with 400 at schema validation, before any external call. Requires a Sales Navigator seat.",
+        "description": "Resolves human-readable terms to opaque Sales Navigator filter IDs for people or company search. type selects the filter family; an unrecognized value is rejected with 400. Requires a Sales Navigator seat.",
         "x-order": 14
       }
     },
@@ -62035,7 +62045,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Search for LinkedIn members using the full Sales Navigator people filter set. Pass structured filters in the body, resolve filter IDs first via GET .../search/parameters. limit and cursor go in query params. To search from a pasted URL instead, use POST .../sales-navigator/search. Requires a Sales Navigator seat.",
+        "description": "Search for LinkedIn members using the full Sales Navigator filter set. Resolve filter IDs first via search/parameters. limit and cursor are query params. For a pasted URL instead, use POST .../search. Requires a Sales Navigator seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -63097,7 +63107,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Search for LinkedIn companies using the full Sales Navigator company filter set. Pass structured filters in the body, resolve filter IDs first via GET .../search/parameters. limit and cursor go in query params. To search from a pasted URL instead, use POST .../sales-navigator/search. Requires a Sales Navigator seat.",
+        "description": "Search for LinkedIn companies using the full Sales Navigator filter set. Resolve filter IDs first via search/parameters. limit and cursor are query params. For a pasted URL instead, use POST .../search. Requires a Sales Navigator seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -64400,7 +64410,7 @@
           }
         ],
         "x-curviate-stability": "beta",
-        "description": "Run a pasted Sales Navigator search, saved-search, or lead-list URL directly. url is the only accepted body field; this is the sole home of URL-mode; the structured search/people and search/companies endpoints no longer accept url. The response is polymorphic: each item is discriminated individually by its own kind (a person, a company, a saved lead, or a saved account). limit (1-50) and cursor go in query params. Requires a Sales Navigator seat.",
+        "description": "Runs a pasted Sales Navigator search, saved-search, or lead-list URL directly; url is the only accepted body field, the sole home of URL-mode. Response is polymorphic by kind (person, company, saved lead, saved account). Requires a Sales Navigator seat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -64465,6 +64475,17 @@
               "minLength": 1
             },
             "description": "Opaque pagination cursor from a prior page's `cursor` field. Omit for the first page."
+          },
+          {
+            "name": "external_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "Return only accounts whose external_id equals this value exactly."
           }
         ],
         "responses": {
@@ -64551,6 +64572,23 @@
                               ]
                             },
                             "description": "The connection scope this account was last connected with (e.g. [\"classic\",\"company\",\"sales_navigator\",\"recruiter\"]). A connect asks for every product and LinkedIn activates the ones the account actually has, so this is what was ASKED for, narrowed only by an explicit linkedin_premium on that connect. A linkedin_premium narrowing is not remembered between connects, so this shows what the LAST connect asked for and a reconnect that omits the field widens it again. Null for accounts connected before this was recorded; not attachment truth for Company Pages."
+                          },
+                          "external_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                          },
+                          "metadata": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Your own flat string map for this account, as last set by PATCH. Null when none."
                           },
                           "substrate_created_at": {
                             "type": [
@@ -64722,7 +64760,7 @@
             }
           }
         },
-        "description": "List the tenant's connected (non-archived) LinkedIn accounts, cursor-paginated. Use `limit` (1-250, default 50) and `cursor` (from a prior page's `cursor` field) to page; `cursor` is null on the last page.",
+        "description": "List the tenant's connected (non-archived) LinkedIn accounts, cursor-paginated. Use `limit` (1-250, default 50) and `cursor` (from a prior page's `cursor` field) to page; `cursor` is null on the last page. Filter by `external_id` for one end user's accounts.",
         "x-order": 1
       }
     },
@@ -64825,6 +64863,23 @@
                         ]
                       },
                       "description": "The connection scope this account was last connected with (e.g. [\"classic\",\"company\",\"sales_navigator\",\"recruiter\"]). A connect asks for every product and LinkedIn activates the ones the account actually has, so this is what was ASKED for, narrowed only by an explicit linkedin_premium on that connect. A linkedin_premium narrowing is not remembered between connects, so this shows what the LAST connect asked for and a reconnect that omits the field widens it again. Null for accounts connected before this was recorded; not attachment truth for Company Pages."
+                    },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
+                    "metadata": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "Your own flat string map for this account, as last set by PATCH. Null when none."
                     },
                     "substrate_created_at": {
                       "type": [
@@ -65932,7 +65987,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The account metadata / proxy configuration was updated.",
+            "description": "The account was updated. metadata and external_id are stored by Curviate and read back on GET; a PATCH carrying only those makes no LinkedIn call.",
             "content": {
               "application/json": {
                 "schema": {
@@ -65974,7 +66029,7 @@
             }
           },
           "400": {
-            "description": "Invalid request, a malformed proxy object or an unsupported field (country/ip are no longer accepted).",
+            "description": "Invalid request: a malformed proxy object, metadata over its limits (16 keys, key 40 chars, value 500), external_id outside 1-255 chars, or an unsupported field (country/ip).",
             "content": {
               "application/json": {
                 "schema": {
@@ -66152,7 +66207,7 @@
             }
           }
         },
-        "description": "Update an account's custom metadata (a flat string map that replaces the store wholesale) and/or its custom proxy egress, supply a proxy object to set one, or null to clear it (revert to automatic proxy protection). Credentials and seat binding are untouched. The proxy password is encrypted at rest and never returned.",
+        "description": "Updates an account's metadata (a flat string map, replaced wholesale) and/or its custom proxy egress; pass a proxy object to set one, or null to clear it. Credentials and seat are untouched.",
         "requestBody": {
           "required": true,
           "content": {
@@ -66163,9 +66218,18 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 500
                     },
-                    "description": "Flat string->string map that replaces this account's custom-data store wholesale (unprovided keys are removed)."
+                    "description": "Your own flat string map for this account (up to 16 keys, key 40 chars, value 500). Replaces the stored map whole; null clears it.",
+                    "nullable": true
+                  },
+                  "external_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "Your own id for this account's end user (1-255 chars), or null to clear it. Omit to leave it unchanged.",
+                    "nullable": true
                   },
                   "proxy": {
                     "type": "object",
@@ -66235,6 +66299,12 @@
                   "value": {
                     "proxy": null
                   }
+                },
+                "externalId": {
+                  "summary": "Set your own id for this account's end user",
+                  "value": {
+                    "external_id": "usr_42"
+                  }
                 }
               }
             }
@@ -66266,7 +66336,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The account was disconnected and hard-deleted; its seat is released. This endpoint is idempotent: calling it again for the same account also returns 200, with `already_disconnected` set so you can tell the two apart.",
+            "description": "The account was disconnected and hard-deleted; its seat is released. Calling it again for the same account also returns 200, with `already_disconnected` set so you can tell a repeat call from the first.",
             "content": {
               "application/json": {
                 "schema": {
@@ -66710,6 +66780,13 @@
                         "active"
                       ]
                     },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
@@ -66721,7 +66798,8 @@
                     "value": {
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "status": "active"
+                      "status": "active",
+                      "external_id": null
                     }
                   }
                 }
@@ -66796,6 +66874,13 @@
                       "deprecated": true,
                       "description": "Deprecated, use seat_id (same value). Removed at the GA /v1 cutover."
                     },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
                     "recovered": {
                       "type": "boolean",
                       "description": "Present and true only when this connect reactivated an account you had previously disconnected, instead of opening a brand-new one. Absent on a normal connect. The account keeps its original id, and its status reflects its real observed state, which may need a reconnect."
@@ -66816,7 +66901,8 @@
                       "full_name": "Ada Lovelace",
                       "headline": "Engineer",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "external_id": "usr_42"
                     }
                   },
                   "recovered": {
@@ -66873,9 +66959,38 @@
                         "two_factor_whatsapp",
                         "mobile_app_approval",
                         "otp_or_mobile_app_approval",
-                        "contract_selection"
+                        "contract_selection",
+                        "challenge_selection"
                       ],
                       "description": "The verification challenge LinkedIn issued."
+                    },
+                    "challenges": {
+                      "type": "array",
+                      "description": "Verification methods to choose from (challenge_selection only). Send one id as challenge to POST /v1/auth/checkpoint/request.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "sms",
+                              "whatsapp"
+                            ]
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Display name, e.g. Text message."
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The masked destination, when known."
+                          }
+                        }
+                      }
                     },
                     "contracts": {
                       "type": "array",
@@ -66896,6 +67011,13 @@
                       "type": "string",
                       "description": "ISO-8601 expiry of the challenge."
                     },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
@@ -66909,6 +67031,28 @@
                       "status": "checkpoint_required",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "challenge_type": "two_factor_app",
+                      "expires_at": "2026-06-08T10:10:00Z"
+                    }
+                  },
+                  "challengeSelection": {
+                    "summary": "Choose how to receive the code",
+                    "value": {
+                      "object": "checkpoint",
+                      "status": "checkpoint_required",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "challenge_type": "challenge_selection",
+                      "challenges": [
+                        {
+                          "id": "email",
+                          "label": "Email",
+                          "description": "a***@example.com"
+                        },
+                        {
+                          "id": "sms",
+                          "label": "Text message",
+                          "description": "+49 *** *** 12"
+                        }
+                      ],
                       "expires_at": "2026-06-08T10:10:00Z"
                     }
                   }
@@ -67144,7 +67288,7 @@
             }
           }
         },
-        "description": "Authenticate a LinkedIn account directly with credentials or a session cookie. The credential fields are NESTED, not top level: `auth_method: \"credentials\"` reads `credentials: { email, password }`, and `auth_method: \"cookie\"` reads `cookie: { li_at }` plus a top-level `user_agent`. Omit `account_id` to connect a NEW account into an empty `seat_id` (list your seats with GET /v1/accounts/seats, or copy a seat id from the seat table on your dashboard); include `account_id` (in the body) to re-authenticate an EXISTING account in place. Returns the account on success (201 new / 200 reconnect), or a checkpoint challenge (202) carrying the account_id when LinkedIn requires verification. Complete the challenge with POST /v1/auth/checkpoint/solve (codes) or POST /v1/auth/checkpoint/poll (mobile-app approval). Connection scope (which LinkedIn products are enabled) is not something you list: the connection asks for every product and LinkedIn activates the ones the account actually has. The recorded scope is readable as `requested_products` on the account. One LinkedIn account can hold only one of the two premium surfaces, and when both are asked for Sales Navigator takes precedence, so pass the optional `linkedin_premium` (`sales_navigator` or `recruiter`) if the account holds both and you want the other one. Omit it and nothing is narrowed. It applies per connection and is not remembered, so state it on every connect and reconnect where Recruiter must win. A reconnect that changes scope must use credentials (a saved cookie cannot change scope), which includes any reconnect of an account connected before the full product set became the default. Pin a managed proxy with the optional `country`/`ip` or supply a `proxy` to override it.",
+        "description": "Authenticates a LinkedIn account with credentials or a cookie, nested: auth_method credentials reads credentials: { email, password }; auth_method cookie reads cookie: { li_at }. Omit account_id for a new account; include it to reconnect. Returns the account or a 202 checkpoint.",
         "requestBody": {
           "required": true,
           "content": {
@@ -67212,6 +67356,28 @@
                       "recruiter"
                     ],
                     "description": "Optional. Which LinkedIn premium surface this connection should ask for: 'sales_navigator' or 'recruiter'. Omit it and the connection asks for every product, and LinkedIn activates whichever ones the account actually has. One LinkedIn account can hold only one of the two premium surfaces, and when both are asked for Sales Navigator takes precedence, so set this to 'recruiter' if the account holds both and you want the Recruiter surface. This applies per connection and is not remembered: state it on every connect and reconnect where Recruiter must win."
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "Optional IANA zone name for this account's LinkedIn session, e.g. Europe/Berlin. Sent in canonical form; a UTC offset such as +02:00 is a 400."
+                  },
+                  "external_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "Your own id for the end user who owns this account, 1-255 chars, not unique. Treat it as opaque; avoid emails."
+                  },
+                  "products": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sales_navigator",
+                        "recruiter"
+                      ]
+                    },
+                    "description": "Optional allow-list of premium products to ask for: sales_navigator, recruiter. Omit to ask for both; [] asks for none. Classic LinkedIn and company pages are always included."
                   },
                   "country": {
                     "type": "string",
@@ -67313,6 +67479,22 @@
                     "country": "DE"
                   }
                 },
+                "forYourUser": {
+                  "summary": "Connect an account for one of your users, tagged with your own id",
+                  "value": {
+                    "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "auth_method": "credentials",
+                    "credentials": {
+                      "email": "ada@example.com",
+                      "password": "REPLACE_WITH_REAL_PASSWORD"
+                    },
+                    "external_id": "usr_42",
+                    "timezone": "Europe/Berlin",
+                    "products": [
+                      "recruiter"
+                    ]
+                  }
+                },
                 "reconnect": {
                   "summary": "Re-authenticate an existing account in place (account_id in the body)",
                   "value": {
@@ -67386,6 +67568,13 @@
                       "deprecated": true,
                       "description": "Deprecated, use seat_id (same value). Removed at the GA /v1 cutover."
                     },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
                     "recovered": {
                       "type": "boolean",
                       "description": "Present and true only when this connect reactivated an account you had previously disconnected, instead of opening a brand-new one. Absent on a normal connect. The account keeps its original id, and its status reflects its real observed state, which may need a reconnect."
@@ -67403,7 +67592,8 @@
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "external_id": "usr_42"
                     }
                   },
                   "recovered": {
@@ -67460,9 +67650,38 @@
                         "two_factor_whatsapp",
                         "mobile_app_approval",
                         "otp_or_mobile_app_approval",
-                        "contract_selection"
+                        "contract_selection",
+                        "challenge_selection"
                       ],
                       "description": "The verification challenge LinkedIn issued."
+                    },
+                    "challenges": {
+                      "type": "array",
+                      "description": "Verification methods to choose from (challenge_selection only). Send one id as challenge to POST /v1/auth/checkpoint/request.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "sms",
+                              "whatsapp"
+                            ]
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Display name, e.g. Text message."
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The masked destination, when known."
+                          }
+                        }
+                      }
                     },
                     "contracts": {
                       "type": "array",
@@ -67689,7 +67908,7 @@
             }
           }
         },
-        "description": "Resolve the pending verification challenge for an account by submitting the code, an OTP / 2FA code, the chosen contract id (for a contract_selection challenge), or the special value TRY_ANOTHER_WAY to switch the challenge method. `account_id` (in the body) identifies the mid-flight connect. A chained challenge returns another 202.",
+        "description": "Resolves the pending verification challenge for account_id: a code, OTP/2FA, a contract_selection id, or TRY_ANOTHER_WAY to switch method. A chained challenge returns another 202.",
         "requestBody": {
           "required": true,
           "content": {
@@ -67741,7 +67960,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Re-request a checkpoint verification notification",
+        "summary": "Re-send a checkpoint code, or switch its method",
         "security": [
           {
             "apiKeyAuth": []
@@ -67800,6 +68019,140 @@
               },
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "202": {
+            "description": "challenge was sent: the method was switched and this is the next verification challenge. Solve it with POST /v1/auth/checkpoint/solve.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "checkpoint"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "checkpoint_required"
+                      ]
+                    },
+                    "account_id": {
+                      "type": "string",
+                      "description": "The (provisional) account_id to pass to the checkpoint sub-resource (POST /v1/auth/checkpoint/solve)."
+                    },
+                    "challenge_type": {
+                      "type": "string",
+                      "enum": [
+                        "otp",
+                        "two_factor_sms",
+                        "two_factor_app",
+                        "two_factor_whatsapp",
+                        "mobile_app_approval",
+                        "otp_or_mobile_app_approval",
+                        "contract_selection",
+                        "challenge_selection"
+                      ],
+                      "description": "The verification challenge LinkedIn issued."
+                    },
+                    "challenges": {
+                      "type": "array",
+                      "description": "Verification methods to choose from (challenge_selection only). Send one id as challenge to POST /v1/auth/checkpoint/request.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "sms",
+                              "whatsapp"
+                            ]
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Display name, e.g. Text message."
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The masked destination, when known."
+                          }
+                        }
+                      }
+                    },
+                    "contracts": {
+                      "type": "array",
+                      "description": "Contract picker options (contract_selection only). Solve with the chosen id as the code.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "description": "ISO-8601 expiry of the challenge."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  }
+                },
+                "examples": {
+                  "switched": {
+                    "summary": "Switched to a text-message code",
+                    "value": {
+                      "object": "checkpoint",
+                      "status": "checkpoint_required",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "challenge_type": "otp",
+                      "expires_at": "2026-06-08T10:10:00Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST. challenge is not a known method id, or is not one of the methods the pending checkpoint offered; send an id from its challenges list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
               }
             }
           },
@@ -67992,7 +68345,7 @@
             }
           }
         },
-        "description": "Re-issue the pending verification challenge notification for an account. Meaningful for code-delivery challenges (otp / two_factor_sms / mobile_app_approval); a two_factor_app challenge has nothing to re-request (the code is generated on the device) and returns resent:false rather than an error, the response never claims a re-send that did not happen. `account_id` (in the body) identifies the mid-flight connect. Does not reset the checkpoint's expiry.",
+        "description": "Without challenge: re-sends the pending code or notification for account_id (a two_factor_app challenge has nothing to resend: resent:false). With challenge (an id from challenge_selection): switches to that method and returns the next 202 checkpoint.",
         "requestBody": {
           "required": true,
           "content": {
@@ -68003,6 +68356,15 @@
                   "account_id": {
                     "type": "string",
                     "description": "The account whose pending checkpoint notification should be re-sent (returned with the 202 checkpoint_required response, or from link/poll)."
+                  },
+                  "challenge": {
+                    "type": "string",
+                    "enum": [
+                      "email",
+                      "sms",
+                      "whatsapp"
+                    ],
+                    "description": "Optional. An id from a challenge_selection checkpoint's challenges list: switches to that method and returns the next checkpoint. Omit to re-send the current code."
                   }
                 },
                 "required": [
@@ -68011,9 +68373,16 @@
               },
               "examples": {
                 "request": {
-                  "summary": "Re-request the pending checkpoint notification",
+                  "summary": "Re-send the pending code or notification",
                   "value": {
                     "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                  }
+                },
+                "switchMethod": {
+                  "summary": "Pick a method from a challenge_selection checkpoint",
+                  "value": {
+                    "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "challenge": "sms"
                   }
                 }
               }
@@ -68102,6 +68471,13 @@
                       "deprecated": true,
                       "description": "Deprecated, use seat_id (same value). Removed at the GA /v1 cutover. Present on status:\"active\"."
                     },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as passed on connect. Present on status:\"active\"."
+                    },
                     "expires_at": {
                       "type": "string",
                       "description": "ISO-8601 expiry. Present on status:\"pending\" and status:\"checkpoint_required\"."
@@ -68114,7 +68490,8 @@
                         "two_factor_sms",
                         "two_factor_app",
                         "two_factor_whatsapp",
-                        "contract_selection"
+                        "contract_selection",
+                        "challenge_selection"
                       ],
                       "description": "Machine-readable challenge discriminator. On status:\"checkpoint_required\" it is the NEW challenge to submit; on status:\"expired\" it renders the right recovery guidance."
                     },
@@ -68129,6 +68506,34 @@
                           },
                           "name": {
                             "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "challenges": {
+                      "type": "array",
+                      "description": "Verification methods to choose from (challenge_selection only). Send one id as challenge to POST /v1/auth/checkpoint/request.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "sms",
+                              "whatsapp"
+                            ]
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Display name, e.g. Text message."
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The masked destination, when known."
                           }
                         }
                       }
@@ -68160,7 +68565,8 @@
                       "full_name": "Ada Lovelace",
                       "headline": "Engineer",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "external_id": "usr_42"
                     }
                   },
                   "chained": {
@@ -68360,7 +68766,7 @@
             }
           }
         },
-        "description": "Poll the pending mobile-app-approval challenge for an account and advance it. This is the completion driver for mobile_app_approval (and the in-app arm of otp_or_mobile_app_approval): call it repeatedly until the account is active. Returns object:\"account\" + status:\"active\" once approved; object:\"checkpoint\" + status:\"pending\" while still waiting; status:\"checkpoint_required\" (with challenge_type) when the approval chained to a new challenge (e.g. approval -> 2FA), switch to POST /v1/auth/checkpoint/solve for the new type; status:\"expired\"/\"failed\" on timeout/failure. A code-based checkpoint polled here returns 422 directing you to POST /v1/auth/checkpoint/solve instead. `account_id` (in the body) identifies the mid-flight connect.",
+        "description": "Polls the pending mobile-app-approval challenge for account_id and advances it; call repeatedly until active. Returns active once approved, pending while waiting, or checkpoint_required if it chains. A code-based checkpoint here returns 422; use checkpoint/solve.",
         "requestBody": {
           "required": true,
           "content": {
@@ -68616,7 +69022,7 @@
             }
           }
         },
-        "description": "Return the current status of a credential connect session, keyed by its account id (acc_..., from auth/intent or a checkpoint response). status is one of checkpoint_required / done / expired / failed; checkpoint_required carries challenge_type. account_id is present once status is done. Poll until status leaves checkpoint_required.",
+        "description": "Returns a credential connect session's status by account id (from auth/intent or a checkpoint). status is checkpoint_required, done, expired, or failed; checkpoint_required carries challenge_type. Poll until status leaves checkpoint_required.",
         "x-order": 5
       }
     },
@@ -68664,7 +69070,7 @@
                 "done"
               ]
             },
-            "description": "Return only events in this queue state. unread: nobody holds it, which includes an event whose lease expired. claimed: leased to a consumer right now. done: already handled, and it will never be handed out again. Omit to return every state. There is no failed state."
+            "description": "Return only events in this state: unread (includes an expired lease), claimed, or done. Omit for every state. There is no failed state."
           },
           {
             "name": "limit",
@@ -68961,7 +69367,7 @@
             }
           }
         },
-        "description": "Returns the events Curviate received for this account in the last 24 hours, newest received first, with the exact payload a registered webhook would have been delivered. Events are retained whether or not any webhook is subscribed to them, so this works with no listener running. Retention is 24 hours from received_at and is absolute, and a live claim does not extend it. Disconnecting an account removes its events from this response immediately; the rows are not otherwise deleted early. Events can arrive out of order, so treat the ordering as arrival order, not causal order. Each item carries its queue state, and `state` filters on it: `done` is what your agents have already handled, `unread` is what is still waiting, `claimed` is what someone holds right now. This read claims nothing and is safe to poll. Page until cursor is null.",
+        "description": "Returns events received for this account in the last 24 hours, newest first, same payload a webhook would get. Retention is 24h from received_at, absolute; claiming doesn't extend it. Order is arrival, not causal. Claims nothing; safe to poll. Page until cursor is null.",
         "x-order": 10
       }
     },
@@ -69283,7 +69689,7 @@
             }
           }
         },
-        "description": "Leases up to `limit` unread events for this account and returns them, oldest `occurred_at` first, in one atomic step. Two agents claiming at the same instant never receive the same event, which a plain read plus a read flag cannot promise. Claiming when nothing is available returns an empty list and a 200. `consumer` is free text that identifies your worker. It is recorded on each event and never verified, so the lease is cooperative: it keeps your own agents from duplicating work, and it is not access control. Finish an event with the done call, or hand it back with release. If you do neither, the lease expires after `lease_seconds` (default 300, max 3600) and the event becomes claimable again. `limit` defaults to 10 and caps at 100. Ordering is arrival order, not causal order: events can arrive out of sequence, so establish causality from the payload if you need it. Retention is still 24 hours from `received_at` and a lease does not extend it, so an event can disappear while you hold it.",
+        "description": "Leases up to limit unread events atomically; two agents never get the same one. consumer is free text, not checked, cooperative rather than access control. Finish with done or release, or it expires after lease_seconds. Retention is still 24h; an event can vanish while held.",
         "requestBody": {
           "required": true,
           "content": {
@@ -69299,12 +69705,14 @@
                   "limit": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 100
+                    "maximum": 100,
+                    "description": "Max events to lease (1-100, default 10)."
                   },
                   "lease_seconds": {
                     "type": "integer",
                     "minimum": 10,
-                    "maximum": 3600
+                    "maximum": 3600,
+                    "description": "Seconds to hold the lease (10-3600, default 300)."
                   }
                 },
                 "required": [
@@ -69543,7 +69951,7 @@
             }
           }
         },
-        "description": "Hands a leased event back so it can be claimed again immediately, by you or by anyone else. Use it when your handler fails: returning the work is better than holding it for the rest of the lease. No request body. The caller is not checked against whoever claimed it, because the lease is cooperative rather than access control. Releasing an event that is already done changes nothing and returns state `done`.",
+        "description": "Hands a leased event back so it can be claimed again immediately. Use when your handler fails. Not checked against the original claimer: cooperative, not access control. Releasing an already-done event changes nothing.",
         "x-order": 12
       }
     },
@@ -69746,7 +70154,7 @@
             }
           }
         },
-        "description": "Marks an event handled. This is the only terminal state there is, and it is shared across every consumer under this tenant: a done event leaves the unread set for all of them, so it is the signal that the work is finished rather than a per-agent bookmark. There is no failed state. An event nothing can handle needs no special marking, it expires with the rest at 24 hours. No request body, safe to call twice, and it keeps the first completion time.",
+        "description": "Marks an event handled, the only terminal state, shared across every consumer under the tenant. No failed state; an unhandled event just expires at 24 hours. Safe to call twice; keeps the first completion time.",
         "x-order": 13
       }
     },
@@ -69836,7 +70244,10 @@
                             ]
                           },
                           "account_ids": {
-                            "type": "array",
+                            "type": [
+                              "array",
+                              "null"
+                            ],
                             "items": {
                               "type": "string"
                             }
@@ -69885,7 +70296,7 @@
                               "ok",
                               "degraded"
                             ],
-                            "description": "Delivery health state. 'degraded' when recent deliveries have repeatedly failed."
+                            "description": "Delivery health state. 'degraded' when the last delivery exhausted all 5 attempts, or when it could not be signed at all because the webhook's signing secret is unusable (then no delivery can succeed; recreate the webhook)."
                           },
                           "created_at": {
                             "type": "string"
@@ -70115,11 +70526,14 @@
                       "description": "Human-readable label."
                     },
                     "account_ids": {
-                      "type": "array",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
                       "items": {
                         "type": "string"
                       },
-                      "description": "Accounts targeted by this webhook. Required and non-empty, each id must be owned by the tenant."
+                      "description": "Accounts targeted by this webhook (acc_ ids you own), or null when an account_status webhook covers every current and future account."
                     },
                     "enabled": {
                       "type": "boolean",
@@ -70199,6 +70613,27 @@
                       ],
                       "events": [
                         "message.received"
+                      ],
+                      "data": [],
+                      "secret": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+                      "secret_prefix": "a1b2c3d4",
+                      "created_at": "2026-06-17T10:00:00Z"
+                    }
+                  },
+                  "tenantWideAccountStatus": {
+                    "summary": "Account-status webhook covering every account (account_ids omitted)",
+                    "value": {
+                      "object": "webhook",
+                      "id": "wh_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "source": "account_status",
+                      "request_url": "https://hooks.example.com/accounts",
+                      "name": null,
+                      "account_ids": null,
+                      "enabled": true,
+                      "headers": [],
+                      "events": [
+                        "account.connected",
+                        "account.reconnect_needed"
                       ],
                       "data": [],
                       "secret": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
@@ -70549,7 +70984,7 @@
                         "items": {
                           "type": "string"
                         },
-                        "description": "Per-account targeting. Required and non-empty; each id must be an acc_-prefixed id owned by the tenant."
+                        "description": "Per-account targeting. Omit to receive events for every current and future account; each id must be an acc_-prefixed id you own."
                       },
                       "enabled": {
                         "type": "boolean",
@@ -70603,8 +71038,7 @@
                     },
                     "required": [
                       "source",
-                      "request_url",
-                      "account_ids"
+                      "request_url"
                     ],
                     "title": "Account Status"
                   }
@@ -70641,6 +71075,13 @@
                     "account_ids": [
                       "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
                     ]
+                  }
+                },
+                "accountStatusAllAccounts": {
+                  "summary": "Create an account-status webhook for every current and future account",
+                  "value": {
+                    "source": "account_status",
+                    "request_url": "https://hooks.example.com/curviate/account-status"
                   }
                 }
               }
@@ -70831,7 +71272,7 @@
                             {
                               "type": "account.restricted",
                               "source": "account_status",
-                              "description": "LinkedIn restricted the account. Actions on it will fail until the restriction is lifted, so pause outreach for this account. A daily account reconciliation detects the restriction within about 24 hours; a connect that observes the restriction can also deliver this event immediately. An on-demand account read always reports the current state.",
+                              "description": "The account is connected, but some actions on it fail: LinkedIn restricted the account, or one LinkedIn product on it (such as Sales Navigator or Recruiter) needs re-authentication or is failing. Surface it to a human. If a single product is failing, a reconnect may restore it. A LinkedIn restriction is usually detected by a daily account reconciliation (within about 24 hours) or immediately by a connect; a failing product is reported immediately. An on-demand account read always reports the current state.",
                               "availability": "not_realtime"
                             },
                             {
@@ -70853,7 +71294,8 @@
                             {
                               "type": "account.paused",
                               "source": "account_status",
-                              "description": "Account synchronization was stopped or paused externally. Not an error, may resume automatically."
+                              "description": "Account synchronization was stopped or paused externally. No longer pushed in real time, v2 has no equivalent event; detect via an on-demand account read.",
+                              "availability": "no_longer_realtime"
                             },
                             {
                               "type": "account.connecting",
@@ -71165,7 +71607,7 @@
             }
           }
         },
-        "description": "Queues a synthetic delivery to this webhook so you can confirm your endpoint really receives and verifies deliveries, without waiting for a real event. It travels the normal path: the same signature construction, the same custom headers, the same delivery record, the same retry schedule. The event name is always webhook.test, which is not in the event catalogue and cannot be subscribed to, so it can never be mistaken for a real event. The payload carries no LinkedIn content. Match data.test_id in what arrives against the test_id in this response."
+        "description": "Queues a synthetic delivery to this webhook to confirm your endpoint receives and verifies deliveries. Travels the normal path: signature, headers, retry schedule. Event name is always webhook.test, never a real event. Match data.test_id against this response's test_id."
       }
     },
     "/v1/webhooks/{id}": {
@@ -71231,11 +71673,14 @@
                       "description": "Human-readable label."
                     },
                     "account_ids": {
-                      "type": "array",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
                       "items": {
                         "type": "string"
                       },
-                      "description": "Accounts targeted by this webhook. Non-empty, each id is owned by the tenant."
+                      "description": "Accounts targeted by this webhook (acc_ ids you own), or null when an account_status webhook covers every current and future account."
                     },
                     "enabled": {
                       "type": "boolean",
@@ -71449,7 +71894,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Webhook removed. Delivery stops immediately, including retries that were already queued. Idempotent, deleting an already-deleted webhook returns the same shape.",
+            "description": "Webhook removed. Delivery stops immediately, including retries that were already queued. Deleting an already-deleted webhook returns the same shape again, not an error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -71651,11 +72096,14 @@
                       "description": "Human-readable label."
                     },
                     "account_ids": {
-                      "type": "array",
+                      "type": [
+                        "array",
+                        "null"
+                      ],
                       "items": {
                         "type": "string"
                       },
-                      "description": "Accounts targeted by this webhook. Non-empty, each id is owned by the tenant."
+                      "description": "Accounts targeted by this webhook (acc_ ids you own), or null when an account_status webhook covers every current and future account."
                     },
                     "enabled": {
                       "type": "boolean",
@@ -71964,7 +72412,8 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Replace the targeted accounts (whole-array). Must be non-empty; each id must be an acc_-prefixed id owned by the tenant."
+                    "description": "Replace the targeted accounts (whole-array, each an acc_ id you own), or null to cover every current and future account (account_status webhooks only).",
+                    "nullable": true
                   }
                 }
               },
@@ -71983,6 +72432,12 @@
                       "message.received",
                       "message.reaction"
                     ]
+                  }
+                },
+                "coverAllAccounts": {
+                  "summary": "Switch an account-status webhook to every current and future account",
+                  "value": {
+                    "account_ids": null
                   }
                 }
               }
@@ -72612,7 +73067,7 @@
             }
           }
         },
-        "description": "Returns every configurable safety field for every budget row of one account, in a single response: the ceiling, the green and amber bands, the counting window, the enforcement posture and where it was inherited from, the activity window, warm-up state, the per-row character caps and search per-query cap, and how well calibrated each row's number is. Every value is seeded configuration and every one of them is settable. Each value is this account's own where it set one, otherwise the tenant default for its `limit_profile` (`GET /v1/safety-policy`), otherwise the Curviate default. Where a configured value is above the Curviate default, the row carries an `over_default` entry naming the value, the default and the source class of that default. The response also carries `tenant_default_posture`, the workspace-wide default every account inherits, separately from this account's own effective `posture`, and `limit_profile`, which says which of the four Curviate default sets (`basic`, `premium`, `sales_navigator`, `recruiter`) every row below was resolved from, detected from the platform when the account connected.",
+        "description": "Returns every configurable safety field for every budget row of this account: ceiling, bands, window, posture, warm-up, and where each value was inherited from. Fields, posture and precedence: /reference/safety.",
         "x-order": 1
       },
       "patch": {
@@ -73180,7 +73635,7 @@
             }
           }
         },
-        "description": "The account-level safety-policy write (tenant-wide defaults are set on `PATCH /v1/safety-policy`). Send only the fields you are changing: everything you omit is left byte-identical, and sending `null` for a field clears your override and restores the tenant default where one is set, the Curviate default otherwise. Any limit may be set to any value: Curviate does not clamp, cap or refuse a change on the grounds that the number is unsafe. A value above the Curviate default is reported back in the response, and on every later read, with the default and its source class attached; there is no way to acknowledge it away, and setting the value back to the default removes it. A value that is not a value, such as a negative ceiling or an unknown row name, is a 400. Every field whose value CHANGES is appended to the account's action ledger with the previous value, the new value, the Curviate default, the actor and the time; a field you send whose value already equals its current effective value is not ledgered and is not stored as an override, so reading the policy and sending the document back changes nothing. Six fields on the read are derived rather than configured: `effective_ceiling`, `interface_ceiling`, `effective_interface_ceiling`, `posture_source`, `over_default` and each row's `warm_up_state`. Send them and they are accepted and ignored, never stored and never ledgered, so the document you read can go straight back. To pin a row's ramp, set `warm_up_factor`. `activity_window` is not accepted: send its settable subfields instead, the top-level `timezone` for the zone, and per row `activity_window_start`, `activity_window_end`, `activity_window_timezone` and `activity_window_applies_to`. The 400 this produces names those subfields, not just the refused object. And read `changes nothing` as `changes no limit`: the `posture` fields are OVERRIDES at every scope, so writing back a posture a scope merely inherits PINS it there and appends one ledger entry per pinned scope. That is what stops a later account- or tenant-wide change from moving it. A pin already in place is a no-op. An agent-authenticated write is accepted on exactly the same footing as an operator's. There is no bulk import, file upload or policy template: configuring many rows or many accounts is a loop over this operation. One field is not account-scoped: `tenant_default_posture` sets the default for EVERY account in the tenant, not just the one in the path, which is what makes it a one-call change for a whole workspace of personas. It is reported back at the top of every policy response, so a change to it is visible even on an account that overrides it. One other field is not row-scoped: `limit_profile` selects which of the four Curviate default sets this account's rows resolve from, so it moves the default under every row at once while leaving every value you have configured explicitly exactly as you set it. It is the platform product active on the account, not your Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it when the account connects and re-detects it on every reconnect; setting it here pins it, and the pin wins from then on: no connect, reconnect or account read moves it again until you release it with `limit_profile_source: \"default\"`, which is sent on its own: changing `limit_profile` and releasing it in the same request is refused. One field on this operation does not configure anything: `clear_halts` lifts the platform pause on the action types you name. When the platform refuses a call on an account, Curviate pauses that action type for the platform's own retry-after or a seeded cooldown, and every later call on it is refused locally without reaching the platform; the account resource reports the live pauses as `quotas[].halt`. Naming an action type here lifts its pause immediately, so the next call goes out. An action type with no active pause is accepted and does nothing, which makes it safe to send for a set you have not checked, and only the ones actually lifted are ledgered, each with the expiry it cut short, the actor and the time, readable afterwards on `GET /v1/{account_id}/safety-events` with `reason: \"halt_cleared\"`. Clearing disarms nothing: if the platform refuses the account again the pause returns, and a 429 or a refused write returns it for the full cooldown. Clear one when you have reason to believe the refusal was a transient upstream fault rather than the platform pushing back on this account.",
+        "description": "Updates this account's safety policy. Send only the fields you're changing; null clears an override back to the tenant or Curviate default. Any value is accepted, none are clamped. Fields, posture and precedence: /reference/safety.",
         "requestBody": {
           "required": true,
           "content": {
@@ -73541,7 +73996,7 @@
         "tags": [
           "Safety"
         ],
-        "summary": "List what Curviate refused or warned about",
+        "summary": "List limit hits",
         "security": [
           {
             "apiKeyAuth": []
@@ -73874,7 +74329,7 @@
             }
           }
         },
-        "description": "Returns this account's safety events, newest first: every action Curviate refused, and every action it let through while flagging that a limit had been crossed. Under the default posture nothing is refused, so everything here is a warning and `blocked` is how you tell the two apart. Each event names the budget row that breached, why, the operation that hit it and when. Filter by `budget_row` for one action type and by `since` / `until` for a period, and page until `cursor` is null. This is a read of what already happened, so it never changes a limit or a count: to change what is refused, update the safety policy. The account resource is the other half of the picture, reporting where each row stands right now rather than what has already been flagged. One entry here is not a refusal: `reason: \"halt_cleared\"` with `blocked: false` records somebody lifting a platform pause early through `clear_halts` on the safety policy, and it sits beside the `rate_limited` entry it lifted so the pause and its end read as one thread.",
+        "description": "Each entry is an action Curviate refused (enforce) or warned about (warn) at a safety limit or pause, or a halt_cleared record of a pause lifted early. Read blocked and reason; filter by budget_row, since and until, and page until cursor is null.",
         "x-order": 3
       }
     },
@@ -74186,7 +74641,7 @@
             }
           }
         },
-        "description": "Returns the tenant-wide safety defaults, per limit profile and per budget row: the values every account on that profile resolves from unless it sets its own. A value nobody has set here is the Curviate default, and a value set above the Curviate default carries an `over_default` entry naming the value, the default and its source class. Also carries `tenant_default_posture`. Works with no accounts connected, so defaults can be in place before the first one is.",
+        "description": "Returns the tenant-wide safety defaults per limit profile and budget row, that accounts resolve from unless they override. Works with no accounts connected. Fields, posture and precedence: /reference/safety.",
         "x-order": 4
       },
       "patch": {
@@ -74556,7 +75011,7 @@
             }
           }
         },
-        "description": "The tenant-level safety-policy write. Sets defaults per limit profile and per budget row; every account on that profile resolves from them unless it overrides the same field itself, including accounts connected later. THIS CHANGES EVERY ACCOUNT IN THE TENANT THAT HAS NOT OVERRIDDEN THE FIELD, and it applies immediately: under `enforce` posture, lowering a default can start refusing actions across the tenant in one request. The response carries `impact`: how many accounts had a ceiling change, and how many moved into `over`, measured on those accounts before and after the write. Send only what you are changing; `null` clears a default back to the Curviate default. A value equal to the one already in force is not stored and not recorded. Any limit may be set to any value, and a value above the Curviate default is reported rather than refused. Every change is appended to the ledger with the previous value, the new value, the Curviate default, the actor and the time. Per-row posture is not a tenant default: use `tenant_default_posture` here, or `posture` on an account's own policy. Per-account values are set on `PATCH /v1/{account_id}/safety-policy`.",
+        "description": "Updates tenant-wide safety defaults per limit profile and budget row; affects every account that hasn't overridden the field, immediately. Fields, posture and precedence: /reference/safety.",
         "requestBody": {
           "required": true,
           "content": {
@@ -74785,6 +75240,559 @@
           }
         },
         "x-order": 5
+      }
+    },
+    "/v1/billing/seats/add": {
+      "post": {
+        "operationId": "postV1BillingSeatsAdd",
+        "tags": [
+          "Seats"
+        ],
+        "summary": "Add seats",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Seats added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "charged_today_eur": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "Amount collected right now, or null when nothing was collected today."
+                    },
+                    "next_invoice_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "Reserved for a future queued-proration date; always null today."
+                    },
+                    "seat_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "The newly created seat ids."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "charged_today_eur",
+                    "next_invoice_at",
+                    "seat_ids"
+                  ]
+                },
+                "examples": {
+                  "added": {
+                    "summary": "Two seats added",
+                    "value": {
+                      "charged_today_eur": 0,
+                      "next_invoice_at": null,
+                      "seat_ids": [
+                        "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                        "seat_01J8Z3K9P0Q1R2S3T4V5W6X7YA"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "qty must be a whole number from 1 to 50.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "No active subscription found. Purchase a subscription first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "402 error",
+                    "value": {
+                      "code": "PAYMENT_REQUIRED",
+                      "message": "An active subscription or seat is required.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workspace is on a free trial and cannot add seats. Buy a seat to convert to a paid subscription first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "trial": {
+                    "summary": "Trial workspace",
+                    "value": {
+                      "code": "TRIAL_ACTIVE_SEAT_LIMIT",
+                      "message": "Buy a seat to change your plan. Seat changes are available after your free trial converts to a paid subscription.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large, the request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Adds seats to the workspace's active subscription. A trialing workspace gets 409 TRIAL_ACTIVE_SEAT_LIMIT (buy to convert first). Two adds of the same quantity within 10 minutes count as one; to buy more, send the total quantity in one call.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "qty": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                  }
+                },
+                "required": [
+                  "qty"
+                ]
+              },
+              "examples": {
+                "add": {
+                  "summary": "Add 2 seats",
+                  "value": {
+                    "qty": 2
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/seats/{seat_id}/cancel": {
+      "post": {
+        "operationId": "postV1BillingSeatsSeatIdCancel",
+        "tags": [
+          "Seats"
+        ],
+        "summary": "Cancel a seat",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "seat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The seat ID (`seat_...`) to cancel."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation scheduled (or already was).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "effective_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "When the seat's access ends."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "effective_at"
+                  ]
+                },
+                "examples": {
+                  "scheduled": {
+                    "summary": "Scheduled for period end",
+                    "value": {
+                      "effective_at": "2026-10-24T00:00:00Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "seat_id not found for this workspace, or its cancellation already took effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Schedules a seat for cancellation at the end of the current period. Already scheduled: returns the existing effective date. Already effective: 400 ALREADY_CANCELLED."
+      }
+    },
+    "/v1/billing/seats/{seat_id}/cancel/revert": {
+      "post": {
+        "operationId": "postV1BillingSeatsSeatIdCancelRevert",
+        "tags": [
+          "Seats"
+        ],
+        "summary": "Revert a scheduled seat cancellation",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "seat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The seat ID (`seat_...`) whose scheduled cancellation to revert."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation reverted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reverted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Always true on success."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "reverted"
+                  ]
+                },
+                "examples": {
+                  "reverted": {
+                    "summary": "Reverted",
+                    "value": {
+                      "reverted": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "seat_id not found, no cancellation is scheduled, it already took effect, or the whole subscription (not this seat) was scheduled to cancel.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Reverts a seat's pending end-of-period cancellation. 400 CANCELLATION_ALREADY_EFFECTIVE when nothing is scheduled or it already took effect; 400 INVALID_CANCELLATION_SOURCE when the whole subscription, not this seat, was scheduled to cancel."
       }
     }
   }
