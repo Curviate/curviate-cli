@@ -4230,7 +4230,13 @@
       ],
       "description": "List connected LinkedIn accounts.",
       "usageOnly": false,
-      "args": [],
+      "args": [
+        {
+          "name": "external-id",
+          "type": "string",
+          "description": "Only accounts whose external_id (your own end-user id, set on link) equals this value exactly."
+        }
+      ],
       "globals": [
         "api-key",
         "profile",
@@ -4249,7 +4255,8 @@
       ],
       "examples": [
         "curviate account list",
-        "curviate account list --json --fields items.account_id,items.status"
+        "curviate account list --json --fields items.account_id,items.status",
+        "curviate account list --external-id usr_42"
       ],
       "requires": []
     },
@@ -4407,6 +4414,21 @@
           "name": "linkedin-premium",
           "type": "string",
           "description": "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win."
+        },
+        {
+          "name": "products",
+          "type": "string",
+          "description": "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both. Classic LinkedIn and company pages are always included."
+        },
+        {
+          "name": "external-id",
+          "type": "string",
+          "description": "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `account list --external-id`. Use an opaque id, not an email."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused."
         },
         {
           "name": "account-id",
@@ -4696,13 +4718,18 @@
         "checkpoint",
         "request"
       ],
-      "description": "Re-request the challenge notification for a pending checkpoint (e.g. re-send an OTP email, SMS code, or mobile-app approval push). Not every challenge type supports it; an authenticator- app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new notification actually went out; the command still exits 0 either way.",
+      "description": "Re-request the challenge notification for a pending checkpoint (e.g. re-send an OTP email, SMS code, or mobile-app approval push). Not every challenge type supports it; an authenticator- app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new notification actually went out; the command still exits 0 either way. With --challenge it instead answers a challenge_selection checkpoint by picking the verification method.",
       "usageOnly": false,
       "args": [
         {
           "name": "account-id",
           "type": "positional",
           "description": "The provisional account_id (acc_...) from the 202 checkpoint_required response."
+        },
+        {
+          "name": "challenge",
+          "type": "string",
+          "description": "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `checkpoint solve`. Omit to re-send the current code."
         }
       ],
       "globals": [
@@ -4718,7 +4745,8 @@
         "beta"
       ],
       "examples": [
-        "curviate account checkpoint request acc_YOUR_ACCOUNT_ID"
+        "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
+        "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms"
       ],
       "requires": []
     },
@@ -4756,8 +4784,7 @@
         {
           "name": "account-ids",
           "type": "string",
-          "description": "Comma-separated account ids to target (required).",
-          "required": true
+          "description": "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account."
         },
         {
           "name": "name",
@@ -4797,9 +4824,11 @@
       ],
       "examples": [
         "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
-        "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID --name status"
+        "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
-      "requires": []
+      "requires": [
+        "--account-ids for --source messaging and user; omit it with --source account_status to cover every current and future account."
+      ]
     },
     {
       "path": [

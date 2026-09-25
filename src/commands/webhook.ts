@@ -118,8 +118,9 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
 
 /**
  * Run `webhook create <body...>`.
- * Required: --source, --request-url, --account-ids.
- * --account-ids is comma-separated and maps to account_ids[].
+ * Required: --source, --request-url; --account-ids for messaging and user.
+ * --account-ids is comma-separated and maps to account_ids[]. Omitted on an
+ * account_status webhook, it covers every current and future account.
  */
 export async function runWebhookCreate(
   client: Curviate,
@@ -134,17 +135,28 @@ export async function runWebhookCreate(
     out.stderr.write("error: --request-url is required (HTTPS URL for webhook deliveries).\n");
     process.exit(2);
   }
-  if (!flags["account-ids"]) {
-    out.stderr.write("error: --account-ids is required (comma-separated list of acc_... ids).\n");
-    process.exit(2);
-  }
-
-  const accountIds = flags["account-ids"].split(",").map((s) => s.trim()).filter(Boolean);
   const body: Record<string, unknown> = {
     source: flags.source,
     request_url: flags["request-url"],
-    account_ids: accountIds,
   };
+  // `!== undefined`, not truthiness: `--account-ids "$IDS"` with IDS unset is
+  // an empty value, and reading it as "omitted" would silently widen an
+  // account_status webhook to every account.
+  if (flags["account-ids"] !== undefined) {
+    const accountIds = flags["account-ids"].split(",").map((s) => s.trim()).filter(Boolean);
+    if (accountIds.length === 0) {
+      out.stderr.write(
+        "error: --account-ids was given an empty value. Pass acc_... ids, or omit the flag on an account_status webhook to cover every account.\n",
+      );
+      process.exit(2);
+    }
+    body["account_ids"] = accountIds;
+  } else if (flags.source !== "account_status") {
+    out.stderr.write(
+      "error: --account-ids is required for --source messaging and user (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
+    );
+    process.exit(2);
+  }
 
   if (flags.name) body["name"] = flags.name;
   if (flags.enabled !== undefined) body["enabled"] = flags.enabled;
@@ -471,14 +483,17 @@ const webhookCreateCommand = defineCommand({
     description: "Register a new webhook endpoint.",
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
-      "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID --name status",
+      "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status",
+    ],
+    requires: [
+      "--account-ids for --source messaging and user; omit it with --source account_status to cover every current and future account.",
     ],
   },
   args: {
     ...NON_STREAM_FLAGS,
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
-    "account-ids": { type: "string", description: "Comma-separated account ids to target (required).", required: true },
+    "account-ids": { type: "string", description: "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account." },
     name: { type: "string", description: "Human-readable name (1-100 chars)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
