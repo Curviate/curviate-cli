@@ -4418,7 +4418,7 @@
         {
           "name": "products",
           "type": "string",
-          "description": "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both. Classic LinkedIn and company pages are always included."
+          "description": "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included."
         },
         {
           "name": "external-id",

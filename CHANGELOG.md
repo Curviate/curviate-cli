@@ -23,6 +23,7 @@ on checkpoints. Requires `@curviate/sdk` 0.38.0.
   (`sales_navigator`, `recruiter`, comma-separated); an empty or unknown value
   exits 2.
 - **`account list --external-id <id>`** lists only that end user's accounts.
+  `account list` and `account get` show `external_id` in their default view.
 - **`account checkpoint request <account_id> --challenge <id>`** answers a
   `challenge_selection` checkpoint (LinkedIn asking which method to verify
   with: `email`, `sms` or `whatsapp`). It prints the next checkpoint and

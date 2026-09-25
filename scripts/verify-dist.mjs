@@ -322,7 +322,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
 
 // ---------------------------------------------------------------------------
 // 8. Usage error (missing required flag): exits non-zero
-//    `webhook create` requires --source, --request-url, --account-ids.
+//    `webhook create` requires --source and --request-url.
 //    Passing only --api-key should yield a usage error.
 // ---------------------------------------------------------------------------
 {

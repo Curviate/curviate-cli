@@ -94,6 +94,14 @@ describe("account list --external-id", () => {
     expect(list).toHaveBeenCalledWith({ external_id: "usr_42" });
   });
 
+  it("the default (slim) view shows the external_id it filtered on", async () => {
+    const { runAccountList } = await import("../../src/commands/account.js");
+    const list = vi.fn().mockResolvedValue({ object: "account_list", items: [{ account_id: "acc_1", external_id: "usr_42" }], cursor: null });
+    const out = makeOut();
+    await runAccountList({ accounts: { list } } as never, { "external-id": "usr_42", json: true } as never, out);
+    expect(JSON.parse(text(out.stdout.write)).items[0]).toMatchObject({ account_id: "acc_1", external_id: "usr_42" });
+  });
+
   it("carries the filter through every --all page", async () => {
     const { runAccountList } = await import("../../src/commands/account.js");
     const list = vi

@@ -283,6 +283,7 @@ const ENRICHED_ITEM = {
   headline: "Engineer",
   seat_id: "seat_1",
   connected_at: "2026-06-01T09:00:00Z",
+  external_id: null,
   substrate_created_at: "2020-01-01T00:00:00Z",
 } satisfies AccountListItem;
 
@@ -297,7 +298,7 @@ const NEVER_ENRICHED_ITEM = {
   substrate_created_at: null,
 } satisfies AccountListItem;
 
-const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at"];
+const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at", "external_id"];
 // Real set, per the generated type above and the vendored OpenAPI fixture
 // (test/fixtures/openapi.json): username/premium_id/public_identifier/
 // signatures/groups are DEAD — the columns backing them were dropped
@@ -319,7 +320,7 @@ describe("account list — slim/verbose split", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: item has exactly the 7 slim keys, no enrichment fields", async () => {
+  it("slim mode: item has exactly the 8 slim keys, no enrichment fields", async () => {
     const { runAccountList } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountList(client as never, { json: true } as AccountFlags, out);
@@ -401,7 +402,7 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: exactly the 10 slim keys, seat_id present, no enrichment fields", async () => {
+  it("slim mode: exactly the 11 slim keys, seat_id present, no enrichment fields", async () => {
     const { runAccountGet } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
