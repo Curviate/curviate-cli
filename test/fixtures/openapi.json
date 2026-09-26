@@ -75362,18 +75362,45 @@
             }
           },
           "402": {
-            "description": "No active subscription found. Purchase a subscription first.",
+            "description": "No active subscription, a past-due subscription, an account under dispute review, or the card was declined (no seats added).",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "error": {
-                    "summary": "402 error",
+                  "no_subscription": {
+                    "summary": "SUBSCRIPTION_NOT_FOUND",
+                    "value": {
+                      "code": "SUBSCRIPTION_NOT_FOUND",
+                      "message": "No active subscription found. Purchase a subscription first.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "past_due": {
+                    "summary": "PAYMENT_REQUIRED",
                     "value": {
                       "code": "PAYMENT_REQUIRED",
-                      "message": "An active subscription or seat is required.",
+                      "message": "Your subscription is past due. Update your payment method to resume.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "disputed": {
+                    "summary": "ACCOUNT_DISPUTED",
+                    "value": {
+                      "code": "ACCOUNT_DISPUTED",
+                      "message": "Your account is under dispute review. Please contact support.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "card_declined": {
+                    "summary": "PAYMENT_FAILED",
+                    "value": {
+                      "code": "PAYMENT_FAILED",
+                      "message": "Payment failed. No seats were added. Please update your payment method.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -75456,6 +75483,27 @@
               },
               "Retry-After": {
                 "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          },
+          "503": {
+            "description": "Another change to this subscription is in progress. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "busy": {
+                    "summary": "SUBSCRIPTION_BUSY",
+                    "value": {
+                      "code": "SUBSCRIPTION_BUSY",
+                      "message": "Subscription is temporarily locked by a concurrent operation. Please retry.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
               }
             }
           }
@@ -75562,12 +75610,21 @@
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "error": {
-                    "summary": "400 error",
+                  "seat_not_found": {
+                    "summary": "SEAT_NOT_FOUND",
                     "value": {
-                      "code": "INVALID_REQUEST",
-                      "message": "A parameter failed validation.",
+                      "code": "SEAT_NOT_FOUND",
+                      "message": "Seat not found.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "already_cancelled": {
+                    "summary": "ALREADY_CANCELLED",
+                    "value": {
+                      "code": "ALREADY_CANCELLED",
+                      "message": "This seat has already been cancelled.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -75596,12 +75653,65 @@
               }
             }
           },
+          "402": {
+            "description": "No active subscription, a past-due subscription, or an account under dispute review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "no_subscription": {
+                    "summary": "SUBSCRIPTION_NOT_FOUND",
+                    "value": {
+                      "code": "SUBSCRIPTION_NOT_FOUND",
+                      "message": "No active subscription found. Purchase a subscription first.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "past_due": {
+                    "summary": "PAYMENT_REQUIRED",
+                    "value": {
+                      "code": "PAYMENT_REQUIRED",
+                      "message": "Your subscription is past due. Update your payment method to resume.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "disputed": {
+                    "summary": "ACCOUNT_DISPUTED",
+                    "value": {
+                      "code": "ACCOUNT_DISPUTED",
+                      "message": "Your account is under dispute review. Please contact support.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "409": {
             "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "trial": {
+                    "summary": "Trial workspace",
+                    "value": {
+                      "code": "TRIAL_ACTIVE_SEAT_LIMIT",
+                      "message": "Buy a seat to change your plan. Seat changes are available after your free trial converts to a paid subscription.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -75635,6 +75745,27 @@
               },
               "Retry-After": {
                 "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          },
+          "503": {
+            "description": "Another change to this subscription is in progress. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "busy": {
+                    "summary": "SUBSCRIPTION_BUSY",
+                    "value": {
+                      "code": "SUBSCRIPTION_BUSY",
+                      "message": "Subscription is temporarily locked by a concurrent operation. Please retry.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
               }
             }
           }
@@ -75715,11 +75846,29 @@
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "error": {
-                    "summary": "400 error",
+                  "seat_not_found": {
+                    "summary": "SEAT_NOT_FOUND",
                     "value": {
-                      "code": "INVALID_REQUEST",
-                      "message": "A parameter failed validation.",
+                      "code": "SEAT_NOT_FOUND",
+                      "message": "Seat not found.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "nothing_scheduled": {
+                    "summary": "CANCELLATION_ALREADY_EFFECTIVE",
+                    "value": {
+                      "code": "CANCELLATION_ALREADY_EFFECTIVE",
+                      "message": "The cancellation has already taken effect or was not scheduled.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "subscription_cancelling": {
+                    "summary": "INVALID_CANCELLATION_SOURCE",
+                    "value": {
+                      "code": "INVALID_CANCELLATION_SOURCE",
+                      "message": "Your whole subscription is scheduled to cancel, so seats can't be restored one at a time.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -75749,12 +75898,65 @@
               }
             }
           },
+          "402": {
+            "description": "No active subscription, a past-due subscription, or an account under dispute review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "no_subscription": {
+                    "summary": "SUBSCRIPTION_NOT_FOUND",
+                    "value": {
+                      "code": "SUBSCRIPTION_NOT_FOUND",
+                      "message": "No active subscription found. Purchase a subscription first.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "past_due": {
+                    "summary": "PAYMENT_REQUIRED",
+                    "value": {
+                      "code": "PAYMENT_REQUIRED",
+                      "message": "Your subscription is past due. Update your payment method to resume.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "disputed": {
+                    "summary": "ACCOUNT_DISPUTED",
+                    "value": {
+                      "code": "ACCOUNT_DISPUTED",
+                      "message": "Your account is under dispute review. Please contact support.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "409": {
             "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "trial": {
+                    "summary": "Trial workspace",
+                    "value": {
+                      "code": "TRIAL_ACTIVE_SEAT_LIMIT",
+                      "message": "Buy a seat to change your plan. Seat changes are available after your free trial converts to a paid subscription.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -75788,6 +75990,27 @@
               },
               "Retry-After": {
                 "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          },
+          "503": {
+            "description": "Another change to this subscription is in progress. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "busy": {
+                    "summary": "SUBSCRIPTION_BUSY",
+                    "value": {
+                      "code": "SUBSCRIPTION_BUSY",
+                      "message": "Subscription is temporarily locked by a concurrent operation. Please retry.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
               }
             }
           }
