@@ -21,10 +21,15 @@ export const SPAWN_TIMEOUT_MS = 15_000;
 
 const MARGIN_MS = 5_000;
 
-/** Vitest test/describe/file timeout that leaves room for a spawn budgeted at `spawnTimeoutMs` to actually run out its budget and still report, rather than vitest declaring the TEST timed out first. */
-export function spawnTestTimeout(spawnTimeoutMs: number = SPAWN_TIMEOUT_MS): number {
-  return spawnTimeoutMs + MARGIN_MS;
+/**
+ * Vitest test/describe/file timeout that leaves room for `spawnsPerTest`
+ * sequential spawns, each budgeted at `spawnTimeoutMs`, to actually run out
+ * their budget and still report, rather than vitest declaring the TEST timed
+ * out first. Pass `spawnsPerTest` > 1 for a body that awaits more than one
+ * real spawn in sequence — a shared per-file budget must cover its WORST
+ * test, not just the common one-spawn case, or the same mismatch this file
+ * exists to fix survives on exactly the tests most likely to run long.
+ */
+export function spawnTestTimeout(spawnTimeoutMs: number = SPAWN_TIMEOUT_MS, spawnsPerTest = 1): number {
+  return spawnTimeoutMs * spawnsPerTest + MARGIN_MS;
 }
-
-/** The matching test timeout for the common one-spawn-at-`SPAWN_TIMEOUT_MS` case. */
-export const SPAWN_TEST_TIMEOUT_MS = spawnTestTimeout(SPAWN_TIMEOUT_MS);

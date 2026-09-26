@@ -12,8 +12,10 @@ import { INTERACTIVE_ONLY, readManifest, startExamplesStub, type ExamplesStub } 
 import { spawnTestTimeout } from "./helpers/spawn-budget.js";
 
 // Vitest's default (5s) is shorter than stub.run()'s own 15s execFile timeout
-// (examples-stub.ts). The big sweep below keeps its own explicit override.
-vi.setConfig({ testTimeout: spawnTestTimeout(15_000) });
+// (examples-stub.ts). The big sweep below keeps its own explicit override;
+// the "--preview=%s: agree" case awaits stub.run() twice in sequence, so the
+// file's budget covers 2 spawns, not just the common single-spawn case.
+vi.setConfig({ testTimeout: spawnTestTimeout(15_000, 2) });
 
 let stub: ExamplesStub;
 beforeAll(async () => {

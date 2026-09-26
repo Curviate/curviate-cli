@@ -18,10 +18,12 @@ import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "../helpers/spawn-budget.js";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
 
-// Vitest's default (5s) is shorter than the spawns' own timeout below (see spawn-budget.ts).
-vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
+// Vitest's default (5s) is shorter than the spawns' own timeout below (see
+// spawn-budget.ts). One test below calls helpText() 5 times in sequence, so
+// the file's budget covers 5 spawns, not just the common single-spawn case.
+vi.setConfig({ testTimeout: spawnTestTimeout(SPAWN_TIMEOUT_MS, 5) });
 
 // Helper: extract args from a subcommand of searchCommand.
 async function getSearchSubArgs(sub: string): Promise<Record<string, { description?: string }>> {

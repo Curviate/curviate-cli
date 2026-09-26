@@ -27,10 +27,10 @@ import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "./helpers/spawn-budget.js";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "./helpers/spawn-budget.js";
 
 // Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
-vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
+vi.setConfig({ testTimeout: spawnTestTimeout() });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "..");

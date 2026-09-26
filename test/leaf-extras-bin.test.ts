@@ -29,10 +29,10 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { ensureFreshBuild } from "./helpers/built-cli.js";
-import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "./helpers/spawn-budget.js";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "./helpers/spawn-budget.js";
 
 // Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
-vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
+vi.setConfig({ testTimeout: spawnTestTimeout() });
 
 interface Recorded {
   method: string;

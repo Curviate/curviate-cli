@@ -347,7 +347,7 @@ describe("README examples execute against the built binary (non-empty, non-error
       } finally {
         entitlementCheckMode = false;
       }
-    }, 15_000);
+    }, spawnTestTimeout(30_000));
   }
 });
 

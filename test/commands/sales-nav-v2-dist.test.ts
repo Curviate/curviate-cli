@@ -15,13 +15,13 @@ import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "../helpers/spawn-budget.js";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
 
 // Every `it` below spawns the built bin with an inner budget of
 // SPAWN_TIMEOUT_MS; vitest's own default (5s) is shorter than that, so a
 // slow-but-healthy cold start under load reports "Test timed out in 5000ms"
 // instead of the spawn ever getting to use its budget (see spawn-budget.ts).
-vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
+vi.setConfig({ testTimeout: spawnTestTimeout() });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "../..");
