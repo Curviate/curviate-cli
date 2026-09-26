@@ -22,11 +22,15 @@
  * Build prerequisite: `pnpm build` must have produced a current dist/cli.js.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "..");
@@ -39,7 +43,7 @@ const UNROUTABLE = "http://127.0.0.1:1";
 function run(args: string[]) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", CURVIATE_API_KEY: "rdc_live_routing_test_stub" },
   });
 }

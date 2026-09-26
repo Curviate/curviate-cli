@@ -7,8 +7,13 @@
  * globals-accepted-bin.test.ts.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { INTERACTIVE_ONLY, readManifest, startExamplesStub, type ExamplesStub } from "./helpers/examples-stub.js";
+import { spawnTestTimeout } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than stub.run()'s own 15s execFile timeout
+// (examples-stub.ts). The big sweep below keeps its own explicit override.
+vi.setConfig({ testTimeout: spawnTestTimeout(15_000) });
 
 let stub: ExamplesStub;
 beforeAll(async () => {

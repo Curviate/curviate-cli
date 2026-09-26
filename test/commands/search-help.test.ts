@@ -13,11 +13,15 @@
  * the source-level description string.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "../helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawns' own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
 
 // Helper: extract args from a subcommand of searchCommand.
 async function getSearchSubArgs(sub: string): Promise<Record<string, { description?: string }>> {
@@ -37,7 +41,7 @@ const cliPath = resolve(pkgRoot, "dist", "cli.js");
 function runHelp(args: string[]) {
   return spawnSync(process.execPath, [cliPath, ...args, "--help"], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_help_test_stub" },
   });
 }
@@ -399,7 +403,7 @@ describe("help-text-only corrections: --type / --seniority / --job-type / --cont
       [cliPath, "search", "jobs", "--seniority", "ceo", "--account", "acc_x", "--base-url", "http://127.0.0.1:1", "--json"],
       {
         encoding: "utf8",
-        timeout: 15_000,
+        timeout: SPAWN_TIMEOUT_MS,
         env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_help_test_stub" },
       },
     );

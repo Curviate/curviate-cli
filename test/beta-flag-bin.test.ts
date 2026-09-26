@@ -26,10 +26,14 @@
  * a red-then-green cycle cannot be measuring a stale artifact.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { ensureFreshBuild } from "./helpers/built-cli.js";
+import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawns' own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
 
 interface Recorded {
   method: string;
@@ -80,7 +84,7 @@ function run(args: string[]): Promise<RunResult> {
       [cliPath, ...args, "--base-url", baseUrl],
       {
         encoding: "utf8",
-        timeout: 15_000,
+        timeout: SPAWN_TIMEOUT_MS,
         env: {
           ...process.env,
           NODE_ENV: "production",
@@ -194,7 +198,7 @@ describe("built bin — an invalid --beta value refuses without calling the API"
         const child = execFile(
           process.execPath,
           [cliPath, ...args],
-          { encoding: "utf8", timeout: 15_000 },
+          { encoding: "utf8", timeout: SPAWN_TIMEOUT_MS },
           (_e, stdout) => res({ status: child.exitCode, stdout: stdout ?? "" }),
         );
         child.stdin?.end();

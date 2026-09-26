@@ -9,11 +9,15 @@
  * caught by inspecting the source args object alone.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "../helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "../..");
@@ -22,7 +26,7 @@ const cliPath = resolve(pkgRoot, "dist", "cli.js");
 function helpText(args: string[]): string {
   const r = spawnSync(process.execPath, [cliPath, ...args, "--help"], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_help_test_stub" },
   });
   return (r.stdout ?? "") + (r.stderr ?? "");

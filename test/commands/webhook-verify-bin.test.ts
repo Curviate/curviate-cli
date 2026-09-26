@@ -21,12 +21,16 @@
  * Build prereq: dist/cli.js must exist. The beforeAll builds it if absent.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { tmpdir } from "node:os";
+import { SPAWN_TIMEOUT_MS, SPAWN_TEST_TIMEOUT_MS } from "../helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: SPAWN_TEST_TIMEOUT_MS });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Test lives in test/commands/ - two levels above the package root.
@@ -59,7 +63,7 @@ const BASE_ENV = {
 function run(args: string[], opts: { input?: string } = {}) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: BASE_ENV,
     // Always close stdin. Left open, any stdin-reading path blocks to the timeout.
     input: opts.input ?? "",
