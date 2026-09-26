@@ -103,6 +103,10 @@ type AccountFlags = {
   "user-agent"?: string;
   "recruiter-contract-id"?: string;
   "linkedin-premium"?: string;
+  "external-id"?: string;  // link: your own end-user id (also the list filter)
+  timezone?: string;       // link: IANA zone for the account
+  products?: string;       // link: comma-separated premium allow-list
+  challenge?: string;      // checkpoint request: a challenge_selection id
   // update body fields
   metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
@@ -196,6 +200,9 @@ export async function runAccountList(
   const params: Record<string, unknown> = {};
   if (limit !== undefined) params["limit"] = limit;
   if (cursor) params["cursor"] = cursor;
+  // Sent even when empty: the API refuses a blank filter by name, where
+  // dropping it would silently list every account.
+  if (flags["external-id"] !== undefined) params["external_id"] = flags["external-id"];
 
   try {
     if (all) {
@@ -415,6 +422,25 @@ async function buildAuthBody(
       if (!ctx.previewMode) process.exit(2);
     } else {
       body["linkedin_premium"] = value;
+    }
+  }
+
+  // Passed through as given; the API validates both and names the field.
+  if (flags["external-id"] !== undefined) body["external_id"] = flags["external-id"];
+  if (flags.timezone !== undefined) body["timezone"] = flags.timezone;
+  // Closed set, validated here for the same silent-narrowing reason as
+  // --linkedin-premium: `--products "$P"` with P unset must not become [].
+  // ponytail: `[]` (ask for no premium product) is not expressible from the
+  // CLI; add a `none` token when someone needs it.
+  if (flags.products !== undefined) {
+    const products = flags.products.split(",").map((p) => p.trim()).filter(Boolean);
+    if (products.length === 0 || products.some((p) => p !== "sales_navigator" && p !== "recruiter")) {
+      ctx.out.stderr.write(
+        `error: --products takes a comma-separated list of: sales_navigator, recruiter. Got "${flags.products}".\n`,
+      );
+      if (!ctx.previewMode) process.exit(2);
+    } else {
+      body["products"] = products;
     }
   }
 
@@ -643,6 +669,18 @@ async function runInteractiveCheckpointLoop(
   for (;;) {
     const challengeType = current.challenge_type as ChallengeType;
     const accountId = current.account_id ?? "";
+
+    // A method choice, not a code: there is nothing to type at a prompt. Show
+    // the choices and hand off to the command that answers it.
+    if ((current.challenge_type as string) === "challenge_selection") {
+      readableObject(current);
+      renderSuccess(current, ctx.outOpts, ctx.out);
+      ctx.out.stderr.write(
+        `Choose how LinkedIn verifies this sign-in: curviate account checkpoint request ${accountId} --challenge <id> (an id from challenges).\n`,
+      );
+      process.exit(AUTH_NEEDED);
+      return;
+    }
 
     printChallengeCopy(challengeType, ctx.out);
     printResendHintIfApplicable(challengeType, accountId, ctx.out);
@@ -1269,9 +1307,11 @@ export async function runAccountCheckpointSolve(
 }
 
 /**
- * Run `account checkpoint request <account_id>`.
- * `POST /v1/auth/checkpoint/request` with body `{ account_id }`. No --code, a
- * re-request has nothing else to submit.
+ * Run `account checkpoint request <account_id> [--challenge <id>]`.
+ * `POST /v1/auth/checkpoint/request` with body `{ account_id }`, plus
+ * `challenge` to answer a challenge_selection checkpoint. That answer is the
+ * next checkpoint (202), rendered and exited AUTH_NEEDED (12) like a chained
+ * `checkpoint solve`: still resolvable, one more step to go.
  *
  * Exit 0 on any 200 regardless of the `resent` boolean: a `false` value is an
  * honest answer ("this challenge type has nothing to re-send, or the
@@ -1293,22 +1333,36 @@ export async function runAccountCheckpointRequest(
   const accountId = flags["account-id"] ?? "";
   const outOpts = resolveOutputOpts(flags);
 
+  // `!== undefined`: an empty --challenge is sent and refused by the API by
+  // name, never quietly turned into a re-send.
+  const body = flags.challenge !== undefined ? { challenge: flags.challenge } : undefined;
+
   if (flags.preview) {
     const preview = buildPreviewOutput({
       method: "auth.requestCheckpoint",
       args: { accountId },
-      body: {},
+      body: body ?? {},
     });
     out.stdout.write(JSON.stringify(preview) + "\n");
     return;
   }
 
+  let chained = false;
   try {
-    const result = await client.auth.requestCheckpoint(accountId);
+    // The SDK types `challenge` as its closed enum; the API refuses anything
+    // else by name, so the raw flag value is passed through.
+    const result = body
+      ? await client.auth.requestCheckpoint(accountId, body as { challenge: "email" | "sms" | "whatsapp" })
+      : await client.auth.requestCheckpoint(accountId);
     renderSuccess(result, outOpts, out);
+    chained = (result as CheckpointEnvelope).status === "checkpoint_required";
   } catch (err) {
     await handleError(err, outOpts, out);
+    return;
   }
+  // Outside the try, same reason as `checkpoint solve`: a chained 202 is a
+  // success and must never route through handleError.
+  if (chained) process.exit(AUTH_NEEDED);
 }
 
 /** Terminal outcome of the `checkpoint poll --wait` adaptive-cadence loop. */
@@ -1490,9 +1544,13 @@ const accountListCommand = defineCommand({
     examples: [
       "curviate account list",
       "curviate account list --json --fields items.account_id,items.status",
+      "curviate account list --external-id usr_42",
     ],
   },
-  args: { ...readOnly(GLOBAL_FLAGS) },
+  args: {
+    ...readOnly(GLOBAL_FLAGS),
+    "external-id": { type: "string", description: "Only accounts whose external_id (your own end-user id, set on link) equals this value exactly." },
+  },
   async run({ args }) {
     const flags = args as AccountFlags;
     const cfg = await resolveEffectiveConfig({
@@ -1609,6 +1667,9 @@ const accountLinkCommand = defineCommand({
     "user-agent": { type: "string", description: "Browser User-Agent to pin for this account. Required with --auth-method cookie: a session cookie only works paired with the User-Agent of the browser it was copied from, and the command exits 2 without it. Optional with --auth-method credentials, where it is still pinned for the account when given." },
     "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
     "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
+    products: { type: "string", description: "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included." },
+    "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `account list --external-id`. Use an opaque id, not an email." },
+    timezone: { type: "string", description: "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",
@@ -1861,9 +1922,11 @@ const accountCheckpointRequestCommand = defineCommand({
       "Re-request the challenge notification for a pending checkpoint (e.g. re-send an OTP email, SMS " +
       "code, or mobile-app approval push). Not every challenge type supports it; an authenticator- " +
       "app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new " +
-      "notification actually went out; the command still exits 0 either way.",
+      "notification actually went out; the command still exits 0 either way. With --challenge it instead " +
+      "answers a challenge_selection checkpoint by picking the verification method.",
     examples: [
       "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
+      "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms",
     ],
   },
   args: {
@@ -1871,6 +1934,10 @@ const accountCheckpointRequestCommand = defineCommand({
     "account-id": {
       type: "positional",
       description: "The provisional account_id (acc_...) from the 202 checkpoint_required response.",
+    },
+    challenge: {
+      type: "string",
+      description: "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `checkpoint solve`. Omit to re-send the current code.",
     },
   },
   async run({ args }) {

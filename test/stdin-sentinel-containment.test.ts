@@ -179,7 +179,7 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * the same NON_STREAM_FLAGS -> GLOBAL_FLAGS swap (+2 each) and `message new`
  * gained --subject (+1)).
  */
-const ARGUMENT_SURFACE_COUNT = 1667;
+const ARGUMENT_SURFACE_COUNT = 1672;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

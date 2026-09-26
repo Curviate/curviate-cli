@@ -8,6 +8,37 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-09-25
+
+Programmatic connect at scale: tag accounts with your own end-user id, one
+account-status webhook for every account, and the verification-method choice
+on checkpoints. Requires `@curviate/sdk` 0.38.0.
+
+### Added
+
+- **`account link --external-id <id> --timezone <zone> --products <list>`.**
+  `--external-id` stores your own id for the account's end user; it comes back
+  on the account and on every account webhook. `--timezone` is an IANA zone
+  (`Europe/Berlin`). `--products` narrows the premium products asked for
+  (`sales_navigator`, `recruiter`, comma-separated); an empty or unknown value
+  exits 2.
+- **`account list --external-id <id>`** lists only that end user's accounts.
+  `account list` and `account get` show `external_id` in their default view.
+- **`account checkpoint request <account_id> --challenge <id>`** answers a
+  `challenge_selection` checkpoint (LinkedIn asking which method to verify
+  with: `email`, `sms` or `whatsapp`). It prints the next checkpoint and
+  exits 12; finish with `account checkpoint solve`.
+- **`webhook create --source account_status` without `--account-ids`** covers
+  every current and future account. `messaging` and `user` still require
+  `--account-ids`, and an empty `--account-ids` value exits 2 instead of
+  widening to every account.
+
+### Changed
+
+- **`account link` on a terminal no longer prompts for a code at a
+  `challenge_selection` checkpoint.** It prints the choices, names the
+  `checkpoint request --challenge` command, and exits 12.
+
 ## [0.42.0] - 2026-09-23
 
 Adds examples to every command's help and the manifest the docs site

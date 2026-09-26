@@ -621,7 +621,7 @@ export function slimSearchPosts(data: unknown): Record<string, unknown> {
  * Project a single `account list` item to the slim field set.
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
- * seat_id, connected_at. The six cached account-enrichment fields (username,
+ * seat_id, connected_at, external_id. The six cached account-enrichment fields (username,
  * premium_id, public_identifier, substrate_created_at, signatures, groups)
  * are verbose-only, excluded here by construction (fresh object literal,
  * no spread of the source item).
@@ -635,6 +635,7 @@ export function slimAccountListItem(item: Record<string, unknown>): Record<strin
     headline: item["headline"] ?? null,
     seat_id: item["seat_id"] ?? null,
     connected_at: item["connected_at"] ?? null,
+    external_id: item["external_id"] ?? null,
   };
 }
 
@@ -693,6 +694,7 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     headline: d["headline"] ?? null,
     seat_id: d["seat_id"] ?? null,
     connected_at: d["connected_at"] ?? null,
+    external_id: d["external_id"] ?? null,
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
     account_states: d["account_states"] ?? [],

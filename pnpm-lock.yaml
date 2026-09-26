@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@curviate/sdk':
-        specifier: 0.37.1
-        version: 0.37.1
+        specifier: 0.38.0
+        version: 0.38.0
       citty:
         specifier: ^0.1.6
         version: 0.1.6
@@ -39,8 +39,8 @@ importers:
 
 packages:
 
-  '@curviate/sdk@0.37.1':
-    resolution: {integrity: sha512-g3Mxdr8sBdQHuzsjHv/YtMX8UfabA8U1PBbw0C+j55MxSCLye9K41N9rXBViN3Uc5nVIGBkb+Fz/vUUCQkmmpw==}
+  '@curviate/sdk@0.38.0':
+    resolution: {integrity: sha512-I2UsiweSlTOQ8WnpfcdzFYr6sjWPKGHhgcZZKnIOcNLQvTZst6oouBTFr0ljFe7rf83/u9k0FJfeaSHfuJvafg==}
     engines: {node: '>=18'}
 
   '@esbuild/aix-ppc64@0.27.7':
@@ -1213,7 +1213,7 @@ packages:
 
 snapshots:
 
-  '@curviate/sdk@0.37.1':
+  '@curviate/sdk@0.38.0':
     dependencies:
       zod: 3.25.76
 
