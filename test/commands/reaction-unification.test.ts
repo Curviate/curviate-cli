@@ -23,6 +23,7 @@ import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
 
 // ---------------------------------------------------------------------------
 // 1. Run-function behavior (no build required)
@@ -132,7 +133,7 @@ const cliPath = resolve(pkgRoot, "dist", "cli.js");
 function runBin(args: string[]) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", CURVIATE_API_KEY: "rdc_live_reaction_test_stub" },
   });
 }
@@ -141,7 +142,10 @@ beforeAll(() => {
   if (!existsSync(cliPath)) execSync("pnpm build", { cwd: pkgRoot, stdio: "ignore" });
 });
 
-describe("post react — both forms render the same preview body (built bin)", () => {
+// Vitest's default (5s) is shorter than runBin()'s own timeout below (see
+// spawn-budget.ts) — scoped to these two built-bin describes only, so the
+// section 1 in-process/mocked tests above keep failing fast on a hang.
+describe("post react — both forms render the same preview body (built bin)", { timeout: spawnTestTimeout() }, () => {
   it("positional `post react ID like` renders reaction:like", () => {
     const r = runBin(["post", "react", "post_1", "like", "--preview", "--account", "acc_x"]);
     expect(r.status).toBe(0);
@@ -164,7 +168,7 @@ describe("post react — both forms render the same preview body (built bin)", (
   });
 });
 
-describe("message react — both forms render the same preview body (built bin)", () => {
+describe("message react — both forms render the same preview body (built bin)", { timeout: spawnTestTimeout() }, () => {
   it("positional `message react C M 👍` renders reaction:👍", () => {
     const r = runBin(["message", "react", "chat_1", "msg_1", "👍", "--preview", "--account", "acc_x"]);
     expect(r.status).toBe(0);

@@ -53,6 +53,15 @@ import {
   type SweepResult,
   type StubBody,
 } from "./helpers/live-command-sweep.js";
+import { spawnTestTimeout } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than runAgainstStub()/runAgainstNullStub()'s
+// own 10s AbortSignal budget (live-command-sweep.ts) — but only the two
+// describes below actually call them from inside an `it()` body. Every other
+// it() in this file (the bulk of the sweep) asserts against a result already
+// computed during this file's own async `describe` collection, so it is
+// instant regardless of vitest's timeout and needs no override.
+const SPAWNING = { timeout: spawnTestTimeout(10_000) };
 
 /** The three empty-decoding-to-`{}` shapes, swept alongside the original `null` body. */
 const EMPTY_SHAPES: Array<{ label: string; body: StubBody }> = [
@@ -169,7 +178,7 @@ describe("readableObject guard: runtime sweep over the live command registry", a
 // it and this entry becomes redundant, not wrong).
 // ---------------------------------------------------------------------------
 
-describe("readableObject guard: named POST-shaped reads", () => {
+describe("readableObject guard: named POST-shaped reads", SPAWNING, () => {
   for (const { key, argv } of READ_BY_POST) {
     it(`${key}: a non-GET read (verified) exits 7 on a null body`, async () => {
       const result = await runAgainstNullStub(argv);
@@ -254,7 +263,7 @@ describe("readableObject guard: same-path positive control (one representative n
 // unconstrained above.
 // ---------------------------------------------------------------------------
 
-describe("writes keep rendering an empty/`{}` body: renderSuccess is shared, only a READ's call site adds readableObject", () => {
+describe("writes keep rendering an empty/`{}` body: renderSuccess is shared, only a READ's call site adds readableObject", SPAWNING, () => {
   for (const { label, body } of [{ label: "null body", body: NULL_BODY }, ...EMPTY_SHAPES]) {
     it(`comment delete: a genuine write response (${label}) still exits 0`, async () => {
       const result = await runAgainstStub(["comment", "delete", "1", "1", "--verbose"], body);

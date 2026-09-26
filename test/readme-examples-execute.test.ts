@@ -48,6 +48,7 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync, statSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ensureFreshBuild, pkgRoot } from "./helpers/built-cli.js";
+import { spawnTestTimeout } from "./helpers/spawn-budget.js";
 
 // ---------------------------------------------------------------------------
 // Fixture data: one canonical object carrying every field any README example
@@ -342,7 +343,7 @@ describe("README examples execute against the built binary (non-empty, non-error
       } finally {
         entitlementCheckMode = false;
       }
-    }, 15_000);
+    }, spawnTestTimeout(30_000));
   }
 });
 

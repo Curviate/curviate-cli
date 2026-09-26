@@ -33,10 +33,16 @@
  * test/global-setup.ts's single shared build.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import { cliPath } from "./helpers/built-cli.js";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see
+// spawn-budget.ts). Two tests below await runAndCapture() twice in sequence,
+// so the file's budget covers 2 spawns, not just the common single-spawn case.
+vi.setConfig({ testTimeout: spawnTestTimeout(SPAWN_TIMEOUT_MS, 2) });
 
 interface Captured {
   method: string;
@@ -74,7 +80,7 @@ function runAndCapture(args: string[]): Promise<Captured> {
       [cliPath, ...args, "--base-url", baseUrl],
       {
         encoding: "utf8",
-        timeout: 15_000,
+        timeout: SPAWN_TIMEOUT_MS,
         // CURVIATE_API_KEY pinned to a placeholder, hermetic against a stored
         // ~/.config/curviate/ profile on the machine running this suite: every
         // case here always passes an explicit --api-key, which outranks both,

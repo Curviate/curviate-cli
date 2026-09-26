@@ -25,12 +25,16 @@
  * Build prerequisite: `pnpm build` must have produced a current dist/cli.js.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { execFile, execSync } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "./helpers/spawn-budget.js";
+
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
+vi.setConfig({ testTimeout: spawnTestTimeout() });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "..");
@@ -94,7 +98,7 @@ function run(args: string[]): Promise<RunResult> {
       [cliPath, ...args, "--base-url", baseUrl],
       {
         encoding: "utf8",
-        timeout: 15_000,
+        timeout: SPAWN_TIMEOUT_MS,
         env: {
           ...process.env,
           NODE_ENV: "production",

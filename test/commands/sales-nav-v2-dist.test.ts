@@ -10,11 +10,18 @@
  * tests alone. Mirrors test/commands/job-help.test.ts and test/routing.test.ts.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
+
+// Every `it` below spawns the built bin with an inner budget of
+// SPAWN_TIMEOUT_MS; vitest's own default (5s) is shorter than that, so a
+// slow-but-healthy cold start under load reports "Test timed out in 5000ms"
+// instead of the spawn ever getting to use its budget (see spawn-budget.ts).
+vi.setConfig({ testTimeout: spawnTestTimeout() });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "../..");
@@ -27,7 +34,7 @@ const UNROUTABLE = "http://127.0.0.1:1";
 function run(args: string[]) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_sn_v2_dist_test_stub" },
   });
 }

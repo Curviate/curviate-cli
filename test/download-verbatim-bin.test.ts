@@ -12,6 +12,7 @@ import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliPath } from "./helpers/built-cli.js";
+import { spawnTestTimeout } from "./helpers/spawn-budget.js";
 
 let dir: string;
 const paths: string[] = [];
@@ -205,7 +206,9 @@ describe("a 2xx that is not a list page", () => {
       const r = await run([...argv, "--json", ...common()]);
       expect(r.status, `${argv.join(" ")}: ${r.stdout + r.stderr}`).toBe(0);
     }
-  });
+    // 9 real bin spawns in one body (~4.3s measured) leave ~14% headroom
+    // under vitest's 5s default — a flake by construction under load.
+  }, spawnTestTimeout());
 });
 
 describe("a name or slug lookup whose answer is unreadable", () => {

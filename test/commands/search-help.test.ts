@@ -18,6 +18,7 @@ import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
 
 // Helper: extract args from a subcommand of searchCommand.
 async function getSearchSubArgs(sub: string): Promise<Record<string, { description?: string }>> {
@@ -37,7 +38,7 @@ const cliPath = resolve(pkgRoot, "dist", "cli.js");
 function runHelp(args: string[]) {
   return spawnSync(process.execPath, [cliPath, ...args, "--help"], {
     encoding: "utf8",
-    timeout: 15_000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_help_test_stub" },
   });
 }
@@ -288,7 +289,11 @@ describe("search posts nested filter flags help text", () => {
 // assertion covers the actual rendered --help output, not just the source.
 // ---------------------------------------------------------------------------
 
-describe("help-text-only corrections: --type / --seniority / --job-type / --content-type (built bin)", () => {
+// Vitest's default (5s) is shorter than the spawns' own timeout below (see
+// spawn-budget.ts) — scoped to this describe only, so the 22 source-level
+// (no-spawn) tests above keep failing fast on a hang. One test below calls
+// helpText() 5 times in sequence, so the budget covers 5 spawns, not 1.
+describe("help-text-only corrections: --type / --seniority / --job-type / --content-type (built bin)", { timeout: spawnTestTimeout(SPAWN_TIMEOUT_MS, 5) }, () => {
   beforeAll(() => {
     if (!existsSync(cliPath)) {
       execSync("node_modules/.bin/tsup", { cwd: pkgRoot, stdio: "ignore" });
@@ -399,7 +404,7 @@ describe("help-text-only corrections: --type / --seniority / --job-type / --cont
       [cliPath, "search", "jobs", "--seniority", "ceo", "--account", "acc_x", "--base-url", "http://127.0.0.1:1", "--json"],
       {
         encoding: "utf8",
-        timeout: 15_000,
+        timeout: SPAWN_TIMEOUT_MS,
         env: { ...process.env, NODE_ENV: "production", TEST: "false", CI: "false", CURVIATE_API_KEY: "rdc_live_help_test_stub" },
       },
     );
