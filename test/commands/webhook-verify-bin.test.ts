@@ -21,7 +21,7 @@
  * Build prereq: dist/cli.js must exist. The beforeAll builds it if absent.
  */
 
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -29,8 +29,10 @@ import { dirname, resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
 
-// Vitest's default (5s) is shorter than the spawn's own timeout below (see spawn-budget.ts).
-vi.setConfig({ testTimeout: spawnTestTimeout() });
+// Vitest's default (5s) is shorter than the spawn's own timeout below (see
+// spawn-budget.ts) — scoped to the three spawning describes below; "webhook
+// verify help text" is pure source inspection and keeps the fast default.
+const SPAWNING = { timeout: spawnTestTimeout() };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Test lives in test/commands/ - two levels above the package root.
@@ -104,7 +106,7 @@ function expectVerified(r: ReturnType<typeof run>, label: string) {
 // The three documented --body forms, each against the real captured delivery
 // ---------------------------------------------------------------------------
 
-describe("webhook verify --body: every documented form verifies a real delivery", () => {
+describe("webhook verify --body: every documented form verifies a real delivery", SPAWNING, () => {
   it("inline JSON: the raw body passed directly on the command line", () => {
     const r = run([
       "webhook", "verify",
@@ -172,7 +174,7 @@ describe("webhook verify --body: every documented form verifies a real delivery"
 // must not weaken what a passing verdict means.
 // ---------------------------------------------------------------------------
 
-describe("webhook verify: the verdict is unchanged by how the body arrived", () => {
+describe("webhook verify: the verdict is unchanged by how the body arrived", SPAWNING, () => {
   it("a tampered inline body is rejected with invalid_signature, exit 2", () => {
     const tampered = capture.rawBody.replace("message.received", "message.deleted");
     expect(tampered).not.toBe(capture.rawBody);
@@ -226,7 +228,7 @@ describe("webhook verify: the verdict is unchanged by how the body arrived", () 
 // Bad input is a usage error (exit 2), not an internal failure (exit 1)
 // ---------------------------------------------------------------------------
 
-describe("webhook verify --body: unusable input fails as a usage error", () => {
+describe("webhook verify --body: unusable input fails as a usage error", SPAWNING, () => {
   it("a path that does not exist names all three accepted forms and exits 2", () => {
     const r = run([
       "webhook", "verify",

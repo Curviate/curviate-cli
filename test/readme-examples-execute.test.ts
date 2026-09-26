@@ -40,7 +40,7 @@
  * hand-correction kept getting wrong.
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFile } from "node:child_process";
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import { createHmac } from "node:crypto";
@@ -49,10 +49,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ensureFreshBuild, pkgRoot } from "./helpers/built-cli.js";
 import { spawnTestTimeout } from "./helpers/spawn-budget.js";
-
-// Vitest's default (5s) is shorter than runExample's own 30s execFile timeout
-// below (see spawn-budget.ts) — each generated `it` runs exactly one example.
-vi.setConfig({ testTimeout: spawnTestTimeout(30_000) });
 
 // ---------------------------------------------------------------------------
 // Fixture data: one canonical object carrying every field any README example

@@ -13,17 +13,12 @@
  * the source-level description string.
  */
 
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { spawnSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { SPAWN_TIMEOUT_MS, spawnTestTimeout } from "../helpers/spawn-budget.js";
-
-// Vitest's default (5s) is shorter than the spawns' own timeout below (see
-// spawn-budget.ts). One test below calls helpText() 5 times in sequence, so
-// the file's budget covers 5 spawns, not just the common single-spawn case.
-vi.setConfig({ testTimeout: spawnTestTimeout(SPAWN_TIMEOUT_MS, 5) });
 
 // Helper: extract args from a subcommand of searchCommand.
 async function getSearchSubArgs(sub: string): Promise<Record<string, { description?: string }>> {
@@ -294,7 +289,11 @@ describe("search posts nested filter flags help text", () => {
 // assertion covers the actual rendered --help output, not just the source.
 // ---------------------------------------------------------------------------
 
-describe("help-text-only corrections: --type / --seniority / --job-type / --content-type (built bin)", () => {
+// Vitest's default (5s) is shorter than the spawns' own timeout below (see
+// spawn-budget.ts) — scoped to this describe only, so the 22 source-level
+// (no-spawn) tests above keep failing fast on a hang. One test below calls
+// helpText() 5 times in sequence, so the budget covers 5 spawns, not 1.
+describe("help-text-only corrections: --type / --seniority / --job-type / --content-type (built bin)", { timeout: spawnTestTimeout(SPAWN_TIMEOUT_MS, 5) }, () => {
   beforeAll(() => {
     if (!existsSync(cliPath)) {
       execSync("node_modules/.bin/tsup", { cwd: pkgRoot, stdio: "ignore" });
