@@ -2437,11 +2437,21 @@
                     "description": "New last name."
                   },
                   "bio": {
-                    "type": "string",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "const": ""
+                      },
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    ],
                     "description": "New text for your profile's About section."
                   },
                   "headline": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Your profile headline (the short line shown under your name)."
                   },
                   "skills": {
@@ -20086,6 +20096,7 @@
                   },
                   "subject": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 200,
                     "description": "Optional conversation name / subject line (<= 200 chars)."
                   },
@@ -31556,6 +31567,7 @@
                   },
                   "message": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 300,
                     "description": "Optional connect-request note (up to 300 characters). Passed to the platform and immediately discarded, never stored."
                   }
@@ -75487,7 +75499,7 @@
             }
           },
           "503": {
-            "description": "Another change to this subscription is in progress. Retry shortly.",
+            "description": "The purchase could not be confirmed while another change was in progress. Check the seat count before retrying.",
             "content": {
               "application/json": {
                 "schema": {
@@ -75498,9 +75510,9 @@
                     "summary": "SUBSCRIPTION_BUSY",
                     "value": {
                       "code": "SUBSCRIPTION_BUSY",
-                      "message": "Subscription is temporarily locked by a concurrent operation. Please retry.",
-                      "user_fixable": false,
-                      "retry_likely_to_succeed": true
+                      "message": "Another change to this subscription was in progress, so this purchase could not be confirmed. Check the seat count before retrying.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
                     }
                   }
                 }
@@ -75508,7 +75520,7 @@
             }
           }
         },
-        "description": "Adds seats to the workspace's active subscription. A trialing workspace gets 409 TRIAL_ACTIVE_SEAT_LIMIT (buy to convert first). Two adds of the same quantity within 10 minutes count as one; to buy more, send the total quantity in one call.",
+        "description": "Adds seats to the workspace's active subscription. A trialing workspace gets 409 TRIAL_ACTIVE_SEAT_LIMIT (buy to convert first). Every call buys the seats it asks for.",
         "requestBody": {
           "required": true,
           "content": {
