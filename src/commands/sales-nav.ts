@@ -403,18 +403,21 @@ export async function runSalesNavMessageNew(
   flags: SalesNavFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags, out);
-  const to = flags.to ?? "";
-  const text = flags.text ?? "";
   const subject = flags.subject ?? "";
-  const attachPaths = normalizeAttachPaths(flags.attach);
-  const voicePath = flags.voice;
-  const videoPath = flags.video;
-
+  // Checked before requireAccount, which can itself make a request (GET
+  // /v1/accounts, to resolve the sole connected account when --account is
+  // omitted): a lost --subject must not cost that round trip either.
   if (!subject) {
     out.stderr.write("error: --subject is required (v2: REQUIRED for Sales Navigator messaging).\n");
     process.exit(2);
   }
+
+  const accountId = await requireAccount(client, flags, out);
+  const to = flags.to ?? "";
+  const text = flags.text ?? "";
+  const attachPaths = normalizeAttachPaths(flags.attach);
+  const voicePath = flags.voice;
+  const videoPath = flags.video;
 
   // Load all file attachments before preview or SDK call.
   let attachBuffers: Buffer[] = [];
