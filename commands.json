@@ -470,8 +470,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "preview",
         "verbose",
         "beta"
@@ -807,8 +805,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -1185,8 +1181,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -1267,8 +1261,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -3421,8 +3413,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -4816,8 +4806,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "preview",
         "verbose",
         "beta"
@@ -4875,8 +4863,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -4907,8 +4893,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],
@@ -4969,8 +4953,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "preview",
         "verbose",
         "beta"
@@ -5003,8 +4985,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "preview",
         "verbose",
         "beta"
@@ -5916,10 +5896,9 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
-        "beta"
+        "beta",
+        "limit"
       ],
       "examples": [
         "curviate recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin"
@@ -6581,8 +6560,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
-        "cursor",
         "verbose",
         "beta"
       ],

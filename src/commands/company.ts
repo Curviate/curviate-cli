@@ -55,7 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -1107,7 +1107,7 @@ const companyChatCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
   },
@@ -1171,7 +1171,7 @@ const companyMessageCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
     messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
@@ -1283,7 +1283,7 @@ export const companyCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or native id)." },
     sections: { type: "string" as const, description: "Not supported on company commands; a usage error (exit 2) if supplied." },
   },

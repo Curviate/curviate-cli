@@ -8,6 +8,17 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Changed
+
+- **`--cursor` and `--limit` removed from `--help` on 12 commands whose
+  served endpoint accepts neither**: `company`, `company chat`,
+  `company message`, `post get`, `profile endorse`, `recruiter applicants`,
+  `webhook create`, `webhook delete`, `webhook events`, `webhook get`,
+  `webhook update`. Both flags were accepted and silently produced a request
+  the server could not page. `recruiter search parameters` is the one
+  asymmetric case: its endpoint takes `limit` but no `cursor`, so `--limit`
+  stays and only `--cursor` is refused (exit 2, unknown flag).
+
 ## [0.43.0] - 2026-09-25
 
 Programmatic connect at scale: tag accounts with your own end-user id, one

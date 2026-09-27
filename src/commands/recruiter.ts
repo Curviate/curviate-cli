@@ -33,7 +33,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -1336,13 +1336,11 @@ export async function runRecruiterListApplicants(
   const outOpts = resolveOutputOpts(flags);
 
   const body: RecruiterListApplicantsBody = { channel_id: flags["channel-id"] };
-  const params: Record<string, unknown> = {};
-  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
-  const cursor = readCursorFlag(flags, out);
-  if (cursor) params["cursor"] = cursor;
 
   try {
-    const result = await ns.recruiter.listApplicants(projectId, body, Object.keys(params).length > 0 ? params : undefined);
+    // The served endpoint takes no query params at all (no cursor, no
+    // limit): nothing to build or forward here.
+    const result = await ns.recruiter.listApplicants(projectId, body);
     readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
@@ -1579,7 +1577,12 @@ const recruiterSearchParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
+    // The served endpoint takes `limit` (1-100) but no `cursor` at all
+    // (`POST .../recruiter/search/parameters`, query params are
+    // `offset`/`limit`) — the one asymmetric case in this set, so `--limit`
+    // is added back explicitly rather than pulled in via a flag bundle.
+    limit: GLOBAL_FLAGS.limit,
     source: {
       type: "string",
       description:
@@ -1984,7 +1987,7 @@ const recruiterApplicantsCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },
   },

@@ -16,7 +16,7 @@
  */
 
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -490,7 +490,7 @@ const webhookCreateCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...WRITE_SINGLE_FLAGS,
     source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account." },
@@ -552,7 +552,7 @@ const webhookEventsCommand = defineCommand({
       "curviate webhook events",
     ],
   },
-  args: { ...readOnly(NON_STREAM_FLAGS) },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
   async run({ args }) {
     const flags = args as WebhookFlags;
     const cfg = await resolveEffectiveConfig({
@@ -580,7 +580,7 @@ const webhookGetCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
@@ -611,7 +611,7 @@ const webhookUpdateCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
     "request-url": { type: "string", description: "Replace the delivery URL." },
     name: { type: "string", description: "Replace the name (or clear with empty string)." },
@@ -647,7 +647,7 @@ const webhookDeleteCommand = defineCommand({
     ],
   },
   args: {
-    ...NON_STREAM_FLAGS,
+    ...WRITE_SINGLE_FLAGS,
     id: { type: "positional", description: "Webhook id (wh_...)." },
   },
   async run({ args }) {
