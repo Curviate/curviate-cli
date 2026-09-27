@@ -8,6 +8,19 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Fixed
+
+- **`message inmail --subject ""` now fails as a usage error before any
+  request**, matching `message new`'s ruling. It previously reached the
+  wire (after resolving `--to`, itself a network call) and cost a
+  guaranteed 400: the served contract requires `subject` at 1-200 chars.
+  An over-200-char subject is refused the same way.
+- **`sales-nav message new --subject ""` and `recruiter message new
+  --subject ""`/`--signature ""` now fail before the account lookup**,
+  not after. Both already refused an empty value with exit 2, but the
+  check ran after `requireAccount`, which issues `GET /v1/accounts` when
+  `--account` is omitted — a lost required flag cost that request too.
+
 ### Changed
 
 - **`--cursor` and `--limit` removed from `--help` on 10 commands whose

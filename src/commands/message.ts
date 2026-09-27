@@ -126,6 +126,34 @@ function readChatSubjectFlag(flags: MessageFlags, out: OutputStreams): string | 
   return raw;
 }
 
+/**
+ * Read `message inmail --subject` off the parsed flags.
+ *
+ * Unlike `message new`'s optional chat subject, InMail's `--subject` is
+ * REQUIRED (`POST /v1/{account_id}/messages/inmail`, 1-200 chars). citty's
+ * own `required: true` already rejects a fully omitted flag before this
+ * command runs, so only an explicitly empty or whitespace-only value needs
+ * catching here — citty treats "given but blank" as satisfied.
+ *
+ * Called before any resolution step (including `--to`, which can call
+ * `users.get`) so a lost subject never costs a network round trip, same
+ * placement as `readChatSubjectFlag` in `runMessageNew`.
+ */
+function readInMailSubjectFlag(flags: MessageFlags, out: OutputStreams): string {
+  const raw = flags.subject ?? "";
+  if (raw.trim() === "") {
+    out.stderr.write("error: --subject was given an empty value. Pass the subject line.\n");
+    process.exit(2);
+  }
+  if (raw.length > CHAT_SUBJECT_MAX_CHARS) {
+    out.stderr.write(
+      `error: --subject is ${raw.length} characters; the maximum is ${CHAT_SUBJECT_MAX_CHARS}.\n`,
+    );
+    process.exit(2);
+  }
+  return raw;
+}
+
 function resolveOutputOpts(flags: MessageFlags) {
   return {
     json: (flags.json ?? false) || !process.stdout.isTTY,
@@ -579,6 +607,7 @@ export async function runMessageInMail(
   out: OutputStreams,
   _readStdin?: () => Promise<string>,
 ): Promise<void> {
+  const subject = readInMailSubjectFlag(flags, out);
   const accountId = await requireAccount(client, flags, out);
 
   const rawTo = flags.to ?? "";
@@ -613,7 +642,6 @@ export async function runMessageInMail(
     }
   }
 
-  const subject = flags.subject ?? "";
   const rawText = flags.text ?? "";
 
   // Resolve stdin sentinel: "-" reads all of stdin.

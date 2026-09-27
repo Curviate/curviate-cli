@@ -378,15 +378,12 @@ export async function runRecruiterMessageNew(
   flags: RecruiterFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags, out);
-  const to = flags.to ?? "";
-  const text = flags.text ?? "";
   const subject = flags.subject ?? "";
   const signature = flags.signature ?? "";
-  const attachPaths = normalizeAttachPaths(flags.attach);
-  const voicePath = flags.voice;
-  const videoPath = flags.video;
-
+  // Checked before requireAccount, which can itself make a request (GET
+  // /v1/accounts, to resolve the sole connected account when --account is
+  // omitted): a lost --subject/--signature must not cost that round trip
+  // either.
   if (!subject) {
     out.stderr.write("error: --subject is required (v2: REQUIRED for Recruiter messaging).\n");
     process.exit(2);
@@ -395,6 +392,13 @@ export async function runRecruiterMessageNew(
     out.stderr.write("error: --signature is required (v2: REQUIRED for Recruiter messaging).\n");
     process.exit(2);
   }
+
+  const accountId = await requireAccount(client, flags, out);
+  const to = flags.to ?? "";
+  const text = flags.text ?? "";
+  const attachPaths = normalizeAttachPaths(flags.attach);
+  const voicePath = flags.voice;
+  const videoPath = flags.video;
 
   let attachBuffers: Buffer[] = [];
   let voiceBuffer: Buffer | undefined;
