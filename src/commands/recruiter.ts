@@ -1583,7 +1583,12 @@ const recruiterSearchParametersCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
+    // The served endpoint takes `limit` (1-100) but no `cursor` at all
+    // (`POST .../recruiter/search/parameters`, query params are
+    // `offset`/`limit`) — the one asymmetric case in this set, so `--limit`
+    // is added back explicitly rather than pulled in via a flag bundle.
+    limit: GLOBAL_FLAGS.limit,
     source: {
       type: "string",
       description:
@@ -1988,6 +1993,8 @@ const recruiterApplicantsCommand = defineCommand({
     ],
   },
   args: {
+    // Genuinely paginated (operation-level query: cursor?, limit?) but never
+    // streamed with --all — manual --cursor paging only. See NON_STREAM_FLAGS.
     ...readOnly(NON_STREAM_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },

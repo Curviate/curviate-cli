@@ -95,6 +95,19 @@ export const GLOBAL_FLAGS = {
  * `--page-delay`), for a command that returns one object or one page and never
  * streams: there `--all` is an unknown flag (exit 2) rather than accepted and
  * ignored.
+ *
+ * Read this bundle's `cursor`/`limit` as "the command supports manual
+ * `--cursor` paging, just not `--all` streaming" — never assume it because a
+ * command reaches for this bundle. Eleven commands did exactly that against
+ * an endpoint whose served query schema takes neither param at all; the fix
+ * moved them to `READ_SINGLE_FLAGS` / `WRITE_SINGLE_FLAGS` below (same set,
+ * minus `--cursor` and `--limit` too). `recruiter applicants` is this
+ * bundle's one remaining, correct user: its endpoint's OPERATION-level query
+ * schema (`operations["postV1AccountIdRecruiterProjectsProjectIdTalentPoolApplicants"]`,
+ * not the path-item's own `parameters`, which openapi-typescript leaves
+ * `never` even when every method on the path takes real query params) is
+ * `{ cursor?: string; limit?: number }` — genuinely paginated, just without
+ * `--all`.
  */
 export const NON_STREAM_FLAGS = {
   "api-key": GLOBAL_FLAGS["api-key"],

@@ -177,9 +177,15 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * members of the stream trio, while --all is boolean and never counted; 1667
  * after `search service-parameters` and `sales-nav search parameters` made
  * the same NON_STREAM_FLAGS -> GLOBAL_FLAGS swap (+2 each) and `message new`
- * gained --subject (+1)).
+ * gained --subject (+1); 1651 after removing NON_STREAM_FLAGS's --cursor and
+ * --limit from the 10 commands whose endpoint takes neither at the
+ * OPERATION level (-2 each, -20) plus --cursor alone from `recruiter search
+ * parameters`, which keeps --limit (-1); `recruiter applicants` was briefly
+ * miscounted in the same pass on a path-item-level read of the served
+ * schema (its operation-level query is real: cursor?, limit?) and correctly
+ * keeps both).
  */
-const ARGUMENT_SURFACE_COUNT = 1672;
+const ARGUMENT_SURFACE_COUNT = 1651;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

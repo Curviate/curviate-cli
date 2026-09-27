@@ -21,6 +21,19 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   check ran after `requireAccount`, which issues `GET /v1/accounts` when
   `--account` is omitted — a lost required flag cost that request too.
 
+### Changed
+
+- **`--cursor` and `--limit` removed from `--help` on 10 commands whose
+  served endpoint accepts neither**: `company`, `company chat`,
+  `company message`, `post get`, `profile endorse`, `webhook create`,
+  `webhook delete`, `webhook events`, `webhook get`, `webhook update`. Both
+  flags were accepted and silently produced a request the server could not
+  page. `recruiter search parameters` is the one asymmetric case: its
+  endpoint takes `limit` but no `cursor`, so `--limit` stays and only
+  `--cursor` is refused (exit 2, unknown flag). `recruiter applicants` keeps
+  both — its endpoint genuinely takes `cursor` and `limit`, just never
+  `--all` streaming.
+
 ## [0.43.0] - 2026-09-25
 
 Programmatic connect at scale: tag accounts with your own end-user id, one

@@ -40,39 +40,25 @@ const PROBE = "c_probe_9f3a2b";
  * Commands that DECLARE `--cursor` against an endpoint that has no cursor
  * input at all.
  *
- * Derived from the served document, not from taste: every path below is
- * `cursor_in=false` in `test/fixtures/openapi.json`, so there is nothing for
- * the CLI to send and no page to lose. They declare the flag only because
- * they spread `NON_STREAM_FLAGS`/`GLOBAL_FLAGS` where the repo's own
- * `READ_SINGLE_FLAGS` / `WRITE_SINGLE_FLAGS` / `WRITE_FLAGS` belong.
- *
- * That is a DIFFERENT defect from the one this file covers (which is "the
- * endpoint takes a cursor and the CLI drops it"), and fixing it removes
- * `--cursor` and `--limit` from those commands' `--help` — a user-visible
- * surface change no ruling covers. Reported for a ruling rather than taken
- * here.
- *
- * `recruiter search parameters` is the odd one: `cursor_out=true` with
- * `cursor_in=false`, so the API hands back a cursor it gives no way to spend.
- * That one is a server gap, not a CLI gap.
+ * Ruling applied: every one of the below (plus `recruiter applicants`, found
+ * the same way but missing from the original hand list) now uses
+ * `READ_SINGLE_FLAGS` / `WRITE_SINGLE_FLAGS` in place of the removed
+ * `NON_STREAM_FLAGS`, so none of them declares `--cursor` anymore and this
+ * set is empty. `recruiter search parameters` keeps `--limit` (the served
+ * endpoint takes `limit`/`offset`, just no `cursor`) added back directly on
+ * its own args; see `test/cursorless-flags-removed-bin.test.ts` for the
+ * dedicated coverage this ruling needed (unknown-flag refusal, not emptiness)
+ * that this file's shape (empty vs. real cursor value) can't express.
  *
  * ponytail: exclusion list, delete entries as the flag sets are corrected.
  * The exact count below is the upgrade trigger — a node cannot drift in
- * silently, and a fixed node cannot stay excluded.
+ * silently, and a fixed node cannot stay excluded. Left in place, emptied,
+ * rather than deleted outright: a future command spreading the wrong flag
+ * bundle re-populates `declared` with it, and this mechanism is exactly
+ * where that entry gets named and justified (or the flag set gets fixed
+ * instead).
  */
-const NO_CURSOR_INPUT_ON_THE_ENDPOINT = new Set([
-  "company",
-  "company chat",
-  "company message",
-  "post get",
-  "profile endorse",
-  "recruiter search parameters",
-  "webhook create",
-  "webhook delete",
-  "webhook events",
-  "webhook get",
-  "webhook update",
-]);
+const NO_CURSOR_INPUT_ON_THE_ENDPOINT = new Set<string>([]);
 
 let server: Server;
 let baseUrl: string;
@@ -128,7 +114,7 @@ describe("--cursor: an empty value is refused, a real one is honoured", async ()
     const declaredPaths = new Set(declared.map((n) => n.path.join(" ")));
     const stale = [...NO_CURSOR_INPUT_ON_THE_ENDPOINT].filter((p) => !declaredPaths.has(p));
     expect(stale, `exclusions that no longer declare --cursor: ${stale.join(", ")}`).toEqual([]);
-    expect(NO_CURSOR_INPUT_ON_THE_ENDPOINT.size).toBe(11);
+    expect(NO_CURSOR_INPUT_ON_THE_ENDPOINT.size).toBe(0);
   });
 
   for (const node of nodes) {

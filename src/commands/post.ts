@@ -28,7 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -607,7 +607,7 @@ const postGetCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(NON_STREAM_FLAGS),
+    ...readOnly(READ_SINGLE_FLAGS),
     postId: {
       type: "positional",
       description:
