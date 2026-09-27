@@ -33,7 +33,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -1336,11 +1336,13 @@ export async function runRecruiterListApplicants(
   const outOpts = resolveOutputOpts(flags);
 
   const body: RecruiterListApplicantsBody = { channel_id: flags["channel-id"] };
+  const params: Record<string, unknown> = {};
+  if (flags.limit) params["limit"] = parseInt(flags.limit, 10);
+  const cursor = readCursorFlag(flags, out);
+  if (cursor) params["cursor"] = cursor;
 
   try {
-    // The served endpoint takes no query params at all (no cursor, no
-    // limit): nothing to build or forward here.
-    const result = await ns.recruiter.listApplicants(projectId, body);
+    const result = await ns.recruiter.listApplicants(projectId, body, Object.keys(params).length > 0 ? params : undefined);
     readablePage(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
@@ -1987,7 +1989,9 @@ const recruiterApplicantsCommand = defineCommand({
     ],
   },
   args: {
-    ...readOnly(READ_SINGLE_FLAGS),
+    // Genuinely paginated (operation-level query: cursor?, limit?) but never
+    // streamed with --all — manual --cursor paging only. See NON_STREAM_FLAGS.
+    ...readOnly(NON_STREAM_FLAGS),
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's JOB_POSTING talent-pool channel ID (required).", required: true },
   },

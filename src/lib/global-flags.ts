@@ -90,15 +90,39 @@ export const GLOBAL_FLAGS = {
   },
 } as const;
 
-// NON_STREAM_FLAGS (GLOBAL_FLAGS minus the stream trio, keeping --cursor
-// and --limit) was removed: every one of its call sites spread it into a
-// command whose served endpoint takes neither param, advertising a flag the
-// wire could not honour. Every remaining use case is a single-object read
-// or write, which is exactly READ_SINGLE_FLAGS / WRITE_SINGLE_FLAGS below
-// (same set, minus --cursor and --limit too). A command that genuinely
-// takes --limit but not --cursor (`recruiter search parameters` is the one
-// so far) adds `limit: GLOBAL_FLAGS.limit` to its own args directly rather
-// than reaching for a shared bundle again.
+/**
+ * `GLOBAL_FLAGS` without the stream trio (`--all`, `--max-pages`,
+ * `--page-delay`), for a command that returns one object or one page and never
+ * streams: there `--all` is an unknown flag (exit 2) rather than accepted and
+ * ignored.
+ *
+ * Read this bundle's `cursor`/`limit` as "the command supports manual
+ * `--cursor` paging, just not `--all` streaming" — never assume it because a
+ * command reaches for this bundle. Eleven commands did exactly that against
+ * an endpoint whose served query schema takes neither param at all; the fix
+ * moved them to `READ_SINGLE_FLAGS` / `WRITE_SINGLE_FLAGS` below (same set,
+ * minus `--cursor` and `--limit` too). `recruiter applicants` is this
+ * bundle's one remaining, correct user: its endpoint's OPERATION-level query
+ * schema (`operations["postV1AccountIdRecruiterProjectsProjectIdTalentPoolApplicants"]`,
+ * not the path-item's own `parameters`, which openapi-typescript leaves
+ * `never` even when every method on the path takes real query params) is
+ * `{ cursor?: string; limit?: number }` — genuinely paginated, just without
+ * `--all`.
+ */
+export const NON_STREAM_FLAGS = {
+  "api-key": GLOBAL_FLAGS["api-key"],
+  profile: GLOBAL_FLAGS.profile,
+  account: GLOBAL_FLAGS.account,
+  "base-url": GLOBAL_FLAGS["base-url"],
+  timeout: GLOBAL_FLAGS.timeout,
+  json: GLOBAL_FLAGS.json,
+  fields: GLOBAL_FLAGS.fields,
+  limit: GLOBAL_FLAGS.limit,
+  cursor: GLOBAL_FLAGS.cursor,
+  preview: GLOBAL_FLAGS.preview,
+  verbose: GLOBAL_FLAGS.verbose,
+  beta: GLOBAL_FLAGS.beta,
+};
 
 export type GlobalFlags = {
   "api-key"?: string;

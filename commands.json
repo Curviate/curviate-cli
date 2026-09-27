@@ -6560,6 +6560,8 @@
         "timeout",
         "json",
         "fields",
+        "limit",
+        "cursor",
         "verbose",
         "beta"
       ],

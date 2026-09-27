@@ -436,7 +436,7 @@ curviate recruiter job publish "$PROJECT_ID" "$JOB_ID" --account acc_1 --mode FR
 JOB_POSTING talent-pool channel). Applicant detail and résumé are also project-scoped.
 
 ```bash
-curviate recruiter applicants "$PROJECT_ID" --channel-id "$CHANNEL_ID" --account acc_1 --json \
+curviate recruiter applicants "$PROJECT_ID" --channel-id "$CHANNEL_ID" --account acc_1 --limit 10 --json \
   | jq -r '.items[0].id' \
   | xargs -I{} curviate recruiter applicant "$PROJECT_ID" {} --account acc_1
 ```

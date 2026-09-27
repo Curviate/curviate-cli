@@ -3,20 +3,19 @@
  * them. Every command below is verified against the pinned SDK's generated
  * OpenAPI types (`node_modules/@curviate/sdk/dist/index.d.ts`, the same
  * "served document" `test/fixtures/openapi.json` mirrors) to take neither a
- * `cursor` nor a `limit` query parameter (`parameters: { query?: never }`,
- * or, for `recruiter search parameters`, a `limit`/`offset` pair with no
- * `cursor` at all) — yet the CLI used to spread `NON_STREAM_FLAGS`
- * (`--cursor` + `--limit`, no `--all`) into their args, advertising a flag
- * the wire cannot honour.
+ * `cursor` nor a `limit` query parameter, checked at the OPERATION level
+ * (`operations["..."]["parameters"]["query"]`, reached through
+ * `paths[path]["method"]`) — NOT the path-item's own top-level `parameters`
+ * field, which openapi-typescript leaves `query?: never` there even when
+ * every method hung off that path takes real query params. `recruiter
+ * applicants` was first (wrongly) included in this list on a path-item-level
+ * read; its operation-level query is `{ cursor?: string; limit?: number }`,
+ * genuinely paginated, and it keeps `NON_STREAM_FLAGS` (`test/commands/recruiter.test.ts`
+ * covers its `--limit`/`--cursor` wiring).
  *
- * `recruiter applicants` is the one entry NOT named in the issue that filed
- * this ticket (curviate-cli#66's derivation missed it): its backing endpoint
- * (`POST .../talent-pool/applicants`) is `query?: never` exactly like the
- * other 11, confirmed the same way, independently of that hand list.
- *
- * `recruiter search parameters` is the one asymmetric case: its endpoint
- * takes `limit` (1-100) and `offset` (unused by the CLI), just not `cursor`.
- * `--limit` stays; only `--cursor` is refused.
+ * `recruiter search parameters` is the one asymmetric case among the ten
+ * below: its endpoint takes `limit` (1-100) and `offset` (unused by the
+ * CLI), just not `cursor`. `--limit` stays; only `--cursor` is refused.
  *
  * A DIFFERENT defect from `cursor-empty-refused-bin.test.ts` (that file
  * covers "the endpoint takes a cursor and the CLI drops it"); this is "the
@@ -79,7 +78,6 @@ const DROPS_BOTH: string[][] = [
   ["company", "message", "1", "c1", "m1"],
   ["post", "get", "p1"],
   ["profile", "endorse", "x1", "--endorsement-id", "e1"],
-  ["recruiter", "applicants", "x1", "--channel-id", "c1"],
   ["webhook", "get", "w1"],
   ["webhook", "delete", "w1"],
   ["webhook", "update", "w1"],
@@ -89,7 +87,7 @@ const DROPS_BOTH: string[][] = [
 
 describe("--cursor/--limit are refused where the endpoint takes neither", () => {
   it("the exact set under test cannot drift silently", () => {
-    expect(DROPS_BOTH.length).toBe(11);
+    expect(DROPS_BOTH.length).toBe(10);
   });
 
   for (const argv of DROPS_BOTH) {
@@ -122,6 +120,20 @@ describe("--cursor/--limit are refused where the endpoint takes neither", () => 
     requests = 0;
     const good = await run([...base, "--limit", "5", ...common()]);
     expect(good.status, good.stdout + good.stderr).toBe(0);
+    expect(requests).toBeGreaterThan(0);
+  });
+
+  it("recruiter applicants: --cursor and --limit are both real, honoured flags (not in DROPS_BOTH)", async () => {
+    const base = ["recruiter", "applicants", "x1", "--channel-id", "c1"];
+
+    requests = 0;
+    const cursorRun = await run([...base, "--cursor", "c_1", ...common()]);
+    expect(cursorRun.status, cursorRun.stdout + cursorRun.stderr).toBe(0);
+    expect(requests).toBeGreaterThan(0);
+
+    requests = 0;
+    const limitRun = await run([...base, "--limit", "5", ...common()]);
+    expect(limitRun.status, limitRun.stdout + limitRun.stderr).toBe(0);
     expect(requests).toBeGreaterThan(0);
   });
 });
