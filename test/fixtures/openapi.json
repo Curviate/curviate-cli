@@ -75498,14 +75498,44 @@
               }
             }
           },
-          "503": {
-            "description": "The purchase could not be confirmed while another change was in progress. Check the seat count before retrying.",
+          "502": {
+            "description": "The purchase failed after today's charge was taken; the charge was refunded in full and the seat count was confirmed unchanged, so no seats were added. Safe to retry.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
+                  "refunded": {
+                    "summary": "PLATFORM_ERROR",
+                    "value": {
+                      "code": "PLATFORM_ERROR",
+                      "message": "The seat purchase could not be completed. No seats were added and the charge was refunded in full. It is safe to retry.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The purchase could not be confirmed while another change was in progress (check the seat count before retrying), or the seat price is misconfigured on our side (nothing charged; contact support, retrying fails the same way).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "seat_price_drift": {
+                    "summary": "STRIPE_DRIFT_DETECTED",
+                    "value": {
+                      "code": "STRIPE_DRIFT_DETECTED",
+                      "message": "This change is refused because the seat price does not match what you were shown. Nothing was charged. This is not something you can fix, and retrying will fail the same way until the price is corrected. Contact support.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
                   "busy": {
                     "summary": "SUBSCRIPTION_BUSY",
                     "value": {
@@ -76006,7 +76036,7 @@
             }
           },
           "503": {
-            "description": "Another change to this subscription is in progress. Retry shortly.",
+            "description": "Another change to this subscription is in progress (retry shortly), or the seat price is misconfigured on our side (nothing charged; contact support, retrying fails the same way).",
             "content": {
               "application/json": {
                 "schema": {
@@ -76020,6 +76050,15 @@
                       "message": "Subscription is temporarily locked by a concurrent operation. Please retry.",
                       "user_fixable": false,
                       "retry_likely_to_succeed": true
+                    }
+                  },
+                  "seat_price_drift": {
+                    "summary": "STRIPE_DRIFT_DETECTED",
+                    "value": {
+                      "code": "STRIPE_DRIFT_DETECTED",
+                      "message": "This change is refused because the seat price does not match what you were shown. Nothing was charged. This is not something you can fix, and retrying will fail the same way until the price is corrected. Contact support.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
                     }
                   }
                 }

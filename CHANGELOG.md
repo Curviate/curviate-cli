@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.44.0] - 2026-09-28
+
+Requires `@curviate/sdk` 0.39.0.
 
 ### Fixed
 
@@ -19,7 +21,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   --subject ""`/`--signature ""` now fail before the account lookup**,
   not after. Both already refused an empty value with exit 2, but the
   check ran after `requireAccount`, which issues `GET /v1/accounts` when
-  `--account` is omitted — a lost required flag cost that request too.
+  `--account` is omitted, a lost required flag cost that request too.
 
 ### Changed
 
@@ -31,8 +33,15 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   page. `recruiter search parameters` is the one asymmetric case: its
   endpoint takes `limit` but no `cursor`, so `--limit` stays and only
   `--cursor` is refused (exit 2, unknown flag). `recruiter applicants` keeps
-  both — its endpoint genuinely takes `cursor` and `limit`, just never
+  both; its endpoint genuinely takes `cursor` and `limit`, just never
   `--all` streaming.
+- **`@curviate/sdk` bumped to 0.39.0.** The SDK's retry decision now honours
+  an explicit `retry_likely_to_succeed: false` on a retryable code (`INTERNAL`,
+  `PLATFORM_ERROR`, `PLATFORM_RATE_LIMIT`, `RATE_LIMIT_ACCOUNT`,
+  `RATE_LIMIT_TENANT`) and stops retrying that request instead of retrying
+  once more. No CLI-surfaced flag or output changed; commands that hit one of
+  those codes with the server's `retry_likely_to_succeed: false` now fail
+  faster instead of after one wasted retry.
 
 ## [0.43.0] - 2026-09-25
 
