@@ -15,14 +15,15 @@ Requires `@curviate/sdk` 0.40.1.
 - **Pinned to `@curviate/sdk` 0.40.1.** The SDK catches up with the served
   API: blank search filters and keywords are refused by the server with a
   `400`, the checkpoint `poll` and `solve` 409 is `ACCOUNT_ALREADY_LINKED`
-  (naming your own `account_id` when you hold the identity, nothing otherwise),
+  (on `solve`, naming your own `account_id` when you hold the identity;
+  naming no account when another workspace holds it),
   and the generated error type documents the per-code extra fields.
-- **No flag sends a blank filter or keyword.** Every search flag that feeds a
-  filter or `keywords` was checked: an empty value is dropped, or refused as a
-  usage error where the field is required, before any request. No command
-  change was needed for the server's new `400`. A blank value inside a
-  `--filters` JSON body is passed through as written and is now refused by the
-  server.
+- **An empty search flag is still dropped; a whitespace-only one now fails.**
+  An empty `--keywords` or filter flag is dropped, or refused as a usage error
+  where the field is required, before any request. A whitespace-only value
+  (for example `--keywords " "`) is sent as typed and the server now refuses it
+  with a `400` naming the field, as it does a blank value inside a `--filters`
+  JSON body.
 - The vendored OpenAPI fixture is refreshed to match the SDK fixture byte for
   byte.
 
