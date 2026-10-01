@@ -6,6 +6,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.45.0] - 2026-10-01
+
+Requires `@curviate/sdk` 0.40.1.
+
+### Changed
+
+- **Pinned to `@curviate/sdk` 0.40.1.** The SDK catches up with the served
+  API: blank search filters and keywords are refused by the server with a
+  `400`, the checkpoint `poll` and `solve` 409 is `ACCOUNT_ALREADY_LINKED`
+  (on `solve`, naming your own `account_id` when you hold the identity;
+  naming no account when another workspace holds it),
+  and the generated error type documents the per-code extra fields.
+- **An empty search flag is still dropped; a whitespace-only one now fails.**
+  An empty `--keywords` or filter flag is dropped, or refused as a usage error
+  where the field is required, before any request. A whitespace-only value
+  (for example `--keywords " "`) is sent as typed and the server now refuses it
+  with a `400` naming the field, as it does a blank value inside a `--filters`
+  JSON body.
+- The vendored OpenAPI fixture is refreshed to match the SDK fixture byte for
+  byte.
+
 ## [0.44.0] - 2026-09-28
 
 Requires `@curviate/sdk` 0.39.0.
