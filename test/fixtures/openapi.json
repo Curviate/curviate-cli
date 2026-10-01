@@ -389,6 +389,48 @@
               }
             }
           },
+          "portal_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present on PAYMENT_REQUIRED and ACCOUNT_DISPUTED: the self-service page where the tenant resolves the payment problem, so an agent can hand a human one link. Null when no portal session could be opened; fall back to the dashboard."
+          },
+          "attempts_remaining": {
+            "type": "integer",
+            "description": "Present on CHECKPOINT_INVALID_CODE: how many more verification codes the checkpoint accepts before it locks. Stop and ask the account owner for a fresh code when it reaches zero, rather than guessing."
+          },
+          "challenge_type": {
+            "type": "string",
+            "description": "Present on CHECKPOINT_UNSUPPORTED: the kind of verification challenge LinkedIn raised that cannot be solved through this API. A human has to complete it in LinkedIn, then the account reconnects."
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Present on ACCOUNT_ALREADY_LINKED: the id of your own existing account for this LinkedIn profile, so you can reuse it instead of linking again. Only ever an account of the calling tenant."
+          },
+          "quota": {
+            "type": "object",
+            "description": "Present on RATE_LIMIT_ACCOUNT: the per-account request ceiling that was breached, with its name, the units remaining and total, and the absolute reset_time. Wait until reset_time before retrying."
+          },
+          "toolset": {
+            "type": "string",
+            "description": "Present on TOOLSET_DISABLED: the name of the toolset that is switched off for this tenant, so you can enable it or use another tool."
+          },
+          "candidates": {
+            "type": "array",
+            "description": "Present on AMBIGUOUS_IDENTIFIER: the entries the identifier matched. Pick one and re-send its id.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The id to send instead of the ambiguous identifier."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Human-readable label for this entry."
+                }
+              }
+            }
+          },
           "next_action": {
             "type": "string",
             "description": "Present on errors that can be recovered programmatically, a plain sentence describing the next call to make."
@@ -2596,7 +2638,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Filter results by member name."
           }
@@ -7304,7 +7347,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Free-text keyword filter across employee profile fields."
           },
@@ -7313,7 +7357,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Opaque location id from GET /v1/{account_id}/search/parameters?type=LOCATION."
           }
@@ -8245,7 +8290,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Free-text keyword filter across job postings."
           }
@@ -12022,7 +12068,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Free-text mode: matches participant names AND message content. Mutually exclusive with topic and unread."
           },
@@ -12031,7 +12078,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Filter mode, one inbox topic card: 1-5 or its name (Service request, Request a demo, Support, Careers, Other). Mutually exclusive with query and unread."
           },
@@ -12580,7 +12628,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Target another LinkedIn user's groups instead of your own (vanity slug or /in/{vanity} URL). Partial read: interests-groups section only."
           },
@@ -13555,7 +13604,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Filter members by name, prefix/substring, case-insensitive. Folds in member search as this endpoint, not a separate one."
           },
@@ -13989,7 +14039,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Human term to resolve to opaque filter IDs (e.g. 'software development'). Required for every type, including EMPLOYMENT_TYPE."
           },
@@ -14843,6 +14894,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Full-text keyword search across all profile fields."
                   },
                   "advanced_keywords": {
@@ -14850,22 +14902,27 @@
                     "properties": {
                       "first_name": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter by first name."
                       },
                       "last_name": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter by last name."
                       },
                       "title": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter by job title."
                       },
                       "company": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter by current company name."
                       },
                       "school": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Filter by school name."
                       }
                     },
@@ -14942,7 +14999,8 @@
                   "profile_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by profile language codes."
                   },
@@ -15465,6 +15523,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Full-text keyword search across company profiles."
                   },
                   "industry": {
@@ -16084,6 +16143,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Full-text keyword search in posts."
                   },
                   "sort_by": {
@@ -16187,6 +16247,7 @@
                       },
                       "keywords": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "Free-text keyword match on the author."
                       }
                     },
@@ -16764,6 +16825,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Full-text keyword search in job postings."
                   },
                   "sort_by": {
@@ -16948,14 +17010,16 @@
                   "benefits": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by offered benefits. Valid values: medical_insurance, vision_insurance, dental_insurance, 401(k), pension_plan, commuter_benefits."
                   },
                   "commitments": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Filter by company commitments. Valid values: career_growth_and_learning, diversity_equity_and_inclusion, environmental_sustainability, social_impact, work_life_balance."
                   },
@@ -18633,6 +18697,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword match."
                   },
                   "service_category": {
@@ -18664,7 +18729,8 @@
                   "language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Profile-language ISO 639-1 codes (e.g. en, de, es, fr)."
                   }
@@ -36920,6 +36986,7 @@
                   },
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword filter over applicant profiles."
                   },
                   "sort_by": {
@@ -59021,6 +59088,7 @@
                 "properties": {
                   "persona": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Persona filter identifier to scope the saved accounts."
                   },
                   "filter": {
@@ -60853,7 +60921,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "description": "Human-readable term to search within the parameter family."
           },
@@ -62067,6 +62136,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword filter."
                   },
                   "current_company": {
@@ -62075,13 +62145,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62093,13 +62165,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62111,13 +62185,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62129,13 +62205,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62147,13 +62225,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62165,13 +62245,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62183,13 +62265,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62198,7 +62282,8 @@
                   "persona": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "PERSONA parameter IDs to filter by."
                   },
@@ -62208,13 +62293,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62226,13 +62313,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "radius": {
@@ -62258,13 +62347,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62276,13 +62367,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62294,13 +62387,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62309,7 +62404,8 @@
                   "profile_language": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "PROFILE_LANGUAGE parameter IDs to filter by."
                   },
@@ -62319,13 +62415,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -62493,21 +62591,24 @@
                   "connections_of": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "PEOPLE parameter IDs used to filter to connections of these members."
                   },
                   "first_name": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "First names to filter by."
                   },
                   "last_name": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "minLength": 1
                     },
                     "description": "Last names to filter by."
                   },
@@ -62552,7 +62653,8 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "last_viewed_at": {
                         "type": "integer"
@@ -62567,7 +62669,8 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -63129,6 +63232,7 @@
                 "properties": {
                   "keywords": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Free-text keyword filter."
                   },
                   "annual_revenue": {
@@ -63232,6 +63336,7 @@
                     "properties": {
                       "department": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "A single JOB_FUNCTION parameter ID (required, singular)."
                       },
                       "min": {
@@ -63253,6 +63358,7 @@
                     "properties": {
                       "department": {
                         "type": "string",
+                        "minLength": 1,
                         "description": "A single JOB_FUNCTION parameter ID (required, singular)."
                       },
                       "min": {
@@ -63275,13 +63381,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -63293,13 +63401,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -63311,13 +63421,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -63329,13 +63441,15 @@
                       "include": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "exclude": {
                         "type": "array",
                         "items": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1
                         }
                       }
                     },
@@ -63375,7 +63489,8 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       },
                       "last_viewed_at": {
                         "type": "integer"
@@ -63390,7 +63505,8 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": [
@@ -67785,7 +67901,7 @@
             }
           },
           "409": {
-            "description": "The checkpoint has expired.",
+            "description": "CHECKPOINT_EXPIRED or CHECKPOINT_ALREADY_RESOLVED: restart the connection. ACCOUNT_ALREADY_LINKED: the LinkedIn identity is already connected; it names your own account_id when you own it, otherwise it is not one you can manage here. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire.",
             "content": {
               "application/json": {
                 "schema": {
@@ -68643,7 +68759,7 @@
             }
           },
           "409": {
-            "description": "The approved LinkedIn identity is already linked to another account. Reconnect or disconnect the existing account instead of linking it again.",
+            "description": "ACCOUNT_ALREADY_LINKED. The approved LinkedIn identity is already connected and is not one you can manage here; not retryable. CONNECTION_IN_PROGRESS. Another connection attempt for this identity is open; wait for it to finish or expire.",
             "content": {
               "application/json": {
                 "schema": {
