@@ -597,6 +597,14 @@ export async function runPostUserReactions(
 // Citty command definitions
 // ---------------------------------------------------------------------------
 
+/**
+ * The post-id forms every post-level command accepts: the server resolves
+ * all of them, so this is the one text the help shows.
+ */
+const POST_ID_FORMS =
+  "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, " +
+  "urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug).";
+
 const postGetCommand = defineCommand({
   meta: {
     name: "get",
@@ -611,7 +619,7 @@ const postGetCommand = defineCommand({
     postId: {
       type: "positional",
       description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
+        POST_ID_FORMS + " " +
         "POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'.",
     },
   },
@@ -688,7 +696,7 @@ const postReactCommand = defineCommand({
     postId: {
       type: "positional",
       description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
+        POST_ID_FORMS + " " +
         "POSTID is always the post's id.",
     },
     reaction: {
@@ -743,7 +751,7 @@ const postReactionsCommand = defineCommand({
     postId: {
       type: "positional",
       description:
-        "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). " +
+        POST_ID_FORMS + " " +
         "POSTID is always the post's id.",
     },
   },
@@ -797,7 +805,7 @@ const postDeleteCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
+    postId: { type: "positional", description: POST_ID_FORMS },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostDelete);
@@ -814,7 +822,7 @@ const postUnreactCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id, urn:li:activity:N, or full share URL." },
+    postId: { type: "positional", description: POST_ID_FORMS },
     reaction: { type: "positional", description: "Reaction to remove: like|celebrate|support|love|insightful|funny." },
   },
   async run({ args }) {
@@ -846,7 +854,7 @@ const postSaveCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+    postId: { type: "positional", description: POST_ID_FORMS },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostSave);
@@ -863,7 +871,7 @@ const postUnsaveCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    postId: { type: "positional", description: "Post id (urn:li:activity:N or a bare numeric id)." },
+    postId: { type: "positional", description: POST_ID_FORMS },
   },
   async run({ args }) {
     await withClient(args as PostFlags, runPostUnsave);

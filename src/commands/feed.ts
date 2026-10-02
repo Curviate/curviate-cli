@@ -155,7 +155,7 @@ const FEED_ARGS = {
 const feedHomeCommand = defineCommand({
   meta: {
     name: "home",
-    description: "Read the connected account's LinkedIn home feed as agent-actionable posts. On the default recent sort the feed is an index: each post's text is null and only the author's name resolves, so fetch a body with `curviate post get <id>`. --sort relevant fills text and engagement.",
+    description: "Read the connected account's LinkedIn home feed as agent-actionable posts. Every post carries its text and created_at. On the default recent sort every engagement count is null (unknown, not zero) and only the author's name resolves; --sort relevant fills engagement and the author's ids.",
     examples: [
       "curviate feed home",
       "curviate feed home --sort relevant",

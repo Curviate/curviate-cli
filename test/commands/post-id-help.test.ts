@@ -54,4 +54,24 @@ describe("post <post_id> descriptions — URL acceptance + comment guidance", ()
     const subCmds = await getPostSubCmdArgs();
     expect(subCmds["react"]?.args?.["comment-id"]).toBeUndefined();
   });
+
+  it("every post subcommand taking a postId names the share forms and the search id, never only activity-<N>-", async () => {
+    const subCmds = await getPostSubCmdArgs();
+    const withPostId = Object.entries(subCmds).filter(([, c]) => c.args?.["postId"] !== undefined);
+    expect(withPostId.length).toBeGreaterThanOrEqual(6);
+    for (const [name, c] of withPostId) {
+      const d = c.args!["postId"]!.description ?? "";
+      expect(d, name).toMatch(/share/);
+      expect(d, name).toMatch(/search posts/);
+      expect(d, name).not.toMatch(/activity-<N>- extracted/);
+    }
+  });
+
+  it("comment list names the search id and share forms", async () => {
+    const { commentCommand } = await import("../../src/commands/comment.js");
+    const sub = (commentCommand as Record<string, unknown>).subCommands as Record<string, { args?: Record<string, { description?: string }> }>;
+    const d = sub["list"]?.args?.["postId"]?.description ?? "";
+    expect(d).toMatch(/search posts/);
+    expect(d).toMatch(/share/);
+  });
 });

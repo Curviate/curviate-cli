@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+### Changed
+
+- **`search posts` and `company posts` slim output carries more.** Each item now
+  has `created_at` (the post's date as the API derives it, `null` when unknown),
+  `share_url`, and the full `text` (no more 200-character cut). `author.name`
+  reads the author's `display_name` when the API sends that shape, so it is no
+  longer `null` for most results.
+- **Post id help names every accepted form.** Post-level commands and
+  `comment list` accept the `id` from `search posts`, URN forms
+  (`activity`, `ugcPost`, `share`) and post URLs with a `share-` slug, and their
+  help says so.
+- **`search posts` help** warns that a result's text can repeat fragments
+  around links, mentions and hashtags, and points at `post get` for the clean
+  body.
+- **`feed home` help** says every post carries its text and `created_at`, and
+  that on the default recent sort every engagement count is `null` (unknown,
+  not zero).
+
 ## [0.45.0] - 2026-10-01
 
 Requires `@curviate/sdk` 0.40.1.

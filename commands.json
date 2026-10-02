@@ -2250,7 +2250,7 @@
         "search",
         "posts"
       ],
-      "description": "Search posts.",
+      "description": "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate post get <id>` for the clean body.",
       "usageOnly": false,
       "args": [
         {
@@ -3402,7 +3402,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'."
         }
       ],
       "globals": [
@@ -3470,7 +3470,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). POSTID is always the post's id."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
         },
         {
           "name": "reaction",
@@ -3518,7 +3518,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Numeric post id, urn:li:activity:N, or full LinkedIn share URL (activity-<N>- extracted). POSTID is always the post's id."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
         }
       ],
       "globals": [
@@ -3554,7 +3554,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id, urn:li:activity:N, or full share URL."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -3585,7 +3585,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id, urn:li:activity:N, or full share URL."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         },
         {
           "name": "reaction",
@@ -3650,7 +3650,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id (urn:li:activity:N or a bare numeric id)."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -3681,7 +3681,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id (urn:li:activity:N or a bare numeric id)."
+          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -3811,7 +3811,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id (or share URN) to list comments for."
+          "description": "Post to list comments for: the `id` from search posts or a post read, a bare numeric activity id, a urn:li:activity|ugcPost|share:N URN, or a full LinkedIn post URL."
         }
       ],
       "globals": [
@@ -7085,7 +7085,7 @@
         "feed",
         "home"
       ],
-      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts. On the default recent sort the feed is an index: each post's text is null and only the author's name resolves, so fetch a body with `curviate post get <id>`. --sort relevant fills text and engagement.",
+      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts. Every post carries its text and created_at. On the default recent sort every engagement count is null (unknown, not zero) and only the author's name resolves; --sort relevant fills engagement and the author's ids.",
       "usageOnly": false,
       "args": [
         {

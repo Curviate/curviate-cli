@@ -1433,10 +1433,10 @@ describe("search jobs slim: company_name synthesized from nested company.name, v
 });
 
 // ---------------------------------------------------------------------------
-// search posts slim: 200-char text truncation + author.name only
+// search posts slim: full text, author.name, created_at, share_url
 // ---------------------------------------------------------------------------
 
-describe("search posts slim: text truncation and author projection", () => {
+describe("search posts slim: full text and author projection", () => {
   let accountNs: ReturnType<typeof makeAccountNs>;
   let client: ReturnType<typeof makeClient>;
 
@@ -1449,7 +1449,7 @@ describe("search posts slim: text truncation and author projection", () => {
     vi.restoreAllMocks();
   });
 
-  it("text >200 chars truncated to 200 chars in slim mode", async () => {
+  it("text >200 chars passes through whole in slim mode; created_at and share_url kept", async () => {
     const { runSearchPosts } = await import("../../src/commands/search.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
@@ -1458,6 +1458,7 @@ describe("search posts slim: text truncation and author projection", () => {
         id: "urn:li:activity:123",
         author: { name: "Bob", id: "urn:li:member:456", is_company: false, public_identifier: "bob" },
         text: "A".repeat(300),
+        created_at: "2026-09-29T22:42:33.764Z",
         reaction_count: 42,
         comment_count: 7,
         share_url: "https://linkedin.com/posts/bob_1",
@@ -1477,13 +1478,13 @@ describe("search posts slim: text truncation and author projection", () => {
     // and posted_at were never real keys on this v2 response)
     expect(item["id"]).toBe("urn:li:activity:123");
     expect(item["author"]).toEqual({ name: "Bob" });  // only name sub-field
-    expect((item["text"] as string).length).toBe(200);
-    expect(item["text"]).toBe("A".repeat(200));
+    expect(item["text"]).toBe("A".repeat(300));
+    expect(item["created_at"]).toBe("2026-09-29T22:42:33.764Z");
+    expect(item["share_url"]).toBe("https://linkedin.com/posts/bob_1");
     expect(item["reaction_count"]).toBe(42);
     expect(item["comment_count"]).toBe(7);
 
     // Excluded verbose-only fields
-    expect(item["share_url"]).toBeUndefined();
     expect(item["repost_count"]).toBeUndefined();
     expect(item["is_repost"]).toBeUndefined();
     expect(item["post_urn"]).toBeUndefined();
@@ -2629,5 +2630,15 @@ describe("search people: renders notices[] from the SDK response", () => {
     expect(stderrText).toContain("ALL_RESULTS_HIDDEN");
     const stdoutText = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
     expect(stdoutText).not.toContain("ALL_RESULTS_HIDDEN");
+  });
+});
+
+describe("search posts --help: text caveat", () => {
+  it("names the repeated-fragment caveat and points at post get for the clean body", async () => {
+    const { searchCommand } = await import("../../src/commands/search.js");
+    const subs = (searchCommand as Record<string, unknown>).subCommands as Record<string, { meta?: { description?: string } }>;
+    const d = subs["posts"]?.meta?.description ?? "";
+    expect(d).toMatch(/repeat fragments/);
+    expect(d).toMatch(/post get/);
   });
 });
