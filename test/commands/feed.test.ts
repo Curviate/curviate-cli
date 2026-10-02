@@ -117,3 +117,14 @@ describe("feed dispatch routing", () => {
     expect(leafArgs).toEqual([]);
   });
 });
+
+describe("feed home --help: recent carries text, counts unknown", () => {
+  it("says every post carries its text, and recent counts are null (unknown, not zero)", async () => {
+    const { feedCommand } = await import("../../src/commands/feed.js");
+    const subs = (feedCommand as Record<string, unknown>).subCommands as Record<string, { meta?: { description?: string } }>;
+    const d = subs["home"]?.meta?.description ?? "";
+    expect(d).toMatch(/carries its text/);
+    expect(d).toMatch(/null \(unknown, not zero\)/);
+    expect(d).not.toMatch(/text and every engagement count are null/);
+  });
+});

@@ -7085,7 +7085,7 @@
         "feed",
         "home"
       ],
-      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts. Every post carries created_at. On the default recent sort the feed is an index: text and every engagement count are null (unknown, not zero) and only the author's name resolves, so fetch a body with `curviate post get <id>`. --sort relevant fills text and engagement.",
+      "description": "Read the connected account's LinkedIn home feed as agent-actionable posts. Every post carries its text and created_at. On the default recent sort every engagement count is null (unknown, not zero) and only the author's name resolves; --sort relevant fills engagement and the author's ids.",
       "usageOnly": false,
       "args": [
         {

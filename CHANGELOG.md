@@ -22,9 +22,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 - **`search posts` help** warns that a result's text can repeat fragments
   around links, mentions and hashtags, and points at `post get` for the clean
   body.
-- **`feed home` help** says that on the default recent sort, text and every
-  engagement count are `null` (unknown, not zero), and that every post carries
-  `created_at`.
+- **`feed home` help** says every post carries its text and `created_at`, and
+  that on the default recent sort every engagement count is `null` (unknown,
+  not zero).
 
 ## [0.45.0] - 2026-10-01
 
