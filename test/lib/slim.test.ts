@@ -1032,20 +1032,31 @@ describe("slimSearchPostsItem", () => {
     repost_count: 1,
   };
 
-  it("projects id, author.name, text, reaction_count, comment_count", () => {
-    const result = slimSearchPostsItem(fullPostItem);
+  it("projects id, author.name, created_at, share_url, text, reaction_count, comment_count", () => {
+    const result = slimSearchPostsItem({ ...fullPostItem, created_at: "2026-09-29T22:42:33.764Z" });
     expect(result).toEqual({
       id: "urn_activity_7419644944484753408",
       author: { name: "Acme" },
+      created_at: "2026-09-29T22:42:33.764Z",
+      share_url: "https://linkedin.com/posts/acme_1",
       text: "We are hiring!",
       reaction_count: 10,
       comment_count: 2,
     });
   });
 
-  it("drops share_url, repost_count, is_repost, attachments, reactions, permissions, and author sub-fields beyond name (verbose-only)", () => {
+  it("author.name falls back to display_name (the shape the live API sends)", () => {
+    const live = { ...fullPostItem, author: { id: "ACoA1", object: "User", type: "individual", display_name: "Kalyani K" } };
+    expect(slimSearchPostsItem(live)["author"]).toEqual({ name: "Kalyani K" });
+    // name: null with a display_name beside it still resolves
+    const nulled = { ...fullPostItem, author: { id: "x", name: null, display_name: "Org Co" } };
+    expect(slimSearchPostsItem(nulled)["author"]).toEqual({ name: "Org Co" });
+    // neither key: null, not undefined
+    expect(slimSearchPostsItem({ ...fullPostItem, author: { id: "x" } })["author"]).toEqual({ name: null });
+  });
+
+  it("drops repost_count, is_repost, attachments, reactions, permissions, and author sub-fields beyond name (verbose-only)", () => {
     const result = slimSearchPostsItem(fullPostItem);
-    expect(result).not.toHaveProperty("share_url");
     expect(result).not.toHaveProperty("repost_count");
     expect(result).not.toHaveProperty("is_repost");
     expect(result).not.toHaveProperty("attachments");
@@ -1057,22 +1068,19 @@ describe("slimSearchPostsItem", () => {
     expect(author).not.toHaveProperty("public_identifier");
   });
 
-  it("v1 legacy fields (post_urn, posted_at) are absent — neither v2 endpoint's response ever sends them", () => {
-    const result = slimSearchPostsItem(fullPostItem);
+  it("v1 legacy fields (post_urn, posted_at) are absent; created_at/share_url are null, not undefined, when the item lacks them", () => {
+    const result = slimSearchPostsItem({ id: "p", reaction_count: 0, comment_count: 0 });
     expect(result).not.toHaveProperty("post_urn");
     expect(result).not.toHaveProperty("posted_at");
+    expect(result["created_at"]).toBeNull();
+    expect(result["share_url"]).toBeNull();
   });
 
-  it("text >200 chars truncated to 200; <=200 chars passed through; null preserved", () => {
-    const long = slimSearchPostsItem({ ...fullPostItem, text: "A".repeat(300) });
-    expect((long["text"] as string).length).toBe(200);
-    expect(long["text"]).toBe("A".repeat(200));
-
-    const short = slimSearchPostsItem({ ...fullPostItem, text: "Short post" });
-    expect(short["text"]).toBe("Short post");
-
-    const nullText = slimSearchPostsItem({ ...fullPostItem, text: null });
-    expect(nullText["text"]).toBeNull();
+  it("text is never cut (a 5000-char body passes through whole); empty string kept; null preserved", () => {
+    const long = slimSearchPostsItem({ ...fullPostItem, text: "A".repeat(4999) + "Z" });
+    expect(long["text"]).toBe("A".repeat(4999) + "Z");
+    expect(slimSearchPostsItem({ ...fullPostItem, text: "" })["text"]).toBe("");
+    expect(slimSearchPostsItem({ ...fullPostItem, text: null })["text"]).toBeNull();
   });
 
   it("author projects to null when the source has no author (never crashes)", () => {
@@ -1103,6 +1111,8 @@ describe("slimSearchPosts", () => {
     expect(items[0]).toEqual({
       id: "p1",
       author: { name: "Acme" },
+      created_at: null,
+      share_url: null,
       text: "Hi",
       reaction_count: 1,
       comment_count: 0,

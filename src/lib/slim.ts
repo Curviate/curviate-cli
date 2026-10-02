@@ -552,45 +552,35 @@ export function slimSearchJobs(data: unknown): Record<string, unknown> {
  * identical item schema.
  *
  * v2 shape (both endpoints):
- *   { id, share_url?, text?, author?: {id?, name?, is_company?, public_identifier?},
+ *   { id, created_at, share_url?, text?, author?: {id?, name? | display_name?, ...},
  *     permissions?, is_repost?, attachments?, reactions?, reaction_count,
  *     comment_count, repost_count }
  *
- * Exact fields: id, author ({name} only), text (truncated to 200 chars; null
- * preserved), reaction_count, comment_count.
- * Verbose-only: share_url, repost_count, is_repost, attachments, reactions,
- * permissions, full author object.
+ * Exact fields: id, author ({name} only), created_at, share_url, text (full,
+ * null preserved), reaction_count, comment_count.
+ * Verbose-only: repost_count, is_repost, attachments, reactions, permissions,
+ * full author object.
  *
- * v1-parity note (D13): this replaces the pre-v2 shape (`post_urn`,
- * `posted_at`) that neither endpoint's response ever sends, `post_urn` was
- * never a real key (the wire's identifier field is `id`), and there is no
- * timestamp field on this resource at all, so `posted_at` has no v2
- * replacement and is dropped rather than kept as a permanently-null decoy.
- * The prior projection nulled both keys forever and never surfaced the
- * post's own `id` in slim output.
+ * `author.name` reads `name`, else `display_name`: the API returns either author
+ * shape on this field, and the live wire sends `display_name`. The text
+ * is never cut: a call to action past a cut was invisible to the agent reading
+ * the slim output, and a bigger read is cheaper than a second request.
+ * `created_at` is the post's date as the API derives it (null when unknown); it
+ * replaces the v1 `posted_at`, which no v2 response ever sent.
  */
 export function slimSearchPostsItem(item: Record<string, unknown>): Record<string, unknown> {
-  // Project author to {name} only
   const rawAuthor =
     item["author"] !== null && item["author"] !== undefined && typeof item["author"] === "object"
       ? (item["author"] as Record<string, unknown>)
       : null;
-  const author = rawAuthor !== null ? { name: rawAuthor["name"] ?? null } : null;
-
-  // Truncate text to 200 chars; preserve null
-  const rawText = item["text"];
-  let text: string | null;
-  if (rawText === null || rawText === undefined) {
-    text = null;
-  } else {
-    const s = String(rawText);
-    text = s.length > 200 ? s.slice(0, 200) : s;
-  }
+  const author = rawAuthor !== null ? { name: rawAuthor["name"] ?? rawAuthor["display_name"] ?? null } : null;
 
   return {
     id: item["id"] ?? null,
     author,
-    text,
+    created_at: item["created_at"] ?? null,
+    share_url: item["share_url"] ?? null,
+    text: item["text"] ?? null,
     reaction_count: item["reaction_count"] ?? null,
     comment_count: item["comment_count"] ?? null,
   };
