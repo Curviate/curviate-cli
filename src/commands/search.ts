@@ -974,7 +974,8 @@ const searchCompaniesCommand = defineCommand({
 const searchPostsCommand = defineCommand({
   meta: {
     name: "posts",
-    description: "Search posts.",
+    description:
+      "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate post get <id>` for the clean body.",
     examples: [
       "curviate search posts --keywords \"agent infrastructure\"",
       "curviate search posts --keywords \"agent infrastructure\" --date-posted past_week",

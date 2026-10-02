@@ -2632,3 +2632,13 @@ describe("search people: renders notices[] from the SDK response", () => {
     expect(stdoutText).not.toContain("ALL_RESULTS_HIDDEN");
   });
 });
+
+describe("search posts --help: text caveat", () => {
+  it("names the repeated-fragment caveat and points at post get for the clean body", async () => {
+    const { searchCommand } = await import("../../src/commands/search.js");
+    const subs = (searchCommand as Record<string, unknown>).subCommands as Record<string, { meta?: { description?: string } }>;
+    const d = subs["posts"]?.meta?.description ?? "";
+    expect(d).toMatch(/repeat fragments/);
+    expect(d).toMatch(/post get/);
+  });
+});

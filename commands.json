@@ -2250,7 +2250,7 @@
         "search",
         "posts"
       ],
-      "description": "Search posts.",
+      "description": "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate post get <id>` for the clean body.",
       "usageOnly": false,
       "args": [
         {

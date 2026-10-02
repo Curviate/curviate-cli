@@ -19,6 +19,9 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
   `comment list` accept the `id` from `search posts`, URN forms
   (`activity`, `ugcPost`, `share`) and post URLs with a `share-` slug, and their
   help says so.
+- **`search posts` help** warns that a result's text can repeat fragments
+  around links, mentions and hashtags, and points at `post get` for the clean
+  body.
 - **`feed home` help** says that on the default recent sort, text and every
   engagement count are `null` (unknown, not zero), and that every post carries
   `created_at`.
