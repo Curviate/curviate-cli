@@ -524,7 +524,8 @@ export function renderError(
     const loc = errJson.connectionLocation;
     if (loc) {
       const mode = loc.mode === "custom" ? "your own proxy" : loc.mode === "auto" ? "managed" : "mode unknown";
-      msg += `\nConnects from now: ${loc.country ?? "unknown"} (${mode}${loc.strict ? ", strict" : ""})`;
+      // current_country is where it is right now; country is only what it is set to.
+      msg += `\nConnects from now: ${loc.current_country ?? loc.country ?? "unknown"} (${mode}${loc.strict ? ", strict" : ""})`;
     }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;

@@ -201,7 +201,7 @@ describe("account link: a new connect names exactly one location", () => {
   });
 
   it("--ip and --proxy-host are each a location on their own", async () => {
-    const ip = await run([...LINK, "--ip", "8.8.8.8"]);
+    const ip = await run([...LINK, "--ip", " 8.8.8.8\n"]);
     expect(ip.status, ip.stderr).toBe(0);
     expect(intentBody(ip)).toMatchObject({ ip: "8.8.8.8" });
     expect(intentBody(ip)).not.toHaveProperty("country");

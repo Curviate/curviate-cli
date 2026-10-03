@@ -557,7 +557,7 @@ async function buildAuthBody(
 
   // connection location, already checked by assertLocationFlags
   Object.assign(body, managedLocationBody(flags));
-  if (flags.ip !== undefined) body["ip"] = flags.ip;
+  if (flags.ip !== undefined) body["ip"] = flags.ip.trim();
 
   // proxy (optional secret: flag > env > omitted, no prompt, no fail-fast)
   if (flags["proxy-host"]) {

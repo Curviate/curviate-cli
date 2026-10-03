@@ -352,6 +352,15 @@ describe("lib/output — renderError", () => {
     );
     expect(stderrLines.join("")).toContain("Connects from now: unknown (your own proxy)");
 
+    // A proxy cleared but landed elsewhere: configured null, in use FR.
+    stderrLines = [];
+    renderError(
+      new CurviateError({ ...base, connectionLocation: { country: null, current_country: "FR", mode: "auto", strict: false } }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    expect(stderrLines.join("")).toContain("Connects from now: FR (managed)");
+
     stderrLines = [];
     renderError(new CurviateError(base), { json: false, isTTY: true }, mockOut as never);
     expect(stderrLines.join("")).toContain("[CONNECTION_LOCATION_UNAVAILABLE]");
