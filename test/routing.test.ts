@@ -396,6 +396,7 @@ describe("router — unknown-flag detection vs. citty negation", () => {
       "account", "link",
       "--seat-id", "seat_1",
       "--auth-method", "credentials",
+      "--country", "US",
       "--email", "otp@example.com",
       "--password", "test-password",
       "--no-interactive",

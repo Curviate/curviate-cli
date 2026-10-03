@@ -29,7 +29,7 @@ function makeOut() {
 function linkArgs(extra: Record<string, unknown>) {
   return {
     "seat-id": "seat_1",
-    "auth-method": "cookie",
+    "auth-method": "cookie", country: "US",
     "li-at": "AQEDaTest",
     "user-agent": "Mozilla/5.0",
     json: true,

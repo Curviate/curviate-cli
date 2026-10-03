@@ -406,6 +406,36 @@
             "type": "string",
             "description": "Present on ACCOUNT_ALREADY_LINKED: the id of your own existing account for this LinkedIn profile, so you can reuse it instead of linking again. Only ever an account of the calling tenant."
           },
+          "connection_location": {
+            "type": "object",
+            "description": "Present on CONNECTION_LOCATION_UNAVAILABLE after a location PATCH that did not land where asked: where the account connects from now (country, current_country, mode, strict), re-read after the change.",
+            "properties": {
+              "country": {
+                "type": "string",
+                "nullable": true,
+                "description": "Configured country (ISO 3166-1 alpha-2)."
+              },
+              "current_country": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country of the connection in use now."
+              },
+              "mode": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  "auto",
+                  "custom"
+                ],
+                "description": "auto: managed. custom: your own proxy."
+              },
+              "strict": {
+                "type": "boolean",
+                "nullable": true,
+                "description": "true: never connects from another country."
+              }
+            }
+          },
           "quota": {
             "type": "object",
             "description": "Present on RATE_LIMIT_ACCOUNT: the per-account request ceiling that was breached, with its name, the units remaining and total, and the absolute reset_time. Wait until reset_time before retrying."
@@ -7833,7 +7863,7 @@
                       "description": "The company's posts.",
                       "items": {
                         "type": "object",
-                        "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available. No posting-date field is included; the platform does not expose a reliable post-creation timestamp on search results.",
+                        "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available.",
                         "properties": {
                           "id": {
                             "type": "string",
@@ -7845,7 +7875,14 @@
                           },
                           "text": {
                             "type": "string",
-                            "description": "Post text content. Present when available."
+                            "description": "Post text content. Present when available. Can repeat fragments around links, mentions and hashtags; get the post by its id for the clean body."
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "ISO-8601 UTC datetime the post was published, derived from the post's own activity identity (the same source as get-post's `created_at`). null when the result carries no activity identity to derive it from."
                           },
                           "author": {
                             "type": "object",
@@ -7858,10 +7895,19 @@
                                 "type": [
                                   "string",
                                   "null"
-                                ]
+                                ],
+                                "description": "Author's display name, on the shape that carries `name`. Read `name` when present, else `display_name`."
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "description": "Author's display name, on the shape that carries `display_name` instead of `name`."
                               },
                               "is_company": {
                                 "type": "boolean"
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "Author entity type (for example individual or organization), on the shape that carries `display_name`."
                               },
                               "public_identifier": {
                                 "type": [
@@ -7932,7 +7978,8 @@
                           "id",
                           "reaction_count",
                           "comment_count",
-                          "repost_count"
+                          "repost_count",
+                          "created_at"
                         ]
                       }
                     },
@@ -8011,6 +8058,7 @@
                           "reaction_count": 10,
                           "comment_count": 1,
                           "repost_count": 0,
+                          "created_at": null,
                           "text": "We are hiring senior engineers. Check us out!",
                           "share_url": "https://www.linkedin.com/feed/update/urn:li:activity:coppost_1",
                           "author": {
@@ -15671,7 +15719,7 @@
                       "description": "Post search result items.",
                       "items": {
                         "type": "object",
-                        "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available. No posting-date field is included; the platform does not expose a reliable post-creation timestamp on search results.",
+                        "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available.",
                         "properties": {
                           "id": {
                             "type": "string",
@@ -15683,7 +15731,14 @@
                           },
                           "text": {
                             "type": "string",
-                            "description": "Post text content. Present when available."
+                            "description": "Post text content. Present when available. Can repeat fragments around links, mentions and hashtags; get the post by its id for the clean body."
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "ISO-8601 UTC datetime the post was published, derived from the post's own activity identity (the same source as get-post's `created_at`). null when the result carries no activity identity to derive it from."
                           },
                           "author": {
                             "type": "object",
@@ -15696,10 +15751,19 @@
                                 "type": [
                                   "string",
                                   "null"
-                                ]
+                                ],
+                                "description": "Author's display name, on the shape that carries `name`. Read `name` when present, else `display_name`."
+                              },
+                              "display_name": {
+                                "type": "string",
+                                "description": "Author's display name, on the shape that carries `display_name` instead of `name`."
                               },
                               "is_company": {
                                 "type": "boolean"
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "Author entity type (for example individual or organization), on the shape that carries `display_name`."
                               },
                               "public_identifier": {
                                 "type": [
@@ -15770,7 +15834,8 @@
                           "id",
                           "reaction_count",
                           "comment_count",
-                          "repost_count"
+                          "repost_count",
+                          "created_at"
                         ]
                       }
                     },
@@ -15854,6 +15919,7 @@
                         {
                           "id": "b3BhcXVlLXBvc3QtaWQtMDAx",
                           "text": "We are hiring senior engineers. Check us out!",
+                          "created_at": "2026-06-01T08:00:00.000Z",
                           "share_url": "https://www.linkedin.com/feed/update/urn:li:activity:post_001",
                           "author": {
                             "id": "99999",
@@ -16133,7 +16199,7 @@
             }
           }
         },
-        "description": "Searches LinkedIn posts using structured filters. To search from a pasted LinkedIn search URL instead, use POST .../search. Post text, engagement counters, author, and attachments are returned.",
+        "description": "Searches LinkedIn posts using structured filters. To search from a pasted LinkedIn search URL instead, use POST .../search. Returns text, counts, author and attachments; the text can repeat fragments around links, mentions and hashtags, so get the post by its id for the clean body.",
         "requestBody": {
           "required": true,
           "content": {
@@ -17291,7 +17357,7 @@
                           },
                           {
                             "type": "object",
-                            "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available. No posting-date field is included; the platform does not expose a reliable post-creation timestamp on search results.",
+                            "description": "A single post search result. Post text, engagement counters, author, and attachments are included when available.",
                             "properties": {
                               "object": {
                                 "type": "string",
@@ -17309,7 +17375,14 @@
                               },
                               "text": {
                                 "type": "string",
-                                "description": "Post text content. Present when available."
+                                "description": "Post text content. Present when available. Can repeat fragments around links, mentions and hashtags; get the post by its id for the clean body."
+                              },
+                              "created_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "ISO-8601 UTC datetime the post was published, derived from the post's own activity identity (the same source as get-post's `created_at`). null when the result carries no activity identity to derive it from."
                               },
                               "author": {
                                 "type": "object",
@@ -17322,10 +17395,19 @@
                                     "type": [
                                       "string",
                                       "null"
-                                    ]
+                                    ],
+                                    "description": "Author's display name, on the shape that carries `name`. Read `name` when present, else `display_name`."
+                                  },
+                                  "display_name": {
+                                    "type": "string",
+                                    "description": "Author's display name, on the shape that carries `display_name` instead of `name`."
                                   },
                                   "is_company": {
                                     "type": "boolean"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "description": "Author entity type (for example individual or organization), on the shape that carries `display_name`."
                                   },
                                   "public_identifier": {
                                     "type": [
@@ -17397,7 +17479,8 @@
                               "id",
                               "reaction_count",
                               "comment_count",
-                              "repost_count"
+                              "repost_count",
+                              "created_at"
                             ]
                           },
                           {
@@ -25700,7 +25783,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The connected account's home feed as agent-actionable posts. `sort=recent` (default) resolves each post's activity id + author name + post URL + kind; `sort=relevant` resolves the full shape (text, engagement, author id-triple). An empty feed is a valid 200 (items:[], cursor:null). Page until cursor is null.",
+            "description": "The connected account's home feed as agent-actionable posts. `sort=recent` (default) resolves each post's activity id + created_at + text + author name + post URL + kind, with engagement null; `sort=relevant` resolves the full shape (text, engagement, author id-triple). An empty feed is a valid 200 (items:[], cursor:null). Page until cursor is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -25727,6 +25810,7 @@
                           "activity_urn_id",
                           "author",
                           "text",
+                          "created_at",
                           "post_url",
                           "kind",
                           "is_promoted",
@@ -25815,7 +25899,12 @@
                           "text": {
                             "type": "string",
                             "nullable": true,
-                            "description": "Full post body, verbatim (relevant). null on recent (the body is nested deep in the source). Pass-through, never stored."
+                            "description": "Full post body, verbatim, on both sorts. null when the post has no body. Pass-through, never stored."
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "ISO-8601 UTC datetime the feed activity was created, derived from the activity id (the same source as get-post's `created_at`). Both sorts. For a reshare this is when the reshare was made. null when the id does not carry a time."
                           },
                           "post_url": {
                             "type": "string",
@@ -25863,19 +25952,22 @@
                               "comments",
                               "shares"
                             ],
-                            "description": "Engagement counts. All 0 on recent.",
+                            "description": "Engagement counts. Every count is null on recent, which cannot read them; use sort=relevant for counts. A null count is unknown, never zero.",
                             "properties": {
                               "likes": {
                                 "type": "number",
-                                "description": "Reaction count. Defaults 0."
+                                "nullable": true,
+                                "description": "Reaction count, or null when the sort cannot read it."
                               },
                               "comments": {
                                 "type": "number",
-                                "description": "Comment count. Defaults 0."
+                                "nullable": true,
+                                "description": "Comment count, or null when the sort cannot read it."
                               },
                               "shares": {
                                 "type": "number",
-                                "description": "Reshare count. Defaults 0."
+                                "nullable": true,
+                                "description": "Reshare count, or null when the sort cannot read it."
                               }
                             }
                           }
@@ -25913,16 +26005,17 @@
                             "company_id": null,
                             "profile_url": null
                           },
-                          "text": null,
+                          "text": "Back from the conference: three takeaways on agent evaluation.",
+                          "created_at": "2026-07-06T10:17:43.113Z",
                           "post_url": "https://www.linkedin.com/posts/alex_erasmus-ugcPost-7479840998550876160-RbXF",
                           "kind": "ugcPost",
                           "is_promoted": false,
                           "is_reshare": false,
                           "reshared_from": null,
                           "engagement": {
-                            "likes": 0,
-                            "comments": 0,
-                            "shares": 0
+                            "likes": null,
+                            "comments": null,
+                            "shares": null
                           }
                         }
                       ],
@@ -25949,6 +26042,7 @@
                             "profile_url": "https://www.linkedin.com/in/danaellison/"
                           },
                           "text": "The most underrated skill in AI engineering is knowing when NOT to add an agent.",
+                          "created_at": "2026-06-29T14:30:55.694Z",
                           "post_url": null,
                           "kind": null,
                           "is_promoted": false,
@@ -25975,6 +26069,7 @@
                             "profile_url": "https://www.linkedin.com/company/235326/"
                           },
                           "text": "Deploy your first agent in under five minutes.",
+                          "created_at": "2026-06-24T09:32:03.825Z",
                           "post_url": null,
                           "kind": null,
                           "is_promoted": true,
@@ -37842,7 +37937,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "ISO-8601 UTC datetime this post was created, or null if unavailable. Derived from the post's own identity, so it does not change with the route you used to reach it. For a repost this is when the repost was made, not when the post it reshares was, so it is safe to sort by recency."
+                      "description": "ISO-8601 UTC datetime this post was published, or null when it cannot be told reliably. Derived from the post's own activity identity, so it does not change with the route you used to reach it. null when the post carries no activity identity of its own (often a video or image post), never a guess. For a repost this is when the repost was made, not when the post it reshares was."
                     },
                     "comment_count": {
                       "type": [
@@ -39004,7 +39099,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "ISO-8601 UTC datetime this post was created, or null if unavailable. Derived from the post's own identity, so it does not change with the route you used to reach it. For a repost this is when the repost was made, not when the post it reshares was, so it is safe to sort by recency."
+                            "description": "ISO-8601 UTC datetime this post was published, or null when it cannot be told reliably. Derived from the post's own activity identity, so it does not change with the route you used to reach it. null when the post carries no activity identity of its own (often a video or image post), never a guess. For a repost this is when the repost was made, not when the post it reshares was."
                           },
                           "comment_count": {
                             "type": [
@@ -64640,6 +64735,45 @@
                             "type": "string",
                             "description": "Curviate account id (acc_...)."
                           },
+                          "connection_location": {
+                            "type": "object",
+                            "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                            "properties": {
+                              "country": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Configured country (ISO 3166-1 alpha-2)."
+                              },
+                              "current_country": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Country of the connection in use right now."
+                              },
+                              "mode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "auto",
+                                  "custom",
+                                  null
+                                ],
+                                "description": "auto: managed connection. custom: your own proxy."
+                              },
+                              "strict": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ],
+                                "description": "true: never connects from another country."
+                              }
+                            }
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -64754,7 +64888,13 @@
                           "headline": "Engineer",
                           "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                           "connected_at": "2026-06-01T09:00:00.000Z",
-                          "substrate_created_at": "2025-01-15T09:30:00.000Z"
+                          "substrate_created_at": "2025-01-15T09:30:00.000Z",
+                          "connection_location": {
+                            "country": "DE",
+                            "current_country": "DE",
+                            "mode": "auto",
+                            "strict": true
+                          }
                         }
                       ],
                       "cursor": null
@@ -65008,6 +65148,45 @@
                         "type": "string"
                       },
                       "description": "Your own flat string map for this account, as last set by PATCH. Null when none."
+                    },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        }
+                      }
                     },
                     "substrate_created_at": {
                       "type": [
@@ -65264,6 +65443,12 @@
                         "company",
                         "sales_navigator"
                       ],
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      },
                       "quotas": [
                         {
                           "budget_row": "connection_requests_with_note",
@@ -65620,6 +65805,12 @@
                         "company",
                         "sales_navigator"
                       ],
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "FR",
+                        "mode": "auto",
+                        "strict": false
+                      },
                       "quotas": [
                         {
                           "budget_row": "connection_requests_with_note",
@@ -66096,7 +66287,7 @@
         "tags": [
           "Accounts"
         ],
-        "summary": "Update account metadata / proxy configuration",
+        "summary": "Update an account's metadata or connection location",
         "security": [
           {
             "apiKeyAuth": []
@@ -66115,7 +66306,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The account was updated. metadata and external_id are stored by Curviate and read back on GET; a PATCH carrying only those makes no LinkedIn call.",
+            "description": "The updated account: the object GET /v1/accounts/{account_id} returns, without quotas and event_log (read those on GET). After a location change, connection_location is re-read from LinkedIn's side, so it shows where the account really connects from now. metadata and external_id are stored by Curviate; a PATCH carrying only those makes no LinkedIn call.",
             "content": {
               "application/json": {
                 "schema": {
@@ -66131,17 +66322,193 @@
                     "account_id": {
                       "type": "string"
                     },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "reconnect_needed",
+                        "restricted",
+                        "connecting",
+                        "disconnected"
+                      ]
+                    },
+                    "auth_method": {
+                      "type": "string"
+                    },
+                    "full_name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "headline": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "connected_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO-8601 UTC connection timestamp."
+                    },
+                    "last_checked_at": {
+                      "type": "string",
+                      "description": "ISO-8601 UTC time the account state was last checked."
+                    },
+                    "seat_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The seat this account occupies (null for an admin seatless account)."
+                    },
+                    "requested_products": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "classic",
+                          "company",
+                          "sales_navigator",
+                          "recruiter"
+                        ]
+                      },
+                      "description": "The connection scope this account was last connected with (e.g. [\"classic\",\"company\",\"sales_navigator\",\"recruiter\"]). A connect asks for every product and LinkedIn activates the ones the account actually has, so this is what was ASKED for, narrowed only by an explicit linkedin_premium on that connect. A linkedin_premium narrowing is not remembered between connects, so this shows what the LAST connect asked for and a reconnect that omits the field widens it again. Null for accounts connected before this was recorded; not attachment truth for Company Pages."
+                    },
+                    "external_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
+                    },
+                    "metadata": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "Your own flat string map for this account, as last set by PATCH. Null when none."
+                    },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        }
+                      }
+                    },
+                    "substrate_created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO-8601 UTC creation timestamp of the underlying LinkedIn account, distinct from connected_at. Null until the first background enrichment lands."
+                    },
+                    "account_states": {
+                      "type": "array",
+                      "description": "Platform conditions this LinkedIn account is currently in, additive to `status` and independent of it. `recruiter_session_evicted`: the account is signed in somewhere else and LinkedIn allows one session at a time for it, so a person has to close the other session; reconnecting will not help. `commercial_use_limited`: LinkedIn's commercial-use limit has tripped, so people search returns only a handful of results per query. It is a paywall, not a penalty, and nothing else about the account is affected. `profile_view_limited`: profile views outside this account's own network are being blocked; first-degree views still work. The two limits are detected from their symptom: LinkedIn publishes no threshold for either, exposes no counter, and lifts neither on request, so no number is reported. `commercial_use_limited` is a present-tense reading and a genuinely narrow search can also produce the shape it looks for, so treat it as a reason to check rather than a certainty; the next people search that returns a full page clears it. An account in none of these reports an empty array.",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "recruiter_session_evicted",
+                          "commercial_use_limited",
+                          "profile_view_limited"
+                        ]
+                      }
+                    },
+                    "activity_window": {
+                      "type": "object",
+                      "description": "The account's activity window, the hours in which Curviate reports or refuses live writes to LinkedIn. Reads and anything served from Curviate's own store are never affected, at any hour. Configure it on the account's safety policy.",
+                      "properties": {
+                        "timezone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The IANA zone the window is read in, or null when none is set."
+                        },
+                        "timezone_unset": {
+                          "type": "boolean",
+                          "description": "True when no zone is set, which DISABLES the activity window. Curviate never guesses a zone: a guess eight hours wrong inverts the window, refusing every daytime write and permitting every nocturnal one. If you configured a window and it never fires, this is why."
+                        }
+                      }
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
                   }
                 },
                 "examples": {
-                  "patched": {
-                    "summary": "Updated",
+                  "moved": {
+                    "summary": "Location moved to the United States",
                     "value": {
                       "object": "account",
-                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "active",
+                      "auth_method": "cookie",
+                      "full_name": "Ada Lovelace",
+                      "headline": "Engineer",
+                      "connected_at": "2026-06-01T09:00:00.000Z",
+                      "last_checked_at": "2026-06-08T09:00:00.000Z",
+                      "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "substrate_created_at": "2025-01-15T09:30:00.000Z",
+                      "requested_products": [
+                        "classic",
+                        "company"
+                      ],
+                      "external_id": null,
+                      "metadata": null,
+                      "connection_location": {
+                        "country": "US",
+                        "current_country": "US",
+                        "mode": "auto",
+                        "strict": true
+                      },
+                      "account_states": [],
+                      "activity_window": {
+                        "timezone": null,
+                        "timezone_unset": true
+                      }
                     }
                   }
                 }
@@ -66157,7 +66524,7 @@
             }
           },
           "400": {
-            "description": "Invalid request: a malformed proxy object, metadata over its limits (16 keys, key 40 chars, value 500), external_id outside 1-255 chars, or an unsupported field (country/ip).",
+            "description": "INVALID_REQUEST: a malformed proxy object; proxy together with country or allow_country_fallback; country on an account that uses your own proxy without proxy: null; allow_country_fallback alone on such an account; an unsupported country; ip (not changeable after connect; reconnect with ip instead); metadata over its limits (16 keys, key 40 chars, value 500); external_id outside 1-255 chars. CONNECTION_LOCATION_REQUIRED: proxy: null without country (clearing your own proxy alone would let the connection land anywhere).",
             "content": {
               "application/json": {
                 "schema": {
@@ -66198,6 +66565,16 @@
               }
             }
           },
+          "409": {
+            "description": "REAUTH_REQUIRED: the account is disconnected, so its location cannot change in place. Reconnect it (POST /v1/auth/intent with account_id) and pass country there.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Payload too large, the request body exceeds the size limit.",
             "content": {
@@ -66213,6 +66590,34 @@
                       "message": "Request body is too large: it exceeds the 9437184-byte limit.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CONNECTION_LOCATION_UNAVAILABLE: no connection is free in that country right now, or the account did not end up there. When the change was applied but landed elsewhere, the body carries connection_location with where the account connects from now. Try a nearby country, or allow fallback.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "landedElsewhere": {
+                    "summary": "Requested US, still connecting from Germany",
+                    "value": {
+                      "code": "CONNECTION_LOCATION_UNAVAILABLE",
+                      "message": "No connection is available in United States right now. Try a nearby country, or allow fallback.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": null,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
                     }
                   }
                 }
@@ -66335,7 +66740,7 @@
             }
           }
         },
-        "description": "Updates an account's metadata (a flat string map, replaced wholesale) and/or its custom proxy egress; pass a proxy object to set one, or null to clear it. Credentials and seat are untouched.",
+        "description": "Updates metadata, external_id, the connection location (country) or your own proxy (null plus a country returns to a managed location). Returns the account; connection_location is re-read after a location change.",
         "requestBody": {
           "required": true,
           "content": {
@@ -66367,9 +66772,10 @@
                         "enum": [
                           "http",
                           "https",
-                          "socks5"
+                          "socks5",
+                          "socks4"
                         ],
-                        "description": "Proxy protocol. One of http, https, socks5."
+                        "description": "Proxy protocol. One of http, https, socks5, socks4."
                       },
                       "host": {
                         "type": "string",
@@ -66388,7 +66794,7 @@
                       },
                       "password": {
                         "type": "string",
-                        "description": "Proxy auth password (optional). Encrypted at rest, never logged or returned."
+                        "description": "Proxy auth password (optional). Passed to the connection only: never stored, logged or returned."
                       }
                     },
                     "required": [
@@ -66396,8 +66802,74 @@
                       "host",
                       "port"
                     ],
-                    "description": "Custom-proxy egress config, or null to clear it (revert to automatic proxy protection). Omit to leave it unchanged.",
+                    "description": "Your own proxy, or null to stop using it and return to a managed location (null requires country in the same request). Omit to leave it unchanged.",
                     "nullable": true
+                  },
+                  "country": {
+                    "type": "string",
+                    "enum": [
+                      "AE",
+                      "AO",
+                      "AR",
+                      "AT",
+                      "AU",
+                      "BD",
+                      "BE",
+                      "BG",
+                      "BR",
+                      "CA",
+                      "CH",
+                      "CL",
+                      "CN",
+                      "CO",
+                      "CY",
+                      "CZ",
+                      "DE",
+                      "DK",
+                      "EE",
+                      "EG",
+                      "ES",
+                      "FI",
+                      "FR",
+                      "GB",
+                      "GT",
+                      "HK",
+                      "ID",
+                      "IE",
+                      "IL",
+                      "IN",
+                      "IT",
+                      "JP",
+                      "KR",
+                      "KZ",
+                      "MA",
+                      "MX",
+                      "MY",
+                      "NL",
+                      "NO",
+                      "PA",
+                      "PH",
+                      "PK",
+                      "PL",
+                      "PR",
+                      "PT",
+                      "RO",
+                      "SA",
+                      "SE",
+                      "SG",
+                      "TH",
+                      "TN",
+                      "TR",
+                      "UA",
+                      "US",
+                      "VN",
+                      "ZA"
+                    ],
+                    "description": "Move this account's connection location to this supported ISO 3166-1 alpha-2 country (e.g. US, DE). LinkedIn sees a new IP in that country and may ask the owner to verify, so change it only when the current location is wrong. Strict unless allow_country_fallback is true. On an account using your own proxy, send proxy: null with it."
+                  },
+                  "allow_country_fallback": {
+                    "type": "boolean",
+                    "description": "Optional. false (the default with country or ip): only ever connect from that country; a connect fails when no connection is free there. true: a connection from another country may be used when none is free in the chosen one. Not accepted with proxy."
                   }
                 },
                 "additionalProperties": false
@@ -66423,9 +66895,22 @@
                   }
                 },
                 "clearProxy": {
-                  "summary": "Clear the custom proxy (revert to automatic protection)",
+                  "summary": "Stop using your own proxy and connect from Germany instead",
                   "value": {
-                    "proxy": null
+                    "proxy": null,
+                    "country": "DE"
+                  }
+                },
+                "country": {
+                  "summary": "Move the connection location to the United States (strict)",
+                  "value": {
+                    "country": "US"
+                  }
+                },
+                "allowFallback": {
+                  "summary": "Let the account fall back to another country when none is free in its own",
+                  "value": {
+                    "allow_country_fallback": true
                   }
                 },
                 "externalId": {
@@ -66915,6 +67400,49 @@
                       ],
                       "description": "Your own id for this account's end user, as set on connect or PATCH. Null when none. Not unique."
                     },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        },
+                        "previous_country": {
+                          "type": "string",
+                          "description": "Present only when this connect landed on an account you already had and changed its configured country (to another one, to unknown with ip, or to your own proxy). It names the country before."
+                        }
+                      }
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
@@ -66922,12 +67450,34 @@
                 },
                 "examples": {
                   "reconnected": {
-                    "summary": "Reconnected",
+                    "summary": "Reconnected, location kept",
                     "value": {
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
-                      "external_id": null
+                      "external_id": null,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
+                    }
+                  },
+                  "relinkedMoved": {
+                    "summary": "A new connect landed on an account you already had and moved it",
+                    "value": {
+                      "object": "account",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "active",
+                      "external_id": null,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": null,
+                        "mode": "auto",
+                        "strict": true,
+                        "previous_country": "NL"
+                      }
                     }
                   }
                 }
@@ -67013,6 +67563,49 @@
                       "type": "boolean",
                       "description": "Present and true only when this connect reactivated an account you had previously disconnected, instead of opening a brand-new one. Absent on a normal connect. The account keeps its original id, and its status reflects its real observed state, which may need a reconnect."
                     },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        },
+                        "previous_country": {
+                          "type": "string",
+                          "description": "Present only when this connect landed on an account you already had and changed its configured country (to another one, to unknown with ip, or to your own proxy). It names the country before."
+                        }
+                      }
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
@@ -67030,7 +67623,34 @@
                       "headline": "Engineer",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "external_id": "usr_42"
+                      "external_id": "usr_42",
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": null,
+                        "mode": "auto",
+                        "strict": true
+                      }
+                    }
+                  },
+                  "moved": {
+                    "summary": "Re-linked an account you already had, from a new country",
+                    "value": {
+                      "object": "account",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "active",
+                      "auth_method": "credentials",
+                      "full_name": "Ada Lovelace",
+                      "headline": "Engineer",
+                      "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "external_id": null,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": null,
+                        "mode": "auto",
+                        "strict": true,
+                        "previous_country": "NL"
+                      }
                     }
                   },
                   "recovered": {
@@ -67039,7 +67659,13 @@
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
-                      "recovered": true
+                      "recovered": true,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
                     }
                   }
                 }
@@ -67197,20 +67823,21 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST. The most common causes: the auth block is at the top level instead of nested (send `credentials: { email, password }` or `cookie: { li_at }`, not bare `email`/`password`/`li_at`); `seat_id` is missing on a new connect; or a cookie connect has no top-level `user_agent`. SEAT_NOT_FOUND if the seat id is unknown or is not yours.",
+            "description": "CONNECTION_LOCATION_REQUIRED: a new connect names no location; send exactly one of `country` (a supported ISO code, e.g. `US`), `ip` (a public IPv4) or your own `proxy`. INVALID_REQUEST. The most common causes: two location sources at once (`ip` overrides `country`, `proxy` overrides both, so send one); an unsupported `country` (use `proxy` for a location we don't serve); a private or reserved `ip`; `allow_country_fallback` together with `proxy`; your own proxy rejected its credentials, could not be reached or timed out (the message names which); the auth block is at the top level instead of nested (send `credentials: { email, password }` or `cookie: { li_at }`, not bare `email`/`password`/`li_at`); `seat_id` is missing on a new connect; or a cookie connect has no top-level `user_agent`. SEAT_NOT_FOUND if the seat id is unknown or is not yours.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "error": {
-                    "summary": "400 error",
+                  "locationRequired": {
+                    "summary": "No location named",
                     "value": {
-                      "code": "INVALID_REQUEST",
-                      "message": "A parameter failed validation.",
+                      "code": "CONNECTION_LOCATION_REQUIRED",
+                      "message": "Choose where this account connects from: pass `country` (ISO code, e.g. `US`), `ip`, or your own `proxy`.",
                       "user_fixable": true,
-                      "retry_likely_to_succeed": false
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": null
                     }
                   }
                 }
@@ -67281,11 +67908,34 @@
             }
           },
           "409": {
-            "description": "This LinkedIn account is already linked (names your own account_id when your tenant owns it).",
+            "description": "ACCOUNT_ALREADY_LINKED: this LinkedIn account is already linked. It names your own account_id when your tenant owns it; otherwise no id is named, it is not one you can manage here, and retrying will not help. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "alreadyLinked": {
+                    "summary": "Linked, not to one of your accounts",
+                    "value": {
+                      "code": "ACCOUNT_ALREADY_LINKED",
+                      "message": "This LinkedIn account is already connected and is not one you can manage here. Contact support if you believe it should belong to you.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": {
+                        "kind": "never"
+                      }
+                    }
+                  },
+                  "inProgress": {
+                    "summary": "Another connection attempt is open",
+                    "value": {
+                      "code": "CONNECTION_IN_PROGRESS",
+                      "message": "A connection attempt for this LinkedIn account is already open. Wait for it to finish or expire before starting another.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -67312,11 +67962,23 @@
             }
           },
           "422": {
-            "description": "The verification challenge cannot be resolved automatically (a dead-end challenge such as a CAPTCHA or a phone-number registration). For those two dead-ends the error body carries a machine-readable challenge_type (captcha | phone_register) so a client can render the right guidance; other unsupported challenges carry no challenge_type.",
+            "description": "CONNECTION_LOCATION_UNAVAILABLE: no connection is free in the country you chose right now (it is strict); try a nearby country, or send allow_country_fallback: true. Also returned when the connect re-attached an account you already had and its location could not be changed here (sent as ip): the body carries connection_location, and PATCH /v1/accounts/{account_id} with country moves it. CHECKPOINT_UNSUPPORTED: the verification challenge cannot be resolved automatically (a dead-end challenge such as a CAPTCHA or a phone-number registration). For those two dead-ends the error body carries a machine-readable challenge_type (captcha | phone_register) so a client can render the right guidance; other unsupported challenges carry no challenge_type.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "locationUnavailable": {
+                    "summary": "No connection free in the chosen country",
+                    "value": {
+                      "code": "CONNECTION_LOCATION_UNAVAILABLE",
+                      "message": "No connection is available in Germany right now. Try a nearby country, or allow fallback.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": null
+                    }
+                  }
                 }
               }
             }
@@ -67509,11 +68171,73 @@
                   },
                   "country": {
                     "type": "string",
-                    "description": "Managed proxy location hint as an ISO 3166-1 alpha-2 country code (e.g. US, DE)."
+                    "enum": [
+                      "AE",
+                      "AO",
+                      "AR",
+                      "AT",
+                      "AU",
+                      "BD",
+                      "BE",
+                      "BG",
+                      "BR",
+                      "CA",
+                      "CH",
+                      "CL",
+                      "CN",
+                      "CO",
+                      "CY",
+                      "CZ",
+                      "DE",
+                      "DK",
+                      "EE",
+                      "EG",
+                      "ES",
+                      "FI",
+                      "FR",
+                      "GB",
+                      "GT",
+                      "HK",
+                      "ID",
+                      "IE",
+                      "IL",
+                      "IN",
+                      "IT",
+                      "JP",
+                      "KR",
+                      "KZ",
+                      "MA",
+                      "MX",
+                      "MY",
+                      "NL",
+                      "NO",
+                      "PA",
+                      "PH",
+                      "PK",
+                      "PL",
+                      "PR",
+                      "PT",
+                      "RO",
+                      "SA",
+                      "SE",
+                      "SG",
+                      "TH",
+                      "TN",
+                      "TR",
+                      "UA",
+                      "US",
+                      "VN",
+                      "ZA"
+                    ],
+                    "description": "Where LinkedIn sees this account connecting from: a supported ISO 3166-1 alpha-2 country code (e.g. US, DE; case-insensitive). Pick the country the account owner normally signs in from. A new connect needs exactly one of country, ip or proxy. Strict by default: the connect fails rather than use another country, unless allow_country_fallback is true."
                   },
                   "ip": {
                     "type": "string",
-                    "description": "IPv4 address used to infer the managed proxy location."
+                    "description": "A public IPv4 address; its country becomes the connection location (strict by default). An alternative to country: send exactly one of country, ip or proxy on a new connect."
+                  },
+                  "allow_country_fallback": {
+                    "type": "boolean",
+                    "description": "Optional. false (the default with country or ip): only ever connect from that country; a connect fails when no connection is free there. true: a connection from another country may be used when none is free in the chosen one. Not accepted with proxy."
                   },
                   "proxy": {
                     "type": "object",
@@ -67523,9 +68247,10 @@
                         "enum": [
                           "http",
                           "https",
-                          "socks5"
+                          "socks5",
+                          "socks4"
                         ],
-                        "description": "Proxy protocol. One of http, https, socks5."
+                        "description": "Proxy protocol. One of http, https, socks5, socks4."
                       },
                       "host": {
                         "type": "string",
@@ -67544,7 +68269,7 @@
                       },
                       "password": {
                         "type": "string",
-                        "description": "Proxy auth password (optional). Encrypted at rest, never logged or returned."
+                        "description": "Proxy auth password (optional). Passed to the connection only: never stored, logged or returned."
                       }
                     },
                     "required": [
@@ -67552,7 +68277,7 @@
                       "host",
                       "port"
                     ],
-                    "description": "Managed-proxy egress configuration for this account's outbound traffic."
+                    "description": "Your own proxy for this account's traffic. The proxy decides where LinkedIn sees the account connecting from, so country, ip and allow_country_fallback are not accepted with it."
                   },
                   "user_agent": {
                     "type": "string",
@@ -67585,18 +68310,19 @@
               },
               "examples": {
                 "credentials": {
-                  "summary": "Connect a new account by email + password",
+                  "summary": "Connect a new account by email + password, connecting from Germany",
                   "value": {
                     "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                     "auth_method": "credentials",
                     "credentials": {
                       "email": "ada@example.com",
                       "password": "REPLACE_WITH_REAL_PASSWORD"
-                    }
+                    },
+                    "country": "DE"
                   }
                 },
                 "cookie": {
-                  "summary": "Connect a new account by session cookie, pinned to a managed proxy location",
+                  "summary": "Connect a new account by session cookie, connecting from Germany",
                   "value": {
                     "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                     "auth_method": "cookie",
@@ -67620,11 +68346,31 @@
                     "timezone": "Europe/Berlin",
                     "products": [
                       "recruiter"
-                    ]
+                    ],
+                    "country": "US",
+                    "allow_country_fallback": true
+                  }
+                },
+                "ownProxy": {
+                  "summary": "Connect a new account through your own proxy (the proxy decides the location)",
+                  "value": {
+                    "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "auth_method": "credentials",
+                    "credentials": {
+                      "email": "ada@example.com",
+                      "password": "REPLACE_WITH_REAL_PASSWORD"
+                    },
+                    "proxy": {
+                      "protocol": "socks5",
+                      "host": "proxy.example.com",
+                      "port": 1080,
+                      "username": "REPLACE",
+                      "password": "REPLACE"
+                    }
                   }
                 },
                 "reconnect": {
-                  "summary": "Re-authenticate an existing account in place (account_id in the body)",
+                  "summary": "Re-authenticate an existing account in place (account_id in the body); keeps its configured location",
                   "value": {
                     "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                     "auth_method": "credentials",
@@ -67707,6 +68453,49 @@
                       "type": "boolean",
                       "description": "Present and true only when this connect reactivated an account you had previously disconnected, instead of opening a brand-new one. Absent on a normal connect. The account keeps its original id, and its status reflects its real observed state, which may need a reconnect."
                     },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country.",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        },
+                        "previous_country": {
+                          "type": "string",
+                          "description": "Present only when this connect landed on an account you already had and changed its configured country (to another one, to unknown with ip, or to your own proxy). It names the country before."
+                        }
+                      }
+                    },
                     "safety_warning": {
                       "$ref": "#/components/schemas/SafetyWarning"
                     }
@@ -67721,7 +68510,13 @@
                       "status": "active",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "external_id": "usr_42"
+                      "external_id": "usr_42",
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
                     }
                   },
                   "recovered": {
@@ -67730,7 +68525,13 @@
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
-                      "recovered": true
+                      "recovered": true,
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
                     }
                   }
                 }
@@ -67932,11 +68733,29 @@
             }
           },
           "422": {
-            "description": "The submitted code was incorrect, or the challenge type is unsupported.",
+            "description": "The submitted code was incorrect, or the challenge type is unsupported. CONNECTION_LOCATION_UNAVAILABLE: the connect completed onto an account you already had, and the location you sent could not be applied (no connection free in that country, or it was an ip); the account stays connected, the body carries its actual connection_location, and PATCH /v1/accounts/{account_id} with country moves it.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "locationUnavailable": {
+                    "summary": "Re-attached an account you already had; the location you sent could not be applied",
+                    "value": {
+                      "code": "CONNECTION_LOCATION_UNAVAILABLE",
+                      "message": "This LinkedIn account was already connected, so the location you sent was not applied: it still connects from Netherlands. Change it with PATCH /v1/accounts/acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 and `country`.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": null,
+                      "connection_location": {
+                        "country": "NL",
+                        "current_country": "NL",
+                        "mode": "auto",
+                        "strict": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -68606,6 +69425,49 @@
                       ],
                       "description": "Your own id for this account's end user, as passed on connect. Present on status:\"active\"."
                     },
+                    "connection_location": {
+                      "type": "object",
+                      "description": "Where LinkedIn sees this account connecting from. country: the configured country (ISO 3166-1 alpha-2), the one the account is set to use. current_country: the country of the connection in use right now; it differs from country only after a fallback, which can happen only when strict is false. mode: auto (a managed connection in country) or custom (your own proxy). strict: true when the account never connects from another country, null when unknown. Each field is null until known; an account connected through ip or your own proxy may show null until the next background refresh. Change it with PATCH /v1/accounts/{account_id} (country), or by reconnecting with country. Present on object:\"account\".",
+                      "properties": {
+                        "country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Configured country (ISO 3166-1 alpha-2)."
+                        },
+                        "current_country": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Country of the connection in use right now."
+                        },
+                        "mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "auto",
+                            "custom",
+                            null
+                          ],
+                          "description": "auto: managed connection. custom: your own proxy."
+                        },
+                        "strict": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true: never connects from another country."
+                        },
+                        "previous_country": {
+                          "type": "string",
+                          "description": "Present only when this connect landed on an account you already had and changed its configured country (to another one, to unknown with ip, or to your own proxy). It names the country before."
+                        }
+                      }
+                    },
                     "expires_at": {
                       "type": "string",
                       "description": "ISO-8601 expiry. Present on status:\"pending\" and status:\"checkpoint_required\"."
@@ -68694,7 +69556,13 @@
                       "headline": "Engineer",
                       "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                      "external_id": "usr_42"
+                      "external_id": "usr_42",
+                      "connection_location": {
+                        "country": "DE",
+                        "current_country": "DE",
+                        "mode": "auto",
+                        "strict": true
+                      }
                     }
                   },
                   "chained": {
@@ -68790,11 +69658,29 @@
             }
           },
           "422": {
-            "description": "The pending checkpoint is code-based, not mobile_app_approval, use submit instead.",
+            "description": "The pending checkpoint is code-based, not mobile_app_approval, use submit instead. CONNECTION_LOCATION_UNAVAILABLE: the approval completed onto an account you already had, and the location you sent could not be applied; the account stays connected, the body carries its actual connection_location, and PATCH /v1/accounts/{account_id} with country moves it.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "locationUnavailable": {
+                    "summary": "Re-attached an account you already had; the location you sent could not be applied",
+                    "value": {
+                      "code": "CONNECTION_LOCATION_UNAVAILABLE",
+                      "message": "This LinkedIn account was already connected, so the location you sent was not applied: it still connects from Netherlands. Change it with PATCH /v1/accounts/acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 and `country`.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "retry_hint": null,
+                      "connection_location": {
+                        "country": "NL",
+                        "current_country": "NL",
+                        "mode": "auto",
+                        "strict": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -75615,7 +76501,7 @@
             }
           },
           "502": {
-            "description": "The purchase failed after today's charge was taken; the charge was refunded in full and the seat count was confirmed unchanged, so no seats were added. Safe to retry.",
+            "description": "No seats were added. Branch on retry_likely_to_succeed. true: today's charge was refunded in full and the seat count was confirmed unchanged, so a retry is safe. false: whether today's charge went through could not be confirmed; a retry is a new purchase and could charge twice, so check your invoices first.",
             "content": {
               "application/json": {
                 "schema": {
@@ -75623,12 +76509,21 @@
                 },
                 "examples": {
                   "refunded": {
-                    "summary": "PLATFORM_ERROR",
+                    "summary": "PLATFORM_ERROR (refunded, safe to retry)",
                     "value": {
                       "code": "PLATFORM_ERROR",
                       "message": "The seat purchase could not be completed. No seats were added and the charge was refunded in full. It is safe to retry.",
                       "user_fixable": false,
                       "retry_likely_to_succeed": true
+                    }
+                  },
+                  "unconfirmed": {
+                    "summary": "PLATFORM_ERROR (charge unconfirmed, do not retry blindly)",
+                    "value": {
+                      "code": "PLATFORM_ERROR",
+                      "message": "We could not confirm whether the payment for the added seats went through. No seats were added. Check your invoices before trying again, so you are not charged twice.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
                     }
                   }
                 }

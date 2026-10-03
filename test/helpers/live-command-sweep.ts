@@ -307,6 +307,14 @@ export const BINARY_DOWNLOAD_ALLOWLIST = new Set([
 export const ZERO_REQUEST_ALLOWLIST = new Set([
   "account read",
   "account link +--li-at-stdin",
+  // A new connect names exactly one location (--country/--ip/--proxy-host),
+  // refused before any request; the sweep's bare argv names none. Same rule
+  // for `update --clear-proxy`, which needs --country.
+  "account link read",
+  "account link +--password-stdin",
+  "account link +--allow-country-fallback",
+  "account link +--no-interactive",
+  "account update +--clear-proxy",
   "account connect-session read",
   "account checkpoint read",
   "comment read",

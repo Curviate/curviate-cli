@@ -183,9 +183,10 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * parameters`, which keeps --limit (-1); `recruiter applicants` was briefly
  * miscounted in the same pass on a path-item-level read of the served
  * schema (its operation-level query is real: cursor?, limit?) and correctly
- * keeps both).
+ * keeps both); 1652 after `account update` gained --country (its
+ * --allow-country-fallback is boolean and never counted).
  */
-const ARGUMENT_SURFACE_COUNT = 1651;
+const ARGUMENT_SURFACE_COUNT = 1652;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------
@@ -475,6 +476,8 @@ const WIRE_SHAPE_CASES: WireCase[] = [
       "seat_probe",
       "--auth-method",
       "credentials",
+      "--country",
+      "US",
       "--email",
       "probe@example.com",
       "--password",

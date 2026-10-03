@@ -298,7 +298,7 @@ const NEVER_ENRICHED_ITEM = {
   substrate_created_at: null,
 } satisfies AccountListItem;
 
-const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at", "external_id"];
+const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at", "external_id", "connection_location"];
 // Real set, per the generated type above and the vendored OpenAPI fixture
 // (test/fixtures/openapi.json): username/premium_id/public_identifier/
 // signatures/groups are DEAD — the columns backing them were dropped
@@ -320,7 +320,7 @@ describe("account list — slim/verbose split", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: item has exactly the 8 slim keys, no enrichment fields", async () => {
+  it("slim mode: item has exactly the 9 slim keys, no enrichment fields", async () => {
     const { runAccountList } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountList(client as never, { json: true } as AccountFlags, out);
@@ -384,11 +384,50 @@ describe("account list — slim/verbose split", () => {
   });
 });
 
+describe("account list / get — default (slim) output carries the connection location", () => {
+  const LOCATED = { connection_location: { country: "NL", current_country: "FR", mode: "auto", strict: false } };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("account list prints each account's location by default", async () => {
+    const client = makeClient();
+    (client.accounts.list as Mock).mockResolvedValue({
+      object: "account_list",
+      items: [{ ...ENRICHED_ITEM, ...LOCATED }],
+      cursor: null,
+    });
+    const { runAccountList } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountList(client as never, {} as AccountFlags, out);
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(JSON.parse(written).items[0].connection_location).toEqual(LOCATED.connection_location);
+  });
+
+  it("account get prints the location by default", async () => {
+    const client = makeClient();
+    (client.accounts.get as Mock).mockResolvedValue({
+      ...ENRICHED_ITEM,
+      ...LOCATED,
+      last_checked_at: "2026-06-08T09:00:00Z",
+      quotas: [],
+      account_states: [],
+    });
+    const { runAccountGet } = await import("../../src/commands/account.js");
+    const out = makeOut();
+    await runAccountGet(client as never, { "account-id": "acc_1" } as AccountFlags, out);
+    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+    expect(JSON.parse(written).connection_location).toEqual(LOCATED.connection_location);
+  });
+});
+
 describe("account get — slim/verbose split (first-ever on this command)", () => {
   let client: Client;
 
   const GET_FIXTURE = {
     ...ENRICHED_ITEM,
+    // Every served account carries it; spread untyped so the fixture compiles
+    // against an SDK pin whose generated type predates the field.
+    ...({ connection_location: { country: "DE", current_country: "DE", mode: "auto", strict: true } } as object),
     last_checked_at: "2026-06-08T09:00:00Z",
     quotas: [],
     account_states: [],
@@ -402,7 +441,7 @@ describe("account get — slim/verbose split (first-ever on this command)", () =
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("slim mode: exactly the 11 slim keys, seat_id present, no enrichment fields", async () => {
+  it("slim mode: exactly the 12 slim keys, seat_id present, no enrichment fields", async () => {
     const { runAccountGet } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
@@ -512,6 +551,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "credentials",
+      country: "US",
       email: "user@example.com",
       password: "secret",
       json: true,
@@ -532,6 +572,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "cookie",
+      country: "US",
       "li-at": "li_at_value",
       "user-agent": "Mozilla/5.0",
       json: true,
@@ -573,6 +614,7 @@ describe("account link", () => {
       await runAccountLink(client as never, {
         "seat-id": "seat_1",
         "auth-method": "cookie",
+        country: "US",
         "li-at": "li_at_value",
       } as AccountFlags, out);
       expect.fail("should have exited");
@@ -598,7 +640,7 @@ describe("account link", () => {
     try {
       await runAccountLink(
         client as never,
-        { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1" } as AccountFlags,
+        { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", country: "US" } as AccountFlags,
         out,
       );
       expect.fail("should have exited");
@@ -633,6 +675,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "cookie",
+      country: "US",
       "li-at": "li_at_value",
       "user-agent": "Mozilla/5.0",
       preview: true,
@@ -652,6 +695,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "credentials",
+      country: "US",
       email: "user@example.com",
       password: "secret",
       "account-id": "acc_x",
@@ -669,6 +713,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "credentials",
+      country: "US",
       email: "user@example.com",
       password: "secret",
       json: true,
@@ -684,6 +729,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "credentials",
+      country: "US",
       email: "a@b.c",
       password: "secret",
       "account-id": "acc_x",
@@ -702,6 +748,7 @@ describe("account link", () => {
     await runAccountLink(client as never, {
       "seat-id": "seat_1",
       "auth-method": "credentials",
+      country: "US",
       email: "a@b.c",
       password: "secret",
       preview: true,
@@ -724,7 +771,7 @@ describe("account link", () => {
 describe("account link: sole free seat resolution", () => {
   let client: Client;
 
-  const COOKIE = { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", json: true } as AccountFlags;
+  const COOKIE = { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", country: "US", json: true } as AccountFlags;
 
   beforeEach(() => {
     client = makeClient();
@@ -899,16 +946,17 @@ describe("account update", () => {
     );
   });
 
-  it("--clear-proxy sends proxy:null", async () => {
+  it("--clear-proxy --country sends proxy:null with the country", async () => {
     const { runAccountUpdate } = await import("../../src/commands/account.js");
     const out = makeOut();
     await runAccountUpdate(client as never, {
       "account-id": "acc_1",
       "clear-proxy": true,
+      country: "de",
       json: true,
     } as AccountFlags, out);
 
-    expect(client.accounts.update).toHaveBeenCalledWith("acc_1", { proxy: null });
+    expect(client.accounts.update).toHaveBeenCalledWith("acc_1", { proxy: null, country: "DE" });
   });
 
   it("rejects a non-object --metadata with exit 2 before calling update", async () => {

@@ -37,7 +37,7 @@ describe("account credentials — single cue via the real production default cha
 
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
       out,
       { isTTY: true }, // no readSingleLine override -- exercises resolveCredentialIO's real default
     );

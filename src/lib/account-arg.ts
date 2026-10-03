@@ -261,7 +261,7 @@ async function soleConnectedAccount(
   const { accounts } = listed;
   if (accounts.length === 0) {
     out.stderr.write(
-      "error: no LinkedIn account is connected to this workspace yet. Connect one with `curviate account link`, then retry.\n",
+      "error: no LinkedIn account is connected to this workspace yet. Connect one with `curviate account link --auth-method <m> --country <CC>`, then retry.\n",
     );
     process.exit(2);
   }

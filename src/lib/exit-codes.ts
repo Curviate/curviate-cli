@@ -122,6 +122,10 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // it is user_fixable, and it is never retryable AS SENT. Re-send with a
   // chosen id, which is the exit-2 contract exactly.
   FILTER_CANDIDATES_REQUIRED: 2,
+  // 2: a connect named no location (or a PATCH cleared your own proxy without
+  // a country). `account link` refuses this itself before any request with the
+  // same exit, so the API's 400 and the CLI's own guard read alike.
+  CONNECTION_LOCATION_REQUIRED: 2,
 
   // Not found (4)
   RESOURCE_NOT_FOUND: 4,
@@ -155,6 +159,13 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   LINKEDIN_OPERATION_NOT_SUPPORTED: 8,
   CONNECTION_REQUEST_CONFLICT: 8,
   REAUTH_REQUIRED: 8,
+  // Connection location. `CONNECTION_LOCATION_UNAVAILABLE` -> 8: a 422 saying
+  // no connection is free in that country right now, or a change landed
+  // elsewhere (the envelope then carries `connectionLocation`, where the
+  // account connects from now). The request was well formed; the connection
+  // cannot land there, which is account/connection state. user_fixable, not
+  // retryable as sent: pick a nearby country or allow fallback.
+  CONNECTION_LOCATION_UNAVAILABLE: 8,
 
   // Checkpoint flow (9)
   CHECKPOINT_NOT_FOUND: 9,

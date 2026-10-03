@@ -519,6 +519,14 @@ export function renderError(
         msg += `\nPaused budget row: ${safety.budgetRow}${wait} (other rows on this account still work)`;
       }
     }
+    // A location change that landed elsewhere: say where the account is now,
+    // which can mean your own proxy is already gone.
+    const loc = errJson.connectionLocation;
+    if (loc) {
+      const mode = loc.mode === "custom" ? "your own proxy" : loc.mode === "auto" ? "managed" : "mode unknown";
+      // current_country is where it is right now; country is only what it is set to.
+      msg += `\nConnects from now: ${loc.current_country ?? loc.country ?? "unknown"} (${mode}${loc.strict ? ", strict" : ""})`;
+    }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
     }
