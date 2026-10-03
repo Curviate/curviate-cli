@@ -133,7 +133,7 @@ function makeLinkArgs() {
   // the checkpoint-code prompt in these tests, not the password prompt.
   return {
     "seat-id": "seat_1",
-    "auth-method": "credentials",
+    "auth-method": "credentials", country: "US",
     email: "otp@example.com",
     password: "test-password",
     json: true,

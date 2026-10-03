@@ -8,6 +8,34 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Breaking
+
+- **`account link` requires a connection location on a new connect.** Pass
+  exactly one of `--country` (a two-letter ISO code, e.g. `--country US`, the
+  country the account's owner normally signs in from), `--ip` (a public IPv4)
+  or your own proxy (`--proxy-host`). Without one, or with two, the command
+  exits 2 with a guiding message before any request, seats read or prompt;
+  `--preview` renders nothing then. The API refuses such a connect anyway. A
+  reconnect (`--account-id`) may omit it to keep the account's location.
+  `--country` is case-insensitive and sent upper-case.
+- **`account update --clear-proxy` requires `--country`.** Clearing your own
+  proxy now names the managed location to return to; alone it exits 2 before
+  the request.
+- **`account update` prints the updated account** (the API now returns it),
+  with `connection_location` re-read after a location change.
+
+### Added
+
+- **`--allow-country-fallback`** on `account link` (with `--country` or
+  `--ip`, including a reconnect) and `account update`: allow a connection from
+  another country when none is free in the chosen one. Without it a location
+  is strict. On `update`, alone, it changes the strictness of the configured
+  country; `--no-allow-country-fallback` makes it strict.
+- **`account update --country`** moves an account's connection location.
+- **`account list` and `account get`** show each account's
+  `connection_location` (country, current country, mode, strict) by default.
+- `--proxy-protocol` accepts `socks4`.
+
 ### Changed
 
 - **`search posts` and `company posts` slim output carries more.** Each item now

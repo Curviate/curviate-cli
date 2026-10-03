@@ -611,7 +611,8 @@ export function slimSearchPosts(data: unknown): Record<string, unknown> {
  * Project a single `account list` item to the slim field set.
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
- * seat_id, connected_at, external_id. The six cached account-enrichment fields (username,
+ * seat_id, connected_at, external_id, connection_location (where LinkedIn
+ * sees the account connecting from). The six cached account-enrichment fields (username,
  * premium_id, public_identifier, substrate_created_at, signatures, groups)
  * are verbose-only, excluded here by construction (fresh object literal,
  * no spread of the source item).
@@ -626,6 +627,7 @@ export function slimAccountListItem(item: Record<string, unknown>): Record<strin
     seat_id: item["seat_id"] ?? null,
     connected_at: item["connected_at"] ?? null,
     external_id: item["external_id"] ?? null,
+    connection_location: item["connection_location"] ?? null,
   };
 }
 
@@ -650,7 +652,8 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  * on this command (previously slim and verbose were byte-identical).
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
- * seat_id, connected_at, last_checked_at, quotas, account_states. `seat_id`
+ * seat_id, connected_at, external_id, connection_location, last_checked_at,
+ * quotas, account_states. `seat_id`
  * is a slim field here (unlike the six enrichment fields), core
  * identity/troubleshooting data, not part of the enrichment cache.
  *
@@ -685,6 +688,7 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     seat_id: d["seat_id"] ?? null,
     connected_at: d["connected_at"] ?? null,
     external_id: d["external_id"] ?? null,
+    connection_location: d["connection_location"] ?? null,
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
     account_states: d["account_states"] ?? [],

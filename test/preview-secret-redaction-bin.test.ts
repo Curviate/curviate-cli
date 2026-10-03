@@ -41,7 +41,7 @@ const CASES: Record<string, Array<{ argv: string[]; shows: string[] }>> = {
       shows: ["seat_1", "e@x.test", "proxy.test"],
     },
     {
-      argv: ["account", "link", "--seat-id", "seat_1", "--auth-method", "cookie", "--li-at", MARK, "--li-a", MARK, "--user-agent", "UA/1"],
+      argv: ["account", "link", "--seat-id", "seat_1", "--auth-method", "cookie", "--country", "US", "--li-at", MARK, "--li-a", MARK, "--user-agent", "UA/1"],
       shows: ["seat_1", "UA/1"],
     },
   ],

@@ -58,7 +58,7 @@ describe("account credentials — env-var precedence", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", password: "FROM_FLAG", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", password: "FROM_FLAG", json: true } as never,
       out,
     );
     expect(client.auth.intent).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe("account credentials — env-var precedence", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", json: true } as never,
       out,
     );
     expect(client.auth.intent).toHaveBeenCalledWith(
@@ -90,7 +90,7 @@ describe("account credentials — env-var precedence", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", password: "", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", password: "", json: true } as never,
       out,
     );
     expect(client.auth.intent).toHaveBeenCalledWith(
@@ -106,7 +106,7 @@ describe("account credentials — env-var precedence", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at": "AT", "li-a": "FLAG_LIA", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at": "AT", "li-a": "FLAG_LIA", json: true } as never,
       out,
     );
     expect(client.auth.intent).toHaveBeenCalledWith(
@@ -121,7 +121,7 @@ describe("account credentials — env-var precedence", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at": "AT", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at": "AT", json: true } as never,
       out,
     );
     const body = (client.auth.intent as Mock).mock.calls[0]?.[0] as { cookie: Record<string, unknown> };
@@ -171,7 +171,7 @@ describe("account credentials — --password-stdin / --li-at-stdin", () => {
     const client = makeClient();
     (client.auth.intent as Mock).mockResolvedValue({ object: "account" });
     const out = makeOut();
-    const flags = { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true };
+    const flags = { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true };
     await runAccountLink(client as never, flags as never, out, { readStdin: async () => "PWD_S\n" });
     expect(client.auth.intent).toHaveBeenCalledWith(
       expect.objectContaining({ credentials: { email: "a@b.c", password: "PWD_S" } }),
@@ -187,7 +187,7 @@ describe("account credentials — --password-stdin / --li-at-stdin", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
       out,
       { readStdin: async () => "PWD_S\r\n" },
     );
@@ -203,7 +203,7 @@ describe("account credentials — --password-stdin / --li-at-stdin", () => {
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
       out,
       { readStdin: async () => "LIAT_S\n" },
     );
@@ -217,10 +217,10 @@ describe("account credentials — --password-stdin / --li-at-stdin", () => {
 
 describe("account credentials — conflict matrix (exit 2, zero SDK calls)", () => {
   const combos: Array<{ name: string; flags: Record<string, unknown> }> = [
-    { name: "--password + --password-stdin", flags: { password: "x", "password-stdin": true, "auth-method": "credentials", email: "a@b.c" } },
+    { name: "--password + --password-stdin", flags: { password: "x", "password-stdin": true, "auth-method": "credentials", country: "US", email: "a@b.c" } },
     { name: "--li-at + --li-at-stdin", flags: { "li-at": "x", "li-at-stdin": true, "auth-method": "cookie" } },
-    { name: "--password-stdin + --li-at-stdin", flags: { "password-stdin": true, "li-at-stdin": true, "auth-method": "credentials", email: "a@b.c" } },
-    { name: "--li-at-stdin with --auth-method credentials", flags: { "li-at-stdin": true, "auth-method": "credentials", email: "a@b.c" } },
+    { name: "--password-stdin + --li-at-stdin", flags: { "password-stdin": true, "li-at-stdin": true, "auth-method": "credentials", country: "US", email: "a@b.c" } },
+    { name: "--li-at-stdin with --auth-method credentials", flags: { "li-at-stdin": true, "auth-method": "credentials", country: "US", email: "a@b.c" } },
     { name: "--password-stdin with --auth-method cookie", flags: { "password-stdin": true, "auth-method": "cookie" } },
   ];
 
@@ -254,7 +254,7 @@ describe("account credentials — masked TTY prompt + non-TTY fail-fast", () => 
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", json: true } as never,
       out,
       { isTTY: true, readline: async () => "PROMPTED" },
     );
@@ -275,7 +275,7 @@ describe("account credentials — masked TTY prompt + non-TTY fail-fast", () => 
       await expect(
         runAccountLink(
           client as never,
-          { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", json: true } as never,
+          { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", json: true } as never,
           out,
           { isTTY: false, readStdin },
         ),
@@ -298,7 +298,7 @@ describe("account credentials — masked TTY prompt + non-TTY fail-fast", () => 
       await expect(
         runAccountLink(
           client as never,
-          { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", json: true } as never,
+          { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", json: true } as never,
           out,
           { isTTY: true },
         ),
@@ -319,7 +319,7 @@ describe("account credentials — masked TTY prompt + non-TTY fail-fast", () => 
       await expect(
         runAccountLink(
           client as never,
-          { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", json: true } as never,
+          { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", json: true } as never,
           out,
           { isTTY: false },
         ),
@@ -345,7 +345,7 @@ describe("account credentials — --preview skips prompt/fail-fast entirely", ()
     try {
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", preview: true } as never,
+        { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", preview: true } as never,
         out,
         { isTTY: false },
       );
@@ -367,7 +367,7 @@ describe("account credentials — --preview skips prompt/fail-fast entirely", ()
     try {
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "cookie", preview: true } as never,
+        { "seat-id": "seat_1", "auth-method": "cookie", country: "US", preview: true } as never,
         out,
         { isTTY: false },
       );
@@ -437,7 +437,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
     const readSingleLine = vi.fn(async () => "TTY_PWD");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
       out,
       { isTTY: true, readSingleLine },
     );
@@ -458,7 +458,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
     const readSingleLine = vi.fn(async () => "TTY_LIAT");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
       out,
       { isTTY: true, readSingleLine },
     );
@@ -477,7 +477,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
     const readSingleLine = vi.fn(async () => "SHOULD_NOT_BE_CALLED");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
       out,
       { readStdin: async () => "PIPED_PW\n", readSingleLine }, // isTTY omitted -> defaults non-TTY
     );
@@ -499,7 +499,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
       const readStdin = vi.fn(async () => "SHOULD_NOT_BE_CALLED");
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", json: true } as never,
+        { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", json: true } as never,
         out,
         { isTTY: true, readSingleLine, readline, readStdin },
       );
@@ -526,7 +526,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
       const readline = vi.fn(async () => "PROMPTED_AFTER_EMPTY_LINE");
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+        { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
         out,
         { isTTY: true, readSingleLine, readline },
       );
@@ -547,7 +547,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
         await expect(
           runAccountLink(
             client as never,
-            { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
+            { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at-stdin": true, json: true } as never,
             out,
             { isTTY: true, readSingleLine },
           ),
@@ -571,7 +571,7 @@ describe("account credentials — TTY-mode stdin (paste + Enter, no EOF wait, no
       const readline = vi.fn(async () => "SHOULD_NOT_BE_CALLED");
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+        { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
         out,
         { isTTY: true, readSingleLine, readline },
       );
@@ -601,7 +601,7 @@ describe("account credentials — tier-1b TTY stdin read is gated by preview onl
     const readSingleLine = vi.fn(async () => "TTY_PWD_NO_EMAIL");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", "password-stdin": true, json: true } as never,
       out,
       { isTTY: true, readSingleLine },
     );
@@ -632,7 +632,7 @@ describe("account credentials — --preview suppresses the TTY-mode stdin read e
     const readSingleLine = vi.fn(async () => "SHOULD_NOT_BE_CALLED");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, preview: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, preview: true } as never,
       out,
       { isTTY: true, readSingleLine },
     );
@@ -650,7 +650,7 @@ describe("account credentials — --preview suppresses the TTY-mode stdin read e
     const readSingleLine = vi.fn(async () => "SHOULD_NOT_BE_CALLED");
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at-stdin": true, preview: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at-stdin": true, preview: true } as never,
       out,
       { isTTY: true, readSingleLine },
     );
@@ -665,7 +665,7 @@ describe("account credentials — --preview suppresses the TTY-mode stdin read e
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, preview: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, preview: true } as never,
       out,
       { isTTY: false, readStdin: async () => "PIPED_PREVIEW_PW\n" },
     );
@@ -690,7 +690,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", password: SENTINEL, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", password: SENTINEL, json: true } as never,
       out,
     );
     const combined =
@@ -709,7 +709,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", "password-stdin": true, json: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", "password-stdin": true, json: true } as never,
       out,
       { readStdin: async () => SENTINEL },
     );
@@ -728,7 +728,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
       const out = makeOut();
       await runAccountLink(
         client as never,
-        { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", json: true } as never,
+        { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", json: true } as never,
         out,
       );
       const combined =
@@ -746,7 +746,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", password: SENTINEL, preview: true } as never,
+      { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", password: SENTINEL, preview: true } as never,
       out,
     );
     const written = out.stdout.write.mock.calls.map((c) => c[0] as string).join("");
@@ -760,7 +760,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
     const out = makeOut();
     await runAccountLink(
       client as never,
-      { "seat-id": "seat_1", "auth-method": "cookie", "user-agent": "UA", "li-at": SENTINEL, "li-a": `${SENTINEL}_A`, preview: true } as never,
+      { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "user-agent": "UA", "li-at": SENTINEL, "li-a": `${SENTINEL}_A`, preview: true } as never,
       out,
     );
     const written = out.stdout.write.mock.calls.map((c) => c[0] as string).join("");
@@ -786,7 +786,7 @@ describe("account credentials — sentinel never leaks to stdout/stderr", () => 
     const { runAccountLink } = await import("../../src/commands/account.js");
     const client = makeClient();
     (client.auth.intent as Mock).mockResolvedValue({ object: "account" });
-    const flags = { "seat-id": "seat_1", "auth-method": "credentials", email: "a@b.c", password: SENTINEL, json: true };
+    const flags = { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "a@b.c", password: SENTINEL, json: true };
 
     await runAccountLink(client as never, { ...flags, preview: true } as never, makeOut());
     const realOut = makeOut();

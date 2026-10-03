@@ -114,6 +114,8 @@ const LINK = [
   "li_at_value",
   "--user-agent",
   "UA/1",
+  "--country",
+  "US",
   "--json",
 ];
 

@@ -4358,22 +4358,27 @@
         {
           "name": "country",
           "type": "string",
-          "description": "Proxy location hint (ISO 3166-1 alpha-2)."
+          "description": "Where LinkedIn sees this account connecting from: a two-letter ISO 3166-1 country code (e.g. US, DE; case-insensitive), the country its owner normally signs in from. A new connect needs exactly one of --country, --ip or --proxy-host. Strict: the connect fails rather than use another country, unless --allow-country-fallback."
         },
         {
           "name": "ip",
           "type": "string",
-          "description": "IP to infer the managed proxy location."
+          "description": "A public IPv4 address whose country becomes the connection location (strict, like --country). An alternative to --country."
+        },
+        {
+          "name": "allow-country-fallback",
+          "type": "boolean",
+          "description": "With --country or --ip: allow a connection from another country when none is free in the chosen one. Without it the connect is strict and fails instead."
         },
         {
           "name": "proxy-protocol",
           "type": "string",
-          "description": "Proxy protocol: http | https | socks5."
+          "description": "Proxy protocol: http | https | socks5 | socks4."
         },
         {
           "name": "proxy-host",
           "type": "string",
-          "description": "Proxy host or IP."
+          "description": "Your own proxy's host or IP. Your proxy decides where LinkedIn sees the account connecting from, so --country, --ip and --allow-country-fallback are not accepted with it."
         },
         {
           "name": "proxy-port",
@@ -4445,10 +4450,11 @@
         "beta"
       ],
       "examples": [
-        "curviate account link --auth-method credentials --email jane@example.com --password-stdin",
+        "curviate account link --auth-method credentials --email jane@example.com --password-stdin --country US",
         "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID"
       ],
       "requires": [
+        "Exactly one of --country, --ip or --proxy-host on a new connect; a reconnect (--account-id) may omit it to keep the account's location.",
         "--user-agent with --auth-method cookie.",
         "--seat-id with --preview or --account-id, and when zero or several seats are free.",
         "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie."
@@ -4515,7 +4521,7 @@
         "account",
         "update"
       ],
-      "description": "Update an account's metadata and/or custom-proxy configuration.",
+      "description": "Update an account's metadata, connection location or own proxy. Prints the updated account, with connection_location re-read after a location change.",
       "usageOnly": false,
       "args": [
         {
@@ -4529,20 +4535,30 @@
           "description": "Custom metadata as a JSON object (flat string->string map). Replaces the store wholesale. Example: '{\"team\":\"growth\"}'."
         },
         {
+          "name": "country",
+          "type": "string",
+          "description": "Move this account's connection location to this two-letter ISO 3166-1 country code (e.g. US, DE). LinkedIn sees a new IP there and may ask the owner to verify, so change it only when the current location is wrong. Strict unless --allow-country-fallback. On an account using your own proxy, pass --clear-proxy with it."
+        },
+        {
+          "name": "allow-country-fallback",
+          "type": "boolean",
+          "description": "Allow a connection from another country when none is free in the chosen one. Alone, it changes the strictness of the configured country; --no-allow-country-fallback makes it strict."
+        },
+        {
           "name": "clear-proxy",
           "type": "boolean",
-          "description": "Clear the custom proxy (revert to automatic proxy protection). Mutually exclusive with --proxy-host.",
+          "description": "Stop using your own proxy and return to a managed location. Requires --country. Mutually exclusive with --proxy-host.",
           "default": false
         },
         {
           "name": "proxy-protocol",
           "type": "string",
-          "description": "Proxy protocol: http | https | socks5."
+          "description": "Proxy protocol: http | https | socks5 | socks4."
         },
         {
           "name": "proxy-host",
           "type": "string",
-          "description": "Proxy host or IP."
+          "description": "Your own proxy's host or IP. Not accepted with --country."
         },
         {
           "name": "proxy-port",
@@ -4574,7 +4590,8 @@
       ],
       "examples": [
         "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
-        "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy"
+        "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
+        "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy --country DE"
       ],
       "requires": []
     },
