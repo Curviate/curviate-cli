@@ -701,6 +701,11 @@ describe("account checkpoint poll --wait — adaptive-cadence loop", () => {
       expect.fail("should have exited");
     } catch (e) {
       expect((e as Error).message).toContain("process.exit(9)");
+      // Starting over is a new connect, which names a location; the removed
+      // `account reconnect` is not offered.
+      const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
+      expect(stderrText).toContain("curviate account link --auth-method <m> --country <CC>");
+      expect(stderrText).not.toContain("account reconnect");
     } finally {
       exitSpy.mockRestore();
     }

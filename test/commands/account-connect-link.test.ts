@@ -271,7 +271,7 @@ describe("account connect-session poll --wait — adaptive-cadence loop", () => 
     // command — `account connect-link` was removed in 0.15.0 and no longer
     // exists.
     const stderrOut = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(stderrOut).toContain("curviate account link");
+    expect(stderrOut).toContain("curviate account link --auth-method <m> --country <CC>");
     expect(stderrOut).not.toContain("account connect-link");
   });
 

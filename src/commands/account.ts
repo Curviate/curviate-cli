@@ -1185,7 +1185,7 @@ export async function runAccountConnectSessionPoll(
   if (outcome.kind === "terminal_failure") {
     renderSuccess(outcome.result, outOpts, out);
     out.stderr.write(
-      `This connect session has ${outcome.status}. Start a new connect: curviate account link.\n`,
+      `This connect session has ${outcome.status}. Start a new connect: curviate account link --auth-method <m> --country <CC>.\n`,
     );
     process.exit(9);
     return;
@@ -1588,7 +1588,7 @@ export async function runAccountCheckpointPoll(
   }
   if (outcome.kind === "terminal_failure") {
     renderSuccess(outcome.result, outOpts, out);
-    out.stderr.write(`This checkpoint has ${outcome.status}. Start over: curviate account link or curviate account reconnect.\n`);
+    out.stderr.write(`This checkpoint has ${outcome.status}. Start over: curviate account link --auth-method <m> --country <CC>, or add --account-id <acc_...> to reconnect an existing account.\n`);
     process.exit(9);
     return;
   }
