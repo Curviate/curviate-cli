@@ -30,6 +30,7 @@ let server: Server;
 let baseUrl: string;
 let recorded: Recorded[] = [];
 let intentReply: { status: number; body: unknown };
+let patchReply: { status: number; body: unknown } | undefined;
 const DEFAULT_INTENT = {
   status: 201,
   body: { object: "account", account_id: "acc_new", status: "active", connection_location: RETURNED_LOCATION },
@@ -45,6 +46,11 @@ beforeAll(async () => {
       const url = req.url ?? "";
       recorded.push({ method: req.method ?? "", url, body });
       res.setHeader("content-type", "application/json");
+      if (req.method === "PATCH" && patchReply) {
+        res.writeHead(patchReply.status);
+        res.end(JSON.stringify(patchReply.body));
+        return;
+      }
       if (req.method === "PATCH") {
         res.writeHead(200);
         // The API's re-read: fields the request never carried (mode, strict,
@@ -66,6 +72,7 @@ afterAll(async () => {
 
 afterEach(() => {
   intentReply = DEFAULT_INTENT;
+  patchReply = undefined;
 });
 intentReply = DEFAULT_INTENT;
 
@@ -302,5 +309,44 @@ describe("account update: --country moves the account and prints where it connec
     const r = await run(["account", "update", "acc_1", "--country", "Germany"]);
     expect(r.status).toBe(2);
     expect(r.requests).toEqual([]);
+  });
+});
+
+describe("location refusals from the API: exit codes and the actual location", () => {
+  const ACTUAL = { country: "DE", current_country: "DE", mode: "auto", strict: true };
+  const UNAVAILABLE = {
+    status: 422,
+    body: {
+      code: "CONNECTION_LOCATION_UNAVAILABLE",
+      message: "No connection is available in United States right now. Try a nearby country, or allow fallback.",
+      user_fixable: true,
+      retry_likely_to_succeed: false,
+      connection_location: ACTUAL,
+    },
+  };
+
+  it("CONNECTION_LOCATION_UNAVAILABLE exits 8; --json carries connectionLocation", async () => {
+    patchReply = UNAVAILABLE;
+    const r = await run(["account", "update", "acc_1", "--country", "US", "--json"]);
+    expect(r.status).toBe(8);
+    const env = JSON.parse(r.stdout) as { error: { code: string; connectionLocation?: unknown } };
+    expect(env.error.code).toBe("CONNECTION_LOCATION_UNAVAILABLE");
+    expect(env.error.connectionLocation).toEqual(ACTUAL);
+  });
+
+  it("CONNECTION_LOCATION_REQUIRED from the API (a reconnect whose location is unknown) exits 2", async () => {
+    intentReply = {
+      status: 400,
+      body: {
+        code: "CONNECTION_LOCATION_REQUIRED",
+        message: "Choose where this account connects from: pass `country` (ISO code, e.g. `US`), `ip`, or your own `proxy`.",
+        user_fixable: true,
+        retry_likely_to_succeed: false,
+      },
+    };
+    const r = await run(RECONNECT);
+    expect(r.status).toBe(2);
+    expect(intentBody(r)).not.toHaveProperty("country");
+    expect(r.stdout).toContain("CONNECTION_LOCATION_REQUIRED");
   });
 });

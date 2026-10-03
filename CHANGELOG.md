@@ -8,6 +8,10 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-10-03
+
+Requires `@curviate/sdk` 0.41.0.
+
 ### Breaking
 
 - **`account link` requires a connection location on a new connect.** Pass
@@ -26,6 +30,13 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Added
 
+- **Pinned to `@curviate/sdk` 0.41.0**, which carries the connection-location
+  contract. `CONNECTION_LOCATION_REQUIRED` exits 2 (the same exit as the
+  command's own pre-request refusal) and `CONNECTION_LOCATION_UNAVAILABLE`
+  exits 8; before this release both arrived as `INTERNAL` and exited 1. On the
+  latter, the `--json` error envelope carries `connectionLocation` and human
+  mode prints "Connects from now: ..." when the API re-read where the account
+  connects from after a change.
 - **`--allow-country-fallback`** on `account link` (with `--country` or
   `--ip`, including a reconnect) and `account update`: allow a connection from
   another country when none is free in the chosen one. Without it a location

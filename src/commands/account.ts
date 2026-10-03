@@ -61,14 +61,10 @@ import {
   CHECKPOINT_POLL_FIRST_DELAY_MS,
   nextCheckpointPollDelayMs,
 } from "../lib/checkpoint-cadence.js";
-import type { Curviate, CurviateError, SeatList, paths } from "@curviate/sdk";
-
-/**
- * `POST /v1/auth/intent` body, a narrow cast target only (see
- * `runAccountLink`'s comment): the body is assembled dynamically from
- * credential-resolution helpers, not a single typed literal.
- */
-type AuthIntentBody = paths["/v1/auth/intent"]["post"]["requestBody"]["content"]["application/json"];
+// `AuthIntentBody` is a narrow cast target only (see `runAccountLink`'s
+// comment): the body is assembled dynamically from credential-resolution
+// helpers, not a single typed literal.
+import type { AuthIntentBody, Curviate, CurviateError, SeatList } from "@curviate/sdk";
 
 // ps/shell-history warning template (mirrors the --api-key warning in global-flags.ts).
 const PW_WARNING = (stdinFlag: string, envVar: string) =>
