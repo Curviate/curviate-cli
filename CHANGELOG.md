@@ -18,6 +18,13 @@ Requires `@curviate/sdk` 0.41.0.
   (for instance `--account-id "$ACC"` with `ACC` unset) used to open a NEW connect,
   and `--account-id "  "` sent a reconnect with a blank id. Both now exit 2 before
   any request, and the message says to pass an `acc_...` id or omit the flag.
+- **A blank `<account_id>` positional is refused.** `account get|update|disconnect`
+  and `account checkpoint solve|poll|request` with an empty or whitespace-only id
+  used to send it to the server (`/v1/accounts/%20%20`, or `account_id: "  "` in a
+  body). They now exit 2 before any request.
+- **`webhook update --account-ids ""` is refused.** It was silently dropped, so the
+  update went through without the change. An empty or blank list now exits 2 before
+  any request, as `webhook create` already did.
 
 ## [0.46.0] - 2026-10-03
 
