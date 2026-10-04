@@ -293,8 +293,15 @@ export async function runWebhookUpdate(
   if (flags.data) {
     body["data"] = flags.data.split(",").map((s) => s.trim()).filter(Boolean);
   }
-  if (flags["account-ids"]) {
-    body["account_ids"] = flags["account-ids"].split(",").map((s) => s.trim()).filter(Boolean);
+  // Same rule as create: an empty or blank list is a value, not an omission,
+  // and there is no "clear" meaning (create refuses it too). Refused, nothing sent.
+  if (flags["account-ids"] !== undefined) {
+    const accountIds = flags["account-ids"].split(",").map((s) => s.trim()).filter(Boolean);
+    if (accountIds.length === 0) {
+      out.stderr.write("error: --account-ids was given an empty value. Pass acc_... ids, or omit the flag to leave the targets unchanged.\n");
+      process.exit(2);
+    }
+    body["account_ids"] = accountIds;
   }
 
   const outOpts = resolveOutputOpts(flags);

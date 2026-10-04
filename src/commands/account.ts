@@ -224,6 +224,23 @@ export async function runAccountList(
   }
 }
 
+/**
+ * The one door every `<account_id>` positional goes through. A missing, empty
+ * or blank id is refused before any request: it would otherwise reach the
+ * server as `/v1/accounts/%20%20` or as `account_id: "  "` in a body.
+ */
+function requireAccountId(flags: AccountFlags, out: OutputStreams): string {
+  const id = flags["account-id"];
+  if (id === undefined || id.trim() === "") {
+    out.stderr.write(
+      "error: account_id is required and was missing or blank. Pass an acc_... id (`curviate account list`; " +
+        "for a checkpoint, the provisional account_id from the 202 response).\n",
+    );
+    process.exit(2);
+  }
+  return id;
+}
+
 /** Run `account get <account_id>`. account_id passes verbatim. */
 export async function runAccountGet(
   client: Curviate,
@@ -232,7 +249,7 @@ export async function runAccountGet(
 ): Promise<void> {
   rejectAllOnNonPaginated(flags.all, out);
 
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   try {
@@ -922,6 +939,17 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  // An empty or blank --account-id is a value, not an omission: `--account-id
+  // "$ACC"` with ACC unset would otherwise read as "no account" and open a NEW
+  // connect (or send a reconnect for a blank id). Same rule as --seat-id below.
+  if (flags["account-id"] !== undefined && flags["account-id"].trim() === "") {
+    out.stderr.write(
+      "error: --account-id was given an empty value. Pass the acc_... id of the account to reconnect " +
+        "(`curviate account list`), or omit the flag entirely to connect a new account.\n",
+    );
+    process.exit(2);
+  }
+
   checkCredentialConflicts(flags, out);
 
   // Cookie auth requires a User-Agent (the session cookie must be paired with
@@ -1211,7 +1239,7 @@ export async function runAccountUpdate(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   const body: Record<string, unknown> = {};
 
   if (flags.metadata !== undefined) {
@@ -1292,7 +1320,7 @@ export async function runAccountDisconnect(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
@@ -1324,16 +1352,12 @@ export async function runAccountCheckpointSolve(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  if (!flags["account-id"]) {
-    out.stderr.write("error: account_id is required (the provisional account_id from the 202 response).\n");
-    process.exit(2);
-  }
   if (!flags.code) {
     out.stderr.write("error: --code is required (the OTP / 2FA code).\n");
     process.exit(2);
   }
 
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   // flags.code is narrowed to `string` by the `!flags.code` exit(2) above
   // (process.exit returns `never`), so this literal structurally satisfies
   // AuthSolveCheckpointBody without a cast.
@@ -1392,12 +1416,8 @@ export async function runAccountCheckpointRequest(
   flags: AccountFlags,
   out: OutputStreams,
 ): Promise<void> {
-  if (!flags["account-id"]) {
-    out.stderr.write("error: account_id is required (the provisional account_id from the 202 response).\n");
-    process.exit(2);
-  }
 
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   // `!== undefined`: an empty --challenge is sent and refused by the API by
@@ -1514,12 +1534,8 @@ export async function runAccountCheckpointPoll(
   out: OutputStreams,
   io: CredentialIO = {},
 ): Promise<void> {
-  if (!flags["account-id"]) {
-    out.stderr.write("error: account_id is required (the provisional account_id from the 202 response).\n");
-    process.exit(2);
-  }
 
-  const accountId = flags["account-id"] ?? "";
+  const accountId = requireAccountId(flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
