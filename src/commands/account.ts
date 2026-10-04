@@ -922,6 +922,17 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  // An empty or blank --account-id is a value, not an omission: `--account-id
+  // "$ACC"` with ACC unset would otherwise read as "no account" and open a NEW
+  // connect (or send a reconnect for a blank id). Same rule as --seat-id below.
+  if (flags["account-id"] !== undefined && flags["account-id"].trim() === "") {
+    out.stderr.write(
+      "error: --account-id was given an empty value. Pass the acc_... id of the account to reconnect " +
+        "(`curviate account list`), or omit the flag entirely to connect a new account.\n",
+    );
+    process.exit(2);
+  }
+
   checkCredentialConflicts(flags, out);
 
   // Cookie auth requires a User-Agent (the session cookie must be paired with
