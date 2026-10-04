@@ -337,6 +337,36 @@ describe("lib/output — renderError", () => {
     stderr: { write: (s: string) => { stderrLines.push(s); } },
   };
 
+  it("human mode: CONNECTION_LOCATION_UNAVAILABLE names where the account connects from now, and only when sent", () => {
+    const base = {
+      code: "CONNECTION_LOCATION_UNAVAILABLE",
+      message: "No connection is available in United States right now.",
+      httpStatus: 422,
+      userFixable: true,
+      retryLikelyToSucceed: false,
+    } as const;
+    renderError(
+      new CurviateError({ ...base, connectionLocation: { country: null, current_country: null, mode: "custom", strict: null } }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    expect(stderrLines.join("")).toContain("Connects from now: unknown (your own proxy)");
+
+    // A proxy cleared but landed elsewhere: configured null, in use FR.
+    stderrLines = [];
+    renderError(
+      new CurviateError({ ...base, connectionLocation: { country: null, current_country: "FR", mode: "auto", strict: false } }),
+      { json: false, isTTY: true },
+      mockOut as never,
+    );
+    expect(stderrLines.join("")).toContain("Connects from now: FR (managed)");
+
+    stderrLines = [];
+    renderError(new CurviateError(base), { json: false, isTTY: true }, mockOut as never);
+    expect(stderrLines.join("")).toContain("[CONNECTION_LOCATION_UNAVAILABLE]");
+    expect(stderrLines.join("")).not.toContain("Connects from now");
+  });
+
   it("JSON mode: prints {error: <toJSON()>} to stdout, one-liner to stderr", () => {
     const err = new CurviateError({
       code: "NO_ACTIVE_SEAT",

@@ -7,7 +7,7 @@
  *   account seats: list the workspace's live seats and whether each is free or bound
  *   account link <body...>: link a new account (write)
  *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
- *   account update <account_id> <body...>: update metadata / proxy config (write)
+ *   account update <account_id> <body...>: update metadata / connection location / proxy (write)
  *   account disconnect <account_id>: hard-disconnect an account (write)
  *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (write)
  *   account checkpoint poll <account_id>: poll mobile-app approval (write)
@@ -61,14 +61,10 @@ import {
   CHECKPOINT_POLL_FIRST_DELAY_MS,
   nextCheckpointPollDelayMs,
 } from "../lib/checkpoint-cadence.js";
-import type { Curviate, CurviateError, SeatList, paths } from "@curviate/sdk";
-
-/**
- * `POST /v1/auth/intent` body, a narrow cast target only (see
- * `runAccountLink`'s comment): the body is assembled dynamically from
- * credential-resolution helpers, not a single typed literal.
- */
-type AuthIntentBody = paths["/v1/auth/intent"]["post"]["requestBody"]["content"]["application/json"];
+// `AuthIntentBody` is a narrow cast target only (see `runAccountLink`'s
+// comment): the body is assembled dynamically from credential-resolution
+// helpers, not a single typed literal.
+import type { AuthIntentBody, Curviate, CurviateError, SeatList } from "@curviate/sdk";
 
 // ps/shell-history warning template (mirrors the --api-key warning in global-flags.ts).
 const PW_WARNING = (stdinFlag: string, envVar: string) =>
@@ -95,6 +91,7 @@ type AccountFlags = {
   "no-interactive"?: boolean;
   country?: string;
   ip?: string;
+  "allow-country-fallback"?: boolean; // link/update: false (strict) when omitted with --country/--ip
   "proxy-protocol"?: string;
   "proxy-host"?: string;
   "proxy-port"?: string;
@@ -372,6 +369,59 @@ export interface CredentialIO {
 }
 
 /**
+ * Connection-location flags, checked before any request, seats read or secret
+ * prompt. `requireOne`: a new connect must name a location (the API refuses
+ * one without, `CONNECTION_LOCATION_REQUIRED`); a reconnect or an update may
+ * name none, never two. `fallbackAlone`: on update, `--allow-country-fallback`
+ * without `--country` changes the strictness of the configured country; on
+ * link the API would ignore it, so it is refused instead.
+ */
+function assertLocationFlags(
+  flags: AccountFlags,
+  out: OutputStreams,
+  opts: { requireOne: boolean; fallbackAlone: boolean },
+): void {
+  const fail = (message: string): never => {
+    out.stderr.write(`error: ${message}\n`);
+    process.exit(2);
+  };
+  const named = (["country", "ip", "proxy-host"] as const).filter((k) => flags[k] !== undefined);
+  for (const k of named) if (flags[k]!.trim() === "") fail(`--${k} was given an empty value.`);
+  if (named.length > 1) {
+    fail(
+      `pass one location source, not ${named.map((k) => `--${k}`).join(" and ")}: ` +
+        (named.includes("proxy-host") ? "your own proxy decides the location by itself." : "--ip overrides --country."),
+    );
+  }
+  if (named.length === 0 && opts.requireOne) {
+    fail(
+      "choose where LinkedIn sees this account connecting from. Pass --country with the two-letter code of the " +
+        "country its owner normally signs in from (e.g. --country US), --ip with a public IPv4 address, or your " +
+        "own proxy with --proxy-host. Nothing was sent.",
+    );
+  }
+  if (flags.country !== undefined && !/^[a-z]{2}$/i.test(flags.country.trim())) {
+    fail("--country takes a two-letter ISO 3166-1 country code, e.g. US or DE.");
+  }
+  if (flags["allow-country-fallback"] !== undefined) {
+    if (flags["proxy-host"] !== undefined) {
+      fail("--allow-country-fallback applies to a managed location (--country or --ip), not to your own proxy; remove one.");
+    }
+    if (!opts.fallbackAlone && flags.country === undefined && flags.ip === undefined) {
+      fail("--allow-country-fallback applies to --country or --ip; pass one of them with it.");
+    }
+  }
+}
+
+/** `country` (upper-cased, the API's enum) and `allow_country_fallback`, when given. */
+function managedLocationBody(flags: AccountFlags): Record<string, unknown> {
+  return {
+    ...(flags.country !== undefined ? { country: flags.country.trim().toUpperCase() } : {}),
+    ...(flags["allow-country-fallback"] !== undefined ? { allow_country_fallback: flags["allow-country-fallback"] } : {}),
+  };
+}
+
+/**
  * Build the auth body for link/reconnect. Resolves the LinkedIn-account
  * secrets (password, li_at, li_a, proxy password) through the flag > stdin >
  * env > prompt > fail-fast tiers before assembling the body, the secret
@@ -505,9 +555,9 @@ async function buildAuthBody(
     }
   }
 
-  // location hints
-  if (flags.country) body["country"] = flags.country;
-  if (flags.ip) body["ip"] = flags.ip;
+  // connection location, already checked by assertLocationFlags
+  Object.assign(body, managedLocationBody(flags));
+  if (flags.ip !== undefined) body["ip"] = flags.ip.trim();
 
   // proxy (optional secret: flag > env > omitted, no prompt, no fail-fast)
   if (flags["proxy-host"]) {
@@ -886,6 +936,10 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  // Location before the seats read and any prompt: a connect without one is
+  // refused by the API, so nothing is sent (and --preview renders nothing).
+  assertLocationFlags(flags, out, { requireOne: !flags["account-id"], fallbackAlone: false });
+
   const outOpts = resolveOutputOpts(flags);
 
   // Before any secret is prompted for: a refusal here must not come after the
@@ -1131,7 +1185,7 @@ export async function runAccountConnectSessionPoll(
   if (outcome.kind === "terminal_failure") {
     renderSuccess(outcome.result, outOpts, out);
     out.stderr.write(
-      `This connect session has ${outcome.status}. Start a new connect: curviate account link.\n`,
+      `This connect session has ${outcome.status}. Start a new connect: curviate account link --auth-method <m> --country <CC>.\n`,
     );
     process.exit(9);
     return;
@@ -1147,9 +1201,10 @@ export async function runAccountConnectSessionPoll(
 /**
  * Run `account update <account_id> <body...>`.
  * Body: optional metadata (a flat string map that replaces the store
- * wholesale) and/or a custom proxy, set one with --proxy-*, or clear it with
- * --clear-proxy (sends proxy:null). The managed country/ip knobs are gone
- * (a managed location is chosen at connect time instead).
+ * wholesale), a connection location (--country, --allow-country-fallback)
+ * and/or your own proxy, set with --proxy-*, or cleared with --clear-proxy
+ * (sends proxy:null, which the API accepts only with a country). Prints the
+ * account the API returns, its re-read connection_location included.
  */
 export async function runAccountUpdate(
   client: Curviate,
@@ -1180,8 +1235,20 @@ export async function runAccountUpdate(
       out.stderr.write("error: --clear-proxy cannot be combined with --proxy-host (choose one).\n");
       process.exit(2);
     }
+    // Clearing your own proxy alone would let the connection land anywhere,
+    // so the API refuses it (CONNECTION_LOCATION_REQUIRED). Say so first.
+    if (flags.country === undefined) {
+      out.stderr.write(
+        "error: --clear-proxy needs --country: name the country this account should connect from instead " +
+          "(e.g. --clear-proxy --country US).\n",
+      );
+      process.exit(2);
+    }
     body["proxy"] = null;
   }
+
+  assertLocationFlags(flags, out, { requireOne: false, fallbackAlone: true });
+  Object.assign(body, managedLocationBody(flags));
 
   if (flags["proxy-host"]) {
     // Proxy password is optional: flag > env > omitted, no prompt, no fail-fast.
@@ -1521,7 +1588,7 @@ export async function runAccountCheckpointPoll(
   }
   if (outcome.kind === "terminal_failure") {
     renderSuccess(outcome.result, outOpts, out);
-    out.stderr.write(`This checkpoint has ${outcome.status}. Start over: curviate account link or curviate account reconnect.\n`);
+    out.stderr.write(`This checkpoint has ${outcome.status}. Start over: curviate account link --auth-method <m> --country <CC>, or add --account-id <acc_...> to reconnect an existing account.\n`);
     process.exit(9);
     return;
   }
@@ -1638,10 +1705,11 @@ const accountLinkCommand = defineCommand({
       "Connect a LinkedIn account to an empty seat. " +
       "If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
     examples: [
-      "curviate account link --auth-method credentials --email jane@example.com --password-stdin",
+      "curviate account link --auth-method credentials --email jane@example.com --password-stdin --country US",
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
     ],
     requires: [
+      "Exactly one of --country, --ip or --proxy-host on a new connect; a reconnect (--account-id) may omit it to keep the account's location.",
       "--user-agent with --auth-method cookie.",
       "--seat-id with --preview or --account-id, and when zero or several seats are free.",
       "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie.",
@@ -1657,10 +1725,11 @@ const accountLinkCommand = defineCommand({
     "li-at": { type: "string", description: `LinkedIn session cookie li_at (cookie method). ${PW_WARNING("--li-at-stdin", "CURVIATE_LINKEDIN_LI_AT")}` },
     "li-at-stdin": { type: "boolean", description: "Read the li_at session cookie from stdin (one line, trimmed).", default: false },
     "li-a": { type: "string", description: `Optional premium session cookie li_a (cookie method). ${OPTIONAL_SECRET_WARNING("CURVIATE_LINKEDIN_LI_A")}` },
-    country: { type: "string", description: "Proxy location hint (ISO 3166-1 alpha-2)." },
-    ip: { type: "string", description: "IP to infer the managed proxy location." },
-    "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5." },
-    "proxy-host": { type: "string", description: "Proxy host or IP." },
+    country: { type: "string", description: "Where LinkedIn sees this account connecting from: a two-letter ISO 3166-1 country code (e.g. US, DE; case-insensitive), the country its owner normally signs in from. A new connect needs exactly one of --country, --ip or --proxy-host. Strict: the connect fails rather than use another country, unless --allow-country-fallback." },
+    ip: { type: "string", description: "A public IPv4 address whose country becomes the connection location (strict, like --country). An alternative to --country." },
+    "allow-country-fallback": { type: "boolean", description: "With --country or --ip: allow a connection from another country when none is free in the chosen one. Without it the connect is strict and fails instead." },
+    "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5 | socks4." },
+    "proxy-host": { type: "string", description: "Your own proxy's host or IP. Your proxy decides where LinkedIn sees the account connecting from, so --country, --ip and --allow-country-fallback are not accepted with it." },
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
@@ -1761,19 +1830,22 @@ const accountConnectSessionCommand = defineCommand({
 const accountUpdateCommand = defineCommand({
   meta: {
     name: "update",
-    description: "Update an account's metadata and/or custom-proxy configuration.",
+    description: "Update an account's metadata, connection location or own proxy. Prints the updated account, with connection_location re-read after a location change.",
     examples: [
       "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
-      "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy",
+      "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
+      "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy --country DE",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     "account-id": { type: "positional", description: "Account id (acc_...)." },
     metadata: { type: "string", description: `Custom metadata as a JSON object (flat string->string map). Replaces the store wholesale. Example: '{"team":"growth"}'.` },
-    "clear-proxy": { type: "boolean", description: "Clear the custom proxy (revert to automatic proxy protection). Mutually exclusive with --proxy-host.", default: false },
-    "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5." },
-    "proxy-host": { type: "string", description: "Proxy host or IP." },
+    country: { type: "string", description: "Move this account's connection location to this two-letter ISO 3166-1 country code (e.g. US, DE). LinkedIn sees a new IP there and may ask the owner to verify, so change it only when the current location is wrong. Strict unless --allow-country-fallback. On an account using your own proxy, pass --clear-proxy with it." },
+    "allow-country-fallback": { type: "boolean", description: "Allow a connection from another country when none is free in the chosen one. Alone, it changes the strictness of the configured country; --no-allow-country-fallback makes it strict." },
+    "clear-proxy": { type: "boolean", description: "Stop using your own proxy and return to a managed location. Requires --country. Mutually exclusive with --proxy-host.", default: false },
+    "proxy-protocol": { type: "string", description: "Proxy protocol: http | https | socks5 | socks4." },
+    "proxy-host": { type: "string", description: "Your own proxy's host or IP. Not accepted with --country." },
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },

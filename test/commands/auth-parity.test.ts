@@ -119,7 +119,7 @@ describe("account list --external-id", () => {
 // ---------------------------------------------------------------------------
 
 function linkArgs(extra: Record<string, unknown>) {
-  return { "seat-id": "seat_1", "auth-method": "cookie", "li-at": "AQEDaTest", "user-agent": "Mozilla/5.0", json: true, ...extra } as never;
+  return { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "li-at": "AQEDaTest", "user-agent": "Mozilla/5.0", json: true, ...extra } as never;
 }
 
 describe("account link intent options", () => {

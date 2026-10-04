@@ -117,6 +117,7 @@ describe("no account given: resolve the only connected one", () => {
     const r = await run(markRead);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("no LinkedIn account is connected to this workspace yet");
+    expect(r.stderr).toContain("curviate account link --auth-method <m> --country <CC>");
     expect(writes(r.requests)).toEqual([]);
     expect(r.requests).toHaveLength(1);
   });
