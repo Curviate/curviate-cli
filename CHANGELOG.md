@@ -8,6 +8,17 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.46.1] - 2026-10-04
+
+Requires `@curviate/sdk` 0.41.0.
+
+### Fixed
+
+- **`account link --account-id` refuses an empty or blank value.** `--account-id ""`
+  (for instance `--account-id "$ACC"` with `ACC` unset) used to open a NEW connect,
+  and `--account-id "  "` sent a reconnect with a blank id. Both now exit 2 before
+  any request, and the message says to pass an `acc_...` id or omit the flag.
+
 ## [0.46.0] - 2026-10-03
 
 Requires `@curviate/sdk` 0.41.0.
