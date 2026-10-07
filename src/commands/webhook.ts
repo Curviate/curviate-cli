@@ -128,7 +128,7 @@ export async function runWebhookCreate(
   out: OutputStreams,
 ): Promise<void> {
   if (!flags.source) {
-    out.stderr.write("error: --source is required (messaging | user | account_status).\n");
+    out.stderr.write("error: --source is required (messaging | user | account_status | post).\n");
     process.exit(2);
   }
   if (!flags["request-url"]) {
@@ -153,7 +153,7 @@ export async function runWebhookCreate(
     body["account_ids"] = accountIds;
   } else if (flags.source !== "account_status") {
     out.stderr.write(
-      "error: --account-ids is required when --source is messaging or user (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
+      "error: --account-ids is required when --source is messaging, user or post (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
     );
     process.exit(2);
   }
@@ -493,14 +493,14 @@ const webhookCreateCommand = defineCommand({
       "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status",
     ],
     requires: [
-      "--account-ids for --source messaging and user; omit it with --source account_status to cover every current and future account.",
+      "--account-ids for --source messaging, user and post; omit it with --source account_status to cover every current and future account.",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    source: { type: "string", description: "Event source: messaging | user | account_status.", required: true },
+    source: { type: "string", description: "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed).", required: true },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
-    "account-ids": { type: "string", description: "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account." },
+    "account-ids": { type: "string", description: "Comma-separated account ids to target. Required for messaging, user and post; omit on account_status to cover every current and future account." },
     name: { type: "string", description: "Human-readable name (1-100 chars)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },

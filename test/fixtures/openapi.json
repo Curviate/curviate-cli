@@ -75,6 +75,10 @@
       "description": "Read, publish, and delete posts, and react to them: get a post, list a user's posts (your own or another's), create or delete a post, list and add reactions, list a user's reactions, and remove a reaction; and save posts for later: list your saved posts, save a post, and unsave one. Commenting lives in the Comments group."
     },
     {
+      "name": "Drafts",
+      "description": "Prepare posts before publishing: create, edit, list, move between accounts and delete Drafts with their media, publish one now, and list the publish records of posts published through Curviate."
+    },
+    {
       "name": "Recruiter: User Profile",
       "x-displayName": "User Profile",
       "description": "Look up a Recruiter-enriched member profile."
@@ -212,6 +216,12 @@
       "name": "Posts",
       "tags": [
         "Posts"
+      ]
+    },
+    {
+      "name": "Drafts",
+      "tags": [
+        "Drafts"
       ]
     },
     {
@@ -38876,7 +38886,7 @@
             }
           }
         },
-        "description": "Publishes a post on the authenticated LinkedIn account. Send application/json; attach files as base64 objects. Post text passes through to the platform and is never stored.",
+        "description": "Publishes a post now; JSON, files as base64. Text is never stored. A publish record (account, post id, time) is kept, listed by GET /v1/drafts?status=published and removed when the post is deleted. To publish later, create a Draft at POST /v1/drafts.",
         "requestBody": {
           "required": true,
           "content": {
@@ -38902,7 +38912,6 @@
                         },
                         "content_type": {
                           "type": "string",
-                          "minLength": 1,
                           "description": "Attachment MIME type (e.g. image/png, application/pdf)."
                         },
                         "filename": {
@@ -41948,6 +41957,2792 @@
         },
         "description": "Removes a post from the connected account's private bookmark list.",
         "x-order": 12
+      }
+    },
+    "/v1/drafts": {
+      "post": {
+        "operationId": "postV1Drafts",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Create a draft",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Draft created. With scheduled_at, status is scheduled and Curviate publishes it on its own. With scheduled_at, the response carries safety_warning (reason activity_window) when the time is outside the account's activity window and its posture is warn; under enforce the request is refused instead (429 BUDGET_EXHAUSTED, reason activity_window) and nothing is saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "draft"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Draft id (drf_...)."
+                    },
+                    "account_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account this Draft will publish as, or null for none yet."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "scheduled",
+                        "failed"
+                      ],
+                      "description": "Derived: failed if failure is set, else scheduled if scheduled_at is set, else draft."
+                    },
+                    "text": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Post body text. May be empty or null while drafting."
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attachment id (att_...). Send {id} in a PATCH attachments list to keep it."
+                          },
+                          "content_type": {
+                            "type": "string",
+                            "description": "The file's type."
+                          },
+                          "filename": {
+                            "type": "string",
+                            "description": "File name."
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "description": "Stored size in bytes."
+                          },
+                          "url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Signed download link to the stored file, valid for 1 hour. Read the Draft again for a fresh one. Null when the stored file is unavailable."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "content_type",
+                          "filename",
+                          "size_bytes",
+                          "url"
+                        ]
+                      },
+                      "description": "Media, in post order."
+                    },
+                    "quoted_post_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "A post to quote or repost when published."
+                    },
+                    "can_read": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        null
+                      ],
+                      "description": "Who can read the post once published."
+                    },
+                    "can_comment": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        "no_one",
+                        null
+                      ],
+                      "description": "Who may comment once published."
+                    },
+                    "post_as": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Company page id to post as."
+                    },
+                    "scheduled_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When Curviate publishes the Draft (UTC, whole minute), or null. It goes out up to 20 seconds after this time. A failed Draft has null here; the time that failed is failure.scheduled_at."
+                    },
+                    "failure": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Why the last scheduled publish failed; present on failed Drafts only.",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "platform_error",
+                            "rate_limited",
+                            "account_unavailable",
+                            "media_rejected",
+                            "budget_exhausted",
+                            "outside_activity_window",
+                            "no_active_seat",
+                            "not_publishable",
+                            "platform_rejected",
+                            "missed",
+                            "outcome_unknown"
+                          ],
+                          "description": "Why it failed. outcome_unknown: the platform gave no usable answer, so the post may be live; check the account's posts before you publish again. missed: Curviate could not start within an hour of the time. platform_error and rate_limited: 3 attempts over about 15 minutes all failed."
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "What went wrong and what to do next. Never contains post text."
+                        },
+                        "failed_at": {
+                          "type": "string",
+                          "description": "When it failed."
+                        },
+                        "scheduled_at": {
+                          "type": "string",
+                          "description": "The time that failed to publish."
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "Creation time."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "description": "Last change."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "account_id",
+                    "status",
+                    "text",
+                    "attachments",
+                    "scheduled_at",
+                    "failure",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                "examples": {
+                  "empty": {
+                    "summary": "An empty Draft",
+                    "value": {
+                      "object": "draft",
+                      "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": null,
+                      "status": "draft",
+                      "text": null,
+                      "attachments": [],
+                      "quoted_post_id": null,
+                      "can_read": null,
+                      "can_comment": null,
+                      "post_as": null,
+                      "scheduled_at": null,
+                      "failure": null,
+                      "created_at": "2026-10-06T09:00:00.000Z",
+                      "updated_at": "2026-10-06T09:00:00.000Z"
+                    }
+                  },
+                  "full": {
+                    "summary": "Text and an image",
+                    "value": {
+                      "object": "draft",
+                      "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "draft",
+                      "text": "Three things we learned shipping our first agent integration.",
+                      "attachments": [
+                        {
+                          "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "content_type": "image/png",
+                          "filename": "diagram.png",
+                          "size_bytes": 482113,
+                          "url": "https://files.example.com/signed/diagram.png?token=abc"
+                        }
+                      ],
+                      "quoted_post_id": null,
+                      "can_read": null,
+                      "can_comment": null,
+                      "post_as": null,
+                      "scheduled_at": null,
+                      "failure": null,
+                      "created_at": "2026-10-06T09:00:00.000Z",
+                      "updated_at": "2026-10-06T09:05:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input. Media rules: up to 20 images (JPEG, PNG, GIF, WEBP, at most 6012 x 6012 px), or one MP4 video, or one PDF, never mixed. scheduled_at must be an ISO 8601 date-time with an offset, 5 minutes to 365 days ahead after truncation to the minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. NO_ACTIVE_SEAT: the account is not attached to an active seat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account_id is not one of yours (ACCOUNT_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The account is disconnected (REAUTH_REQUIRED). Reconnect it, or choose another account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A file is over its size limit: 5 MiB per image, and 5 MiB per file sent inline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DRAFT_LIMIT_REACHED: the bucket (one account, or Drafts with no account) already holds 50 Drafts. MEDIA_QUOTA_EXCEEDED: the media would take the bucket past its 2 GiB quota; nothing is stored. ACCOUNT_REQUIRED / DRAFT_NOT_PUBLISHABLE: scheduling needs an account and text. SCHEDULE_CONFLICT: another scheduled Draft on the account is less than 5 minutes away; the message names it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "BUDGET_EXHAUSTED with reason activity_window: the scheduled time is outside the account's activity window and the account enforces it. Nothing is saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Stores an unpublished post until it is published or deleted. Every field is optional, the account too; a Draft has at most one account and can move between yours. Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "account_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The account (acc_...) this Draft will publish as, or null for none yet. A Draft belongs to at most one account.",
+                    "nullable": true
+                  },
+                  "scheduled_at": {
+                    "type": "string",
+                    "description": "When Curviate publishes this Draft: an ISO 8601 date-time with an offset, at least 5 minutes and at most 365 days ahead, stored in UTC truncated to the minute. Scheduling needs an account and text. Curviate publishes it up to 20 seconds after this time, and keeps scheduled posts on one account at least 5 minutes apart. null unschedules.",
+                    "nullable": true
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 3000,
+                    "description": "Post body text, up to 3000 characters. May be empty while drafting; publishing needs at least one character.",
+                    "nullable": true
+                  },
+                  "quoted_post_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A post to quote or repost when published, the same as on create post. Checked at publish time.",
+                    "nullable": true
+                  },
+                  "can_read": {
+                    "type": "string",
+                    "enum": [
+                      "anyone",
+                      "relations_only"
+                    ],
+                    "description": "Who can read the post once published.",
+                    "nullable": true
+                  },
+                  "can_comment": {
+                    "type": "string",
+                    "enum": [
+                      "anyone",
+                      "relations_only",
+                      "no_one"
+                    ],
+                    "description": "Who may comment once published.",
+                    "nullable": true
+                  },
+                  "post_as": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Company page id to post as; the account must administer it. Checked at publish time.",
+                    "nullable": true
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Base64-encoded file bytes."
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The file's type: image/jpeg, image/png, image/gif, image/webp, video/mp4 or application/pdf."
+                        },
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "File name."
+                        }
+                      },
+                      "required": [
+                        "content",
+                        "content_type",
+                        "filename"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Media as base64 objects: up to 20 images, or one MP4 video, or one PDF, never mixed. 5 MiB per file inline."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "examples": {
+                "empty": {
+                  "summary": "An empty Draft, filled in later",
+                  "value": {}
+                },
+                "withAccount": {
+                  "summary": "Text on an account",
+                  "value": {
+                    "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "text": "Three things we learned shipping our first agent integration."
+                  }
+                },
+                "scheduled": {
+                  "summary": "Scheduled on an account",
+                  "value": {
+                    "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "text": "Three things we learned shipping our first agent integration.",
+                    "scheduled_at": "2026-10-08T09:30:00+02:00"
+                  }
+                },
+                "withImage": {
+                  "summary": "Text and one inline image",
+                  "value": {
+                    "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "text": "Our architecture, in one picture.",
+                    "attachments": [
+                      {
+                        "content": "iVBORw0KGgo...",
+                        "content_type": "image/png",
+                        "filename": "diagram.png"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-order": 1
+      },
+      "get": {
+        "operationId": "getV1Drafts",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "List drafts",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "scheduled",
+                  "failed",
+                  "published"
+                ]
+              }
+            },
+            "description": "Comma list of draft, scheduled, failed, published. Default draft,scheduled,failed. published items are publish records, never Drafts."
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only items on this account (acc_...), or none for Drafts with no account. Omitted: all of yours."
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only items whose date is at or after this instant (inclusive)."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only items whose date is before this instant (exclusive)."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "default": "desc"
+            },
+            "description": "Sort by the item's date: desc (default) or asc."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Max items per page (1-100, default 20)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Pagination cursor from a previous response; pass it back verbatim with the same filters."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Drafts and publish records, ordered by each item's own date: scheduled_at for scheduled, failure.failed_at for failed, published_at for published, updated_at for draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "draft_list"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "object": {
+                                "type": "string",
+                                "enum": [
+                                  "draft"
+                                ],
+                                "description": "Response type discriminator."
+                              },
+                              "id": {
+                                "type": "string",
+                                "description": "Draft id (drf_...)."
+                              },
+                              "account_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The account this Draft will publish as, or null for none yet."
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "scheduled",
+                                  "failed"
+                                ],
+                                "description": "Derived: failed if failure is set, else scheduled if scheduled_at is set, else draft."
+                              },
+                              "text": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Post body text. May be empty or null while drafting."
+                              },
+                              "attachments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Attachment id (att_...). Send {id} in a PATCH attachments list to keep it."
+                                    },
+                                    "content_type": {
+                                      "type": "string",
+                                      "description": "The file's type."
+                                    },
+                                    "filename": {
+                                      "type": "string",
+                                      "description": "File name."
+                                    },
+                                    "size_bytes": {
+                                      "type": "integer",
+                                      "description": "Stored size in bytes."
+                                    },
+                                    "url": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Signed download link to the stored file, valid for 1 hour. Read the Draft again for a fresh one. Null when the stored file is unavailable."
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "content_type",
+                                    "filename",
+                                    "size_bytes",
+                                    "url"
+                                  ]
+                                },
+                                "description": "Media, in post order."
+                              },
+                              "quoted_post_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "A post to quote or repost when published."
+                              },
+                              "can_read": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "anyone",
+                                  "relations_only",
+                                  null
+                                ],
+                                "description": "Who can read the post once published."
+                              },
+                              "can_comment": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "anyone",
+                                  "relations_only",
+                                  "no_one",
+                                  null
+                                ],
+                                "description": "Who may comment once published."
+                              },
+                              "post_as": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Company page id to post as."
+                              },
+                              "scheduled_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "When Curviate publishes the Draft (UTC, whole minute), or null. It goes out up to 20 seconds after this time. A failed Draft has null here; the time that failed is failure.scheduled_at."
+                              },
+                              "failure": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "description": "Why the last scheduled publish failed; present on failed Drafts only.",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "platform_error",
+                                      "rate_limited",
+                                      "account_unavailable",
+                                      "media_rejected",
+                                      "budget_exhausted",
+                                      "outside_activity_window",
+                                      "no_active_seat",
+                                      "not_publishable",
+                                      "platform_rejected",
+                                      "missed",
+                                      "outcome_unknown"
+                                    ],
+                                    "description": "Why it failed. outcome_unknown: the platform gave no usable answer, so the post may be live; check the account's posts before you publish again. missed: Curviate could not start within an hour of the time. platform_error and rate_limited: 3 attempts over about 15 minutes all failed."
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "description": "What went wrong and what to do next. Never contains post text."
+                                  },
+                                  "failed_at": {
+                                    "type": "string",
+                                    "description": "When it failed."
+                                  },
+                                  "scheduled_at": {
+                                    "type": "string",
+                                    "description": "The time that failed to publish."
+                                  }
+                                }
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "description": "Creation time."
+                              },
+                              "updated_at": {
+                                "type": "string",
+                                "description": "Last change."
+                              }
+                            },
+                            "required": [
+                              "object",
+                              "id",
+                              "account_id",
+                              "status",
+                              "text",
+                              "attachments",
+                              "scheduled_at",
+                              "failure",
+                              "created_at",
+                              "updated_at"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "description": "The content-free trace of a post published through Curviate. Not a Draft: it has no text and no media.",
+                            "properties": {
+                              "object": {
+                                "type": "string",
+                                "enum": [
+                                  "publish_record"
+                                ],
+                                "description": "Response type discriminator."
+                              },
+                              "post_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The published post's id, or null when the platform returned none."
+                              },
+                              "account_id": {
+                                "type": "string",
+                                "description": "The account that published it."
+                              },
+                              "published_at": {
+                                "type": "string",
+                                "description": "When it was published."
+                              },
+                              "draft_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The Draft it came from, or null for a post created directly."
+                              }
+                            },
+                            "required": [
+                              "object",
+                              "post_id",
+                              "account_id",
+                              "published_at",
+                              "draft_id"
+                            ]
+                          }
+                        ]
+                      },
+                      "description": "Each item is a draft (object: draft) or a publish record (object: publish_record). Publish records are never Drafts."
+                    },
+                    "cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Pass back as cursor for the next page; null on the last page."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "items",
+                    "cursor"
+                  ]
+                },
+                "examples": {
+                  "mixed": {
+                    "summary": "A Draft and a publish record",
+                    "value": {
+                      "object": "draft_list",
+                      "items": [
+                        {
+                          "object": "draft",
+                          "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                          "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                          "status": "draft",
+                          "text": "Three things we learned shipping our first agent integration.",
+                          "attachments": [
+                            {
+                              "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                              "content_type": "image/png",
+                              "filename": "diagram.png",
+                              "size_bytes": 482113,
+                              "url": "https://files.example.com/signed/diagram.png?token=abc"
+                            }
+                          ],
+                          "quoted_post_id": null,
+                          "can_read": null,
+                          "can_comment": null,
+                          "post_as": null,
+                          "scheduled_at": null,
+                          "failure": null,
+                          "created_at": "2026-10-06T09:00:00.000Z",
+                          "updated_at": "2026-10-06T09:05:00.000Z"
+                        },
+                        {
+                          "object": "publish_record",
+                          "post_id": "urn:li:ugcPost:7123456789012345678",
+                          "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                          "published_at": "2026-10-05T14:02:11.000Z",
+                          "draft_id": null
+                        }
+                      ],
+                      "cursor": null
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter: an unknown status, a malformed date or cursor, or limit out of range.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Lists your Drafts and, with status=published, publish records (account, post id, time; never Drafts). Filter by status, account (or none) and a [from, to) range on each item's own date.",
+        "x-order": 2
+      }
+    },
+    "/v1/drafts/{id}": {
+      "get": {
+        "operationId": "getV1DraftsId",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Retrieve a draft",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Draft id (drf_...)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "draft"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Draft id (drf_...)."
+                    },
+                    "account_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account this Draft will publish as, or null for none yet."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "scheduled",
+                        "failed"
+                      ],
+                      "description": "Derived: failed if failure is set, else scheduled if scheduled_at is set, else draft."
+                    },
+                    "text": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Post body text. May be empty or null while drafting."
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attachment id (att_...). Send {id} in a PATCH attachments list to keep it."
+                          },
+                          "content_type": {
+                            "type": "string",
+                            "description": "The file's type."
+                          },
+                          "filename": {
+                            "type": "string",
+                            "description": "File name."
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "description": "Stored size in bytes."
+                          },
+                          "url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Signed download link to the stored file, valid for 1 hour. Read the Draft again for a fresh one. Null when the stored file is unavailable."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "content_type",
+                          "filename",
+                          "size_bytes",
+                          "url"
+                        ]
+                      },
+                      "description": "Media, in post order."
+                    },
+                    "quoted_post_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "A post to quote or repost when published."
+                    },
+                    "can_read": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        null
+                      ],
+                      "description": "Who can read the post once published."
+                    },
+                    "can_comment": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        "no_one",
+                        null
+                      ],
+                      "description": "Who may comment once published."
+                    },
+                    "post_as": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Company page id to post as."
+                    },
+                    "scheduled_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When Curviate publishes the Draft (UTC, whole minute), or null. It goes out up to 20 seconds after this time. A failed Draft has null here; the time that failed is failure.scheduled_at."
+                    },
+                    "failure": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Why the last scheduled publish failed; present on failed Drafts only.",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "platform_error",
+                            "rate_limited",
+                            "account_unavailable",
+                            "media_rejected",
+                            "budget_exhausted",
+                            "outside_activity_window",
+                            "no_active_seat",
+                            "not_publishable",
+                            "platform_rejected",
+                            "missed",
+                            "outcome_unknown"
+                          ],
+                          "description": "Why it failed. outcome_unknown: the platform gave no usable answer, so the post may be live; check the account's posts before you publish again. missed: Curviate could not start within an hour of the time. platform_error and rate_limited: 3 attempts over about 15 minutes all failed."
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "What went wrong and what to do next. Never contains post text."
+                        },
+                        "failed_at": {
+                          "type": "string",
+                          "description": "When it failed."
+                        },
+                        "scheduled_at": {
+                          "type": "string",
+                          "description": "The time that failed to publish."
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "Creation time."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "description": "Last change."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "account_id",
+                    "status",
+                    "text",
+                    "attachments",
+                    "scheduled_at",
+                    "failure",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                "examples": {
+                  "draft": {
+                    "summary": "A Draft",
+                    "value": {
+                      "object": "draft",
+                      "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "draft",
+                      "text": "Three things we learned shipping our first agent integration.",
+                      "attachments": [
+                        {
+                          "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "content_type": "image/png",
+                          "filename": "diagram.png",
+                          "size_bytes": 482113,
+                          "url": "https://files.example.com/signed/diagram.png?token=abc"
+                        }
+                      ],
+                      "quoted_post_id": null,
+                      "can_read": null,
+                      "can_comment": null,
+                      "post_as": null,
+                      "scheduled_at": null,
+                      "failure": null,
+                      "created_at": "2026-10-06T09:00:00.000Z",
+                      "updated_at": "2026-10-06T09:05:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Draft with this id among yours (RESOURCE_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Returns one Draft, with a fresh signed link (valid 1 hour) for each attachment.",
+        "x-order": 3
+      },
+      "patch": {
+        "operationId": "patchV1DraftsId",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Update a draft",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Draft id (drf_...)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated Draft. scheduled_at schedules, reschedules or (null) unschedules; changing it or the account cancels a pending publish and its retries. Unscheduling alone needs no active seat. With scheduled_at, the response carries safety_warning (reason activity_window) when the time is outside the account's activity window and its posture is warn; under enforce the request is refused instead (429 BUDGET_EXHAUSTED, reason activity_window) and nothing is saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "draft"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Draft id (drf_...)."
+                    },
+                    "account_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account this Draft will publish as, or null for none yet."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "scheduled",
+                        "failed"
+                      ],
+                      "description": "Derived: failed if failure is set, else scheduled if scheduled_at is set, else draft."
+                    },
+                    "text": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Post body text. May be empty or null while drafting."
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attachment id (att_...). Send {id} in a PATCH attachments list to keep it."
+                          },
+                          "content_type": {
+                            "type": "string",
+                            "description": "The file's type."
+                          },
+                          "filename": {
+                            "type": "string",
+                            "description": "File name."
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "description": "Stored size in bytes."
+                          },
+                          "url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Signed download link to the stored file, valid for 1 hour. Read the Draft again for a fresh one. Null when the stored file is unavailable."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "content_type",
+                          "filename",
+                          "size_bytes",
+                          "url"
+                        ]
+                      },
+                      "description": "Media, in post order."
+                    },
+                    "quoted_post_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "A post to quote or repost when published."
+                    },
+                    "can_read": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        null
+                      ],
+                      "description": "Who can read the post once published."
+                    },
+                    "can_comment": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        "no_one",
+                        null
+                      ],
+                      "description": "Who may comment once published."
+                    },
+                    "post_as": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Company page id to post as."
+                    },
+                    "scheduled_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When Curviate publishes the Draft (UTC, whole minute), or null. It goes out up to 20 seconds after this time. A failed Draft has null here; the time that failed is failure.scheduled_at."
+                    },
+                    "failure": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Why the last scheduled publish failed; present on failed Drafts only.",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "platform_error",
+                            "rate_limited",
+                            "account_unavailable",
+                            "media_rejected",
+                            "budget_exhausted",
+                            "outside_activity_window",
+                            "no_active_seat",
+                            "not_publishable",
+                            "platform_rejected",
+                            "missed",
+                            "outcome_unknown"
+                          ],
+                          "description": "Why it failed. outcome_unknown: the platform gave no usable answer, so the post may be live; check the account's posts before you publish again. missed: Curviate could not start within an hour of the time. platform_error and rate_limited: 3 attempts over about 15 minutes all failed."
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "What went wrong and what to do next. Never contains post text."
+                        },
+                        "failed_at": {
+                          "type": "string",
+                          "description": "When it failed."
+                        },
+                        "scheduled_at": {
+                          "type": "string",
+                          "description": "The time that failed to publish."
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "Creation time."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "description": "Last change."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "account_id",
+                    "status",
+                    "text",
+                    "attachments",
+                    "scheduled_at",
+                    "failure",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                "examples": {
+                  "draft": {
+                    "summary": "A Draft",
+                    "value": {
+                      "object": "draft",
+                      "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "draft",
+                      "text": "Three things we learned shipping our first agent integration.",
+                      "attachments": [
+                        {
+                          "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "content_type": "image/png",
+                          "filename": "diagram.png",
+                          "size_bytes": 482113,
+                          "url": "https://files.example.com/signed/diagram.png?token=abc"
+                        }
+                      ],
+                      "quoted_post_id": null,
+                      "can_read": null,
+                      "can_comment": null,
+                      "post_as": null,
+                      "scheduled_at": null,
+                      "failure": null,
+                      "created_at": "2026-10-06T09:00:00.000Z",
+                      "updated_at": "2026-10-06T09:05:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input. Media rules: up to 20 images (JPEG, PNG, GIF, WEBP, at most 6012 x 6012 px), or one MP4 video, or one PDF, never mixed. Also: an attachment id that is not on this Draft. scheduled_at must be an ISO 8601 date-time with an offset, 5 minutes to 365 days ahead after truncation to the minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. NO_ACTIVE_SEAT: the account is not attached to an active seat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such Draft (RESOURCE_NOT_FOUND), or the account_id is not one of yours (ACCOUNT_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DRAFT_PUBLISHING: a publish of this Draft is in flight. Read it again in a few seconds. Or the target account is disconnected (REAUTH_REQUIRED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A file is over its size limit: 5 MiB per image, and 5 MiB per file sent inline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DRAFT_LIMIT_REACHED: the bucket (one account, or Drafts with no account) already holds 50 Drafts. MEDIA_QUOTA_EXCEEDED: the media would take the bucket past its 2 GiB quota; nothing is stored. ACCOUNT_REQUIRED: a scheduled Draft cannot drop its account; unschedule it first. ACCOUNT_REQUIRED / DRAFT_NOT_PUBLISHABLE: scheduling needs an account and text. SCHEDULE_CONFLICT: another scheduled Draft on the account is less than 5 minutes away; the message names it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "BUDGET_EXHAUSTED with reason activity_window: the scheduled time is outside the account's activity window and the account enforces it. Nothing is saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Partial update: an omitted field is left as is, null clears it. attachments replaces the whole list ({id} keeps an existing file, a base64 object adds one, anything left out is deleted). account_id moves the Draft to another of your accounts. Editing a failed Draft clears its failure.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "account_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The account (acc_...) this Draft will publish as, or null for none yet. A Draft belongs to at most one account.",
+                    "nullable": true
+                  },
+                  "scheduled_at": {
+                    "type": "string",
+                    "description": "When Curviate publishes this Draft: an ISO 8601 date-time with an offset, at least 5 minutes and at most 365 days ahead, stored in UTC truncated to the minute. Scheduling needs an account and text. Curviate publishes it up to 20 seconds after this time, and keeps scheduled posts on one account at least 5 minutes apart. null unschedules.",
+                    "nullable": true
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 3000,
+                    "description": "Post body text, up to 3000 characters. May be empty while drafting; publishing needs at least one character.",
+                    "nullable": true
+                  },
+                  "quoted_post_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A post to quote or repost when published, the same as on create post. Checked at publish time.",
+                    "nullable": true
+                  },
+                  "can_read": {
+                    "type": "string",
+                    "enum": [
+                      "anyone",
+                      "relations_only"
+                    ],
+                    "description": "Who can read the post once published.",
+                    "nullable": true
+                  },
+                  "can_comment": {
+                    "type": "string",
+                    "enum": [
+                      "anyone",
+                      "relations_only",
+                      "no_one"
+                    ],
+                    "description": "Who may comment once published.",
+                    "nullable": true
+                  },
+                  "post_as": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Company page id to post as; the account must administer it. Checked at publish time.",
+                    "nullable": true
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "An attachment already on this Draft (att_...), kept as is."
+                            }
+                          },
+                          "required": [
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "content": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Base64-encoded file bytes."
+                            },
+                            "content_type": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "The file's type: image/jpeg, image/png, image/gif, image/webp, video/mp4 or application/pdf."
+                            },
+                            "filename": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "File name."
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "content_type",
+                            "filename"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "description": "Replaces the whole list. Each item is {id} to keep an existing attachment, or a new base64 object. Attachments left out are deleted."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "examples": {
+                "text": {
+                  "summary": "Edit the text only",
+                  "value": {
+                    "text": "A sharper opening line."
+                  }
+                },
+                "schedule": {
+                  "summary": "Schedule or reschedule",
+                  "value": {
+                    "scheduled_at": "2026-10-08T09:30:00+02:00"
+                  }
+                },
+                "unschedule": {
+                  "summary": "Unschedule (back to draft)",
+                  "value": {
+                    "scheduled_at": null
+                  }
+                },
+                "switchAccount": {
+                  "summary": "Move to another account",
+                  "value": {
+                    "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                  }
+                },
+                "keepOne": {
+                  "summary": "Keep one attachment, add another",
+                  "value": {
+                    "attachments": [
+                      {
+                        "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9"
+                      },
+                      {
+                        "content": "iVBORw0KGgo...",
+                        "content_type": "image/png",
+                        "filename": "second.png"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-order": 4
+      },
+      "delete": {
+        "operationId": "deleteV1DraftsId",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Delete a draft",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Draft id (drf_...)."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Draft and its media deleted. No response body.",
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Draft with this id among yours (RESOURCE_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DRAFT_PUBLISHING: a publish of this Draft is in flight. Read it again in a few seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Deletes the Draft and its stored media.",
+        "x-order": 5
+      }
+    },
+    "/v1/drafts/{id}/publish": {
+      "post": {
+        "operationId": "postV1DraftsIdPublish",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Publish a draft now",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Draft id (drf_...)."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Published. The Draft and its media are deleted and a publish record is written. No webhook is sent: this response is the result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "post_created"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The published post's id."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id"
+                  ]
+                },
+                "examples": {
+                  "created": {
+                    "summary": "Published",
+                    "value": {
+                      "object": "post_created",
+                      "id": "urn:li:ugcPost:7123456789012345678"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. NO_ACTIVE_SEAT: the account is not attached to an active seat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Draft with this id among yours (RESOURCE_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DRAFT_PUBLISHING: a publish of this Draft is in flight. Read it again in a few seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ACCOUNT_REQUIRED: the Draft has no account. DRAFT_NOT_PUBLISHABLE: a content gap, the message names the field (for example text: empty). The Draft is unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "An account-safety limit or a platform rate limit refused the publish. The Draft is unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          },
+          "502": {
+            "description": "The platform refused or failed the publish. The Draft is unchanged; the error says whether a retry can help.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "502 error",
+                    "value": {
+                      "code": "PLATFORM_ERROR",
+                      "message": "A temporary error occurred. Please try again.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "PLATFORM_ERROR: the platform did not answer in time. The Draft is unchanged, but the post may still have been published: check the account's posts before publishing again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Publishes the Draft now, under the same rules as create post, safety limits included. Success deletes the Draft and its media, writes a publish record and returns the post id, no webhook. Failure leaves the Draft unchanged.",
+        "x-order": 6
+      }
+    },
+    "/v1/drafts/{id}/attachments": {
+      "post": {
+        "operationId": "postV1DraftsIdAttachments",
+        "tags": [
+          "Drafts"
+        ],
+        "summary": "Upload a draft attachment",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Draft id (drf_...)."
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "description": "The file's name, kept with the attachment."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The Draft, with the new attachment last in attachments[].",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "draft"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Draft id (drf_...)."
+                    },
+                    "account_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account this Draft will publish as, or null for none yet."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "scheduled",
+                        "failed"
+                      ],
+                      "description": "Derived: failed if failure is set, else scheduled if scheduled_at is set, else draft."
+                    },
+                    "text": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Post body text. May be empty or null while drafting."
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attachment id (att_...). Send {id} in a PATCH attachments list to keep it."
+                          },
+                          "content_type": {
+                            "type": "string",
+                            "description": "The file's type."
+                          },
+                          "filename": {
+                            "type": "string",
+                            "description": "File name."
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "description": "Stored size in bytes."
+                          },
+                          "url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Signed download link to the stored file, valid for 1 hour. Read the Draft again for a fresh one. Null when the stored file is unavailable."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "content_type",
+                          "filename",
+                          "size_bytes",
+                          "url"
+                        ]
+                      },
+                      "description": "Media, in post order."
+                    },
+                    "quoted_post_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "A post to quote or repost when published."
+                    },
+                    "can_read": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        null
+                      ],
+                      "description": "Who can read the post once published."
+                    },
+                    "can_comment": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "anyone",
+                        "relations_only",
+                        "no_one",
+                        null
+                      ],
+                      "description": "Who may comment once published."
+                    },
+                    "post_as": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Company page id to post as."
+                    },
+                    "scheduled_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When Curviate publishes the Draft (UTC, whole minute), or null. It goes out up to 20 seconds after this time. A failed Draft has null here; the time that failed is failure.scheduled_at."
+                    },
+                    "failure": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Why the last scheduled publish failed; present on failed Drafts only.",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "platform_error",
+                            "rate_limited",
+                            "account_unavailable",
+                            "media_rejected",
+                            "budget_exhausted",
+                            "outside_activity_window",
+                            "no_active_seat",
+                            "not_publishable",
+                            "platform_rejected",
+                            "missed",
+                            "outcome_unknown"
+                          ],
+                          "description": "Why it failed. outcome_unknown: the platform gave no usable answer, so the post may be live; check the account's posts before you publish again. missed: Curviate could not start within an hour of the time. platform_error and rate_limited: 3 attempts over about 15 minutes all failed."
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "What went wrong and what to do next. Never contains post text."
+                        },
+                        "failed_at": {
+                          "type": "string",
+                          "description": "When it failed."
+                        },
+                        "scheduled_at": {
+                          "type": "string",
+                          "description": "The time that failed to publish."
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "Creation time."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "description": "Last change."
+                    },
+                    "safety_warning": {
+                      "$ref": "#/components/schemas/SafetyWarning"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "account_id",
+                    "status",
+                    "text",
+                    "attachments",
+                    "scheduled_at",
+                    "failure",
+                    "created_at",
+                    "updated_at"
+                  ]
+                },
+                "examples": {
+                  "draft": {
+                    "summary": "A Draft",
+                    "value": {
+                      "object": "draft",
+                      "id": "drf_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "status": "draft",
+                      "text": "Three things we learned shipping our first agent integration.",
+                      "attachments": [
+                        {
+                          "id": "att_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "content_type": "image/png",
+                          "filename": "diagram.png",
+                          "size_bytes": 482113,
+                          "url": "https://files.example.com/signed/diagram.png?token=abc"
+                        }
+                      ],
+                      "quoted_post_id": null,
+                      "can_read": null,
+                      "can_comment": null,
+                      "post_as": null,
+                      "scheduled_at": null,
+                      "failure": null,
+                      "created_at": "2026-10-06T09:00:00.000Z",
+                      "updated_at": "2026-10-06T09:05:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input. Media rules: up to 20 images (JPEG, PNG, GIF, WEBP, at most 6012 x 6012 px), or one MP4 video, or one PDF, never mixed. Also: an empty file, a filename missing, or a body that did not carry exactly its Content-Length (a truncated upload; nothing is kept).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. NO_ACTIVE_SEAT: the account is not attached to an active seat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Draft with this id among yours (RESOURCE_NOT_FOUND).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DRAFT_PUBLISHING: a publish of this Draft is in flight. Read it again in a few seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "411": {
+            "description": "INVALID_REQUEST: Content-Length is required; a chunked upload is not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: the file is over its type's limit: 5 MiB per image, 50 MiB for a video, 50 MiB for a PDF.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type is not one of the accepted file types (JSON and multipart bodies included).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "415 error",
+                    "value": {
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "message": "The request content type or attachment format is not accepted.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MEDIA_QUOTA_EXCEEDED: the file would take the bucket past its 2 GiB quota; nothing is stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-workspace breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Adds one file to the Draft as the raw request body, for media too large to send inline: a video (MP4, up to 50 MiB), a PDF (up to 50 MiB) or an image. Content-Type is the file's type, Content-Length is required; kept only if it arrives whole. Same media rules as inline.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "video/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            },
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            },
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            },
+            "image/gif": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The file's bytes, exactly Content-Length of them."
+              }
+            }
+          }
+        },
+        "x-order": 7
       }
     },
     "/v1/{account_id}/recruiter/profiles/{user_id}": {
@@ -71243,7 +74038,8 @@
                             "enum": [
                               "messaging",
                               "user",
-                              "account_status"
+                              "account_status",
+                              "post"
                             ],
                             "description": "The event source this webhook subscribes to."
                           },
@@ -71524,7 +74320,8 @@
                       "enum": [
                         "messaging",
                         "user",
-                        "account_status"
+                        "account_status",
+                        "post"
                       ],
                       "description": "The event source this webhook subscribes to."
                     },
@@ -71585,7 +74382,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only)."
+                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only; post and account_status have none)."
                     },
                     "secret": {
                       "type": "string",
@@ -71805,7 +74602,7 @@
             }
           }
         },
-        "description": "Registers a new webhook endpoint to receive real-time events. Choose a source (messaging / user / account_status) and supply the target URL. The HMAC signing secret is returned exactly once in the 201 response, store it securely.",
+        "description": "Registers a new webhook endpoint to receive real-time events. Choose a source (messaging / user / account_status / post) and supply the target URL. The HMAC signing secret is returned exactly once in the 201 response, store it securely.",
         "requestBody": {
           "required": true,
           "content": {
@@ -72055,6 +74852,74 @@
                       "request_url"
                     ],
                     "title": "Account Status"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "const": "post"
+                      },
+                      "request_url": {
+                        "type": "string",
+                        "description": "HTTPS URL that receives webhook deliveries. Must be a publicly reachable host on the default https port; private, loopback and link-local addresses are rejected."
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Human-readable name for this webhook (1-100 chars)"
+                      },
+                      "account_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Per-account targeting. Required and non-empty; each id must be an acc_-prefixed id owned by the tenant."
+                      },
+                      "enabled": {
+                        "type": "boolean",
+                        "description": "A disabled webhook is created but delivers nothing",
+                        "default": true
+                      },
+                      "headers": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "value"
+                          ]
+                        },
+                        "description": "Custom headers added to each delivery POST. Names must be valid HTTP header names and values must be printable ASCII (no line breaks or control characters). Reserved names are rejected at registration; they include Content-Type, User-Agent, Host, any Curviate-* or Sec-* name, and the hop-by-hop headers. At most 10 headers, 1024 characters per value, 4096 bytes in total. Custom headers are not covered by the delivery signature, so treat them as a hint, not as proof of origin. Values are encrypted at rest and are never returned by a read. A read shows the header name plus a 8-character keyed fingerprint of the value, which carries no part of the value and no indication of its length. It is deterministic within your account, so a fingerprint confirms a rotation took effect and tells you whether two of your webhooks carry the same credential; fingerprints are not comparable across accounts. The header name is what identifies which credential is configured.",
+                        "default": []
+                      },
+                      "events": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "post.published",
+                            "post.publish_failed"
+                          ]
+                        },
+                        "description": "Post events to subscribe to (default: both post.published and post.publish_failed)"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "request_url",
+                      "account_ids"
+                    ],
+                    "title": "Post"
                   }
                 ],
                 "discriminator": {
@@ -72062,7 +74927,8 @@
                   "mapping": {
                     "messaging": "#/oneOf/0",
                     "user": "#/oneOf/1",
-                    "account_status": "#/oneOf/2"
+                    "account_status": "#/oneOf/2",
+                    "post": "#/oneOf/3"
                   }
                 }
               },
@@ -72086,6 +74952,16 @@
                   "value": {
                     "source": "account_status",
                     "request_url": "https://hooks.example.com/curviate/account-status",
+                    "account_ids": [
+                      "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                    ]
+                  }
+                },
+                "post": {
+                  "summary": "Create a post webhook (scheduled-post outcomes, both events)",
+                  "value": {
+                    "source": "post",
+                    "request_url": "https://hooks.example.com/curviate/posts",
                     "account_ids": [
                       "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
                     ]
@@ -72139,7 +75015,7 @@
                         "properties": {
                           "source": {
                             "type": "string",
-                            "description": "Event source group (messaging, user, account_status, recruiter, sales_nav)."
+                            "description": "Event source group (messaging, user, account_status, post, recruiter, sales_nav)."
                           },
                           "events": {
                             "type": "array",
@@ -72344,6 +75220,21 @@
                           ]
                         },
                         {
+                          "source": "post",
+                          "events": [
+                            {
+                              "type": "post.published",
+                              "source": "post",
+                              "description": "A scheduled post was published. Carries draft_id, post_id (null when none was returned), account_id, scheduled_at, published_at, and safety_warning when a warn-posture safety limit was breached. Never carries the post text or media."
+                            },
+                            {
+                              "type": "post.publish_failed",
+                              "source": "post",
+                              "description": "A scheduled post could not be published. Carries draft_id, account_id, scheduled_at, failure_code, and failure_message. Never carries the post text or media. A failure_code of outcome_unknown means the publish call timed out or ended without a usable answer after the request was sent; the post may be live, so check the account's posts before retrying."
+                            }
+                          ]
+                        },
+                        {
                           "source": "recruiter",
                           "events": [
                             {
@@ -72437,7 +75328,7 @@
             }
           }
         },
-        "description": "Returns the complete canonical event catalogue (27 events) grouped by source: messaging (7), user (2), account_status (15), plus 3 recruiter/sales_nav events. A local catalogue read: no platform call is made."
+        "description": "Returns the complete canonical event catalogue (29 events) grouped by source: messaging (7), user (2), account_status (15), post (2), plus 3 recruiter/sales_nav events. A local catalogue read: no platform call is made."
       }
     },
     "/v1/webhooks/{id}/test": {
@@ -72671,7 +75562,8 @@
                       "enum": [
                         "messaging",
                         "user",
-                        "account_status"
+                        "account_status",
+                        "post"
                       ],
                       "description": "The event source this webhook subscribes to (immutable)."
                     },
@@ -72732,7 +75624,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only)."
+                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only; post and account_status have none)."
                     },
                     "secret_prefix": {
                       "type": "string",
@@ -73094,7 +75986,8 @@
                       "enum": [
                         "messaging",
                         "user",
-                        "account_status"
+                        "account_status",
+                        "post"
                       ],
                       "description": "The event source this webhook subscribes to (immutable)."
                     },
@@ -73155,7 +76048,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only)."
+                      "description": "Field-remapping keys for the delivery payload (messaging and user sources only; post and account_status have none)."
                     },
                     "secret_prefix": {
                       "type": "string",

@@ -186,7 +186,7 @@ function argumentSurface(nodes: Node[]): Arg[] {
  * keeps both); 1652 after `account update` gained --country (its
  * --allow-country-fallback is boolean and never counted).
  */
-const ARGUMENT_SURFACE_COUNT = 1652;
+const ARGUMENT_SURFACE_COUNT = 1706;
 const DOCUMENTED_FLOOR = 23;
 
 // ---------------------------------------------------------------------------

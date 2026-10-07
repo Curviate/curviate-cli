@@ -126,6 +126,16 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // a country). `account link` refuses this itself before any request with the
   // same exit, so the API's 400 and the CLI's own guard read alike.
   CONNECTION_LOCATION_REQUIRED: 2,
+  // 2: Draft refusals the caller fixes by changing the request, none of which
+  // clears on an unchanged retry: the bucket is full (`DRAFT_LIMIT_REACHED`),
+  // the media quota is used (`MEDIA_QUOTA_EXCEEDED`), the Draft has no account
+  // (`ACCOUNT_REQUIRED`), a content gap (`DRAFT_NOT_PUBLISHABLE`), or another
+  // scheduled Draft is within 5 minutes (`SCHEDULE_CONFLICT`).
+  DRAFT_LIMIT_REACHED: 2,
+  MEDIA_QUOTA_EXCEEDED: 2,
+  ACCOUNT_REQUIRED: 2,
+  DRAFT_NOT_PUBLISHABLE: 2,
+  SCHEDULE_CONFLICT: 2,
 
   // Not found (4)
   RESOURCE_NOT_FOUND: 4,
@@ -147,6 +157,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Transient platform (7)
   PLATFORM_ERROR: 7,
   LINKEDIN_SERVICE_UNAVAILABLE: 7,
+  // 7: a publish of this Draft is in flight (or being settled); read it again
+  // in a few seconds. A busy state, not a malformed request.
+  DRAFT_PUBLISHING: 7,
 
   // Account / connection state (8)
   ACCOUNT_RESTRICTED: 8,

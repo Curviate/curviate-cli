@@ -50,12 +50,12 @@ describe("webhook create, tenant-wide account_status", () => {
     expect(body).not.toHaveProperty("account_ids");
   });
 
-  it.each(["messaging", "user"])("%s without --account-ids exits 2 naming the rule", async (source) => {
+  it.each(["messaging", "user", "post"])("%s without --account-ids exits 2 naming the rule", async (source) => {
     const { runWebhookCreate } = await import("../../src/commands/webhook.js");
     const c = client();
     const out = makeOut();
     await expectExit(2, () => runWebhookCreate(c as never, { source, "request-url": "https://example.com/h" } as never, out));
-    expect(text(out.stderr.write)).toContain("--account-ids is required when --source is messaging or user");
+    expect(text(out.stderr.write)).toContain("--account-ids is required when --source is messaging, user or post");
     expect(c.webhooks.create).not.toHaveBeenCalled();
   });
 

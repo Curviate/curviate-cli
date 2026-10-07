@@ -267,6 +267,39 @@ curviate company posts 112013061 --limit 5 --account acc_1 --json
 curviate company jobs 112013061 --all --account acc_1 --json   # streams every page
 ```
 
+## Drafts and scheduled posts
+
+A Draft is a stored, editable, unpublished post. Give it an account and `--schedule-at` and Curviate publishes it at that time. Drafts are tenant-wide: `--account` is optional and is never defaulted from your config, so a Draft you create without it has no account yet. `curviate post create` still publishes immediately and does not schedule.
+
+### 1. Draft a post, schedule it, change your mind
+
+```bash
+curviate draft create "Three things we learned shipping our first agent integration." --account acc_1 --schedule-at 2026-10-12T09:00:00+02:00 --json
+curviate draft update drf_1 --unschedule --json            # back to a plain Draft
+curviate draft publish drf_1 --json                        # or publish now: prints the post id
+```
+
+`--schedule-at` is an ISO 8601 time with an offset, 5 minutes to 365 days ahead, passed to the API unchanged. Two scheduled Drafts on one account must be at least 5 minutes apart.
+
+### 2. Attach media
+
+```sh
+curviate draft create "Launch day." --account acc_1 --attach shot1.png --attach shot2.png --json
+curviate draft update drf_1 --attach demo.pdf --json       # appends; existing files stay
+```
+
+Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed. An image over 5 MiB is refused before anything is sent. Files up to 5 MiB go inline in the request; larger ones are uploaded separately, in the order you gave them.
+
+### 3. List what is queued, and what went out
+
+```bash
+curviate draft list --status scheduled --account acc_1 --order asc --json
+curviate draft list --status published --from 2026-10-01T00:00:00Z --json   # publish records, not Drafts
+curviate draft list --account none --all --json                              # Drafts with no account, every page
+```
+
+A scheduled post that fails to publish becomes a `failed` Draft with a `failure` code; any `draft update` on it clears the failure. Failed `outcome_unknown` means the post may be live: check the account's posts before retrying.
+
 ## Sales Navigator
 
 Sales Navigator commands (`curviate sales-nav ...`) are **beta**: this surface has not been

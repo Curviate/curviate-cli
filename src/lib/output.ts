@@ -291,10 +291,13 @@ export function detectUnknownFields(
  * Existing calls without `slim` or `verbose` are backward-compatible.
  */
 export function renderSuccess(
-  data: unknown,
+  rawData: unknown,
   opts: OutputOptions,
   out: OutputStreams,
 ): void {
+  // A bodyless 204 (draft delete) resolves `undefined`; print what every other
+  // delete prints (`{}`), never the literal `undefined`, which is not JSON.
+  const data = rawData === undefined ? {} : rawData;
   const json = isJsonMode(opts);
   const fields = parseFields(opts.fields);
 

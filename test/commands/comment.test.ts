@@ -240,6 +240,15 @@ describe("comment writes — method + args", () => {
     expect((accountNs.comments.delete as Mock).mock.calls[0]).toHaveLength(2);
   });
 
+  it("comment delete prints {} when the SDK resolves undefined (--json and human)", async () => {
+    const { runCommentDelete } = await import("../../src/commands/comment.js");
+    (accountNs.comments.delete as Mock).mockResolvedValueOnce(undefined);
+    const out = makeOut();
+    await runCommentDelete(client as never, { postId: "p1", commentId: "c1", account: "acc_1", json: true } as Args, out);
+    const printed = (out.stdout.write as Mock).mock.calls.map((c) => c[0]).join("");
+    expect(printed).toBe("{}\n");
+  });
+
   it("comment react calls comments.addReaction with a {reaction} body", async () => {
     const { runCommentReact } = await import("../../src/commands/comment.js");
     await runCommentReact(

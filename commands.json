@@ -4779,7 +4779,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Event source: messaging | user | account_status.",
+          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed).",
           "required": true
         },
         {
@@ -4791,7 +4791,7 @@
         {
           "name": "account-ids",
           "type": "string",
-          "description": "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account."
+          "description": "Comma-separated account ids to target. Required for messaging, user and post; omit on account_status to cover every current and future account."
         },
         {
           "name": "name",
@@ -4832,7 +4832,7 @@
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
       "requires": [
-        "--account-ids for --source messaging and user; omit it with --source account_status to cover every current and future account."
+        "--account-ids for --source messaging, user and post; omit it with --source account_status to cover every current and future account."
       ]
     },
     {
@@ -5049,6 +5049,272 @@
       ],
       "examples": [
         "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft"
+      ],
+      "description": "Drafts and scheduled posts.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "list"
+      ],
+      "description": "List Drafts, newest first. With --status published it lists publish records instead (post id, account, time; never Drafts).",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "description": "Only this account's items (acc_...), or none for Drafts with no account. Omit for all of yours."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Comma list of draft, scheduled, failed, published (default draft,scheduled,failed)."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "description": "Only items dated at or after this ISO 8601 time (each item's own date: scheduled_at, failure.failed_at, published_at or updated_at)."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Only items dated before this ISO 8601 time (exclusive)."
+        },
+        {
+          "name": "order",
+          "type": "string",
+          "description": "desc (default) or asc, by the item's own date."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft list",
+        "curviate draft list --status scheduled --account acc_YOUR_ACCOUNT_ID --order asc",
+        "curviate draft list --status scheduled,published --from 2026-10-01T00:00:00Z --to 2026-11-01T00:00:00Z"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "get"
+      ],
+      "description": "Get one Draft, with a fresh signed link (valid 1 hour) for each attachment.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Draft id (drf_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft get drf_YOUR_DRAFT_ID"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "create"
+      ],
+      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "description": "Account the Draft publishes as (acc_...). Never defaulted: omit it for a Draft with no account yet."
+        },
+        {
+          "name": "text",
+          "type": "positional",
+          "required": false,
+          "stdinArg": true,
+          "description": "Post text (up to 3000 characters). Pass - to read from stdin."
+        },
+        {
+          "name": "schedule-at",
+          "type": "string",
+          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text."
+        },
+        {
+          "name": "attach",
+          "type": "string",
+          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft create \"Three things we learned shipping our first agent integration.\"",
+        "curviate draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
+        "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "update"
+      ],
+      "description": "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "description": "Move the Draft to another of your accounts (acc_...)."
+        },
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Draft id (drf_...)."
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "stdinArg": true,
+          "description": "Replace the text (up to 3000 characters). Pass - to read from stdin."
+        },
+        {
+          "name": "schedule-at",
+          "type": "string",
+          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text."
+        },
+        {
+          "name": "unschedule",
+          "type": "boolean",
+          "description": "Cancel the schedule; the Draft stays a Draft."
+        },
+        {
+          "name": "attach",
+          "type": "string",
+          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
+        "curviate draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
+        "curviate draft update drf_YOUR_DRAFT_ID --unschedule"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "delete"
+      ],
+      "description": "Delete a Draft and its stored media.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Draft id (drf_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft delete drf_YOUR_DRAFT_ID"
+      ],
+      "requires": []
+    },
+    {
+      "path": [
+        "draft",
+        "publish"
+      ],
+      "description": "Publish a Draft now, under the same rules and safety limits as `post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Draft id (drf_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate draft publish drf_YOUR_DRAFT_ID"
       ],
       "requires": []
     },
