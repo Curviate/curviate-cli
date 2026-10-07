@@ -612,3 +612,26 @@ describe("lib/output — renderError", () => {
     expect(parsed.error["retryAfterMs"]).toBe(2000);
   });
 });
+
+describe("renderSuccess: a bodyless 204 resolves undefined", () => {
+  const capture = () => {
+    const chunks = { out: "", err: "" };
+    return { chunks, out: { stdout: { write: (x: string) => void (chunks.out += x) }, stderr: { write: (x: string) => void (chunks.err += x) } } };
+  };
+
+  it("--json prints valid JSON ({}), never the literal `undefined`", () => {
+    const c = capture();
+    renderSuccess(undefined, { json: true, isTTY: true }, c.out);
+    expect(c.chunks.out).toBe("{}\n");
+    expect(JSON.parse(c.chunks.out)).toEqual({});
+  });
+
+  it("human mode prints the same as an empty object, not `undefined`", () => {
+    const u = capture();
+    const e = capture();
+    renderSuccess(undefined, { json: false, isTTY: true }, u.out);
+    renderSuccess({}, { json: false, isTTY: true }, e.out);
+    expect(u.chunks.out).not.toContain("undefined");
+    expect(u.chunks.out).toBe(e.chunks.out);
+  });
+});

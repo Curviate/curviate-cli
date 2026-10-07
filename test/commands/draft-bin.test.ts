@@ -140,6 +140,8 @@ describe("curviate draft (built bin, stub server)", () => {
     const r = await run(["draft", "delete", "drf_1"]);
     expect(r.code).toBe(0);
     expect(seen[0]!.method).toBe("DELETE");
+    // Valid JSON, same as `webhook delete`: never the literal `undefined`.
+    expect(JSON.parse(r.stdout)).toEqual({});
   });
 
   it("publish: POST /publish; the API's refusal code surfaces with its exit code (SCHEDULE_CONFLICT -> 2)", async () => {
