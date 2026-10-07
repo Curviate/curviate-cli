@@ -68,6 +68,15 @@ const PARITY_MANIFEST: Record<string, string> = {
   "webhook update": "webhooks.update",
   "webhook delete": "webhooks.delete",
 
+  // drafts (7). `draft create` / `draft update` also call uploadAttachment for files over 5 MiB.
+  "draft create":  "drafts.create",
+  "draft list":    "drafts.list",
+  "draft get":     "drafts.get",
+  "draft update":  "drafts.update",
+  "draft delete":  "drafts.delete",
+  "draft publish": "drafts.publish",
+  "draft create/update --attach (over 5 MiB)": "drafts.uploadAttachment",
+
   // auth (5) — mounted under the `account` noun (intent-shaped tree)
   "account link":                 "auth.intent",
   "account checkpoint solve":     "auth.solveCheckpoint",
@@ -237,10 +246,10 @@ const PARITY_MANIFEST: Record<string, string> = {
 };
 
 /** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 146;
+const EXPECTED_MANIFEST_COUNT = 153;
 
 /** Total public SDK methods across every namespace (root + account-scoped). */
-const EXPECTED_SDK_METHOD_COUNT = 149;
+const EXPECTED_SDK_METHOD_COUNT = 156;
 
 /**
  * Pre-existing SDK methods with no CLI command yet — see the file-header
@@ -272,6 +281,7 @@ async function buildSdkMethodSet(): Promise<Set<string>> {
   const rootNamespaces: [string, object][] = [
     ["accounts", client.accounts],
     ["webhooks", client.webhooks],
+    ["drafts", client.drafts],
     ["auth", client.auth],
   ];
 

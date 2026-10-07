@@ -8,6 +8,27 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-10-07
+
+Requires `@curviate/sdk` 0.42.0.
+
+### Added
+
+- **`curviate draft`**: `list`, `get`, `create`, `update`, `delete`, `publish`.
+  A Draft is a stored, editable, unpublished post; with `--schedule-at` (ISO 8601
+  with an offset, passed to the API unchanged) Curviate publishes it at that time.
+  `update --unschedule` cancels a schedule. `--account` is never defaulted from
+  config: a Draft without one has no account yet. `list --status` takes a comma
+  list of `draft`, `scheduled`, `failed`, `published` (`published` lists publish
+  records, not Drafts), with `--account` (an `acc_` id or `none`), `--from`,
+  `--to`, `--order` and `--all`.
+- **`--attach <file>`** on `draft create` and `draft update` (repeatable). Files up
+  to 5 MiB go inline in the request; larger ones use the upload route, in the
+  order given. `update --attach` appends and keeps existing files.
+- **Exit codes** for the six new API codes: `DRAFT_LIMIT_REACHED`,
+  `MEDIA_QUOTA_EXCEEDED`, `ACCOUNT_REQUIRED`, `DRAFT_NOT_PUBLISHABLE` and
+  `SCHEDULE_CONFLICT` exit 2; `DRAFT_PUBLISHING` exits 7.
+
 ## [0.46.1] - 2026-10-04
 
 Requires `@curviate/sdk` 0.41.0.
