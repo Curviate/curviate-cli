@@ -14,6 +14,8 @@ Requires `@curviate/sdk` 0.42.0.
 
 ### Added
 
+- **`webhook create --source post`** (scheduled-post results: `post.published`,
+  `post.publish_failed`). Like `messaging` and `user`, it requires `--account-ids`.
 - **`curviate draft`**: `list`, `get`, `create`, `update`, `delete`, `publish`.
   A Draft is a stored, editable, unpublished post; with `--schedule-at` (ISO 8601
   with an offset, passed to the API unchanged) Curviate publishes it at that time.

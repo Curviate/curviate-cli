@@ -4779,7 +4779,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Event source: messaging | user | account_status.",
+          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed).",
           "required": true
         },
         {
@@ -4791,7 +4791,7 @@
         {
           "name": "account-ids",
           "type": "string",
-          "description": "Comma-separated account ids to target. Required for messaging and user; omit on account_status to cover every current and future account."
+          "description": "Comma-separated account ids to target. Required for messaging, user and post; omit on account_status to cover every current and future account."
         },
         {
           "name": "name",
@@ -4832,7 +4832,7 @@
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
       "requires": [
-        "--account-ids for --source messaging and user; omit it with --source account_status to cover every current and future account."
+        "--account-ids for --source messaging, user and post; omit it with --source account_status to cover every current and future account."
       ]
     },
     {
@@ -5194,7 +5194,7 @@
       "examples": [
         "curviate draft create \"Three things we learned shipping our first agent integration.\"",
         "curviate draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
-        "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach demo.mp4"
+        "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png"
       ],
       "requires": []
     },

@@ -461,7 +461,7 @@ const draftCreateCommand = defineCommand({
     examples: [
       "curviate draft create \"Three things we learned shipping our first agent integration.\"",
       "curviate draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
-      "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach demo.mp4",
+      "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png",
     ],
   },
   args: {
