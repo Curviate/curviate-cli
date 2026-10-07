@@ -27,6 +27,8 @@ Requires `@curviate/sdk` 0.42.0.
 - **`--attach <file>`** on `draft create` and `draft update` (repeatable). Files up
   to 5 MiB go inline in the request; larger ones use the upload route, in the
   order given. `update --attach` appends and keeps existing files.
+  An image over 5 MiB (the API's image cap) is refused with exit 2 before any
+  request, so a failed upload cannot leave a half-made Draft behind.
 - **Exit codes** for the six new API codes: `DRAFT_LIMIT_REACHED`,
   `MEDIA_QUOTA_EXCEEDED`, `ACCOUNT_REQUIRED`, `DRAFT_NOT_PUBLISHABLE` and
   `SCHEDULE_CONFLICT` exit 2; `DRAFT_PUBLISHING` exits 7.

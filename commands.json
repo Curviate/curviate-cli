@@ -5177,7 +5177,7 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
         }
       ],
       "globals": [
@@ -5235,7 +5235,7 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
         }
       ],
       "globals": [

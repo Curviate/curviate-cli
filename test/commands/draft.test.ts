@@ -176,6 +176,31 @@ describe("draft create", () => {
   });
 });
 
+describe("an image over the 5 MiB cap is refused before any request", () => {
+  it("5 MiB passes; 5 MiB + 1 exits 2 on create and on update with nothing sent", async () => {
+    const MAX = 5 * 1024 * 1024;
+    const c = makeClient();
+    await runDraftCreate(asClient(c), { attach: tmpFile("ok.png", MAX), json: true }, makeOut());
+    expect(c.drafts.create).toHaveBeenCalledTimes(1);
+
+    const c2 = makeClient();
+    const out = makeOut();
+    const over = tmpFile("big.png", MAX + 1);
+    expect(await runCatchingExit(() => runDraftCreate(asClient(c2), { attach: over, json: true }, out))).toBe(2);
+    expect(await runCatchingExit(() => runDraftUpdate(asClient(c2), { id: "drf_1", attach: over, json: true }, out))).toBe(2);
+    expect(out.stderr.write.mock.calls[0]![0]).toContain("5 MiB");
+    expect(c2.drafts.create).not.toHaveBeenCalled();
+    expect(c2.drafts.update).not.toHaveBeenCalled();
+    expect(c2.drafts.uploadAttachment).not.toHaveBeenCalled();
+  });
+
+  it("a video or PDF over 5 MiB is not an image: it still goes through the upload route", async () => {
+    const c = makeClient();
+    await runDraftCreate(asClient(c), { attach: tmpFile("v.mp4", 5 * 1024 * 1024 + 1), json: true }, makeOut());
+    expect(c.drafts.uploadAttachment).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("draft update", () => {
   it("--unschedule sends scheduled_at:null (not omitted)", async () => {
     const c = makeClient();

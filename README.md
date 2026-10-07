@@ -288,7 +288,7 @@ curviate draft create "Launch day." --account acc_1 --attach shot1.png --attach 
 curviate draft update drf_1 --attach demo.pdf --json       # appends; existing files stay
 ```
 
-Up to 20 images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF (each up to 50 MiB), never mixed. Files up to 5 MiB go inline in the request; larger ones are uploaded separately, in the order you gave them.
+Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed. An image over 5 MiB is refused before anything is sent. Files up to 5 MiB go inline in the request; larger ones are uploaded separately, in the order you gave them.
 
 ### 3. List what is queued, and what went out
 

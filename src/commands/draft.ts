@@ -38,6 +38,8 @@ import type { Curviate, CurviateError, DraftAttachmentContentType } from "@curvi
 
 /** A file up to this size may ride inline (base64) in create/update. Mirrors the API's `/posts` cap. */
 export const INLINE_FILE_BYTES = 5 * 1024 * 1024;
+/** An image over this is refused by the API on every route, so the CLI refuses it before creating anything. */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 /** The JSON body an inline create/update may carry, base64 included. Mirrors the API. */
 export const INLINE_BODY_BYTES = 9 * 1024 * 1024;
 
@@ -149,6 +151,21 @@ async function loadFiles(paths: string[], out: OutputStreams): Promise<LoadedFil
       process.exit(err.exitCode);
     }
     throw err;
+  }
+}
+
+/**
+ * An image over MAX_IMAGE_BYTES would be refused by the API after the Draft already exists
+ * (create, then a 413 on upload), and a retry would then make a second Draft. Refuse it first.
+ */
+function refuseOversizeImages(files: LoadedFile[], out: OutputStreams): void {
+  for (const f of files) {
+    if (guessContentType(f.path).startsWith("image/") && f.buf.byteLength > MAX_IMAGE_BYTES) {
+      out.stderr.write(
+        `error: ${basename(f.path)} is an image over 5 MiB (${f.buf.byteLength} bytes). Images are capped at 5 MiB; resize it. Nothing was sent.\n`,
+      );
+      process.exit(2);
+    }
   }
 }
 
@@ -279,6 +296,7 @@ export async function runDraftCreate(
   Object.assign(body, readSchedule(flags, out));
 
   const files = await loadFiles(attachPaths(flags.attach), out);
+  refuseOversizeImages(files, out);
   const { inline, upload } = planAttachments(files);
   if (inline.length > 0) body["attachments"] = inline.map((f) => toAttachmentPayload(f.path, f.buf));
 
@@ -318,6 +336,7 @@ export async function runDraftUpdate(
   Object.assign(body, readSchedule(flags, out));
 
   const files = await loadFiles(attachPaths(flags.attach), out);
+  refuseOversizeImages(files, out);
   const { inline, upload } = planAttachments(files);
 
   const outOpts = resolveOutputOpts(flags);
@@ -411,7 +430,7 @@ const SCHEDULE_DESC =
   "Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text.";
 const ATTACH_DESC =
   "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. " +
-  "Up to 20 images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF (each up to 50 MiB), never mixed.";
+  "Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed.";
 
 const draftListCommand = defineCommand({
   meta: {
