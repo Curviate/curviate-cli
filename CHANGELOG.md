@@ -8,6 +8,23 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+Still requires `@curviate/sdk` 0.42.0 (exact pin unchanged). The vendored OpenAPI
+fixture is re-copied from the SDK's regenerated fixture (deployed staging, server
+`3b0b7503a516f6a1f39622bd40ec6fec9c217c38`); the pin's version label stays
+`0.42.0` until the SDK release and the pin bump.
+
+### Changed
+
+- **The activity window applies to every account, with or without a timezone.**
+  A server change, no CLI flag or output changes. An account with no zone set is
+  read in the zone its user's browser reported, else one inferred from the
+  LinkedIn profile location, else `Europe/Berlin`; a zone you set still wins.
+  `account get --verbose` now carries
+  `activity_window.effective_timezone` and `activity_window.source` (`account`,
+  `browser`, `location` or `default`). A `BUDGET_EXHAUSTED` with
+  `safetyReason: "activity_window"` can now reach an account that had no zone.
+  The CLI's refusal text ("outside its activity window") needed no change.
+
 ## [0.47.0] - 2026-10-07
 
 Requires `@curviate/sdk` 0.42.0.
