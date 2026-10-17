@@ -21,4 +21,10 @@ describe("source", () => {
     const leaks = walk(resolve(pkgRoot, "src")).filter((f) => /dry[_-]run/i.test(readFileSync(f, "utf8")));
     expect(leaks).toEqual([]);
   });
+
+  it("README.md embeds no real-shaped API key and no dry-run token", () => {
+    const readme = readFileSync(join(pkgRoot, "README.md"), "utf8");
+    expect(readme).not.toMatch(/rdc_live_\w{10,}/); // placeholders stay short
+    expect(readme).not.toMatch(/dry[_-]run/i);
+  });
 });

@@ -4,7 +4,7 @@
  * the resolver exposes: the prompt-tier gates and the live-terminal EOF hang.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { resolveSecret, STDIN_TTY_CUE } from "../../src/lib/credential-resolve.js";
+import { resolveSecret, checkCredentialConflicts, STDIN_TTY_CUE, type CredentialConflictFlags } from "../../src/lib/credential-resolve.js";
 import { exitCode } from "../helpers/exit-code.js";
 
 const ENV = "CURVIATE_TEST_SECRET";
@@ -80,5 +80,32 @@ describe("resolveSecret", () => {
       stderr.mockRestore();
       stdin.setRawMode = had;
     }
+  });
+});
+
+describe("checkCredentialConflicts: the five conflicts, each alone", () => {
+  // Each row sets only the flags that trigger ITS rule (auth-method omitted where another rule would fire first), so the
+  // message names the rule that fired and a removed check cannot hide behind a neighbour.
+  it.each<[string, CredentialConflictFlags, RegExp]>([
+    ["--password + --password-stdin", { password: "x", "password-stdin": true }, /--password and --password-stdin cannot both/],
+    ["--li-at + --li-at-stdin", { "li-at": "x", "li-at-stdin": true }, /--li-at and --li-at-stdin cannot both/],
+    ["--password-stdin + --li-at-stdin", { "password-stdin": true, "li-at-stdin": true }, /stdin can feed only one secret/],
+    ["--li-at-stdin with --auth-method credentials", { "li-at-stdin": true, "auth-method": "credentials" }, /--li-at-stdin requires --auth-method cookie/],
+    ["--password-stdin with --auth-method cookie", { "password-stdin": true, "auth-method": "cookie" }, /--password-stdin requires --auth-method credentials/],
+  ])("%s: exit 2 naming the rule", async (_l, flags, message) => {
+    const o = out();
+    expect(await exitCode(() => checkCredentialConflicts(flags, o))).toBe(2);
+    expect(o.stderr.write.mock.calls.map(([m]) => m).join("")).toMatch(message);
+  });
+
+  it.each<[string, CredentialConflictFlags]>([
+    ["a value flag with its own method", { password: "x", "auth-method": "credentials" }],
+    ["--li-at-stdin with cookie", { "li-at-stdin": true, "auth-method": "cookie" }],
+    ["--password-stdin with credentials", { "password-stdin": true, "auth-method": "credentials" }],
+    ["nothing at all", {}],
+  ])("control, no conflict: %s does not exit", async (_l, flags) => {
+    const o = out();
+    expect(await exitCode(() => checkCredentialConflicts(flags, o))).toBeUndefined();
+    expect(o.stderr.write).not.toHaveBeenCalled();
   });
 });
