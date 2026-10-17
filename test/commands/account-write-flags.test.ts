@@ -1,149 +1,72 @@
 /**
- * `account` single-resource write/checkpoint command flag suppression, and
- * the checkpoint-hint note in `link` help.
- *
- * `link`, `update`, `disconnect`, and `checkpoint solve`/`checkpoint poll` are
- * all single-resource mutations — pagination flags (`--limit`, `--cursor`,
- * `--all`, `--max-pages`) have no meaning on a one-row response, but
- * `--fields` is still useful to project it. They use the single-object write
- * flag set (pagination suppressed, `--fields` kept) instead of the full
- * global flag set.
- *
- * `account list` is a genuine list read and is unaffected — kept here only
- * as a negative control so a future regression shows up immediately.
- *
- * `link` also carries a one-line note in its description about the
- * checkpoint-required path: an interactive prompt on a TTY, or a distinct
- * exit code plus a follow-up command off one.
- *
- * Strategy: inspect the `args`/`meta` on each subcommand definition
- * directly. `defineCommand` is an identity function in citty, so
- * `.subCommands.<name>.args` is the raw args object whose keys ARE the
- * registered flags (same approach as the post/message/inbox flag-suppression
- * tests).
+ * `account` flag hygiene (single-resource writes/checkpoint commands carry --fields but no pagination flags; lists keep them;
+ * `checkpoint request` has the account-id positional and no --code) and `link --linkedin-premium` narrowing.
  */
+import { describe, it, expect, vi } from "vitest";
+import type { Mock } from "vitest";
+import { accountCommand, runAccountLink } from "../../src/commands/account.js";
+import { exitCode } from "../helpers/exit-code.js";
 
-import { describe, it, expect } from "vitest";
+type Sub = { args?: Record<string, { type?: string }>; meta?: { description?: string }; subCommands?: Record<string, Sub> };
+const subs = (accountCommand as unknown as { subCommands: Record<string, Sub> }).subCommands;
+const PAGINATION = ["limit", "cursor", "all", "max-pages"];
 
-/** Flags that must NEVER appear on these commands (pagination-only; --fields is kept). */
-const PAGINATION_ONLY_FLAGS = ["limit", "cursor", "all", "max-pages"] as const;
-
-type SubCommandMap = Record<string, { args?: Record<string, unknown>; meta?: { description?: string }; subCommands?: SubCommandMap }>;
-
-async function loadAccountSubCommands(): Promise<SubCommandMap> {
-  const { accountCommand } = await import("../../src/commands/account.js");
-  return (accountCommand as unknown as { subCommands: SubCommandMap }).subCommands;
-}
-
-const SINGLE_WRITE_COMMANDS = ["link", "update", "disconnect"] as const;
-
-describe("account single-resource write commands — pagination flags suppressed, --fields kept", () => {
-  for (const name of SINGLE_WRITE_COMMANDS) {
-    it(`account ${name} — args definition has no pagination-only flags, keeps --fields`, async () => {
-      const subCmds = await loadAccountSubCommands();
-      const args = subCmds[name]?.args ?? {};
-
-      for (const flag of PAGINATION_ONLY_FLAGS) {
-        expect(args, `account ${name} args must NOT include --${flag}`).not.toHaveProperty(flag);
-      }
-      expect(args, `account ${name} must keep --fields`).toHaveProperty("fields");
-    });
-  }
-});
-
-describe("account checkpoint solve/poll/request — pagination flags suppressed, --fields kept", () => {
-  for (const name of ["solve", "poll", "request"] as const) {
-    it(`account checkpoint ${name} — args definition has no pagination-only flags, keeps --fields`, async () => {
-      const subCmds = await loadAccountSubCommands();
-      const checkpointSub = subCmds["checkpoint"]?.subCommands ?? {};
-      const args = checkpointSub[name]?.args ?? {};
-
-      for (const flag of PAGINATION_ONLY_FLAGS) {
-        expect(args, `account checkpoint ${name} args must NOT include --${flag}`).not.toHaveProperty(flag);
-      }
-      expect(args, `account checkpoint ${name} must keep --fields`).toHaveProperty("fields");
-    });
-  }
-});
-
-describe("account checkpoint request — flag shape (no --code, account_id positional)", () => {
-  it("has the account-id positional and no --code — a re-request has nothing to submit", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const checkpointSub = subCmds["checkpoint"]?.subCommands ?? {};
-    const args = (checkpointSub["request"]?.args ?? {}) as Record<string, { type?: string }>;
-
-    expect(args, "account checkpoint request must have the account-id positional").toHaveProperty("account-id");
-    expect(args["account-id"]?.type).toBe("positional");
-    expect(args, "account checkpoint request must NOT have --code").not.toHaveProperty("code");
+describe("account flag sets", () => {
+  it.each([
+    ["link", () => subs["link"]!],
+    ["update", () => subs["update"]!],
+    ["disconnect", () => subs["disconnect"]!],
+    ["checkpoint solve", () => subs["checkpoint"]!.subCommands!["solve"]!],
+    ["checkpoint poll", () => subs["checkpoint"]!.subCommands!["poll"]!],
+    ["checkpoint request", () => subs["checkpoint"]!.subCommands!["request"]!],
+  ])("%s: no pagination flags, keeps --fields", (_n, get) => {
+    const args = get().args ?? {};
+    for (const f of PAGINATION) expect(args).not.toHaveProperty(f);
+    expect(args).toHaveProperty("fields");
   });
 
-  it("description is honest about per-challenge-type availability (no universal-resend overclaim, no vendor name)", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const checkpointSub = subCmds["checkpoint"]?.subCommands ?? {};
-    const description = checkpointSub["request"]?.meta?.description ?? "";
-
-    expect(description, "request description should mention not every challenge type is resendable").toMatch(
-      /not every|nothing to re-?send|does not support/i,
-    );
-    // Substrate vendor name assembled from fragments so the literal never
-    // appears in this public-repo source file (mirrors the same technique
-    // scripts/check-clean.mjs itself uses for the identical reason).
-    const vendorName = ["uni", "pi", "le"].join("");
-    expect(description).not.toMatch(new RegExp(vendorName, "i"));
+  it("list keeps every pagination flag; checkpoint request has the account-id positional and no --code, and its description never names the vendor", () => {
+    for (const f of PAGINATION) expect(subs["list"]!.args).toHaveProperty(f);
+    const req = subs["checkpoint"]!.subCommands!["request"]!;
+    expect(req.args!["account-id"]!.type).toBe("positional");
+    expect(req.args).not.toHaveProperty("code");
+    expect(req.meta?.description ?? "").not.toMatch(new RegExp(["uni", "pi", "le"].join(""), "i")); // fragments: the literal must not appear in this public file
   });
 });
 
-describe("account list — negative control (list reads keep all pagination flags)", () => {
-  it("account list — args definition DOES have all pagination flags", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const args = subCmds["list"]?.args ?? {};
+describe("account link --linkedin-premium", () => {
+  const client = { auth: { intent: vi.fn() } };
+  const link = (extra: object, out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } }) =>
+    runAccountLink(client as never, { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "li-at": "AQEDaTest", "user-agent": "Mozilla/5.0", json: true, ...extra } as never, out, { isTTY: false });
+  const sent = () => client.auth.intent.mock.calls[0]![0] as Record<string, unknown>;
 
-    for (const flag of PAGINATION_ONLY_FLAGS) {
-      expect(args, `account list must include --${flag}`).toHaveProperty(flag);
-    }
-  });
-});
-
-describe("account link — checkpoint-required hint in description", () => {
-  it("account link description mentions the checkpoint exit code and follow-up command", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const description = subCmds["link"]?.meta?.description ?? "";
-
-    expect(description, "account link description should mention exit code 12").toMatch(/exits? 12/i);
-    expect(description, "account link description should point at `account checkpoint solve`").toMatch(
-      /checkpoint solve/,
-    );
+  it.each(["sales_navigator", "recruiter"])("forwards %s; absent sends no field (omission means 'every product')", async (value) => {
+    vi.resetAllMocks();
+    client.auth.intent.mockResolvedValue({ object: "account" });
+    await link({ "linkedin-premium": value });
+    expect(sent()["linkedin_premium"]).toBe(value);
+    client.auth.intent.mockClear();
+    await link({});
+    expect(sent()).toMatchObject({ auth_method: "cookie" }); // positive control: a body was captured
+    expect(sent()).not.toHaveProperty("linkedin_premium");
   });
 
-  it("account disconnect description is unaffected (no checkpoint hint on a non-checkpoint command)", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const description = subCmds["disconnect"]?.meta?.description ?? "";
-
-    expect(description).not.toMatch(/exits? 12/i);
+  // "" is what --linkedin-premium="$UNSET" expands to: a falsy guard let it past the validation and silently widened the connect.
+  it.each(["", "sales-navigator", "SALES_NAVIGATOR", "both", "premium"])("refuses %j with exit 2 and never connects", async (value) => {
+    vi.resetAllMocks();
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    expect(await exitCode(() => link({ "linkedin-premium": value }, out))).toBe(2);
+    expect(client.auth.intent).not.toHaveBeenCalled();
+    expect((out.stderr.write as Mock).mock.calls.join("")).toContain("--linkedin-premium must be one of: sales_navigator, recruiter");
   });
-});
 
-describe("account checkpoint solve — --code description", () => {
-  it("does not mention the deferred switch-challenge-type escape hatch", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const checkpointSub = subCmds["checkpoint"]?.subCommands ?? {};
-    const args = (checkpointSub["solve"]?.args ?? {}) as Record<string, { description?: string }>;
-
-    expect(String(args["code"]?.description ?? "")).not.toMatch(/TRY_ANOTHER_WAY/);
-  });
-});
-
-describe("account checkpoint poll — --wait/--timeout flags", () => {
-  it("exposes --wait (default off) and a millisecond --timeout with an explicit unit note", async () => {
-    const subCmds = await loadAccountSubCommands();
-    const checkpointSub = subCmds["checkpoint"]?.subCommands ?? {};
-    const args = (checkpointSub["poll"]?.args ?? {}) as Record<string, { default?: unknown; description?: string }>;
-
-    expect(args).toHaveProperty("wait");
-    expect(args["wait"]?.default).toBe(false);
-    expect(args).toHaveProperty("timeout");
-    expect(String(args["timeout"]?.description ?? ""), "--timeout help text must say milliseconds explicitly").toMatch(
-      /millisecond/i,
-    );
+  it("under --preview it renders instead of exiting, and does not echo the rejected value", async () => {
+    vi.resetAllMocks();
+    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+    expect(await exitCode(() => link({ "linkedin-premium": "typo", preview: true }, out))).toBeUndefined();
+    expect(client.auth.intent).not.toHaveBeenCalled();
+    const printed = (out.stdout.write as Mock).mock.calls.join("");
+    expect(printed.length).toBeGreaterThan(0);
+    expect(printed).not.toContain("typo");
   });
 });

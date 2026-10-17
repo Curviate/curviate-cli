@@ -16,7 +16,7 @@ import { resolve } from "node:path";
 import type { CommandDef } from "citty";
 import { main } from "../src/main.js";
 import { GLOBAL_FLAGS } from "../src/lib/global-flags.js";
-import { pkgRoot } from "./helpers/built-cli.js";
+import { pkgRoot } from "./helpers/pkg.js";
 
 type Def = { type?: string; required?: boolean; default?: unknown; description?: string; alias?: string | string[]; valueHint?: string };
 

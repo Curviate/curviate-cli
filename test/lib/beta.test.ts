@@ -24,6 +24,7 @@ import {
   betaOverrideHeader,
   BETA_CONSENT_HEADER,
 } from "../../src/lib/beta.js";
+import { createClient } from "../../src/lib/client.js";
 
 afterEach(() => {
   resetBetaOverride();
@@ -162,7 +163,6 @@ describe("the header reaches a real request through the client", () => {
       );
     }) as typeof fetch);
 
-    const { createClient } = await import("../../src/lib/client.js");
     const client = createClient({ apiKey: "cvt_test_beta", baseUrl: "https://api.invalid" });
     await client.accounts.list();
     expect(seen).toHaveLength(1);

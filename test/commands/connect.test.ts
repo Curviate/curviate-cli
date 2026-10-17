@@ -5,6 +5,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
+import { connectCommand, runConnectAccept, runConnectCancel, runConnectDecline, runConnectReceived, runConnectSend, runConnectSent } from "../../src/commands/connect.js";
+import { exitCode } from "../helpers/exit-code.js";
 
 function makeAccountNs() {
   return {
@@ -63,7 +65,6 @@ describe("connect <id> — send invitation", () => {
   });
 
   it("connect <member-url> — resolves URL to slug, calls invites.send", async () => {
-    const { runConnectSend } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSend(client as never, {
@@ -79,7 +80,6 @@ describe("connect <id> — send invitation", () => {
   });
 
   it("connect bare slug — passes slug unchanged", async () => {
-    const { runConnectSend } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSend(client as never, { id: "jdoe", account: "acc_1", json: true } as ConnectArgs, out);
@@ -90,7 +90,6 @@ describe("connect <id> — send invitation", () => {
   });
 
   it("connect URN — passes URN unchanged", async () => {
-    const { runConnectSend } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSend(client as never, {
@@ -105,7 +104,6 @@ describe("connect <id> — send invitation", () => {
   });
 
   it("connect <id> --note <text> — passes message field", async () => {
-    const { runConnectSend } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSend(client as never, {
@@ -121,7 +119,6 @@ describe("connect <id> — send invitation", () => {
   });
 
   it("connect --preview — renders preview, does not call send", async () => {
-    const { runConnectSend } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSend(client as never, {
@@ -153,7 +150,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect sent — calls invites.listSent", async () => {
-    const { runConnectSent } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectSent(client as never, { account: "acc_1", json: true } as ConnectArgs, out);
@@ -162,7 +158,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect sent --all — slim NDJSON lines carry the v2 slim fields (id/created_at/message/user kept, user.type/public_picture_url dropped)", async () => {
-    const { runConnectSent } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     (accountNs.invites.listSent as Mock).mockResolvedValueOnce({
@@ -204,7 +199,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect received — calls invites.listReceived", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectReceived(client as never, { account: "acc_1", json: true } as ConnectArgs, out);
@@ -213,7 +207,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect received --all — streams NDJSON", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     (accountNs.invites.listReceived as Mock)
@@ -228,7 +221,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect received --all — slim NDJSON lines carry the v2 slim fields (id/created_at/user.public_identifier kept, user.profile_url/description dropped)", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     (accountNs.invites.listReceived as Mock).mockResolvedValueOnce({
@@ -273,7 +265,6 @@ describe("connect sent / received — list reads", () => {
   });
 
   it("connect received --all --verbose — NDJSON lines carry the raw item unprojected", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     (accountNs.invites.listReceived as Mock).mockResolvedValueOnce({
@@ -313,7 +304,6 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect accept <id> — calls invites.accept with the verbatim id, bodyless", async () => {
-    const { runConnectAccept } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectAccept(client as never, {
@@ -329,7 +319,6 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect decline <id> — calls invites.decline with the verbatim id, bodyless", async () => {
-    const { runConnectDecline } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectDecline(client as never, {
@@ -344,24 +333,12 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect accept — without --account exits 2 before any SDK call", async () => {
-    const { runConnectAccept } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runConnectAccept(noConnectedAccounts(client) as never, { id: "inv_123" } as ConnectArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+    expect(await exitCode(() => runConnectAccept(noConnectedAccounts(client) as never, { id: "inv_123" } as ConnectArgs, out))).toBe(2);
     expect(accountNs.invites.accept).not.toHaveBeenCalled();
   });
 
   it("connect accept --preview — renders the bodyless preview without calling accept", async () => {
-    const { runConnectAccept } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectAccept(client as never, {
@@ -379,7 +356,6 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect decline --preview — renders the bodyless preview without calling decline", async () => {
-    const { runConnectDecline } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectDecline(client as never, {
@@ -396,7 +372,6 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect cancel <id> — calls cancel with verbatim id (not URL-resolved)", async () => {
-    const { runConnectCancel } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     // invitation_id could look like a URL-ish string but must NOT be resolved
@@ -410,7 +385,6 @@ describe("connect accept / decline / cancel — writes, invitation_id NOT resolv
   });
 
   it("connect cancel --preview — renders preview without calling cancel", async () => {
-    const { runConnectCancel } = await import("../../src/commands/connect.js");
     const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 
     await runConnectCancel(client as never, {
@@ -434,7 +408,6 @@ const PAGINATION_FLAGS = ["limit", "cursor", "all", "max-pages", "fields"] as co
 
 describe("connect write commands — no pagination flags in args definition", () => {
   it("connect (send root) — args definition has no pagination/projection flags", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const args = (connectCommand as Record<string, unknown>).args as Record<string, unknown>;
     for (const flag of PAGINATION_FLAGS) {
       expect(args, `connect root args must NOT include --${flag}`).not.toHaveProperty(flag);
@@ -442,7 +415,6 @@ describe("connect write commands — no pagination flags in args definition", ()
   });
 
   it("connect accept / decline — args definition has no pagination/projection flags", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, unknown> }
@@ -456,7 +428,6 @@ describe("connect write commands — no pagination flags in args definition", ()
   });
 
   it("connect cancel — args definition has no pagination/projection flags", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, unknown> }
@@ -468,7 +439,6 @@ describe("connect write commands — no pagination flags in args definition", ()
   });
 
   it("connect sent — args definition DOES have pagination flags (list read, negative control)", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, unknown> }
@@ -480,7 +450,6 @@ describe("connect write commands — no pagination flags in args definition", ()
   });
 
   it("connect received — args definition DOES have pagination flags (list read, negative control)", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, unknown> }
@@ -519,7 +488,6 @@ const SENT_STUB = {
 
 describe("connect sent slim default", () => {
   it("slim mode drops user.type and user.public_picture_url, keeps required v2 fields", async () => {
-    const { runConnectSent } = await import("../../src/commands/connect.js");
     const ns = {
       invites: {
         listSent: vi.fn().mockResolvedValue(SENT_STUB),
@@ -552,7 +520,6 @@ describe("connect sent slim default", () => {
   });
 
   it("--verbose restores user.type and user.public_picture_url to the full server response", async () => {
-    const { runConnectSent } = await import("../../src/commands/connect.js");
     const ns = {
       invites: {
         listSent: vi.fn().mockResolvedValue(SENT_STUB),
@@ -612,7 +579,6 @@ const RECEIVED_STUB = {
 
 describe("connect received slim default", () => {
   it("slim mode drops user.type/public_picture_url/profile_url/description, keeps identity fields", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const ns = {
       invites: {
         listReceived: vi.fn().mockResolvedValue(RECEIVED_STUB),
@@ -653,7 +619,6 @@ describe("connect received slim default", () => {
   });
 
   it("--verbose restores user.type/public_picture_url/profile_url/description to the full server response", async () => {
-    const { runConnectReceived } = await import("../../src/commands/connect.js");
     const ns = {
       invites: {
         listReceived: vi.fn().mockResolvedValue(RECEIVED_STUB),
@@ -691,7 +656,6 @@ describe("connect received slim default", () => {
 
 describe("connect help strings — Tier-1", () => {
   it("connect (send) positional description contains provider_id", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const args = (connectCommand as Record<string, unknown>).args as Record<
       string,
       { description?: string }
@@ -701,7 +665,6 @@ describe("connect help strings — Tier-1", () => {
   });
 
   it("connect --note description mentions acceptance rates and char limit", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const args = (connectCommand as Record<string, unknown>).args as Record<
       string,
       { description?: string }
@@ -712,7 +675,6 @@ describe("connect help strings — Tier-1", () => {
   });
 
   it("connect sent description contains pending and connect cancel cross-reference", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { meta?: { description?: string } }
@@ -723,7 +685,6 @@ describe("connect help strings — Tier-1", () => {
   });
 
   it("connect received description contains pending and already-handled", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { meta?: { description?: string } }
@@ -736,7 +697,6 @@ describe("connect help strings — Tier-1", () => {
   });
 
   it("connect accept / decline positional id description references connect received as source", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, { description?: string }> }
@@ -748,7 +708,6 @@ describe("connect help strings — Tier-1", () => {
   });
 
   it("the combined respond command is gone; accept / decline take no --shared-secret flag (bodyless)", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { args?: Record<string, unknown> }
@@ -765,7 +724,6 @@ describe("connect help strings — Tier-1", () => {
 
 describe("connect help strings — Tier-2 additional doc strings", () => {
   it("connect sent description contains created_at and identifies the v2 recipient field", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { meta?: { description?: string } }
@@ -776,7 +734,6 @@ describe("connect help strings — Tier-2 additional doc strings", () => {
   });
 
   it("connect sent description contains no-total-count workaround hint", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,
       { meta?: { description?: string } }
@@ -786,7 +743,6 @@ describe("connect help strings — Tier-2 additional doc strings", () => {
   });
 
   it("connect command description contains propagation delay note with 10-30 seconds", async () => {
-    const { connectCommand } = await import("../../src/commands/connect.js");
     const meta = (connectCommand as Record<string, unknown>).meta as { description?: string };
     const desc = meta?.description ?? "";
     expect(desc).toMatch(/10.{0,5}30 seconds|propagation/i);

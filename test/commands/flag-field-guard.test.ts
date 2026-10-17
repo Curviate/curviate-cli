@@ -1,280 +1,70 @@
 /**
- * Flag-to-body-field guard.
- *
- * The CLI's *method* surface (`ns.search.people(...)`) is compile-coupled to
- * the SDK client, so a renamed/removed SDK method reds `tsc`. Flag-to-body
- * mapping inside a `NAMED_FLAG_MAPPERS`-style function is hand-written string
- * literals (`body["current_company"] = ...`) with no such coupling: a server
- * field rename propagates through codegen into the SDK's generated types and
- * stops there — nothing reds, and the flag keeps pointing at a field the
- * server no longer accepts (400 INVALID_REQUEST).
- *
- * This test closes that gap by asserting against the served artifact, never
- * a hand-maintained field list: it runs each command's real named-flag body
- * builder with every named flag set, captures the actual body sent to the
- * (mocked) SDK method, and checks every key against the accepted
- * `properties` of the corresponding endpoint's request body schema in the
- * committed `@curviate/sdk` OpenAPI fixture — the practical offline stand-in
- * for the runtime `/.well-known/openapi.json`.
- *
- * The fixture is vendored into THIS repo (test/fixtures/openapi.json), not
- * read across a sibling `packages/sdk` checkout — the publish runbook's own
- * step 1 clones this repo standalone (`git clone .../curviate-cli.git`),
- * where no such sibling exists, and a cross-repo relative path there reds
- * gate 4 on the documented checkout (qa BLOCKER). The vendored
- * copy is kept from silently drifting from the real SDK spec by
- * scripts/check-fixture-pin.mjs, chained into prepack and pretest: it fails
- * loudly whenever test/fixtures/VENDORED_FROM.json's recorded SDK version
- * stops matching the exact `@curviate/sdk` pin in package.json.
- *
- * Pagination (`--cursor`/`--limit`) is deliberately excluded from every
- * invocation below: the SDK's own resource methods split those out of the
- * body into query params on the wire (confirmed in
- * packages/sdk/src/resources/search.ts), so they never appear in the
- * OpenAPI request-body schema even though the CLI merges them into the same
- * object it hands to the SDK method. That is correct, already-verified
- * behavior, not something this guard should flag.
+ * Flag-to-body-field guard. Flag -> body-key mapping is hand-written string
+ * literals with no compile-time coupling to the SDK, so a server field rename
+ * would leave a flag pointing at a field the server rejects (400). Each case
+ * runs a command's real body builder with every named flag set and checks every
+ * key of the body it hands the SDK against the accepted `properties` of the
+ * endpoint's request schema in the vendored OpenAPI fixture
+ * (test/fixtures/openapi.json, kept honest by scripts/check-fixture-pin.mjs).
+ * --cursor/--limit are excluded: the SDK moves them to the query string.
  */
-
 import { describe, it, expect, vi } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runSearchCompanies, runSearchJobs, runSearchPeople, runSearchPosts, runSearchServices } from "../../src/commands/search.js";
+import { runSalesNavSearchCompanies, runSalesNavSearchPeople } from "../../src/commands/sales-nav.js";
+import { runRecruiterSearchPeople } from "../../src/commands/recruiter.js";
+import { mkClient, mkOut } from "../helpers/f4-unit.js";
 
-// Resolved from THIS FILE's location, not process.cwd() — a cwd-relative path
-// silently pointed nowhere when vitest was invoked from a different working
-// directory than the one the author ran it from. This file lives at
-// <cli-repo>/test/commands/flag-field-guard.test.ts; the vendored fixture
-// lives at <cli-repo>/test/fixtures/openapi.json, inside this same repo.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const OPENAPI_FIXTURE = resolve(__dirname, "../fixtures/openapi.json");
-
-type JsonSchema = { $ref?: string; properties?: Record<string, unknown>; [k: string]: unknown };
-type OpenApiDoc = {
-  paths: Record<string, Record<string, { requestBody?: { content?: { "application/json"?: { schema?: JsonSchema } } } }>>;
-  components: { schemas: Record<string, JsonSchema> };
+type Schema = { $ref?: string; properties?: Record<string, unknown> };
+type Spec = {
+  paths: Record<string, Record<string, { requestBody?: { content?: { "application/json"?: { schema?: Schema } } } }>>;
+  components: { schemas: Record<string, Schema> };
 };
+const spec = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/openapi.json"), "utf8")) as Spec;
+const resolveRef = (s: Schema | undefined): Schema => (s?.$ref ? resolveRef(spec.components.schemas[s.$ref.split("/").pop() ?? ""]) : (s ?? {}));
 
-// Fails closed by construction: a missing fixture throws here, inside every
-// test below, rather than being detected once up front and used to silently
-// SKIP the whole suite (the previous shape — 8 tests reported green having
-// never run). A monorepo checkout missing its sibling `packages/sdk` is a
-// broken test environment, not a pass.
-function loadSpec(): OpenApiDoc {
-  if (!existsSync(OPENAPI_FIXTURE)) {
-    throw new Error(
-      `flag-field-guard: fixture not found at ${OPENAPI_FIXTURE} — it is vendored into this repo ` +
-        `at test/fixtures/openapi.json and must always be present. This suite cannot run without it.`,
-    );
-  }
-  return JSON.parse(readFileSync(OPENAPI_FIXTURE, "utf8")) as OpenApiDoc;
-}
+const P = "/v1/{account_id}";
+const CASES: Array<[string, unknown, string, string, string, Record<string, unknown>]> = [
+  ["search people", runSearchPeople, "search", "people", `${P}/search/people`, {
+    industry: "1", location: "1", company: "1", "past-company": "1", school: "1", "network-distance": "1",
+    "connections-of": "1", "followers-of": "1", title: "eng", "profile-language": "en",
+  }],
+  ["search companies", runSearchCompanies, "search", "companies", `${P}/search/companies`, {
+    industry: "1", location: "1", "has-job-offers": true, headcount: "1-10",
+  }],
+  ["search posts", runSearchPosts, "search", "posts", `${P}/search/posts`, {
+    "sort-by": "relevance", "date-posted": "past-week", "content-type": "videos", "posted-by-member": "m1",
+    "posted-by-company": "c1", "posted-by-me": true, "mentioning-member": "m1", "mentioning-company": "c1",
+    "author-industry": "1", "author-company": "c1", "author-keywords": "ai",
+  }],
+  ["search jobs", runSearchJobs, "search", "jobs", `${P}/search/jobs`, {
+    location: "1", industry: "1", seniority: "mid_senior", function: "1", "job-type": "full_time", company: "1",
+    "sort-by": "recent", "date-posted": "7", title: "1", presence: "remote", benefits: "1", commitments: "1",
+    "has-verifications": true, "under-10-applicants": true, "in-your-network": true, "fair-chance-employer": true,
+    "location-within-area": "10",
+  }],
+  ["search services", runSearchServices, "search", "services", `${P}/search/services`, {
+    keywords: "coaching", "service-category": "1", location: "1", connections: "1", language: "en",
+  }],
+  ["sales-nav search people", runSalesNavSearchPeople, "salesNavigator", "searchPeople", `${P}/sales-navigator/search/people`, {
+    "first-name": "Ada", "last-name": "Lovelace", groups: "g1", "profile-language": "en",
+  }],
+  ["sales-nav search companies", runSalesNavSearchCompanies, "salesNavigator", "searchCompanies", `${P}/sales-navigator/search/companies`, { keywords: "tech" }],
+  ["recruiter search people", runRecruiterSearchPeople, "recruiter", "searchPeople", `${P}/recruiter/search/people`, {
+    "employment-type": "FULL_TIME", function: "eng", "profile-language": "en",
+  }],
+];
 
-/** Resolve a single `$ref` hop against `components.schemas` (flat refs only, sufficient for these bodies). */
-function resolveSchema(schema: JsonSchema | undefined, schemas: Record<string, JsonSchema>): JsonSchema {
-  if (!schema) return {};
-  if (schema.$ref) {
-    const name = schema.$ref.split("/").pop() ?? "";
-    return resolveSchema(schemas[name], schemas);
-  }
-  return schema;
-}
-
-/** The accepted top-level body field names for `POST <path>`, straight from the served OpenAPI fixture. */
-function acceptedFields(spec: OpenApiDoc, path: string, method = "post"): Set<string> {
-  const op = spec.paths[path]?.[method];
-  const schema = resolveSchema(op?.requestBody?.content?.["application/json"]?.schema, spec.components.schemas);
-  return new Set(Object.keys(schema.properties ?? {}));
-}
-
-/** Assert every key the CLI actually put in the captured body is accepted by the endpoint's schema. */
-function assertNoRejectedFields(spec: OpenApiDoc, path: string, body: Record<string, unknown>): void {
-  const accepted = acceptedFields(spec, path);
-  const rejected = Object.keys(body).filter((k) => !accepted.has(k));
-  expect(rejected, `flag(s) map to field(s) the server body for ${path} does not accept: ${rejected.join(", ")}`).toEqual([]);
-}
-
-describe("CLI flag-to-body-field guard against the served OpenAPI schema", () => {
-  it("search people: every named flag maps to a field POST /search/people accepts", async () => {
-    const spec = loadSpec();
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const accountNs = { search: { people: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(accountNs) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      json: true,
-      industry: "1",
-      location: "1",
-      company: "1",
-      "past-company": "1",
-      school: "1",
-      "network-distance": "1",
-      "connections-of": "1",
-      "followers-of": "1",
-      title: "eng",
-      "profile-language": "en",
-    } as never, out);
-
-    const body = (accountNs.search.people as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/search/people", body);
-  });
-
-  it("search companies: every named flag maps to a field POST /search/companies accepts", async () => {
-    const spec = loadSpec();
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const accountNs = { search: { companies: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(accountNs) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, {
-      account: "acc_1",
-      json: true,
-      industry: "1",
-      location: "1",
-      "has-job-offers": true,
-      headcount: "1-10",
-    } as never, out);
-
-    const body = (accountNs.search.companies as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/search/companies", body);
-  });
-
-  it("search posts: every named flag maps to a field POST /search/posts accepts", async () => {
-    const spec = loadSpec();
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const accountNs = { search: { posts: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(accountNs) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      json: true,
-      "sort-by": "relevance",
-      "date-posted": "past-week",
-      "content-type": "videos",
-      "posted-by-member": "m1",
-      "posted-by-company": "c1",
-      "posted-by-me": true,
-      "mentioning-member": "m1",
-      "mentioning-company": "c1",
-      "author-industry": "1",
-      "author-company": "c1",
-      "author-keywords": "ai",
-    } as never, out);
-
-    const body = (accountNs.search.posts as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/search/posts", body);
-  });
-
-  it("search jobs: every named flag maps to a field POST /search/jobs accepts", async () => {
-    const spec = loadSpec();
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const accountNs = { search: { jobs: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(accountNs) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      json: true,
-      location: "1",
-      industry: "1",
-      seniority: "mid_senior",
-      function: "1",
-      "job-type": "full_time",
-      company: "1",
-      "sort-by": "recent",
-      "date-posted": "7",
-      title: "1",
-      presence: "remote",
-      benefits: "1",
-      commitments: "1",
-      "has-verifications": true,
-      "under-10-applicants": true,
-      "in-your-network": true,
-      "fair-chance-employer": true,
-      "location-within-area": "10",
-    } as never, out);
-
-    const body = (accountNs.search.jobs as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/search/jobs", body);
-  });
-
-  it("search services: every named flag maps to a field POST /search/services accepts", async () => {
-    const spec = loadSpec();
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const accountNs = { search: { services: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(accountNs) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServices(client as never, {
-      account: "acc_1",
-      json: true,
-      keywords: "coaching",
-      "service-category": "1",
-      location: "1",
-      connections: "1",
-      language: "en",
-    } as never, out);
-
-    const body = (accountNs.search.services as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/search/services", body);
-  });
-
-  it("sales-nav search people: every named flag maps to a field POST /sales-navigator/search/people accepts", async () => {
-    const spec = loadSpec();
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const ns = { salesNavigator: { searchPeople: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(ns) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSalesNavSearchPeople(client as never, {
-      account: "acc_1",
-      json: true,
-      "first-name": "Ada",
-      "last-name": "Lovelace",
-      groups: "g1",
-      "profile-language": "en",
-    } as never, out);
-
-    const body = (ns.salesNavigator.searchPeople as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/sales-navigator/search/people", body);
-  });
-
-  it("sales-nav search companies: every named flag maps to a field POST /sales-navigator/search/companies accepts", async () => {
-    const spec = loadSpec();
-    const { runSalesNavSearchCompanies } = await import("../../src/commands/sales-nav.js");
-    const ns = { salesNavigator: { searchCompanies: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(ns) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSalesNavSearchCompanies(client as never, {
-      account: "acc_1",
-      json: true,
-      keywords: "tech",
-    } as never, out);
-
-    const body = (ns.salesNavigator.searchCompanies as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/sales-navigator/search/companies", body);
-  });
-
-  it("recruiter search people: every named flag maps to a field POST /recruiter/search/people accepts", async () => {
-    const spec = loadSpec();
-    const { runRecruiterSearchPeople } = await import("../../src/commands/recruiter.js");
-    const ns = { recruiter: { searchPeople: vi.fn().mockResolvedValue({ items: [], cursor: null }) } };
-    const client = { account: vi.fn().mockReturnValue(ns) };
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runRecruiterSearchPeople(client as never, {
-      account: "acc_1",
-      json: true,
-      "employment-type": "FULL_TIME",
-      function: "eng",
-      "profile-language": "en",
-    } as never, out);
-
-    const body = (ns.recruiter.searchPeople as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
-    assertNoRejectedFields(spec, "/v1/{account_id}/recruiter/search/people", body);
+describe("every named flag maps to a body field the served schema accepts", () => {
+  it.each(CASES)("%s", async (_n, fn, group, method, path, flags) => {
+    const accepted = new Set(Object.keys(resolveRef(resolveRef(spec.paths[path]?.["post"]?.requestBody?.content?.["application/json"]?.schema)).properties ?? {}));
+    expect(accepted.size, `no request schema for ${path}`).toBeGreaterThan(0);
+    const spy = vi.fn().mockResolvedValue({ items: [], cursor: null });
+    const client = mkClient({ [group]: { [method]: spy } });
+    await (fn as (...a: unknown[]) => Promise<void>)(client, { account: "acc_1", json: true, ...flags }, mkOut());
+    const body = spy.mock.calls[0]![0] as Record<string, unknown>;
+    expect(Object.keys(body).filter((k) => !accepted.has(k)), `flags map to fields ${path} does not accept`).toEqual([]);
   });
 });
