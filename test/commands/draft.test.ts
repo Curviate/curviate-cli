@@ -1,11 +1,14 @@
 /**
- * `draft` command group (root-scoped): run functions against a mock client.
- * The built-bin flow (argv parsing, real HTTP) is in draft-bin.test.ts.
+ * `draft` command group (root-scoped): run functions against a mock client,
+ * then argv + the exact requests on the wire through the CLI entry point.
  */
 import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { exitCode as runCatchingExit } from "../helpers/exit-code.js";
+import { mkOut as makeOut } from "../helpers/f4-unit.js";
+import { useSink } from "../helpers/sink.js";
 import {
   runDraftList,
   runDraftGet,
@@ -32,27 +35,6 @@ function makeClient() {
   };
 }
 const asClient = (c: ReturnType<typeof makeClient>) => c as never;
-
-function makeOut() {
-  return { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-}
-
-/** Run, returning the exit code process.exit was called with (or undefined). */
-async function runCatchingExit(fn: () => Promise<void>): Promise<number | undefined> {
-  let code: number | undefined;
-  const spy = vi.spyOn(process, "exit").mockImplementation(((c?: number) => {
-    code = c;
-    throw new Error("__exit__");
-  }) as never);
-  try {
-    await fn();
-  } catch (e) {
-    if ((e as Error).message !== "__exit__") throw e;
-  } finally {
-    spy.mockRestore();
-  }
-  return code;
-}
 
 function tmpFile(name: string, bytes: number): string {
   const dir = mkdtempSync(join(tmpdir(), "draft-test-"));
@@ -295,5 +277,67 @@ describe("draft list / get / delete / publish", () => {
       );
       expect(await runCatchingExit(() => runDraftPublish(asClient(c), { id: "drf_1", json: true }, makeOut()))).toBe(exit);
     }
+  });
+});
+
+describe("curviate draft through the CLI entry point (recording sink)", () => {
+  const draft = { object: "draft", id: "drf_1", status: "draft", attachments: [] };
+  const sink = useSink({ status: 201, body: draft });
+  const run = (args: string[], opts: Parameters<typeof sink.run>[1] = {}) => sink.run(["draft", ...args, "--json"], opts);
+
+  it("create: no account defaulted (even with CURVIATE_ACCOUNT set), --schedule-at unchanged, JSON body to POST /v1/drafts", async () => {
+    const at = "2026-10-12T09:00:00+02:00";
+    const r = await run(["create", "Hello", "--schedule-at", at], { env: { CURVIATE_ACCOUNT: "acc_default" } });
+    expect(r.status).toBe(0);
+    expect(r.requests).toHaveLength(1);
+    expect([r.requests[0]!.method, r.requests[0]!.url]).toEqual(["POST", "/v1/drafts"]);
+    expect(JSON.parse(r.requests[0]!.body)).toEqual({ text: "Hello", scheduled_at: at });
+  });
+
+  it("create --attach: a file over 5 MiB is created, then uploaded raw with its type and Content-Length; a small one stays inline", async () => {
+    const big = tmpFile("clip final.mp4", INLINE_FILE_BYTES + 1);
+    const r = await run(["create", "Demo", "--account", "acc_1", "--attach", big]);
+    expect(r.status).toBe(0);
+    expect(r.requests.map((q) => `${q.method} ${q.url.split("?")[0]}`)).toEqual(["POST /v1/drafts", "POST /v1/drafts/drf_1/attachments"]);
+    expect(JSON.parse(r.requests[0]!.body)).toEqual({ account_id: "acc_1", text: "Demo" });
+    const up = r.requests[1]!;
+    expect(new URL(up.url, "http://x").searchParams.get("filename")).toBe("clip final.mp4");
+    expect([up.headers["content-type"], up.headers["content-length"], up.body.length]).toEqual(["video/mp4", String(INLINE_FILE_BYTES + 1), INLINE_FILE_BYTES + 1]);
+
+    const small = await run(["create", "--attach", tmpFile("a.png", 3)]);
+    expect(small.requests).toHaveLength(1);
+    expect((JSON.parse(small.requests[0]!.body) as { attachments: unknown[] }).attachments[0]).toEqual({
+      content: Buffer.alloc(3, 1).toString("base64"),
+      content_type: "image/png",
+      filename: "a.png",
+    });
+  });
+
+  it("update --unschedule PATCHes scheduled_at:null; --schedule-at with --unschedule exits 2 with no request", async () => {
+    sink.reply = { body: draft };
+    const r = await run(["update", "drf_1", "--unschedule"]);
+    expect([r.requests[0]!.method, r.requests[0]!.url, JSON.parse(r.requests[0]!.body)]).toEqual(["PATCH", "/v1/drafts/drf_1", { scheduled_at: null }]);
+    const bad = await run(["update", "drf_1", "--schedule-at", "2026-10-12T09:00:00Z", "--unschedule"]);
+    expect([bad.status, bad.requests]).toEqual([2, []]);
+  });
+
+  it("list sends --status as one comma list, --account none and --from/--to as given", async () => {
+    sink.reply = { body: { object: "draft_list", items: [], cursor: null } };
+    const r = await run(["list", "--status", "scheduled,published", "--account", "none", "--from", "2026-10-01T00:00:00Z", "--to", "2026-11-01T00:00:00Z"]);
+    const u = new URL(r.requests[0]!.url, "http://x");
+    expect(u.pathname).toBe("/v1/drafts");
+    expect([u.searchParams.getAll("status"), u.searchParams.get("account_id"), u.searchParams.get("from"), u.searchParams.get("to")]).toEqual([
+      ["scheduled,published"], "none", "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z",
+    ]);
+  });
+
+  it("delete: a 204 is exit 0 and prints valid JSON; publish surfaces the API's refusal code (SCHEDULE_CONFLICT -> 2)", async () => {
+    sink.reply = { status: 204, body: "" };
+    const del = await run(["delete", "drf_1"]);
+    expect([del.status, del.requests[0]!.method, JSON.parse(del.stdout)]).toEqual([0, "DELETE", {}]);
+    sink.reply = { status: 422, body: { code: "SCHEDULE_CONFLICT", message: "Another Draft is scheduled within 5 minutes.", user_fixable: true, retry_likely_to_succeed: false } };
+    const pub = await run(["publish", "drf_1"]);
+    expect([pub.status, pub.requests[0]!.url]).toEqual([2, "/v1/drafts/drf_1/publish"]);
+    expect(pub.stdout + pub.stderr).toContain("SCHEDULE_CONFLICT");
   });
 });

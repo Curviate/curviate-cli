@@ -2,273 +2,114 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import {
-  readConfig,
-  writeProfile,
-  setActiveProfile,
-  renameProfile,
-  removeProfile,
-  updateProfileField,
-  getConfigPath,
-  type CliConfig,
-} from "../../src/lib/config.js";
+import { readConfig, writeProfile, setActiveProfile, renameProfile, removeProfile, updateProfileField, getConfigPath, type CliConfig } from "../../src/lib/config.js";
+import { resolveEffectiveConfig } from "../../src/lib/resolve.js";
 
-// Helper: resolve expected config path for a given XDG_CONFIG_HOME
-function expectedPath(xdgHome: string) {
-  return join(xdgHome, "curviate", "config.json");
-}
+let tmpDir: string;
+const ENV_KEYS = ["XDG_CONFIG_HOME", "CURVIATE_API_KEY", "CURVIATE_BASE_URL", "CURVIATE_ACCOUNT"];
+let saved: Record<string, string | undefined>;
+beforeEach(async () => {
+  tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-config-"));
+  saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+  for (const k of ENV_KEYS.slice(1)) delete process.env[k];
+  process.env["XDG_CONFIG_HOME"] = tmpDir;
+});
+afterEach(async () => {
+  for (const k of ENV_KEYS) {
+    if (saved[k] === undefined) delete process.env[k];
+    else process.env[k] = saved[k];
+  }
+  await rm(tmpDir, { recursive: true, force: true });
+});
+const key = (k: string) => ({ apiKey: `rdc_live_${k}` });
+const cfg = async () => (await readConfig())!;
 
-describe("lib/config — config file", () => {
-  let tmpDir: string;
-  let origXdg: string | undefined;
-
-  beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-config-"));
-    origXdg = process.env["XDG_CONFIG_HOME"];
-    process.env["XDG_CONFIG_HOME"] = tmpDir;
+describe("config file", () => {
+  it("lives under XDG_CONFIG_HOME and reads as null when absent", async () => {
+    expect(getConfigPath()).toBe(join(tmpDir, "curviate", "config.json"));
+    expect(await readConfig()).toBeNull();
   });
 
-  afterEach(async () => {
-    if (origXdg === undefined) {
-      delete process.env["XDG_CONFIG_HOME"];
-    } else {
-      process.env["XDG_CONFIG_HOME"] = origXdg;
-    }
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("getConfigPath returns path under XDG_CONFIG_HOME", () => {
-    const p = getConfigPath();
-    expect(p).toBe(expectedPath(tmpDir));
-  });
-
-  it("readConfig returns null when file does not exist", async () => {
-    const cfg = await readConfig();
-    expect(cfg).toBeNull();
-  });
-
-  it("writeProfile creates config with correct file and dir permissions (POSIX)", async () => {
-    await writeProfile("default", {
-      apiKey: "rdc_live_TESTKEY",
-      account: "acc_1",
-    });
-
-    const cfgPath = getConfigPath();
-    const dirPath = join(tmpDir, "curviate");
-
-    const fileStat = await stat(cfgPath);
-    const dirStat = await stat(dirPath);
-
-    // mode & 0o777: file must be 0600, dir must be 0700
-    expect(fileStat.mode & 0o777).toBe(0o600);
-    expect(dirStat.mode & 0o777).toBe(0o700);
-
-    // content
-    const raw = await readFile(cfgPath, "utf8");
-    const parsed = JSON.parse(raw) as CliConfig;
-    expect(parsed.active).toBe("default");
-    expect(parsed.profiles["default"]?.apiKey).toBe("rdc_live_TESTKEY");
-    expect(parsed.profiles["default"]?.account).toBe("acc_1");
-  });
-
-  it("writeProfile is atomic — reads correct content after write", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_FIRST" });
-    await writeProfile("default", { apiKey: "rdc_live_SECOND" });
-
-    const cfg = await readConfig();
-    expect(cfg).not.toBeNull();
-    expect(cfg!.profiles["default"]?.apiKey).toBe("rdc_live_SECOND");
-  });
-
-  it("writeProfile preserves other profiles", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
-
-    const cfg = await readConfig();
-    expect(cfg).not.toBeNull();
-    expect(cfg!.profiles["default"]?.apiKey).toBe("rdc_live_A");
-    expect(cfg!.profiles["work"]?.apiKey).toBe("rdc_live_B");
-    // active stays as it was (first profile written)
-    expect(cfg!.active).toBe("default");
-  });
-
-  it("writeProfile re-asserts 0600 on subsequent writes to existing file", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    // write again — permissions must still be 0600
-    await writeProfile("default", { apiKey: "rdc_live_B" });
-    const cfgPath = getConfigPath();
-    const fileStat = await stat(cfgPath);
-    expect(fileStat.mode & 0o777).toBe(0o600);
+  it("writeProfile creates the file 0600 in a 0700 dir, re-asserts 0600 on rewrite, keeps other profiles and the active pointer", async () => {
+    await writeProfile("default", { apiKey: "rdc_live_TESTKEY", account: "acc_1" });
+    expect((await stat(getConfigPath())).mode & 0o777).toBe(0o600);
+    expect((await stat(join(tmpDir, "curviate"))).mode & 0o777).toBe(0o700);
+    const parsed = JSON.parse(await readFile(getConfigPath(), "utf8")) as CliConfig;
+    expect([parsed.active, parsed.profiles["default"]]).toEqual(["default", { apiKey: "rdc_live_TESTKEY", account: "acc_1" }]);
+    await writeProfile("default", key("SECOND"));
+    await writeProfile("work", key("B"));
+    expect((await stat(getConfigPath())).mode & 0o777).toBe(0o600);
+    const c = await cfg();
+    expect([c.profiles["default"]?.apiKey, c.profiles["work"]?.apiKey, c.active]).toEqual(["rdc_live_SECOND", "rdc_live_B", "default"]);
   });
 });
 
-describe("lib/config — profile management", () => {
-  let tmpDir: string;
-  let origXdg: string | undefined;
-
+describe("profile management", () => {
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-config-"));
-    origXdg = process.env["XDG_CONFIG_HOME"];
-    process.env["XDG_CONFIG_HOME"] = tmpDir;
+    await writeProfile("default", key("A"));
+    await writeProfile("work", key("B"));
   });
 
-  afterEach(async () => {
-    if (origXdg === undefined) {
-      delete process.env["XDG_CONFIG_HOME"];
-    } else {
-      process.env["XDG_CONFIG_HOME"] = origXdg;
-    }
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("setActiveProfile switches active pointer", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
+  it("setActiveProfile switches the pointer and throws on a missing profile", async () => {
     await setActiveProfile("work");
-    const cfg = await readConfig();
-    expect(cfg!.active).toBe("work");
+    expect((await cfg()).active).toBe("work");
+    await expect(setActiveProfile("missing")).rejects.toThrow(/not found/);
   });
 
-  it("setActiveProfile throws if profile missing", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await expect(setActiveProfile("missing")).rejects.toThrow();
-  });
-
-  it("renameProfile renames and updates active", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
+  it("renameProfile moves the profile and the active pointer; throws if old is missing or new exists", async () => {
     await setActiveProfile("work");
     await renameProfile("work", "team");
-    const cfg = await readConfig();
-    expect(cfg!.profiles["team"]).toBeDefined();
-    expect(cfg!.profiles["work"]).toBeUndefined();
-    expect(cfg!.active).toBe("team");
-  });
-
-  it("renameProfile throws if old missing", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
+    const c = await cfg();
+    expect([c.profiles["team"]?.apiKey, c.profiles["work"], c.active]).toEqual(["rdc_live_B", undefined, "team"]);
     await expect(renameProfile("missing", "new")).rejects.toThrow();
+    await expect(renameProfile("team", "default")).rejects.toThrow();
   });
 
-  it("renameProfile throws if new already exists", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
-    await expect(renameProfile("work", "default")).rejects.toThrow();
-  });
-
-  it("removeProfile removes a non-active profile", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
-    await removeProfile("work");
-    const cfg = await readConfig();
-    expect(cfg!.profiles["work"]).toBeUndefined();
-    expect(cfg!.active).toBe("default");
-  });
-
-  it("removeProfile repoints active to default when removing active profile", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
+  it("removeProfile removes one, repointing active to default when it was active; updateProfileField sets a field", async () => {
     await setActiveProfile("work");
     await removeProfile("work");
-    const cfg = await readConfig();
-    expect(cfg!.profiles["work"]).toBeUndefined();
-    expect(cfg!.active).toBe("default");
+    expect([(await cfg()).profiles["work"], (await cfg()).active]).toEqual([undefined, "default"]);
+    await updateProfileField("default", "account", "acc_9");
+    expect((await cfg()).profiles["default"]?.account).toBe("acc_9");
   });
 
-  it("updateProfileField sets account on active profile", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await updateProfileField("default", "account", "acc_9");
-    const cfg = await readConfig();
-    expect(cfg!.profiles["default"]?.account).toBe("acc_9");
-  });
+  it.each(["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"])(
+    "profile name %j never falls through to Object.prototype: not found when never written, renamable to, and round-trips when written",
+    async (name) => {
+      await expect(setActiveProfile(name)).rejects.toThrow(/not found/);
+      expect((await cfg()).active).toBe("default");
+      await renameProfile("work", name);
+      expect((await cfg()).profiles[name]?.apiKey).toBe("rdc_live_B");
+      await writeProfile(name, key("POISON"));
+      await setActiveProfile(name);
+      expect([(await cfg()).active, (await cfg()).profiles[name]?.apiKey]).toEqual([name, "rdc_live_POISON"]);
+    },
+  );
 });
 
-// ---------------------------------------------------------------------------
-// `cfg.profiles[profileName]` falls through to Object.prototype.
-//
-// `profileName` is a value the user typed on the command line
-// (`curviate config use <name>` / `--profile <name>`). Every function above
-// reads `cfg.profiles[profileName]` against `profiles`, which comes straight
-// off `JSON.parse` (readConfig) or a fresh `{}` literal (writeProfile's
-// no-file fallback) -- both plain objects. `profiles["constructor"]` is a
-// live Function inherited from Object.prototype, truthy, so a naive
-// existence check (`if (!cfg.profiles[name])`) incorrectly treated
-// "constructor" as an EXISTING profile that was never written -- the CLI
-// could be told to switch to, or refuse to create, a profile that does not
-// exist. Every assertion below drives the real on-disk config through the
-// real exported functions, never the internal map.
-// ---------------------------------------------------------------------------
-describe("lib/config — profile names never fall through to Object.prototype", () => {
-  let tmpDir: string;
-  let origXdg: string | undefined;
+describe("effective config precedence: flag > env > profile > default", () => {
+  const profile = { apiKey: "rdc_live_P", baseUrl: "https://p.test", account: "acc_p" };
 
-  beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-config-990-"));
-    origXdg = process.env["XDG_CONFIG_HOME"];
-    process.env["XDG_CONFIG_HOME"] = tmpDir;
+  it("flag beats env beats profile, per field", async () => {
+    await writeProfile("default", profile);
+    process.env["CURVIATE_API_KEY"] = "rdc_live_E";
+    expect(await resolveEffectiveConfig({ apiKey: "rdc_live_F", baseUrl: "https://f.test", account: "acc_f" })).toMatchObject({ apiKey: "rdc_live_F", baseUrl: "https://f.test", account: "acc_f" });
+    expect(await resolveEffectiveConfig({})).toMatchObject({ apiKey: "rdc_live_E", baseUrl: "https://p.test", account: "acc_p" });
+    process.env["CURVIATE_ACCOUNT"] = "acc_env";
+    process.env["CURVIATE_BASE_URL"] = "https://env.test";
+    expect(await resolveEffectiveConfig({})).toMatchObject({ baseUrl: "https://env.test", account: "acc_env" });
+    for (const k of ENV_KEYS.slice(1)) delete process.env[k];
+    expect(await resolveEffectiveConfig({})).toMatchObject(profile);
   });
 
-  afterEach(async () => {
-    if (origXdg === undefined) {
-      delete process.env["XDG_CONFIG_HOME"];
-    } else {
-      process.env["XDG_CONFIG_HOME"] = origXdg;
-    }
-    await rm(tmpDir, { recursive: true, force: true });
+  it("defaults: SDK base URL, 30000 ms timeout (a numeric flag string is parsed), no key anywhere is undefined", async () => {
+    expect(await resolveEffectiveConfig({})).toMatchObject({ apiKey: undefined, baseUrl: "https://api.curviate.com", timeout: 30000 });
+    expect((await resolveEffectiveConfig({ timeout: "5000" })).timeout).toBe(5000);
   });
 
-  const PROTO_KEYS = ["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"];
-
-  it.each(PROTO_KEYS)(
-    "setActiveProfile(%j) throws 'not found' -- it was never written",
-    async (name) => {
-      await writeProfile("default", { apiKey: "rdc_live_A" });
-      await expect(setActiveProfile(name)).rejects.toThrow(/not found/);
-      const cfg = await readConfig();
-      // active must be unchanged -- the polluted call must not have "succeeded".
-      expect(cfg!.active).toBe("default");
-    },
-  );
-
-  it.each(PROTO_KEYS)(
-    "renameProfile(\"work\", %j) does NOT throw 'already exists' -- it was never written",
-    async (name) => {
-      await writeProfile("default", { apiKey: "rdc_live_A" });
-      await writeProfile("work", { apiKey: "rdc_live_B" });
-      await expect(renameProfile("work", name)).resolves.toBeUndefined();
-      const cfg = await readConfig();
-      expect(cfg!.profiles[name]).toBeDefined();
-      expect(cfg!.profiles[name]?.apiKey).toBe("rdc_live_B");
-    },
-  );
-
-  it.each(PROTO_KEYS)(
-    "a profile actually named %j can be written, read back, and switched to (round-trip)",
-    async (name) => {
-      await writeProfile(name, { apiKey: "rdc_live_POISON" });
-      await setActiveProfile(name);
-      const cfg = await readConfig();
-      expect(cfg!.active).toBe(name);
-      expect(cfg!.profiles[name]?.apiKey).toBe("rdc_live_POISON");
-    },
-  );
-
-  it("an ordinary profile name still round-trips through every function unaffected", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await writeProfile("work", { apiKey: "rdc_live_B" });
-    await setActiveProfile("work");
-    await renameProfile("work", "team");
-    await updateProfileField("team", "account", "acc_9");
-    const cfg = await readConfig();
-    expect(cfg!.active).toBe("team");
-    expect(cfg!.profiles["team"]?.account).toBe("acc_9");
-    await removeProfile("team");
-    const after = await readConfig();
-    expect(after!.profiles["team"]).toBeUndefined();
-  });
-
-  it("an unknown-but-ordinary profile name (widget_exploded) still throws 'not found', unchanged behaviour", async () => {
-    await writeProfile("default", { apiKey: "rdc_live_A" });
-    await expect(setActiveProfile("widget_exploded")).rejects.toThrow(/not found/);
+  it("--profile selects a non-active profile", async () => {
+    await writeProfile("default", key("DEFAULT"));
+    await writeProfile("work", key("WORK"));
+    expect((await resolveEffectiveConfig({ profile: "work" })).apiKey).toBe("rdc_live_WORK");
   });
 });

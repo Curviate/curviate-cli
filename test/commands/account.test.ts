@@ -1,1170 +1,261 @@
 /**
- * Tests for the `account` command group (root-scoped).
- *
- * Covers:
- *   account list           — accounts.list() + --all pagination
- *   account get            — accounts.get()
- *   account link           — auth.intent() body-flag + required flags + --preview
- *   account update         — accounts.update() (metadata/proxy) + --preview
- *   account disconnect     — accounts.disconnect() + --preview
- *   account checkpoint solve — accounts.solveCheckpoint() path-addressed + --preview
- *   account checkpoint poll  — accounts.pollCheckpoint() path-addressed + --preview
- *
- * All methods are root-scoped: the client exposes `client.accounts.*` directly
- * (no `client.account(id)` wrapper for these). account_id positionals pass
- * through verbatim (no resolveIdentifier).
+ * `account` command group (root-scoped): list / get / seats / link / update /
+ * disconnect / checkpoint solve|poll. Mock client; account_id positionals pass through verbatim.
  */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import type { paths } from "@curviate/sdk";
+import { CurviateError } from "@curviate/sdk";
+import { accountCommand, runAccountCheckpointPoll, runAccountCheckpointSolve, runAccountDisconnect, runAccountGet, runAccountLink, runAccountList, runAccountSeats, runAccountUpdate } from "../../src/commands/account.js";
+import { exitCode } from "../helpers/exit-code.js";
 
-// The generated OpenAPI type is the contract: a hand-written fixture can mint
-// a field the real accounts response can never send, and a pass-through
-// assertion against that fixture would then be unfalsifiable. `satisfies`
-// makes resurrecting a field the server no longer emits — or asserting one
-// that never existed on the response — a compile error, not a silently-green
-// test.
-type AccountListItem = NonNullable<
-  paths["/v1/accounts"]["get"]["responses"][200]["content"]["application/json"]["items"]
->[number];
-type AccountGetResponse = paths["/v1/accounts/{account_id}"]["get"]["responses"][200]["content"]["application/json"];
+// The generated OpenAPI type is the contract: `satisfies` makes a fixture field the server never emits a compile error.
+type AccountListItem = NonNullable<paths["/v1/accounts"]["get"]["responses"][200]["content"]["application/json"]["items"]>[number];
 
-// ---------------------------------------------------------------------------
-// Client mock factory
-// ---------------------------------------------------------------------------
-
-function makeClient() {
-  return {
-    accounts: {
-      list: vi.fn(),
-      get: vi.fn(),
-      listSeats: vi.fn(),
-      update: vi.fn(),
-      disconnect: vi.fn(),
-    },
-    auth: {
-      intent: vi.fn(),
-      solveCheckpoint: vi.fn(),
-      pollCheckpoint: vi.fn(),
-      requestCheckpoint: vi.fn(),
-      getSession: vi.fn(),
-    },
-  };
-}
-
-type Client = ReturnType<typeof makeClient>;
-
-type AccountFlags = {
-  "account-id"?: string;
-  "seat-id"?: string;
-  "auth-method"?: string;
-  email?: string;
-  password?: string;
-  "li-at"?: string;
-  "li-a"?: string;
-  country?: string;
-  ip?: string;
-  "proxy-protocol"?: string;
-  "proxy-host"?: string;
-  "proxy-port"?: string;
-  "proxy-username"?: string;
-  "proxy-password"?: string;
-  "user-agent"?: string;
-  "recruiter-contract-id"?: string;
-  purpose?: string;
-  "expires-in-seconds"?: string;
-  "redirect-url"?: string;
-  checkpoint?: string;
-  code?: string;
-  name?: string;
-  "request-url"?: string;
-  "account-ids"?: string;
-  enabled?: boolean;
-  events?: string;
-  format?: string;
-  json?: boolean;
-  all?: boolean;
-  "max-pages"?: string;
-  limit?: string;
-  cursor?: string;
-  fields?: string;
-  preview?: boolean;
-  verbose?: boolean;
-  "api-key"?: string;
-  "base-url"?: string;
-  timeout?: string;
-  profile?: string;
+const client = {
+  accounts: { list: vi.fn(), get: vi.fn(), listSeats: vi.fn(), update: vi.fn(), disconnect: vi.fn() },
+  auth: { intent: vi.fn(), solveCheckpoint: vi.fn(), pollCheckpoint: vi.fn() },
 };
-
-function makeOut() {
-  return {
-    stdout: { write: vi.fn() },
-    stderr: { write: vi.fn() },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// account list
-// ---------------------------------------------------------------------------
-
-describe("account list", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.list as Mock).mockResolvedValue({ items: [{ account_id: "acc_1" }], cursor: null });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls accounts.list() with no params by default", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { json: true } as AccountFlags, out);
-    expect(client.accounts.list).toHaveBeenCalledWith({});
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(JSON.parse(written)).toHaveProperty("items");
-  });
-
-  it("passes limit and cursor", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { json: true, limit: "5", cursor: "tok_abc" } as AccountFlags, out);
-    expect(client.accounts.list).toHaveBeenCalledWith({ limit: 5, cursor: "tok_abc" });
-  });
-
-  it("--all streams NDJSON over two pages (--verbose to isolate pagination mechanics from slim projection — see the dedicated slim/verbose describe block below)", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    (client.accounts.list as Mock)
-      .mockResolvedValueOnce({ items: [{ account_id: "acc_1" }, { account_id: "acc_2" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ account_id: "acc_3" }], cursor: null });
-
-    await runAccountList(client as never, { all: true, verbose: true } as AccountFlags, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const ndjson = lines.filter((l) => l.trim().startsWith("{"));
-    expect(ndjson).toHaveLength(3);
-    expect(JSON.parse(ndjson[0]!)).toEqual({ account_id: "acc_1" });
-    expect(JSON.parse(ndjson[2]!)).toEqual({ account_id: "acc_3" });
-  });
+let out: { stdout: { write: Mock }; stderr: { write: Mock } };
+beforeEach(() => {
+  vi.resetAllMocks();
+  out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 });
+afterEach(() => vi.restoreAllMocks());
+const text = (w: { write: Mock }) => w.write.mock.calls.map((c) => c[0] as string).join("");
+const json = () => JSON.parse(text(out.stdout)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+const ndjson = () => text(out.stdout).split("\n").filter((l) => l.trim().startsWith("{")).map((l) => JSON.parse(l) as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+const c = client as never;
+const run = (fn: (...a: never[]) => Promise<unknown>, flags: object) => fn(c, flags as never, out as never);
 
-// ---------------------------------------------------------------------------
-// account get
-// ---------------------------------------------------------------------------
+const ENRICHED = {
+  account_id: "acc_1", status: "active", auth_method: "credentials", full_name: "Ada Lovelace", headline: "Engineer",
+  seat_id: "seat_1", connected_at: "2026-06-01T09:00:00Z", external_id: null, substrate_created_at: "2020-01-01T00:00:00Z",
+} satisfies AccountListItem;
+const LOCATION = { country: "NL", current_country: "FR", mode: "auto", strict: false };
+const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at", "external_id", "connection_location"].sort();
 
-describe("account get", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.get as Mock).mockResolvedValue({ object: "account", account_id: "acc_42" });
+describe("account list / get", () => {
+  it("list: no params by default; limit and cursor are forwarded; --all streams NDJSON over two pages", async () => {
+    client.accounts.list.mockResolvedValue({ items: [{ account_id: "acc_1" }], cursor: null });
+    await run(runAccountList, { json: true });
+    expect(client.accounts.list).toHaveBeenLastCalledWith({});
+    await run(runAccountList, { json: true, limit: "5", cursor: "tok_abc" });
+    expect(client.accounts.list).toHaveBeenLastCalledWith({ limit: 5, cursor: "tok_abc" });
+    out.stdout.write.mockClear();
+    client.accounts.list.mockReset().mockResolvedValueOnce({ items: [{ account_id: "acc_1" }, { account_id: "acc_2" }], cursor: "c1" }).mockResolvedValueOnce({ items: [{ account_id: "acc_3" }], cursor: null });
+    await run(runAccountList, { all: true, verbose: true });
+    expect(ndjson()).toEqual([{ account_id: "acc_1" }, { account_id: "acc_2" }, { account_id: "acc_3" }]);
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls accounts.get with verbatim account_id", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_42", json: true } as AccountFlags, out);
+  it("get passes the account_id verbatim", async () => {
+    client.accounts.get.mockResolvedValue({ object: "account", account_id: "acc_42" });
+    await run(runAccountGet, { "account-id": "acc_42", json: true });
     expect(client.accounts.get).toHaveBeenCalledWith("acc_42");
   });
 
-  it("account_id is NOT URL-resolved (pass through verbatim)", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    // Weird value — should pass through unchanged, not normalized
-    await runAccountGet(client as never, { "account-id": "acc_abc123", json: true } as AccountFlags, out);
-    expect(client.accounts.get).toHaveBeenCalledWith("acc_abc123");
+  it("list: slim has exactly the slim keys, --verbose adds the enrichment field, a never-enriched item shows explicit null; --all projects per item", async () => {
+    const located = { ...ENRICHED, connection_location: LOCATION };
+    client.accounts.list.mockResolvedValue({ object: "account_list", items: [located], cursor: null });
+    await run(runAccountList, { json: true });
+    expect(Object.keys(json().items[0]).sort()).toEqual(SLIM_LIST_KEYS);
+    expect(json().items[0].connection_location).toEqual(LOCATION);
+    out.stdout.write.mockClear();
+    await run(runAccountList, { json: true, verbose: true });
+    expect(json().items[0].substrate_created_at).toBe("2020-01-01T00:00:00Z");
+    out.stdout.write.mockClear();
+    client.accounts.list.mockResolvedValue({ items: [{ ...ENRICHED, substrate_created_at: null }], cursor: null });
+    await run(runAccountList, { json: true, verbose: true });
+    expect(json().items[0]).toHaveProperty("substrate_created_at", null);
+    out.stdout.write.mockClear();
+    client.accounts.list.mockResolvedValue({ items: [located], cursor: null });
+    await run(runAccountList, { all: true });
+    expect(Object.keys(ndjson()[0]).sort()).toEqual(SLIM_LIST_KEYS);
+    out.stdout.write.mockClear();
+    client.accounts.list.mockResolvedValue({ items: [located], cursor: null });
+    await run(runAccountList, { all: true, verbose: true });
+    expect(ndjson()[0].substrate_created_at).toBe("2020-01-01T00:00:00Z");
+  });
+
+  it("get: slim keys (incl. connection_location and a null seat_id for a seatless account), --verbose is a superset", async () => {
+    const full = { ...ENRICHED, connection_location: LOCATION, last_checked_at: "2026-06-08T09:00:00Z", quotas: [], account_states: [] };
+    client.accounts.get.mockResolvedValue(full);
+    await run(runAccountGet, { "account-id": "acc_1", json: true });
+    const slim = json();
+    expect(Object.keys(slim).sort()).toEqual([...SLIM_LIST_KEYS, "last_checked_at", "quotas", "account_states"].sort());
+    expect(slim.connection_location).toEqual(LOCATION);
+    out.stdout.write.mockClear();
+    await run(runAccountGet, { "account-id": "acc_1", json: true, verbose: true });
+    for (const k of Object.keys(slim)) expect(json()[k]).toEqual(slim[k]);
+    expect(json().substrate_created_at).toBe("2020-01-01T00:00:00Z");
+    out.stdout.write.mockClear();
+    client.accounts.get.mockResolvedValue({ ...full, seat_id: null });
+    await run(runAccountGet, { "account-id": "acc_1", json: true });
+    expect(json().seat_id).toBeNull();
+  });
+
+  it("get takes no pagination flags but keeps --fields; list takes them all", () => {
+    const subs = (accountCommand as unknown as { subCommands: Record<string, { args: object }> }).subCommands;
+    for (const f of ["limit", "cursor", "all", "max-pages"]) {
+      expect(subs["get"]!.args).not.toHaveProperty(f);
+      expect(subs["list"]!.args).toHaveProperty(f);
+    }
+    expect(subs["get"]!.args).toHaveProperty("fields");
   });
 });
 
-// ---------------------------------------------------------------------------
-// account seats
-// ---------------------------------------------------------------------------
-
 describe("account seats", () => {
-  let client: Client;
   const originalIsTTY = process.stdout.isTTY;
-
-  beforeEach(() => {
-    client = makeClient();
-  });
-
   afterEach(() => {
-    vi.restoreAllMocks();
     process.stdout.isTTY = originalIsTTY;
   });
 
-  it("calls accounts.listSeats() with no params", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountSeats(client as never, { json: true } as AccountFlags, out);
+  it("calls listSeats with no params; human mode shows free/bound, the safety_warning, and '(no seats)'", async () => {
+    client.accounts.listSeats.mockResolvedValue({ object: "seat_list", items: [] });
+    await run(runAccountSeats, { json: true });
     expect(client.accounts.listSeats).toHaveBeenCalledWith();
-  });
-
-  it("human mode (TTY, no --json): seat_id and free/bound, account_id shown only when bound", async () => {
     process.stdout.isTTY = true;
-    (client.accounts.listSeats as Mock).mockResolvedValue({
+    client.accounts.listSeats.mockResolvedValue({
       object: "seat_list",
-      items: [
-        { seat_id: "seat_free", occupied: false, account_id: null },
-        { seat_id: "seat_bound", occupied: true, account_id: "acc_1" },
-      ],
-    });
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(written).toContain("seat_free: free");
-    expect(written).toContain("seat_bound: bound (acc_1)");
-    // Free-seat control: "free" must never carry a parenthesized account id.
-    expect(written).not.toMatch(/seat_free: free \(/);
-  });
-
-  it("human mode: safety_warning on the response is shown, not silently dropped", async () => {
-    process.stdout.isTTY = true;
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [{ seat_id: "seat_free", occupied: false, account_id: null }],
+      items: [{ seat_id: "seat_free", occupied: false, account_id: null }, { seat_id: "seat_bound", occupied: true, account_id: "acc_1" }],
       safety_warning: { row: "invites" },
     });
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(written).toContain('safety_warning: {"row":"invites"}');
+    out.stdout.write.mockClear();
+    await run(runAccountSeats, { json: false });
+    const t = text(out.stdout);
+    expect(t).toContain("seat_free: free");
+    expect(t).toContain("seat_bound: bound (acc_1)");
+    expect(t).not.toMatch(/seat_free: free \(/);
+    expect(t).toContain('safety_warning: {"row":"invites"}');
+    client.accounts.listSeats.mockResolvedValue({ object: "seat_list", items: [] });
+    out.stdout.write.mockClear();
+    await run(runAccountSeats, { json: false });
+    expect(text(out.stdout)).toContain("(no seats)");
   });
 
-  it("human mode: an empty list renders (no seats), not a crash or blank line", async () => {
-    process.stdout.isTTY = true;
-    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountSeats(client as never, { json: false } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(written).toContain("(no seats)");
-  });
-
-  // The empty-list billing note is covered at the bin layer (over-the-wire,
-  // "account seats: empty result names billing" in test/account-seats-bin.test.ts),
-  // not duplicated here.
-
-  it("a non-page answer (no items array) exits 7, never crashes on .items", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list" });
-    const { runAccountSeats } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountSeats(client as never, { json: true } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(7)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it("a non-page answer (no items array) exits 7", async () => {
+    client.accounts.listSeats.mockResolvedValue({ object: "seat_list" });
+    expect(await exitCode(() => run(runAccountSeats, { json: true }))).toBe(7);
   });
 });
-
-// ---------------------------------------------------------------------------
-// account list / account get — slim/verbose split
-// ---------------------------------------------------------------------------
-
-const ENRICHED_ITEM = {
-  account_id: "acc_1",
-  status: "active",
-  auth_method: "credentials",
-  full_name: "Ada Lovelace",
-  headline: "Engineer",
-  seat_id: "seat_1",
-  connected_at: "2026-06-01T09:00:00Z",
-  external_id: null,
-  substrate_created_at: "2020-01-01T00:00:00Z",
-} satisfies AccountListItem;
-
-const NEVER_ENRICHED_ITEM = {
-  account_id: "acc_2",
-  status: "active",
-  auth_method: "credentials",
-  full_name: "Bob Babbage",
-  headline: null,
-  seat_id: "seat_2",
-  connected_at: "2026-06-02T09:00:00Z",
-  substrate_created_at: null,
-} satisfies AccountListItem;
-
-const SLIM_LIST_KEYS = ["account_id", "status", "auth_method", "full_name", "headline", "seat_id", "connected_at", "external_id", "connection_location"];
-// Real set, per the generated type above and the vendored OpenAPI fixture
-// (test/fixtures/openapi.json): username/premium_id/public_identifier/
-// signatures/groups are DEAD — the columns backing them were dropped
-// server-side and the endpoint can no longer emit them.
-// substrate_created_at is the only cached enrichment field left.
-const ENRICHMENT_KEYS = ["substrate_created_at"];
-
-describe("account list — slim/verbose split", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.list as Mock).mockResolvedValue({
-      object: "account_list",
-      items: [ENRICHED_ITEM],
-      cursor: null,
-    });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("slim mode: item has exactly the 9 slim keys, no enrichment fields", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { json: true } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(Object.keys(parsed.items[0]).sort()).toEqual([...SLIM_LIST_KEYS].sort());
-    for (const key of ENRICHMENT_KEYS) {
-      expect(parsed.items[0]).not.toHaveProperty(key);
-    }
-  });
-
-  it("--verbose: item additionally has the surviving enrichment field (substrate_created_at) matching the fixture", async () => {
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { json: true, verbose: true } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.items[0]).toMatchObject({
-      substrate_created_at: "2020-01-01T00:00:00Z",
-    });
-  });
-
-  it("--verbose on a never-enriched item shows explicit null — not undefined, not a missing key", async () => {
-    (client.accounts.list as Mock).mockResolvedValue({
-      object: "account_list",
-      items: [NEVER_ENRICHED_ITEM],
-      cursor: null,
-    });
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { json: true, verbose: true } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    const item = parsed.items[0];
-    for (const key of ENRICHMENT_KEYS) {
-      expect(item).toHaveProperty(key);
-      expect(item[key]).toBeNull();
-    }
-  });
-
-  it("--all NDJSON stream applies slim projection per item unless --verbose", async () => {
-    (client.accounts.list as Mock)
-      .mockResolvedValueOnce({ items: [ENRICHED_ITEM], cursor: null });
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { all: true } as AccountFlags, out);
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    const item = JSON.parse(lines[0]!);
-    expect(Object.keys(item).sort()).toEqual([...SLIM_LIST_KEYS].sort());
-  });
-
-  it("--all --verbose NDJSON stream emits the full item verbatim", async () => {
-    (client.accounts.list as Mock)
-      .mockResolvedValueOnce({ items: [ENRICHED_ITEM], cursor: null });
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, { all: true, verbose: true } as AccountFlags, out);
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    const item = JSON.parse(lines[0]!);
-    expect(item.substrate_created_at).toBe("2020-01-01T00:00:00Z");
-  });
-});
-
-describe("account list / get — default (slim) output carries the connection location", () => {
-  const LOCATED = { connection_location: { country: "NL", current_country: "FR", mode: "auto", strict: false } };
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("account list prints each account's location by default", async () => {
-    const client = makeClient();
-    (client.accounts.list as Mock).mockResolvedValue({
-      object: "account_list",
-      items: [{ ...ENRICHED_ITEM, ...LOCATED }],
-      cursor: null,
-    });
-    const { runAccountList } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountList(client as never, {} as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(JSON.parse(written).items[0].connection_location).toEqual(LOCATED.connection_location);
-  });
-
-  it("account get prints the location by default", async () => {
-    const client = makeClient();
-    (client.accounts.get as Mock).mockResolvedValue({
-      ...ENRICHED_ITEM,
-      ...LOCATED,
-      last_checked_at: "2026-06-08T09:00:00Z",
-      quotas: [],
-      account_states: [],
-    });
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1" } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(JSON.parse(written).connection_location).toEqual(LOCATED.connection_location);
-  });
-});
-
-describe("account get — slim/verbose split (first-ever on this command)", () => {
-  let client: Client;
-
-  const GET_FIXTURE = {
-    ...ENRICHED_ITEM,
-    // Every served account carries it; spread untyped so the fixture compiles
-    // against an SDK pin whose generated type predates the field.
-    ...({ connection_location: { country: "DE", current_country: "DE", mode: "auto", strict: true } } as object),
-    last_checked_at: "2026-06-08T09:00:00Z",
-    quotas: [],
-    account_states: [],
-  } satisfies AccountGetResponse;
-  const SLIM_GET_KEYS = [...SLIM_LIST_KEYS, "last_checked_at", "quotas", "account_states"];
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.get as Mock).mockResolvedValue(GET_FIXTURE);
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("slim mode: exactly the 12 slim keys, seat_id present, no enrichment fields", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(Object.keys(parsed).sort()).toEqual([...SLIM_GET_KEYS].sort());
-    expect(parsed.seat_id).toBe("seat_1");
-    for (const key of ENRICHMENT_KEYS) {
-      expect(parsed).not.toHaveProperty(key);
-    }
-  });
-
-  it("--verbose: the surviving enrichment field (substrate_created_at) present and matching", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true, verbose: true } as AccountFlags, out);
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed).toMatchObject({
-      substrate_created_at: "2020-01-01T00:00:00Z",
-    });
-  });
-
-  it("admin seatless account: slim seat_id === null in both modes", async () => {
-    (client.accounts.get as Mock).mockResolvedValue({ ...GET_FIXTURE, seat_id: null });
-    const { runAccountGet } = await import("../../src/commands/account.js");
-
-    const out1 = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out1);
-    const parsed1 = JSON.parse((out1.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-    expect(parsed1.seat_id).toBeNull();
-
-    const out2 = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true, verbose: true } as AccountFlags, out2);
-    const parsed2 = JSON.parse((out2.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-    expect(parsed2.seat_id).toBeNull();
-  });
-
-  it("slim output is a strict subset of keys of the verbose output", async () => {
-    const { runAccountGet } = await import("../../src/commands/account.js");
-
-    const outSlim = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true } as AccountFlags, outSlim);
-    const slimParsed = JSON.parse((outSlim.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-
-    const outVerbose = makeOut();
-    await runAccountGet(client as never, { "account-id": "acc_1", json: true, verbose: true } as AccountFlags, outVerbose);
-    const verboseParsed = JSON.parse((outVerbose.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-
-    for (const key of Object.keys(slimParsed)) {
-      expect(verboseParsed).toHaveProperty(key);
-      expect(verboseParsed[key]).toEqual(slimParsed[key]);
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account get — pagination-flag suppression
-// ---------------------------------------------------------------------------
-
-describe("account get — args definition suppresses pagination flags, keeps --fields", () => {
-  const PAGINATION_ONLY_FLAGS = ["limit", "cursor", "all", "max-pages"] as const;
-
-  it("account get — args definition has no pagination-only flags", async () => {
-    const { accountCommand } = await import("../../src/commands/account.js");
-    const subCmds = (accountCommand as Record<string, unknown>).subCommands as Record<
-      string,
-      { args?: Record<string, unknown> }
-    >;
-    const args = subCmds["get"]?.args ?? {};
-    for (const flag of PAGINATION_ONLY_FLAGS) {
-      expect(args, `account get args must NOT include --${flag}`).not.toHaveProperty(flag);
-    }
-    expect(args, "account get must keep --fields (single-object read)").toHaveProperty("fields");
-  });
-
-  it("account list — args definition DOES have all pagination flags (negative control)", async () => {
-    const { accountCommand } = await import("../../src/commands/account.js");
-    const subCmds = (accountCommand as Record<string, unknown>).subCommands as Record<
-      string,
-      { args?: Record<string, unknown> }
-    >;
-    const args = subCmds["list"]?.args ?? {};
-    for (const flag of PAGINATION_ONLY_FLAGS) {
-      expect(args, `account list args must include --${flag}`).toHaveProperty(flag);
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account link
-// ---------------------------------------------------------------------------
 
 describe("account link", () => {
-  let client: Client;
+  const CRED = { "seat-id": "seat_1", "auth-method": "credentials", country: "US", email: "user@example.com", password: "secret", json: true };
+  const COOKIE = { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", country: "US", json: true };
+  beforeEach(() => client.auth.intent.mockResolvedValue({ object: "account", account_id: "acc_new" }));
 
-  beforeEach(() => {
-    client = makeClient();
-    (client.auth.intent as Mock).mockResolvedValue({ object: "account", account_id: "acc_new" });
+  it("builds the intent body for credentials and cookie auth; account_id only when --account-id is given", async () => {
+    await run(runAccountLink, CRED);
+    expect(client.auth.intent).toHaveBeenLastCalledWith(expect.objectContaining({ seat_id: "seat_1", auth_method: "credentials", credentials: { email: "user@example.com", password: "secret" } }));
+    expect(client.auth.intent.mock.calls[0]![0]).not.toHaveProperty("account_id");
+    await run(runAccountLink, { ...CRED, "account-id": "acc_x" });
+    expect(client.auth.intent).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: "acc_x" }));
+    await run(runAccountLink, { ...COOKIE, "seat-id": "seat_1", "user-agent": "Mozilla/5.0" });
+    expect(client.auth.intent).toHaveBeenLastCalledWith(expect.objectContaining({ auth_method: "cookie", user_agent: "Mozilla/5.0", cookie: expect.objectContaining({ li_at: "val" }) }));
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls accounts.link with required body fields (credentials method)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "credentials",
-      country: "US",
-      email: "user@example.com",
-      password: "secret",
-      json: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.intent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        seat_id: "seat_1",
-        auth_method: "credentials",
-        credentials: { email: "user@example.com", password: "secret" },
-      }),
-    );
+  it("--preview renders auth.intent with account_id only when given, and calls nothing", async () => {
+    await run(runAccountLink, { ...CRED, json: false, preview: true, "account-id": "acc_x" });
+    expect(json()).toMatchObject({ method: "auth.intent", body: { account_id: "acc_x" } });
+    out.stdout.write.mockClear();
+    await run(runAccountLink, { ...CRED, json: false, preview: true });
+    expect(json().body).not.toHaveProperty("account_id");
+    expect(client.auth.intent).not.toHaveBeenCalled();
   });
 
-  it("calls accounts.link with cookie method (user_agent required for cookie auth)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "cookie",
-      country: "US",
-      "li-at": "li_at_value",
-      "user-agent": "Mozilla/5.0",
-      json: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.intent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        seat_id: "seat_1",
-        auth_method: "cookie",
-        user_agent: "Mozilla/5.0",
-        cookie: expect.objectContaining({ li_at: "li_at_value" }),
-      }),
-    );
+  it.each([
+    ["cookie without --user-agent (names a browser)", { "seat-id": "seat_1", "auth-method": "cookie", country: "US", "li-at": "v" }],
+    ["no --auth-method", { "seat-id": "seat_1" }],
+    ["--seat-id '' (a value, not an omission)", { ...COOKIE, "seat-id": "" }],
+    ["--seat-id blank", { ...COOKIE, "seat-id": "   " }],
+    ["--preview without --seat-id (no lookup to fill it)", { ...COOKIE, preview: true }],
+    ["--account-id (reconnect) without --seat-id", { ...COOKIE, "account-id": "acc_x" }],
+  ])("%s exits 2 with no connect and no seats read", async (_l, flags) => {
+    expect(await exitCode(() => run(runAccountLink, flags))).toBe(2);
+    expect(client.auth.intent).not.toHaveBeenCalled();
+    expect(client.accounts.listSeats).not.toHaveBeenCalled();
   });
 
-  // Same undiscoverable-requirement shape the seat id had: the flag is
-  // required for one auth method and the help said only what it was for.
-  it("--help states that --user-agent is required with cookie auth", async () => {
-    const { renderUsage } = await import("citty");
-    const { accountCommand } = await import("../../src/commands/account.js");
-    const subs = (await (accountCommand as { subCommands: unknown }).subCommands) as Record<
-      string,
-      Parameters<typeof renderUsage>[0]
-    >;
-    const help = await renderUsage(subs["link"]!);
-    const line = help.split("\n").find((l) => l.includes("--user-agent"));
-    expect(line, "the flag must appear in --help").toBeDefined();
-    expect(line).toMatch(/required[\s\S]*cookie/i);
-    expect(help).not.toContain("\u2014");
-  });
-
-  it("cookie auth without --user-agent exits 2 before calling accounts.link", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
+  describe("sole free seat resolution (--seat-id omitted)", () => {
+    const seat = (id: string, occupied = false) => ({ seat_id: id, occupied, account_id: occupied ? "acc_old" : null });
+    it("one free seat is bound and the pick stated; an explicit --seat-id costs no read", async () => {
+      client.accounts.listSeats.mockResolvedValue({ object: "seat_list", items: [seat("seat_taken", true), seat("seat_free")] });
+      await run(runAccountLink, COOKIE);
+      expect(client.auth.intent).toHaveBeenCalledWith(expect.objectContaining({ seat_id: "seat_free" }));
+      expect(text(out.stderr)).toContain("seat_free");
+      client.accounts.listSeats.mockClear();
+      await run(runAccountLink, { ...COOKIE, "seat-id": "seat_x" });
+      expect(client.accounts.listSeats).not.toHaveBeenCalled();
+      expect(client.auth.intent).toHaveBeenLastCalledWith(expect.objectContaining({ seat_id: "seat_x" }));
     });
-    try {
-      await runAccountLink(client as never, {
-        "seat-id": "seat_1",
-        "auth-method": "cookie",
-        country: "US",
-        "li-at": "li_at_value",
-      } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.auth.intent).not.toHaveBeenCalled();
-    // The refusal has to say what to pass, not only that something is missing.
-    const err = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(err).toMatch(/browser/i);
-    expect(err).not.toContain("\u2014");
-  });
 
-  it("missing --seat-id with no seat free exits 2", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    (client.accounts.listSeats as Mock).mockResolvedValue({ object: "seat_list", items: [] });
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
+    it.each([
+      ["none free", [seat("seat_taken", true)], "curviate account seats"],
+      ["several free", [seat("seat_a"), seat("seat_b")], "seat_b"],
+      ["an unreadable row beside a free seat", [seat("seat_free"), { occupied: false, account_id: null }], ""],
+      ["a null row", [null, seat("seat_free")], "could not read"],
+    ])("%s: exit 2, nothing connected", async (_l, items, hint) => {
+      client.accounts.listSeats.mockResolvedValue({ object: "seat_list", items });
+      expect(await exitCode(() => run(runAccountLink, COOKIE))).toBe(2);
+      expect(text(out.stderr)).toContain(hint);
+      expect(client.auth.intent).not.toHaveBeenCalled();
     });
-    try {
-      await runAccountLink(
-        client as never,
-        { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", country: "US" } as AccountFlags,
-        out,
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
 
-  it("missing --auth-method exits 2", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
+    it("the seats read failing is reported as itself (UNAUTHORIZED -> 3)", async () => {
+      client.accounts.listSeats.mockRejectedValue(new CurviateError({ code: "UNAUTHORIZED", message: "bad key", userFixable: true, retryLikelyToSucceed: false } as never));
+      expect(await exitCode(() => run(runAccountLink, COOKIE))).toBe(3);
+      expect(client.auth.intent).not.toHaveBeenCalled();
     });
-    try {
-      await runAccountLink(client as never, { "seat-id": "seat_1" } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("--preview renders request, does not call accounts.link", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "cookie",
-      country: "US",
-      "li-at": "li_at_value",
-      "user-agent": "Mozilla/5.0",
-      preview: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.intent).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("auth.intent");
-  });
-
-  // --account-id: the 0.15.0 in-place reconnect flag.
-
-  it("forwards --account-id as account_id in the auth.intent body (in-place reconnect)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "credentials",
-      country: "US",
-      email: "user@example.com",
-      password: "secret",
-      "account-id": "acc_x",
-      json: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.intent).toHaveBeenCalledWith(
-      expect.objectContaining({ account_id: "acc_x" }),
-    );
-  });
-
-  it("omits account_id ENTIRELY from the body when --account-id is not passed (not undefined, not empty)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "credentials",
-      country: "US",
-      email: "user@example.com",
-      password: "secret",
-      json: true,
-    } as AccountFlags, out);
-
-    const body = (client.auth.intent as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).not.toHaveProperty("account_id");
-  });
-
-  it("--preview with --account-id renders the auth.intent body with account_id present", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "credentials",
-      country: "US",
-      email: "a@b.c",
-      password: "secret",
-      "account-id": "acc_x",
-      preview: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.intent).not.toHaveBeenCalled();
-    const parsed = JSON.parse((out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-    expect(parsed.method).toBe("auth.intent");
-    expect(parsed.body.account_id).toBe("acc_x");
-  });
-
-  it("--preview without --account-id renders a body with NO account_id key (control)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, {
-      "seat-id": "seat_1",
-      "auth-method": "credentials",
-      country: "US",
-      email: "a@b.c",
-      password: "secret",
-      preview: true,
-    } as AccountFlags, out);
-
-    const parsed = JSON.parse((out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join(""));
-    expect(parsed.body).not.toHaveProperty("account_id");
   });
 });
 
-// ---------------------------------------------------------------------------
-// account link: --seat-id omitted -> the only free seat
-//
-// The first run has no seat id and no way to hold one. `account seats` is the
-// read that answers it, so `account link` asks that read itself when exactly
-// one seat is free. Zero and several both refuse by name and send nothing:
-// binding the wrong seat is a connect the caller has to undo.
-// ---------------------------------------------------------------------------
-
-describe("account link: sole free seat resolution", () => {
-  let client: Client;
-
-  const COOKIE = { "auth-method": "cookie", "li-at": "val", "user-agent": "UA/1", country: "US", json: true } as AccountFlags;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.auth.intent as Mock).mockResolvedValue({ object: "account", account_id: "acc_new" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  /** Run and capture the exit code the command asked for. */
-  async function runExpectingExit(flags: AccountFlags, out: ReturnType<typeof makeOut>): Promise<number> {
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      const { runAccountLink } = await import("../../src/commands/account.js");
-      await runAccountLink(client as never, flags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      const m = /process\.exit\((\d+)\)/.exec((e as Error).message);
-      if (!m) throw e;
-      return Number(m[1]);
-    } finally {
-      exitSpy.mockRestore();
-    }
-    throw new Error("unreachable");
-  }
-
-  const stderrOf = (out: ReturnType<typeof makeOut>) =>
-    (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-
-  it("exactly one free seat: that seat is bound, and the pick is stated", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [
-        { seat_id: "seat_taken", occupied: true, account_id: "acc_old" },
-        { seat_id: "seat_free", occupied: false, account_id: null },
-      ],
-    });
-    const out = makeOut();
-    await runAccountLink(client as never, COOKIE, out);
-
-    expect(client.accounts.listSeats).toHaveBeenCalledTimes(1);
-    expect(client.auth.intent).toHaveBeenCalledWith(expect.objectContaining({ seat_id: "seat_free" }));
-    expect(stderrOf(out)).toContain("seat_free");
-  });
-
-  it("zero free seats: exit 2, names `curviate account seats`, sends no connect", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [{ seat_id: "seat_taken", occupied: true, account_id: "acc_old" }],
-    });
-    const out = makeOut();
-    expect(await runExpectingExit(COOKIE, out)).toBe(2);
-    expect(stderrOf(out)).toContain("curviate account seats");
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("several free seats: exit 2, lists every candidate, sends no connect", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [
-        { seat_id: "seat_a", occupied: false, account_id: null },
-        { seat_id: "seat_b", occupied: false, account_id: null },
-      ],
-    });
-    const out = makeOut();
-    expect(await runExpectingExit(COOKIE, out)).toBe(2);
-    const err = stderrOf(out);
-    expect(err).toContain("seat_a");
-    expect(err).toContain("seat_b");
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("a row it cannot read beside one free seat refuses rather than picking", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [
-        { seat_id: "seat_free", occupied: false, account_id: null },
-        { occupied: false, account_id: null },
-      ],
-    });
-    const out = makeOut();
-    expect(await runExpectingExit(COOKIE, out)).toBe(2);
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  // An EMPTY --seat-id is a value, not an omission: `--seat-id "$SEAT"` with
-  // SEAT unset used to exit 2, and must not now bind a live account into
-  // whatever seat happens to be free. Same rule as --account's empty value.
-  it.each(["", "   "])("--seat-id %p is a usage error, never an omission", async (value) => {
-    const out = makeOut();
-    expect(await runExpectingExit({ ...COOKIE, "seat-id": value } as AccountFlags, out)).toBe(2);
-    expect(client.accounts.listSeats).not.toHaveBeenCalled();
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("a null row in the seats page refuses rather than crashing", async () => {
-    (client.accounts.listSeats as Mock).mockResolvedValue({
-      object: "seat_list",
-      items: [null, { seat_id: "seat_free", occupied: false, account_id: null }],
-    });
-    const out = makeOut();
-    expect(await runExpectingExit(COOKIE, out)).toBe(2);
-    expect(stderrOf(out)).toContain("could not read");
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("--seat-id given: no seats read at all (control)", async () => {
-    const { runAccountLink } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountLink(client as never, { ...COOKIE, "seat-id": "seat_x" } as AccountFlags, out);
-    expect(client.accounts.listSeats).not.toHaveBeenCalled();
-    expect(client.auth.intent).toHaveBeenCalledWith(expect.objectContaining({ seat_id: "seat_x" }));
-  });
-
-  it("--preview issues no lookup, so it still needs --seat-id", async () => {
-    const out = makeOut();
-    expect(await runExpectingExit({ ...COOKIE, preview: true } as AccountFlags, out)).toBe(2);
-    expect(client.accounts.listSeats).not.toHaveBeenCalled();
-  });
-
-  it("--account-id (in-place reconnect) is not a free-seat connect: still needs --seat-id", async () => {
-    const out = makeOut();
-    expect(await runExpectingExit({ ...COOKIE, "account-id": "acc_x" } as AccountFlags, out)).toBe(2);
-    expect(client.accounts.listSeats).not.toHaveBeenCalled();
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-
-  it("the seats read failing is reported as itself, and nothing is connected", async () => {
-    const { CurviateError } = await import("@curviate/sdk");
-    (client.accounts.listSeats as Mock).mockRejectedValue(
-      new CurviateError({
-        code: "UNAUTHORIZED",
-        message: "bad key",
-        userFixable: true,
-        retryLikelyToSucceed: false,
-      }),
-    );
-    const out = makeOut();
-    expect(await runExpectingExit(COOKIE, out)).toBe(3);
-    expect(client.auth.intent).not.toHaveBeenCalled();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account update (reshaped: metadata / proxy / --clear-proxy; no country/ip)
-// ---------------------------------------------------------------------------
-
-describe("account update", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.update as Mock).mockResolvedValue({ object: "account", account_id: "acc_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("forwards a --metadata JSON object as the metadata body field", async () => {
-    const { runAccountUpdate } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountUpdate(client as never, {
-      "account-id": "acc_1",
-      metadata: '{"team":"growth"}',
-      json: true,
-    } as AccountFlags, out);
-
-    expect(client.accounts.update).toHaveBeenCalledWith(
-      "acc_1",
-      { metadata: { team: "growth" } },
-    );
-  });
-
-  it("--clear-proxy --country sends proxy:null with the country", async () => {
-    const { runAccountUpdate } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountUpdate(client as never, {
-      "account-id": "acc_1",
-      "clear-proxy": true,
-      country: "de",
-      json: true,
-    } as AccountFlags, out);
-
-    expect(client.accounts.update).toHaveBeenCalledWith("acc_1", { proxy: null, country: "DE" });
-  });
-
-  it("rejects a non-object --metadata with exit 2 before calling update", async () => {
-    const { runAccountUpdate } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountUpdate(client as never, {
-        "account-id": "acc_1",
-        metadata: "not-json",
-        json: true,
-      } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+describe("account update / disconnect / checkpoint", () => {
+  it("update: --metadata is forwarded as an object; --clear-proxy --country sends proxy:null; a non-object metadata exits 2 first", async () => {
+    client.accounts.update.mockResolvedValue({ object: "account", account_id: "acc_1" });
+    await run(runAccountUpdate, { "account-id": "acc_1", metadata: '{"team":"growth"}', json: true });
+    expect(client.accounts.update).toHaveBeenLastCalledWith("acc_1", { metadata: { team: "growth" } });
+    await run(runAccountUpdate, { "account-id": "acc_1", "clear-proxy": true, country: "de", json: true });
+    expect(client.accounts.update).toHaveBeenLastCalledWith("acc_1", { proxy: null, country: "DE" });
+    client.accounts.update.mockClear();
+    expect(await exitCode(() => run(runAccountUpdate, { "account-id": "acc_1", metadata: "not-json", json: true }))).toBe(2);
     expect(client.accounts.update).not.toHaveBeenCalled();
   });
 
-  it("--preview renders request without calling update", async () => {
-    const { runAccountUpdate } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountUpdate(client as never, {
-      "account-id": "acc_1",
-      metadata: '{"team":"ops"}',
-      preview: true,
-    } as AccountFlags, out);
-
-    expect(client.accounts.update).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("accounts.update");
-    expect(parsed.args).toHaveProperty("accountId", "acc_1");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account disconnect
-// ---------------------------------------------------------------------------
-
-describe("account disconnect", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.accounts.disconnect as Mock).mockResolvedValue({ object: "account_disconnected", account_id: "acc_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls accounts.disconnect with verbatim account_id", async () => {
-    const { runAccountDisconnect } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountDisconnect(client as never, { "account-id": "acc_1", json: true } as AccountFlags, out);
+  it("disconnect passes the id verbatim", async () => {
+    client.accounts.disconnect.mockResolvedValue({ object: "account_disconnected", account_id: "acc_1" });
+    await run(runAccountDisconnect, { "account-id": "acc_1", json: true });
     expect(client.accounts.disconnect).toHaveBeenCalledWith("acc_1");
   });
 
-  it("--preview renders request without calling disconnect", async () => {
-    const { runAccountDisconnect } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountDisconnect(client as never, { "account-id": "acc_1", preview: true } as AccountFlags, out);
-    expect(client.accounts.disconnect).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("accounts.disconnect");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account checkpoint solve (path-addressed — account_id positional, body {code})
-// ---------------------------------------------------------------------------
-
-describe("account checkpoint solve", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.auth.solveCheckpoint as Mock).mockResolvedValue({ object: "account", status: "active" });
+  it.each([
+    ["update", runAccountUpdate, client.accounts.update, "accounts.update", { metadata: '{"team":"ops"}' }],
+    ["disconnect", runAccountDisconnect, client.accounts.disconnect, "accounts.disconnect", {}],
+    ["checkpoint solve", runAccountCheckpointSolve, client.auth.solveCheckpoint, "auth.solveCheckpoint", { code: "654321" }],
+    ["checkpoint poll", runAccountCheckpointPoll, client.auth.pollCheckpoint, "auth.pollCheckpoint", {}],
+  ])("%s --preview renders the request without calling the SDK", async (_l, fn, sdk, method, extra) => {
+    await run(fn as never, { "account-id": "acc_pending_1", preview: true, ...extra });
+    expect(sdk).not.toHaveBeenCalled();
+    expect(json()).toMatchObject({ method, args: { accountId: "acc_pending_1" } });
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("account_id is the path arg (positional); the body carries only the code", async () => {
-    const { runAccountCheckpointSolve } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountCheckpointSolve(client as never, {
-      "account-id": "acc_pending_1",
-      code: "123456",
-      json: true,
-    } as AccountFlags, out);
-
-    // The SDK signature is solveCheckpoint(accountId, { code }).
+  it("solve: account_id is the path arg and the body only the code, which --preview masks", async () => {
+    client.auth.solveCheckpoint.mockResolvedValue({ object: "account", status: "active" });
+    await run(runAccountCheckpointSolve, { "account-id": "acc_pending_1", code: "123456", json: true });
     expect(client.auth.solveCheckpoint).toHaveBeenCalledWith("acc_pending_1", { code: "123456" });
+    out.stdout.write.mockClear();
+    await run(runAccountCheckpointSolve, { "account-id": "acc_pending_1", code: "654321", preview: true });
+    expect(json().body).toHaveProperty("code", "••••");
+    expect(text(out.stdout)).not.toContain("654321");
   });
 
-  it("missing account_id exits 2", async () => {
-    const { runAccountCheckpointSolve } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountCheckpointSolve(client as never, { code: "123456" } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.auth.solveCheckpoint).not.toHaveBeenCalled();
-  });
-
-  it("missing --code exits 2", async () => {
-    const { runAccountCheckpointSolve } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountCheckpointSolve(client as never, { "account-id": "acc_1" } as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.auth.solveCheckpoint).not.toHaveBeenCalled();
-  });
-
-  it("--preview renders without calling solveCheckpoint", async () => {
-    const { runAccountCheckpointSolve } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountCheckpointSolve(client as never, {
-      "account-id": "acc_pending_1",
-      code: "654321",
-      preview: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.solveCheckpoint).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("auth.solveCheckpoint");
-    // account_id is a path/positional arg; the body carries the code, masked:
-    // an OTP never appears in output.
-    expect(parsed.args).toHaveProperty("accountId", "acc_pending_1");
-    expect(parsed.body).toHaveProperty("code", "••••");
-    expect(written).not.toContain("654321");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// account checkpoint poll (path-addressed — account_id positional, no body)
-// ---------------------------------------------------------------------------
-
-describe("account checkpoint poll", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.auth.pollCheckpoint as Mock).mockResolvedValue({ object: "checkpoint", status: "pending" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("account_id is the path arg (positional), passed as a string", async () => {
-    const { runAccountCheckpointPoll } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountCheckpointPoll(client as never, {
-      "account-id": "acc_pending_1",
-      json: true,
-    } as AccountFlags, out);
-
+  it("poll passes the id as a string; solve and poll exit 2 on a missing id, solve also on a missing --code", async () => {
+    client.auth.pollCheckpoint.mockResolvedValue({ object: "checkpoint", status: "pending" });
+    await run(runAccountCheckpointPoll, { "account-id": "acc_pending_1", json: true });
     expect(client.auth.pollCheckpoint).toHaveBeenCalledWith("acc_pending_1");
-  });
-
-  it("missing account_id exits 2", async () => {
-    const { runAccountCheckpointPoll } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runAccountCheckpointPoll(client as never, {} as AccountFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
+    for (const [fn, flags] of [[runAccountCheckpointPoll, {}], [runAccountCheckpointSolve, { code: "123456" }], [runAccountCheckpointSolve, { "account-id": "acc_1" }]] as const) {
+      expect(await exitCode(() => run(fn as never, flags))).toBe(2);
     }
-    expect(client.auth.pollCheckpoint).not.toHaveBeenCalled();
-  });
-
-  it("--preview renders without calling pollCheckpoint", async () => {
-    const { runAccountCheckpointPoll } = await import("../../src/commands/account.js");
-    const out = makeOut();
-    await runAccountCheckpointPoll(client as never, {
-      "account-id": "acc_pending_1",
-      preview: true,
-    } as AccountFlags, out);
-
-    expect(client.auth.pollCheckpoint).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("auth.pollCheckpoint");
-    expect(parsed.args).toHaveProperty("accountId", "acc_pending_1");
+    expect(client.auth.solveCheckpoint).not.toHaveBeenCalled();
+    expect(client.auth.pollCheckpoint).toHaveBeenCalledTimes(1);
   });
 });

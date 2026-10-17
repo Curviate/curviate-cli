@@ -1,781 +1,164 @@
 /**
- * Tests for the `sales-nav` command group.
- *
- * Coverage:
- *   sales-nav search people [filters…]                                 → salesNavigator.searchPeople (POST)
- *   sales-nav search companies [filters…]                              → salesNavigator.searchCompanies (POST)
- *   sales-nav search parameters --type <t>                             → salesNavigator.getParameters (GET)
- *   sales-nav message new --to <id> --subject <s> "<text>" [--attach…] [--voice <f>] [--video <f>] → salesNavigator.startChat (v2: JSON only, subject required)
- *   sales-nav profile <identifier>                                      → salesNavigator.getProfile (resolveIdentifier)
- *   sales-nav save-lead <user_id> [--list-id <id>]                     → salesNavigator.saveLead
- *
- * Entitlement gate (three codes, one exit):
- *   NO_ACTIVE_SEAT → exit 5 + JSON code
- *   LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5 + JSON code
- *   BETA_NOT_ENABLED → exit 5 + JSON code
- * The code is the whole structured signal; no tier field rides the envelope.
- *
- * --preview on writes: renders preview, no SDK call.
- * --preview on reads: exit 2.
- * POST searches use method POST.
- * No sales-nav inmail-balance command exists.
- * resolveIdentifier applied to profile <identifier> but NOT to save-lead <user_id>.
+ * `sales-nav` group: run* functions against a mocked `salesNavigator` namespace, plus the
+ * v2 list surface routed through the CLI entry point against a recording sink.
+ * Ids pass verbatim except `profile <identifier>` (resolveIdentifier).
  */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { writeFile, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { exitCode } from "../helpers/exit-code.js";
+import { arg0, clientOf, json, mkOut, ndjson, sdkError, text } from "../helpers/f1-unit.js";
+import { useSink, line } from "../helpers/sink.js";
+import * as S from "../../src/commands/sales-nav.js";
 
-// ─── Mock client factory ───────────────────────────────────────────────────
+const METHODS = [
+  "searchPeople", "searchCompanies", "getParameters", "searchFromUrl", "startChat", "getProfile", "saveLead",
+  "accountLists", "leadLists", "browseAccountList", "browseLeadList", "saveAccount",
+] as const;
+let sn: Record<string, Mock>;
+let client: ReturnType<typeof clientOf>;
+let tmp: string;
+beforeEach(async () => {
+  sn = Object.fromEntries(METHODS.map((m) => [m, vi.fn().mockResolvedValue({ items: [{ id: "x" }], cursor: null })]));
+  client = clientOf({ salesNavigator: sn });
+  tmp = await mkdtemp(join(tmpdir(), "curviate-test-sn-"));
+});
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await rm(tmp, { recursive: true, force: true });
+});
 
-function makeSalesNavNs() {
-  return {
-    salesNavigator: {
-      searchPeople: vi.fn(),
-      searchCompanies: vi.fn(),
-      getParameters: vi.fn(),
-      searchFromUrl: vi.fn(),
-      startChat: vi.fn(),
-      getProfile: vi.fn(),
-      saveLead: vi.fn(),
-    },
-  };
+type Flags = Record<string, unknown>;
+type Runner = (c: never, a: never, o: never) => Promise<void>;
+async function go(fn: unknown, flags: Flags = {}) {
+  const out = mkOut();
+  await (fn as Runner)(client as never, { account: "acc_1", json: true, ...flags } as never, out as never);
+  return out;
 }
 
-function makeClient(ns: ReturnType<typeof makeSalesNavNs>) {
-  return {
-    account: vi.fn().mockReturnValue(ns),
-  };
-}
-
-
-// ─── Shared helpers ────────────────────────────────────────────────────────
-
-function makeOut() {
-  return {
-    stdout: { write: vi.fn() },
-    stderr: { write: vi.fn() },
-  };
-}
-
-function mockExit() {
-  return vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-    throw new Error(`process.exit(${code})`);
-  });
-}
-
-/**
- * A 403 entitlement refusal as the SDK surfaces it. There is no tier field any
- * more: the code IS the whole structured signal, so a fixture that still
- * carried a `requiredTier` would be exhibiting a shape the API cannot produce.
- */
-function makeEntitlementError(code: string) {
-  return Object.assign(new Error(`Entitlement error: ${code}`), {
-    code,
-    userFixable: true,
-    retryLikelyToSucceed: false,
-    toJSON: () => ({ code, message: `Entitlement error: ${code}` }),
-  });
-}
-
-// ─── Tier gate tests ───────────────────────────────────────────────────────
-
-describe("sales-nav tier gate", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("sales-nav search people — NO_ACTIVE_SEAT → exit 5, JSON carries the code and no tier field", async () => {
-    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
-    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(entitlementErr);
-
-    const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
-
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchPeople(client as never, { account: "acc_1", json: true }, out);
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(5)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
-  });
-
-  it("stderr diagnostic: sales-nav search people — NO_ACTIVE_SEAT → stderr contains error code, no vendor name", async () => {
-    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
-    (ns.salesNavigator.searchPeople as Mock).mockRejectedValue(entitlementErr);
-
-    const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
-
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchPeople(client as never, { account: "acc_1", json: true }, out);
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(5)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    // In JSON mode, renderError writes the error envelope to stdout and a one-liner to stderr.
-    const stderrWritten = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(stderrWritten).toBeTruthy();
-    // The stderr diagnostic must contain the error code so agents can read it.
-    expect(stderrWritten).toContain("NO_ACTIVE_SEAT");
-    // Confirm the error output is a short diagnostic line (not a raw dump that could contain opaque internals).
-    expect(stderrWritten.split("\n").filter(Boolean).length).toBeLessThanOrEqual(3);
-  });
-
-  it("sales-nav profile — LINKEDIN_FEATURE_NOT_SUBSCRIBED → exit 5, JSON code distinct", async () => {
-    const entitlementErr = makeEntitlementError("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
-    (ns.salesNavigator.getProfile as Mock).mockRejectedValue(entitlementErr);
-
-    const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
-
-    const { runSalesNavProfile } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavProfile(client as never, { account: "acc_1", identifier: "jdoe", json: true }, out);
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(5)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("LINKEDIN_FEATURE_NOT_SUBSCRIBED");
-  });
-
-  it("per-command gate independence — salesNavigator.saveLead stubbed independently → exit 5, no tier field", async () => {
-    const entitlementErr = makeEntitlementError("NO_ACTIVE_SEAT");
-    (ns.salesNavigator.saveLead as Mock).mockRejectedValue(entitlementErr);
-
-    const { CurviateError } = await import("@curviate/sdk");
-    Object.setPrototypeOf(entitlementErr, CurviateError.prototype);
-
-    const { runSalesNavSaveLead } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSaveLead(client as never, { account: "acc_1", userId: "ACw123", json: true }, out);
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(5)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.code).toBe("NO_ACTIVE_SEAT");
+describe("entitlement gate: each code exits 5 with the code in the envelope and one short stderr diagnostic", () => {
+  it.each<[string, string, unknown, Flags]>([
+    ["searchPeople", "NO_ACTIVE_SEAT", S.runSalesNavSearchPeople, {}],
+    ["getProfile", "LINKEDIN_FEATURE_NOT_SUBSCRIBED", S.runSalesNavProfile, { identifier: "jdoe" }],
+    ["saveLead", "BETA_NOT_ENABLED", S.runSalesNavSaveLead, { userId: "ACw123" }],
+  ])("%s: %s", async (method, code, fn, flags) => {
+    sn[method]!.mockRejectedValue(sdkError(code, 403));
+    const out = mkOut();
+    expect(await exitCode(() => (fn as Runner)(client as never, { account: "acc_1", json: true, ...flags } as never, out as never))).toBe(5);
+    const parsed = json(out);
+    expect(parsed["error"].code).toBe(code);
+    expect(parsed["error"]).not.toHaveProperty("requiredTier");
+    expect(text(out.stderr)).toContain(code);
+    expect(text(out.stderr).split("\n").filter(Boolean).length).toBeLessThanOrEqual(3);
   });
 });
 
-// ─── sales-nav search people ──────────────────────────────────────────────
+describe("each command calls its SDK method with exactly these arguments", () => {
+  const FROM = "https://www.linkedin.com/sales/search/people?x";
+  it.each<[string, string, unknown, Flags, unknown[]]>([
+    ["search people keywords", "searchPeople", S.runSalesNavSearchPeople, { keywords: "ai" }, [{ keywords: "ai" }]],
+    ["search people --filters verbatim", "searchPeople", S.runSalesNavSearchPeople, { filters: '{"location":{"include":["103644278"]},"changed_jobs":true}' }, [{ location: { include: ["103644278"] }, changed_jobs: true }]],
+    ["search people named flags over filters, keywords merged", "searchPeople", S.runSalesNavSearchPeople, {
+      keywords: "ai", filters: '{"changed_jobs":true}', "first-name": "Ada", "last-name": "Lovelace", groups: "g1,g2", "profile-language": "en",
+    }, [{ changed_jobs: true, keywords: "ai", first_name: "Ada", last_name: "Lovelace", group: ["g1", "g2"], profile_language: ["en"] }]],
+    ["search companies: keywords + --filters", "searchCompanies", S.runSalesNavSearchCompanies, { keywords: "tech", filters: '{"headcount":{"include":[{"min":11,"max":50}]}}' }, [{ keywords: "tech", headcount: { include: [{ min: 11, max: 50 }] } }]],
+    ["search parameters: type + keywords + limit in the query", "getParameters", S.runSalesNavGetParameters, { type: "LOCATION", keywords: "Berlin", limit: "10" }, [{ type: "LOCATION", keywords: "Berlin", limit: 10 }]],
+    ["search <url>: url only", "searchFromUrl", S.runSalesNavSearchFromUrl, { url: FROM }, [{ url: FROM }, undefined]],
+    ["search <url>: limit/cursor go to the query", "searchFromUrl", S.runSalesNavSearchFromUrl, { url: FROM, limit: "10", cursor: "cur_1" }, [{ url: FROM }, { limit: 10, cursor: "cur_1" }]],
+    ["profile url -> slug", "getProfile", S.runSalesNavProfile, { identifier: "https://www.linkedin.com/in/john-doe" }, ["john-doe", expect.anything()]],
+    ["profile bare slug", "getProfile", S.runSalesNavProfile, { identifier: "jdoe" }, ["jdoe", expect.anything()]],
+    ["save-lead: user_id verbatim, never resolved", "saveLead", S.runSalesNavSaveLead, { userId: "ACw_url_if_given", list: "list_456" }, [{ list_id: "list_456", user_id: "ACw_url_if_given" }]],
+    ["message new", "startChat", S.runSalesNavMessageNew, { to: "ACo456", text: "hello sn", subject: "Quick question" }, [expect.objectContaining({ attendees_ids: ["ACo456"], text: "hello sn", subject: "Quick question" })]],
+    ["account-lists", "accountLists", S.runSalesNavAccountLists, { account: "acc_a" }, []],
+    ["lead-lists", "leadLists", S.runSalesNavLeadLists, {}, []],
+    ["browse-account-list --filter", "browseAccountList", S.runSalesNavBrowseAccountList, { listId: "L1", filter: "STARRED" }, ["L1", expect.objectContaining({ filter: "STARRED" }), undefined]],
+    ["browse-lead-list --spotlight", "browseLeadList", S.runSalesNavBrowseLeadList, { listId: "L2", spotlight: "RECENT_POSITION_CHANGE" }, ["L2", expect.objectContaining({ spotlight: "RECENT_POSITION_CHANGE" }), undefined]],
+    ["save-account", "saveAccount", S.runSalesNavSaveAccount, { list: "L1", companyId: "123" }, [{ list_id: "L1", company_id: "123" }]],
+  ])("%s", async (_label, method, fn, flags, expected) => {
+    const out = await go(fn, flags);
+    expect(client.account).toHaveBeenCalledWith((flags["account"] as string | undefined) ?? "acc_1");
+    expect(sn[method]).toHaveBeenCalled();
+    expect(sn[method]!.mock.calls[0]!.slice(0, expected.length)).toEqual(expected);
+    expect(json(out)).toBeTruthy();
+  });
+});
 
-describe("sales-nav search people", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
+describe("refusals exit 2 before any SDK call", () => {
+  it.each<[string, string, unknown, Flags]>([
+    ["search people: non-object --filters", "searchPeople", S.runSalesNavSearchPeople, { filters: "[1,2,3]" }],
+    ["search companies: bad --filters JSON", "searchCompanies", S.runSalesNavSearchCompanies, { filters: "{bad" }],
+    ["message new without --subject", "startChat", S.runSalesNavMessageNew, { to: "ACo456", text: "hello" }],
+    ["message new --attach missing file", "startChat", S.runSalesNavMessageNew, { to: "ACo456", text: "hello", subject: "S", attach: "/nonexistent/x.txt" }],
+  ])("%s", async (_label, method, fn, flags) => {
+    const out = mkOut();
+    expect(await exitCode(() => (fn as Runner)(client as never, { account: "acc_1", ...flags } as never, out as never))).toBe(2);
+    expect(sn[method]).not.toHaveBeenCalled();
+  });
+});
 
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.searchPeople as Mock).mockResolvedValue({ items: [{ id: "p1" }], cursor: null });
-    vi.resetModules();
+describe("--preview renders the request and never calls the SDK", () => {
+  it.each<[string, string, unknown, Flags]>([
+    ["salesNavigator.startChat", "startChat", S.runSalesNavMessageNew, { to: "ACo456", text: "hello", subject: "S" }],
+    ["salesNavigator.saveLead", "saveLead", S.runSalesNavSaveLead, { userId: "ACw123", list: "list_456" }],
+    ["salesNavigator.saveAccount", "saveAccount", S.runSalesNavSaveAccount, { list: "L1", companyId: "123" }],
+  ])("%s", async (name, method, fn, flags) => {
+    const out = await go(fn, { ...flags, json: undefined, preview: true });
+    expect(sn[method]).not.toHaveBeenCalled();
+    expect(json(out)["method"]).toBe(name);
+  });
+});
+
+describe("--all streams every page; message new attachments", () => {
+  it.each<[string, unknown, Flags, string]>([
+    ["searchPeople", S.runSalesNavSearchPeople, {}, "items"],
+    ["searchFromUrl", S.runSalesNavSearchFromUrl, { url: "https://linkedin.com/x" }, "data"],
+  ])("%s --all", async (method, fn, flags, key) => {
+    sn[method]!.mockReset().mockResolvedValueOnce({ [key]: [{ id: "p1" }], cursor: "c1" }).mockResolvedValueOnce({ [key]: [{ id: "p2" }], cursor: null });
+    expect(ndjson(await go(fn, { ...flags, all: true })).map((l) => JSON.parse(l))).toEqual([{ id: "p1" }, { id: "p2" }]);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it.each([
+    ["attach", "attach.txt", "content", { content_type: "application/octet-stream" }],
+    ["voice", "voice.ogg", "voicedata", { send_mode: "native" }],
+    ["video", "video.mp4", "videodata", { send_mode: "native" }],
+  ])("message new --%s rides attachments[] as base64 (no voice_message / video_message field)", async (flag, name, data, extra) => {
+    const file = join(tmp, name);
+    await writeFile(file, data);
+    await go(S.runSalesNavMessageNew, { to: "ACo456", text: "hello", subject: "Subj", [flag]: file });
+    const b = arg0(sn["startChat"]!);
+    expect(b).not.toHaveProperty("voice_message");
+    expect(b).not.toHaveProperty("video_message");
+    expect((b["attachments"] as unknown[])[0]).toMatchObject({ content: Buffer.from(data).toString("base64"), filename: name, ...extra });
   });
 
-  it("calls salesNavigator.searchPeople and renders result", async () => {
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
+  it("the registry has no inmail-balance subcommand", () => {
+    expect((S.salesNavCommand as unknown as { subCommands: object }).subCommands).not.toHaveProperty("inmail-balance");
+  });
+});
 
-    await runSalesNavSearchPeople(client as never, { account: "acc_1", keywords: "ai", json: true }, out);
-
-    expect(client.account).toHaveBeenCalledWith("acc_1");
-    expect(ns.salesNavigator.searchPeople).toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed).toHaveProperty("items");
+describe("v2 list surface routes through the entry point", () => {
+  const sink = useSink();
+  it.each([
+    [["account-lists"], "GET /v1/acc_x/sales-navigator/account-lists"],
+    [["lead-lists"], "GET /v1/acc_x/sales-navigator/lead-lists"],
+    [["browse-account-list", "L1"], "POST /v1/acc_x/sales-navigator/account-lists/L1"],
+    [["browse-lead-list", "L2"], "POST /v1/acc_x/sales-navigator/lead-lists/L2"],
+  ])("sales-nav %j reaches %s", async (sub, expected) => {
+    const r = await sink.run(["sales-nav", ...sub, "--account", "acc_x", "--json"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.requests.map(line)).toEqual([expected]);
   });
 
-  it("salesNavigator.searchPeople call passes body (POST shape)", async () => {
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchPeople(client as never, { account: "acc_1", keywords: "ai", json: true }, out);
-
-    const callArgs = (ns.salesNavigator.searchPeople as Mock).mock.calls[0] as [Record<string, unknown>];
-    // The method is called with a body object (POST) — first arg is the body
-    expect(callArgs[0]).toBeDefined();
-    expect(callArgs[0]).toEqual({ keywords: "ai" });
-  });
-
-  it("--filters '<json>' merges nested filter objects into the POST body verbatim", async () => {
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchPeople(client as never, {
-      account: "acc_1",
-      filters: '{"location":{"include":["103644278"]},"changed_jobs":true}',
-      json: true,
-    }, out);
-
-    const body = (ns.salesNavigator.searchPeople as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ location: { include: ["103644278"] }, changed_jobs: true });
-  });
-
-  it("--keywords + --filters combine; named flags map to exact API fields", async () => {
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      filters: '{"changed_jobs":true}',
-      "first-name": "Ada",
-      "last-name": "Lovelace",
-      groups: "g1,g2",
-      "profile-language": "en",
-      json: true,
-    }, out);
-
-    const body = (ns.salesNavigator.searchPeople as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      changed_jobs: true,
-      keywords: "ai",
-      first_name: "Ada",
-      last_name: "Lovelace",
-      // --groups (server field is singular "group")
-      group: ["g1", "g2"],
-      profile_language: ["en"],
-    });
-  });
-
-  it("bad --filters JSON exits 2 before any SDK call", async () => {
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchPeople(client as never, { account: "acc_1", filters: "[1,2,3]" }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
+  it("save-account / save-lead --preview render only their own request and send nothing; save-lead without --list exits 2", async () => {
+    for (const [sub, args, method] of [["save-account", ["--list", "L1", "123"], "salesNavigator.saveAccount"], ["save-lead", ["--list", "L2", "ACw123"], "salesNavigator.saveLead"]] as const) {
+      const r = await sink.run(["sales-nav", sub, ...args, "--account", "acc_x", "--preview"]);
+      expect([r.status, r.requests]).toEqual([0, []]);
+      expect(r.stdout.trim().split("\n")).toHaveLength(1);
+      expect(r.stdout).toContain(method);
     }
-    expect(ns.salesNavigator.searchPeople).not.toHaveBeenCalled();
-  });
-
-  it("--all streams all pages", async () => {
-    (ns.salesNavigator.searchPeople as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "p1" }], cursor: "cursor_1" })
-      .mockResolvedValueOnce({ items: [{ id: "p2" }], cursor: null });
-
-    const { runSalesNavSearchPeople } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchPeople(client as never, { account: "acc_1", all: true, json: true }, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("\n");
-    const lines = written.trim().split("\n").filter(Boolean);
-    expect(lines.length).toBe(2);
-    expect(JSON.parse(lines[0]!)).toEqual({ id: "p1" });
-    expect(JSON.parse(lines[1]!)).toEqual({ id: "p2" });
-  });
-});
-
-// ─── sales-nav search companies ───────────────────────────────────────────
-
-describe("sales-nav search companies", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.searchCompanies as Mock).mockResolvedValue({ items: [{ id: "c1" }], cursor: null });
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls salesNavigator.searchCompanies", async () => {
-    const { runSalesNavSearchCompanies } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchCompanies(client as never, { account: "acc_1", keywords: "tech", json: true }, out);
-
-    expect(ns.salesNavigator.searchCompanies).toHaveBeenCalled();
-    const callArgs = (ns.salesNavigator.searchCompanies as Mock).mock.calls[0] as [Record<string, unknown>];
-    expect(callArgs[0]).toEqual({ keywords: "tech" });
-  });
-
-  it("--filters merges over --keywords; only keywords is a named flag on this command (technologies/recent-activities/network-distance were removed, none is an accepted field)", async () => {
-    const { runSalesNavSearchCompanies } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchCompanies(client as never, {
-      account: "acc_1",
-      keywords: "tech",
-      filters: '{"headcount":{"include":[{"min":11,"max":50}]}}',
-      json: true,
-    }, out);
-
-    const body = (ns.salesNavigator.searchCompanies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      keywords: "tech",
-      headcount: { include: [{ min: 11, max: 50 }] },
-    });
-  });
-
-  it("bad --filters JSON exits 2 before any SDK call", async () => {
-    const { runSalesNavSearchCompanies } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavSearchCompanies(client as never, { account: "acc_1", filters: "{bad" }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.searchCompanies).not.toHaveBeenCalled();
-  });
-});
-
-// ─── sales-nav search parameters ──────────────────────────────────────────
-
-describe("sales-nav search parameters", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.getParameters as Mock).mockResolvedValue({ items: [] });
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls salesNavigator.getParameters with type param", async () => {
-    const { runSalesNavGetParameters } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavGetParameters(client as never, { account: "acc_1", type: "LOCATION", json: true }, out);
-
-    expect(ns.salesNavigator.getParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "LOCATION" }),
-    );
-  });
-
-  it("wires --keywords and --limit into the query alongside --type", async () => {
-    const { runSalesNavGetParameters } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavGetParameters(client as never, {
-      account: "acc_1",
-      type: "LOCATION",
-      keywords: "Berlin",
-      limit: "10",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.getParameters).toHaveBeenCalledWith({ type: "LOCATION", keywords: "Berlin", limit: 10 });
-  });
-});
-
-// ─── sales-nav search <url> ────────────────────────────────────────────────
-
-describe("sales-nav search <url>", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.searchFromUrl as Mock).mockResolvedValue({ data: [] });
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls salesNavigator.searchFromUrl with {url} body and no pagination params by default", async () => {
-    const { runSalesNavSearchFromUrl } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchFromUrl(client as never, {
-      account: "acc_1",
-      url: "https://www.linkedin.com/sales/search/people?...",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.searchFromUrl).toHaveBeenCalledWith(
-      { url: "https://www.linkedin.com/sales/search/people?..." },
-      undefined,
-    );
-  });
-
-  it("--limit/--cursor pass through as query params, not in the body", async () => {
-    const { runSalesNavSearchFromUrl } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchFromUrl(client as never, {
-      account: "acc_1",
-      url: "https://www.linkedin.com/sales/search/people?...",
-      limit: "10",
-      cursor: "cur_1",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.searchFromUrl).toHaveBeenCalledWith(
-      { url: "https://www.linkedin.com/sales/search/people?..." },
-      { limit: 10, cursor: "cur_1" },
-    );
-  });
-
-  it("--all streams all pages", async () => {
-    (ns.salesNavigator.searchFromUrl as Mock)
-      .mockResolvedValueOnce({ data: [{ id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ data: [{ id: "2" }], cursor: null });
-
-    const { runSalesNavSearchFromUrl } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSearchFromUrl(client as never, { account: "acc_1", url: "https://linkedin.com/x", all: true, json: true }, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("\n");
-    const lines = written.trim().split("\n").filter(Boolean);
-    expect(lines.length).toBe(2);
-  });
-});
-
-// ─── sales-nav message new ─────────────────────────────────────────────────
-
-describe("sales-nav message new", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-  let tmpDir: string;
-
-  beforeEach(async () => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.startChat as Mock).mockResolvedValue({ chat_id: "sn_chat_1" });
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-sn-"));
-    vi.resetModules();
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("calls salesNavigator.startChat with to, text, and subject (v2: required)", async () => {
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavMessageNew(client as never, {
-      account: "acc_1",
-      to: "ACo456",
-      text: "hello sn",
-      subject: "Quick question",
-      json: true,
-    }, out);
-
-    expect(client.account).toHaveBeenCalledWith("acc_1");
-    expect(ns.salesNavigator.startChat).toHaveBeenCalledWith(
-      expect.objectContaining({ attendees_ids: ["ACo456"], text: "hello sn", subject: "Quick question" }),
-    );
-  });
-
-  it("missing --subject exits 2 before any SDK call (v2: required)", async () => {
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runSalesNavMessageNew(client as never, {
-        account: "acc_1",
-        to: "ACo456",
-        text: "hello sn",
-        json: true,
-      }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.startChat).not.toHaveBeenCalled();
-  });
-
-  it("--attach file passes base64 payload in attachments (v2: no multipart)", async () => {
-    const filePath = join(tmpDir, "attach.txt");
-    await writeFile(filePath, "content");
-
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavMessageNew(client as never, {
-      account: "acc_1",
-      to: "ACo456",
-      text: "hello",
-      subject: "Subj",
-      attach: filePath,
-      json: true,
-    }, out);
-
-    const callArgs = (ns.salesNavigator.startChat as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(Array.isArray(attachments)).toBe(true);
-    expect(attachments[0]).toEqual({
-      content: Buffer.from("content").toString("base64"),
-      content_type: "application/octet-stream",
-      filename: "attach.txt",
-    });
-  });
-
-  it("--voice file rides the shared attachments[] array with send_mode 'native' (v2: no voice_message field)", async () => {
-    const voicePath = join(tmpDir, "voice.ogg");
-    await writeFile(voicePath, "voicedata");
-
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavMessageNew(client as never, {
-      account: "acc_1",
-      to: "ACo456",
-      text: "hello",
-      subject: "Subj",
-      voice: voicePath,
-      json: true,
-    }, out);
-
-    const callArgs = (ns.salesNavigator.startChat as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(callArgs).not.toHaveProperty("voice_message");
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(attachments[0]).toMatchObject({
-      content: Buffer.from("voicedata").toString("base64"),
-      filename: "voice.ogg",
-      send_mode: "native",
-    });
-  });
-
-  it("--video file rides the shared attachments[] array with send_mode 'native' (v2: no video_message field)", async () => {
-    const videoPath = join(tmpDir, "video.mp4");
-    await writeFile(videoPath, "videodata");
-
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavMessageNew(client as never, {
-      account: "acc_1",
-      to: "ACo456",
-      text: "hello",
-      subject: "Subj",
-      video: videoPath,
-      json: true,
-    }, out);
-
-    const callArgs = (ns.salesNavigator.startChat as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(callArgs).not.toHaveProperty("video_message");
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(attachments[0]).toMatchObject({
-      content: Buffer.from("videodata").toString("base64"),
-      filename: "video.mp4",
-      send_mode: "native",
-    });
-  });
-
-  it("--preview renders request, does not call startChat", async () => {
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavMessageNew(client as never, {
-      account: "acc_1",
-      to: "ACo456",
-      text: "hello",
-      subject: "Subj",
-      preview: true,
-    }, out);
-
-    expect(ns.salesNavigator.startChat).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("salesNavigator.startChat");
-  });
-
-  it("--attach missing file exits 2 before startChat", async () => {
-    const { runSalesNavMessageNew } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-    const exitSpy = mockExit();
-
-    try {
-      await runSalesNavMessageNew(client as never, {
-        account: "acc_1",
-        to: "ACo456",
-        text: "hello",
-        subject: "Subj",
-        attach: join(tmpDir, "no-such-file.txt"),
-      }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.salesNavigator.startChat).not.toHaveBeenCalled();
-  });
-});
-
-// ─── sales-nav profile ─────────────────────────────────────────────────────
-
-describe("sales-nav profile", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.getProfile as Mock).mockResolvedValue({ id: "p1", name: "John" });
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls salesNavigator.getProfile with identifier resolved via resolveIdentifier", async () => {
-    const { runSalesNavProfile } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    // Pass a full LinkedIn URL — should be resolved to just the slug
-    await runSalesNavProfile(client as never, {
-      account: "acc_1",
-      identifier: "https://www.linkedin.com/in/john-doe",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.getProfile).toHaveBeenCalledWith("john-doe", expect.anything());
-  });
-
-  it("bare slug is passed through unchanged", async () => {
-    const { runSalesNavProfile } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavProfile(client as never, {
-      account: "acc_1",
-      identifier: "jdoe",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.getProfile).toHaveBeenCalledWith("jdoe", expect.anything());
-  });
-});
-
-// ─── sales-nav save-lead (v2, breaking replace) ────────────────────────────
-// BREAKING (2026-07-04): `--list-id` (optional) is retired; `--list` (required)
-// replaces it — the v2 save always targets a specific list. saveLead is called
-// with a single input object `{ list_id, user_id }`, not `(userId, body)`.
-
-describe("sales-nav save-lead", () => {
-  let ns: ReturnType<typeof makeSalesNavNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeSalesNavNs();
-    client = makeClient(ns);
-    (ns.salesNavigator.saveLead as Mock).mockResolvedValue({ object: "sn_lead_saved", list_id: "list_456", user_id: "ACw123" });
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls salesNavigator.saveLead with { list_id, user_id } — user_id verbatim (no resolveIdentifier)", async () => {
-    const { runSalesNavSaveLead } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    // user_id is a native platform id (ACw…), NOT a LinkedIn URL — must NOT be resolved
-    await runSalesNavSaveLead(client as never, {
-      account: "acc_1",
-      userId: "ACw_full_url_if_given_should_pass_verbatim",
-      list: "list_456",
-      json: true,
-    }, out);
-
-    expect(ns.salesNavigator.saveLead).toHaveBeenCalledWith({
-      list_id: "list_456",
-      user_id: "ACw_full_url_if_given_should_pass_verbatim",
-    });
-  });
-
-  it("--preview renders request, does not call saveLead", async () => {
-    const { runSalesNavSaveLead } = await import("../../src/commands/sales-nav.js");
-    const out = makeOut();
-
-    await runSalesNavSaveLead(client as never, {
-      account: "acc_1",
-      userId: "ACw123",
-      list: "list_456",
-      preview: true,
-    }, out);
-
-    expect(ns.salesNavigator.saveLead).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("salesNavigator.saveLead");
-  });
-});
-
-// ─── no sales-nav inmail-balance in registry ─────────────────────
-
-describe("sales-nav registry has no inmail-balance", () => {
-  it("salesNavCommand does not have an inmail-balance subcommand", async () => {
-    vi.resetModules();
-    const { salesNavCommand } = await import("../../src/commands/sales-nav.js");
-    // salesNavCommand.subCommands should not include "inmail-balance"
-    const subCommands = (salesNavCommand as { subCommands?: Record<string, unknown> }).subCommands ?? {};
-    expect("inmail-balance" in subCommands).toBe(false);
+    const missing = await sink.run(["sales-nav", "save-lead", "ACw123", "--account", "acc_x"]);
+    expect([missing.status, missing.requests]).toEqual([2, []]);
   });
 });

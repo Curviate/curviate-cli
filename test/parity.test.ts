@@ -1,44 +1,10 @@
 /**
- * SDK-parity test — asserts the CLI provides exactly one primary command for
- * each SDK public resource method the CLI has actually wired a command for.
- *
- * Mechanism:
- *   1. A declared manifest maps CLI command paths to "namespace.method" strings.
- *   2. A Curviate client instance is constructed and each resource namespace's
- *      prototype is inspected to enumerate the authoritative public method set
- *      across EVERY namespace the SDK exposes (root + account-scoped).
- *   3. The test asserts:
- *      (a) every manifest entry resolves to an existing SDK method,
- *      (b) every SDK method is either covered by exactly one manifest entry
- *          OR named in the documented `KNOWN_GAP_METHODS` backlog (below),
- *      (c) the manifest's mapped-method count is `EXPECTED_MANIFEST_COUNT`,
- *      (d) the SDK's total public-method count is `EXPECTED_SDK_METHOD_COUNT`.
- *
- * The manifest holds exactly ONE counted entry per SDK method. Five convenience
- * routes are intentionally NOT counted (they reuse coverage a canonical command
- * already provides, so a separate entry would double-cover its method and break
- * the bijection):
- *   - `profile me`            → users.get('me')          (alias of `profile get`)
- *   - `profile … --posts`     → posts.listUserPosts      (alias of `post user-posts`)
- *   - `profile … --comments`  → comments.listUserComments(alias of `comment user`)
- *   - `profile … --reactions` → posts.listUserReactions  (alias of `post user-reactions`)
- *   - `profile … --followers` → users.listFollowers      (alias of `profile followers`)
- *
- * `KNOWN_GAP_METHODS` — a separate, pre-existing gap: several SDK cascades
- * (the `profile`/`groups`/`feed`/`notifications` namespaces, `companies`'
- * insights + Beta company-inbox methods, `search`'s groups/services methods,
- * `messaging.searchChats`, and `posts`' saved-posts methods) landed on the SDK
- * side with no corresponding CLI command. This surfaced only once the CLI
- * started building against the current (unpublished) SDK surface instead of
- * the last npm-published version — it predates and is unrelated to the
- * `inboxes` namespace this file's own manifest entries cover. Tracked here
- * explicitly (rather than silently passing or silently failing) so the gap
- * stays honest and visible; closing it is a separate CLI-parity follow-up,
- * not part of this change.
- *
- * A negative-guard block at the bottom demonstrates that the bijection fails
- * when a manifest entry references a missing method, or when a real method is
- * left uncovered.
+ * SDK parity: every SDK public resource method is wired to exactly one CLI
+ * command, or named in KNOWN_GAP_METHODS (REST + SDK only by product ruling).
+ * The manifest maps a CLI path to "namespace.method"; the SDK's method set is
+ * read off a client instance, so a method the SDK adds fails here until it has a
+ * command or a ruling. Convenience routes (`profile me`, `profile ... --posts`,
+ * ...) reuse a canonical command's method and carry no entry.
  */
 
 import { describe, it, expect } from "vitest";
@@ -245,12 +211,6 @@ const PARITY_MANIFEST: Record<string, string> = {
   "notification show-less": "notifications.showLess",
 };
 
-/** Entries in {@link PARITY_MANIFEST} — SDK methods the CLI actually wires a command for. */
-const EXPECTED_MANIFEST_COUNT = 153;
-
-/** Total public SDK methods across every namespace (root + account-scoped). */
-const EXPECTED_SDK_METHOD_COUNT = 156;
-
 /**
  * Pre-existing SDK methods with no CLI command yet — see the file-header
  * doc comment. Each entry here must be a real, currently-uncovered SDK
@@ -321,119 +281,23 @@ async function buildSdkMethodSet(): Promise<Set<string>> {
 // Parity tests
 // ---------------------------------------------------------------------------
 
-describe("SDK parity — command manifest", () => {
-  it(`manifest has exactly ${EXPECTED_MANIFEST_COUNT} entries`, () => {
-    const count = Object.keys(PARITY_MANIFEST).length;
-    expect(count, `manifest length should be ${EXPECTED_MANIFEST_COUNT}, got ${count}`).toBe(EXPECTED_MANIFEST_COUNT);
+describe("SDK parity", () => {
+  it("every manifest entry maps to a real SDK method", async () => {
+    const sdk = await buildSdkMethodSet();
+    expect(Object.entries(PARITY_MANIFEST).filter(([, m]) => !sdk.has(m)).map(([c, m]) => `"${c}" -> "${m}"`)).toEqual([]);
   });
 
-  it("every manifest entry maps to a real SDK method (no phantom references)", async () => {
-    const sdkMethods = await buildSdkMethodSet();
-    const phantoms: string[] = [];
-
-    for (const [cliPath, sdkMethod] of Object.entries(PARITY_MANIFEST)) {
-      if (!sdkMethods.has(sdkMethod)) {
-        phantoms.push(`"${cliPath}" → "${sdkMethod}" (not found in SDK)`);
-      }
-    }
-
-    expect(
-      phantoms,
-      `Manifest references non-existent SDK methods:\n${phantoms.join("\n")}`,
-    ).toHaveLength(0);
+  it("each KNOWN_GAP_METHODS entry is a real SDK method no command covers yet", async () => {
+    const sdk = await buildSdkMethodSet();
+    const covered = new Set(Object.values(PARITY_MANIFEST));
+    expect(KNOWN_GAP_METHODS.filter((m) => !sdk.has(m) || covered.has(m))).toEqual([]);
   });
 
-  it("KNOWN_GAP_METHODS entries are each a real, currently-uncovered SDK method", async () => {
-    // Guards the backlog list itself: an entry that is fixed by wiring a CLI
-    // command must be REMOVED from KNOWN_GAP_METHODS (not left stale), and an
-    // entry can never reference a non-existent method.
-    const sdkMethods = await buildSdkMethodSet();
-    const coveredByManifest = new Set(Object.values(PARITY_MANIFEST));
-
-    const nonExistent = KNOWN_GAP_METHODS.filter((m) => !sdkMethods.has(m));
-    expect(nonExistent, `KNOWN_GAP_METHODS references non-existent SDK methods:\n${nonExistent.join("\n")}`).toHaveLength(0);
-
-    const nowCovered = KNOWN_GAP_METHODS.filter((m) => coveredByManifest.has(m));
-    expect(
-      nowCovered,
-      `KNOWN_GAP_METHODS lists methods a CLI command now covers — remove from the backlog:\n${nowCovered.join("\n")}`,
-    ).toHaveLength(0);
-  });
-
-  it("every SDK method is covered by exactly one manifest entry, or is a documented KNOWN_GAP_METHODS backlog item", async () => {
-    const sdkMethods = await buildSdkMethodSet();
-    const knownGap = new Set(KNOWN_GAP_METHODS);
-
-    // Build reverse map: sdkMethod → cliPath(s)
-    const reverse = new Map<string, string[]>();
-    for (const [cliPath, sdkMethod] of Object.entries(PARITY_MANIFEST)) {
-      if (!reverse.has(sdkMethod)) reverse.set(sdkMethod, []);
-      reverse.get(sdkMethod)!.push(cliPath);
-    }
-
-    // SDK methods missing from both the manifest AND the documented backlog.
-    const uncovered: string[] = [];
-    for (const m of sdkMethods) {
-      if (!reverse.has(m) && !knownGap.has(m)) uncovered.push(m);
-    }
-
-    // SDK methods mapped more than once
-    const duplicated: string[] = [];
-    for (const [m, paths] of reverse) {
-      if (paths.length > 1) duplicated.push(`${m} → [${paths.join(", ")}]`);
-    }
-
-    expect(
-      uncovered,
-      `SDK methods not covered by any manifest entry or KNOWN_GAP_METHODS:\n${uncovered.join("\n")}`,
-    ).toHaveLength(0);
-
-    expect(
-      duplicated,
-      `SDK methods mapped by more than one manifest entry:\n${duplicated.join("\n")}`,
-    ).toHaveLength(0);
-  });
-
-  it(`SDK has exactly ${EXPECTED_SDK_METHOD_COUNT} public resource methods (manifest ${EXPECTED_MANIFEST_COUNT} + known-gap backlog ${KNOWN_GAP_METHODS.length})`, async () => {
-    const sdkMethods = await buildSdkMethodSet();
-    expect(
-      sdkMethods.size,
-      `SDK has ${sdkMethods.size} public methods, expected ${EXPECTED_SDK_METHOD_COUNT}`,
-    ).toBe(EXPECTED_SDK_METHOD_COUNT);
-    expect(EXPECTED_MANIFEST_COUNT + KNOWN_GAP_METHODS.length).toBe(EXPECTED_SDK_METHOD_COUNT);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Negative guards — demonstrate the bijection fails on drift
-// ---------------------------------------------------------------------------
-
-describe("SDK parity — negative guard (injected phantom)", () => {
-  it("bijection check detects a phantom manifest entry (non-existent SDK method)", async () => {
-    const sdkMethods = await buildSdkMethodSet();
-    const phantomMethod = "accounts.nonExistentMethod";
-
-    expect(sdkMethods.has(phantomMethod)).toBe(false);
-
-    const testManifest = { ...PARITY_MANIFEST, "account phantom": phantomMethod };
-    const phantoms = Object.values(testManifest).filter((m) => !sdkMethods.has(m));
-    expect(phantoms).toContain(phantomMethod);
-  });
-
-  it("bijection check detects a missing SDK method (uncovered method)", async () => {
-    const sdkMethods = await buildSdkMethodSet();
-    const removedMethod = "accounts.list";
-
-    expect(sdkMethods.has(removedMethod), "removed method must exist in SDK").toBe(true);
-
-    const reducedManifest = Object.fromEntries(
-      Object.entries(PARITY_MANIFEST).filter(([, m]) => m !== removedMethod),
-    );
-
-    const coveredMethods = new Set(Object.values(reducedManifest));
-    expect(coveredMethods.has(removedMethod)).toBe(false);
-
-    const uncovered = [...sdkMethods].filter((m) => !coveredMethods.has(m));
-    expect(uncovered).toContain(removedMethod);
+  it("every SDK method is covered by exactly one manifest entry, or is a known gap", async () => {
+    const sdk = await buildSdkMethodSet();
+    const by = new Map<string, string[]>();
+    for (const [c, m] of Object.entries(PARITY_MANIFEST)) by.set(m, [...(by.get(m) ?? []), c]);
+    expect([...sdk].filter((m) => !by.has(m) && !KNOWN_GAP_METHODS.includes(m))).toEqual([]);
+    expect([...by].filter(([, paths]) => paths.length > 1).map(([m, paths]) => `${m} -> ${paths.join(", ")}`)).toEqual([]);
   });
 });

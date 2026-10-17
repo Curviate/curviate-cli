@@ -1,285 +1,177 @@
 /**
- * Tests for the `post` command group.
- *
- * Coverage:
- *   post get <post_id>                                   → posts.get
- *   post create "<text>" [--attach…]                    → posts.create (v2: JSON only, no multipart)
- *   post react <post_id> --reaction <r>                 → posts.react (body field: `reaction`)
- *   post reactions <post_id>                            → posts.listReactions (paginated)
- *
- * Comment operations moved to the dedicated `comment` command group.
- *
- * --preview on writes: renders preview, no SDK call.
- * --preview on reads: exit 2.
- * --attach missing file: exit 2 before SDK call.
- * --all rejected on non-paginated: exit 2.
+ * `post` group (and the reaction-signature unification with `message react`):
+ * flag -> SDK call, output, --preview, refusals. Run functions against mocks;
+ * the argv forms go through the entry point against a recording sink.
  */
-
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { Mock } from "vitest";
-import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { describe, it, expect } from "vitest";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { CurviateError } from "@curviate/sdk";
+import {
+  postCommand, runPostCreate, runPostDelete, runPostGet, runPostReact, runPostReactions, runPostSave, runPostSaved,
+  runPostUnreact, runPostUnsave, runPostUserPosts, runPostUserReactions,
+} from "../../src/commands/post.js";
+import { messageCommand, runMessageReact } from "../../src/commands/message.js";
+import { inboxCommand } from "../../src/commands/inbox.js";
+import { exitCode } from "../helpers/exit-code.js";
+import { calls, go, mkEnv, mkOut, prints, previews, refuses, streams, text } from "../helpers/f3-unit.js";
+import { useSink } from "../helpers/sink.js";
 
-function makePostsNs() {
-  return {
-    posts: {
-      get: vi.fn(),
-      create: vi.fn(),
-      react: vi.fn(),
-      listReactions: vi.fn(),
-    },
-  };
-}
-
-function makeClient(ns: ReturnType<typeof makePostsNs>) {
-  return {
-    account: vi.fn().mockReturnValue(ns),
-  };
-}
-
-type PostArgs = {
-  postId?: string;
-  text?: string;
-  reaction?: string;
-  attach?: string | string[];
-  account?: string;
-  json?: boolean;
-  preview?: boolean;
-  all?: boolean;
-  limit?: string;
-  cursor?: string;
-  "max-pages"?: string;
-  fields?: string;
-  "api-key"?: string;
-  "base-url"?: string;
-  timeout?: string;
-  profile?: string;
+const PAGE = { object: "user_post_list", items: [], cursor: null };
+const SHAPE = {
+  posts: {
+    get: { id: "post_1" },
+    create: { post_id: "p_1" },
+    react: { object: "reaction_added" },
+    listReactions: { items: [], cursor: null },
+    delete: {},
+    unreact: { object: "reaction" },
+    listUserPosts: PAGE,
+    listUserReactions: PAGE,
+    listSaved: { items: [{ id: "post_1", snippet: "A saved post" }], cursor: null },
+    save: { object: "post_saved", saved: true },
+    unsave: { object: "post_saved", saved: false },
+  },
+  users: { get: { object: "user_profile", id: "ACoAA_resolved" } },
+  messaging: { addReaction: { object: "reaction_added" } },
 };
+const NOT_FOUND = new CurviateError({ code: "RESOURCE_NOT_FOUND", message: "Member not found.", httpStatus: 404, userFixable: false, retryLikelyToSucceed: false });
 
-describe("post get", () => {
-  let ns: ReturnType<typeof makePostsNs>;
-  let client: ReturnType<typeof makeClient>;
+describe("post: request building", () => {
+  calls(SHAPE, [
+    ["get passes the id verbatim", runPostGet, { postId: "7332661864792854528" }, "posts.get", ["7332661864792854528"]],
+    ["create sends the text", runPostCreate, { text: "Hello world" }, "posts.create", [expect.objectContaining({ text: "Hello world" })]],
+    ["react sends {reaction}", runPostReact, { postId: "post_abc", reaction: "like" }, "posts.react", ["post_abc", { reaction: "like" }]],
+    ["react --as-organization sends react_as", runPostReact, { postId: "p", reaction: "celebrate", "as-organization": "org_123" }, "posts.react", ["p", { reaction: "celebrate", react_as: "org_123" }]],
+    ["react accepts support (valid write value)", runPostReact, { postId: "p", reaction: "support" }, "posts.react", ["p", { reaction: "support" }]],
+    ["react: the deprecated --reaction alias is honored", runPostReact, { postId: "p1", reactionAlias: "celebrate" }, "posts.react", ["p1", { reaction: "celebrate" }]],
+    ["react: the positional beats the alias", runPostReact, { postId: "p1", reaction: "love", reactionAlias: "funny" }, "posts.react", ["p1", { reaction: "love" }]],
+    ["reactions", runPostReactions, { postId: "post_abc" }, "posts.listReactions", ["post_abc", expect.anything()]],
+    ["delete is bodyless (one argument)", runPostDelete, { postId: "urn:li:activity:1" }, "posts.delete", ["urn:li:activity:1"]],
+    ["unreact sends {reaction}", runPostUnreact, { postId: "p1", reaction: "like" }, "posts.unreact", ["p1", { reaction: "like" }]],
+    ["user-posts: --limit is top-level", runPostUserPosts, { userId: "me", limit: "5" }, "posts.listUserPosts", ["me", { limit: 5 }]],
+    ["user-reactions", runPostUserReactions, { userId: "me" }, "posts.listUserReactions", ["me", {}]],
+    ["user-posts: a provider id skips the resolve", runPostUserPosts, { userId: "ACoAAA_x" }, "posts.listUserPosts", ["ACoAAA_x", {}]],
+    ["user-posts: a slug is resolved via users.get first", runPostUserPosts, { userId: "raphael-redmer" }, "posts.listUserPosts", ["ACoAA_resolved", {}]],
+    ["user-reactions: a slug is resolved via users.get first", runPostUserReactions, { userId: "raphael-redmer" }, "posts.listUserReactions", ["ACoAA_resolved", {}]],
+    ["saved forwards --limit/--cursor", runPostSaved, { limit: "10", cursor: "cur_1" }, "posts.listSaved", [expect.objectContaining({ limit: 10, cursor: "cur_1" })]],
+    ["save is one argument", runPostSave, { postId: "urn:li:activity:1" }, "posts.save", ["urn:li:activity:1"]],
+    ["unsave is one argument", runPostUnsave, { postId: "urn:li:activity:1" }, "posts.unsave", ["urn:li:activity:1"]],
+  ]);
 
-  beforeEach(() => {
-    ns = makePostsNs();
-    client = makeClient(ns);
-    (ns.posts.get as Mock).mockResolvedValue({ id: "post_1" });
+  it("a slug is resolved with users.get({}) and a provider id or `me` is never resolved", async () => {
+    const slug = await go(SHAPE, runPostUserPosts, { userId: "raphael-redmer" });
+    expect(slug.fn("users.get")).toHaveBeenCalledWith("raphael-redmer", {});
+    for (const userId of ["ACoAAA_x", "me"]) expect((await go(SHAPE, runPostUserPosts, { userId })).fn("users.get")).not.toHaveBeenCalled();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it("an unresolvable slug exits 4 and lists nothing", async () => {
+    const e = mkEnv(SHAPE);
+    e.fn("users.get").mockRejectedValue(NOT_FOUND);
+    expect(await exitCode(() => runPostUserPosts(e.client as never, { userId: "no-such-member", account: "acc_1", json: true }, e.out as never))).toBe(4);
+    expect(e.fn("posts.listUserPosts")).not.toHaveBeenCalled();
   });
 
-  it("post get <post_id> — calls posts.get with verbatim id", async () => {
-    const { runPostGet } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostGet(client as never, { postId: "7332661864792854528", account: "acc_1", json: true } as PostArgs, out);
-
-    expect(ns.posts.get).toHaveBeenCalledWith("7332661864792854528");
-  });
-
-  it("post get --all — exits 2 (not paginated)", async () => {
-    const { runPostGet } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
+  it("create --attach sends the file base64 in attachments (no multipart)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "curviate-test-post-"));
     try {
-      await runPostGet(client as never, { postId: "post_1", account: "acc_1", all: true } as PostArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
+      const file = join(dir, "img.jpg");
+      await writeFile(file, "jpgdata");
+      const e = await go(SHAPE, runPostCreate, { text: "Post with image", attach: file });
+      const sent = e.fn("posts.create").mock.calls[0]![0] as { attachments: unknown[] };
+      expect(sent.attachments[0]).toEqual({ content: Buffer.from("jpgdata").toString("base64"), content_type: "image/jpeg", filename: "img.jpg" });
+      const p = await go(SHAPE, runPostCreate, { text: "x", attach: file, preview: true });
+      expect(JSON.parse(text(p.out)).attachments[0]).toMatch(/img\.jpg \(\d+ bytes\)/);
+      expect(p.fn("posts.create")).not.toHaveBeenCalled();
     } finally {
-      exitSpy.mockRestore();
+      await rm(dir, { recursive: true, force: true });
     }
   });
 });
 
-describe("post create", () => {
-  let ns: ReturnType<typeof makePostsNs>;
-  let client: ReturnType<typeof makeClient>;
-  let tmpDir: string;
+describe("post: output", () => {
+  prints(SHAPE, [
+    ["saved --json prints the response", runPostSaved, {}, "posts.listSaved"],
+    ["save --json prints the confirmation", runPostSave, { postId: "1" }, "posts.save"],
+    ["unsave --json prints the confirmation", runPostUnsave, { postId: "1" }, "posts.unsave"],
+  ]);
+  streams(SHAPE, [
+    ["reactions", runPostReactions, { postId: "post_abc" }, "posts.listReactions"],
+    ["saved", runPostSaved, {}, "posts.listSaved"],
+  ]);
+  previews(SHAPE, [
+    ["create", runPostCreate, { text: "Preview only" }, "posts.create", {}],
+    ["react --as-organization", runPostReact, { postId: "post_abc", reaction: "like", "as-organization": "org_xyz" }, "posts.react", { body: { react_as: "org_xyz" } }],
+    ["delete", runPostDelete, { postId: "p1" }, "posts.delete", { body: {} }],
+    ["save", runPostSave, { postId: "p1" }, "posts.save", { args: { post_id: "p1" }, body: {} }],
+    ["unsave", runPostUnsave, { postId: "p1" }, "posts.unsave", { args: { post_id: "p1" }, body: {} }],
+  ]);
 
-  beforeEach(async () => {
-    ns = makePostsNs();
-    client = makeClient(ns);
-    (ns.posts.create as Mock).mockResolvedValue({ post_id: "p_1" });
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-post-"));
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("post create '<text>' — calls posts.create with text (always multipart via SDK)", async () => {
-    const { runPostCreate } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostCreate(client as never, {
-      text: "Hello world",
-      account: "acc_1",
-      json: true,
-    } as PostArgs, out);
-
-    expect(ns.posts.create).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Hello world" }),
-    );
-  });
-
-  it("post create '<text>' --attach <file> — reads file, passes base64 payload in attachments (v2: no multipart)", async () => {
-    const { runPostCreate } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const filePath = join(tmpDir, "img.jpg");
-    await writeFile(filePath, "jpgdata");
-
-    await runPostCreate(client as never, {
-      text: "Post with image",
-      attach: filePath,
-      account: "acc_1",
-      json: true,
-    } as PostArgs, out);
-
-    const callArgs = (ns.posts.create as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(Array.isArray(attachments)).toBe(true);
-    expect(attachments[0]).toEqual({
-      content: Buffer.from("jpgdata").toString("base64"),
-      content_type: "image/jpeg",
-      filename: "img.jpg",
-    });
-  });
-
-  it("post create --attach <missing> — exits 2 before SDK call", async () => {
-    const { runPostCreate } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runPostCreate(client as never, {
-        text: "Post",
-        attach: join(tmpDir, "nope.jpg"),
-        account: "acc_1",
-      } as PostArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(ns.posts.create).not.toHaveBeenCalled();
-  });
-
-  it("post create --preview — renders preview, no posts.create call", async () => {
-    const { runPostCreate } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostCreate(client as never, {
-      text: "Preview only",
-      account: "acc_1",
-      preview: true,
-    } as PostArgs, out);
-
-    expect(ns.posts.create).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("posts.create");
-  });
-
-  it("post create --preview with attachment — shows name+size, no bytes", async () => {
-    const { runPostCreate } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const filePath = join(tmpDir, "attach.jpg");
-    await writeFile(filePath, "imgcontent");
-
-    await runPostCreate(client as never, {
-      text: "Attached post",
-      attach: filePath,
-      account: "acc_1",
-      preview: true,
-    } as PostArgs, out);
-
-    expect(ns.posts.create).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.attachments[0]).toMatch(/attach\.jpg \(\d+ bytes\)/);
+  it("react with only the positional sends no react_as / comment_id", async () => {
+    const e = await go(SHAPE, runPostReact, { postId: "post_1", reaction: "like" });
+    expect(e.fn("posts.react").mock.calls[0]![1]).toEqual({ reaction: "like" });
   });
 });
 
-describe("post react / reactions", () => {
-  let ns: ReturnType<typeof makePostsNs>;
-  let client: ReturnType<typeof makeClient>;
+describe("post: refusals (exit code, no SDK call)", () => {
+  refuses(SHAPE, [
+    ["get --all (not paginated)", runPostGet, { postId: "post_1", all: true }, 2],
+    ["create --attach <missing file>", runPostCreate, { text: "Post", attach: "/nonexistent/nope.jpg" }, 2],
+    ["react LIKE (the write enum is lowercase)", runPostReact, { postId: "p", reaction: "LIKE" }, 2],
+    ["react thumbsup", runPostReact, { postId: "p", reaction: "thumbsup" }, 2],
+    ["react with no reaction at all", runPostReact, { postId: "p1" }, 2],
+    ["unreact LIKE", runPostUnreact, { postId: "p1", reaction: "LIKE" }, 2],
+    ["saved with no connected account", runPostSaved, { account: null }, 2],
+    ["unsave with no connected account", runPostUnsave, { postId: "p1", account: null }, 2],
+  ]);
+});
 
-  beforeEach(() => {
-    ns = makePostsNs();
-    client = makeClient(ns);
-    (ns.posts.react as Mock).mockResolvedValue({ reaction: "like" });
-    (ns.posts.listReactions as Mock).mockResolvedValue({ items: [], cursor: null });
+describe("reaction signature: positional or alias, same preview body (through the entry point)", () => {
+  const sink = useSink();
+  it.each([
+    [["post", "react", "post_1", "like"], "posts.react", { reaction: "like" }],
+    [["post", "react", "post_1", "--reaction", "like"], "posts.react", { reaction: "like" }],
+    [["message", "react", "chat_1", "msg_1", "👍"], "messaging.addReaction", { reaction: "👍" }],
+    [["message", "react", "chat_1", "msg_1", "--emoji", "👍"], "messaging.addReaction", { reaction: "👍" }],
+  ])("%j", async (argv, method, body) => {
+    const r = await sink.run([...argv, "--preview", "--account", "acc_x"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(JSON.parse(r.stdout.trim())).toMatchObject({ method, body });
+    expect(r.requests).toEqual([]);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it("an invalid positional reaction exits 2", async () => {
+    expect((await sink.run(["post", "react", "post_1", "thumbsup", "--preview", "--account", "acc_x"])).status).toBe(2);
   });
 
-  it("post react <post_id> --reaction like — calls posts.react with body field 'reaction'", async () => {
-    const { runPostReact } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostReact(client as never, {
-      postId: "post_abc",
-      reaction: "like",
-      account: "acc_1",
-      json: true,
-    } as PostArgs, out);
-
-    expect(ns.posts.react).toHaveBeenCalledWith("post_abc", { reaction: "like" });
+  it("message react: positional and --emoji alias reach messaging.addReaction as {reaction}; none exits 2", async () => {
+    const m = (a: object) => go(SHAPE, runMessageReact, { chatId: "c1", messageId: "m1", ...a });
+    expect((await m({ emoji: "👍" })).fn("messaging.addReaction")).toHaveBeenCalledWith("c1", "m1", { reaction: "👍" });
+    expect((await m({ emojiAlias: "🎉" })).fn("messaging.addReaction")).toHaveBeenCalledWith("c1", "m1", { reaction: "🎉" });
+    const e = mkEnv(SHAPE);
+    expect(await exitCode(() => runMessageReact(e.client as never, { chatId: "c1", messageId: "m1", account: "acc_1" }, mkOut() as never))).toBe(2);
+    expect(e.fn("messaging.addReaction")).not.toHaveBeenCalled();
   });
+});
 
-  it("post react --preview — renders preview, no SDK call", async () => {
-    const { runPostReact } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostReact(client as never, {
-      postId: "post_abc",
-      reaction: "like",
-      account: "acc_1",
-      preview: true,
-    } as PostArgs, out);
-
-    expect(ns.posts.react).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("posts.react");
-  });
-
-  it("post reactions <post_id> — calls posts.listReactions", async () => {
-    const { runPostReactions } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runPostReactions(client as never, { postId: "post_abc", account: "acc_1", json: true } as PostArgs, out);
-
-    expect(ns.posts.listReactions).toHaveBeenCalledWith("post_abc", expect.anything());
-  });
-
-  it("post reactions --all — streams NDJSON", async () => {
-    const { runPostReactions } = await import("../../src/commands/post.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (ns.posts.listReactions as Mock)
-      .mockResolvedValueOnce({ items: [{ value: "LIKE" }, { value: "PRAISE" }], cursor: "next" })
-      .mockResolvedValueOnce({ items: [{ value: "EMPATHY" }], cursor: null });
-
-    await runPostReactions(client as never, { postId: "post_abc", account: "acc_1", all: true } as PostArgs, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const ndjson = lines.filter((l) => l.trim().startsWith("{"));
-    expect(ndjson).toHaveLength(3);
+describe("flag hygiene: no pagination flags where nothing paginates", () => {
+  type Cmd = { args?: Record<string, unknown>; subCommands?: Record<string, Cmd> };
+  const PAGING = ["limit", "cursor", "all", "max-pages"];
+  const sub = (c: unknown, n: string | null) => (n === null ? (c as Cmd) : (c as Cmd).subCommands![n]!).args ?? {};
+  const P = postCommand, M = messageCommand, I = inboxCommand;
+  it.each([
+    ["post create", P, "create", "write"], ["post react", P, "react", "write"],
+    ["post delete", P, "delete", "write+fields"], ["post unreact", P, "unreact", "write+fields"],
+    ["message new", M, "new", "write"], ["message edit", M, "edit", "write"], ["message delete", M, "delete", "write"],
+    ["message react", M, "react", "write"], ["message inmail", M, "inmail", "write"], ["message <chat> <text>", M, null, "write"],
+    ["message get", M, "get", "single"], ["message attachment", M, "attachment", "single"], ["message inmail-balance", M, "inmail-balance", "single"],
+    ["inbox get", I, "get", "single"], ["inbox mark-read", I, "mark-read", "single"],
+    ["post reactions", P, "reactions", "list"], ["inbox list", I, "list", "list"], ["inbox messages", I, "messages", "list"],
+  ] as const)("%s (%s)", (_l, cmd, name, kind) => {
+    const args = sub(cmd, name);
+    for (const f of PAGING) (kind === "list" ? expect(args) : expect(args).not).toHaveProperty(f);
+    if (kind === "write") expect(args).not.toHaveProperty("fields");
+    if (kind === "write+fields") expect(args).toHaveProperty("fields");
   });
 });

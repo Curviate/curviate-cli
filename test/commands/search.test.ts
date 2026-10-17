@@ -1,2644 +1,391 @@
 /**
- * Tests for the `search` command group.
- * Key assertions: search people/companies/posts/jobs use POST body,
- * cursor/limit go to query (not body); from-URL search is the bare `search <url>` form.
+ * `search` group: run* functions against a mocked SDK namespace. Flag -> request body
+ * is table-driven; every refusal asserts the SDK was never called.
  */
-
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
+import { exitCode } from "../helpers/exit-code.js";
+import { arg0, clientOf, json, mkOut, ndjson, sdkError, text } from "../helpers/f1-unit.js";
+import {
+  runSearchCompanies, runSearchGroups, runSearchJobs, runSearchParameters, runSearchPeople, runSearchPosts,
+  runSearchFromUrl, runSearchServiceParameters, runSearchServices, searchCommand,
+} from "../../src/commands/search.js";
+import { slimSearchPeople } from "../../src/lib/slim.js";
 
-function makeAccountNs() {
-  return {
-    search: {
-      people: vi.fn(),
-      companies: vi.fn(),
-      posts: vi.fn(),
-      jobs: vi.fn(),
-      getParameters: vi.fn(),
-      groups: vi.fn(),
-      services: vi.fn(),
-      getServiceParameters: vi.fn(),
-    },
-  };
+type Run = (c: never, a: never, o: never) => Promise<void>;
+const kinds = { people: runSearchPeople, companies: runSearchCompanies, posts: runSearchPosts, jobs: runSearchJobs } as Record<string, Run>;
+const EMPTY = { items: [], cursor: null };
+
+function setup() {
+  const search = Object.fromEntries(
+    ["people", "companies", "posts", "jobs", "getParameters", "groups", "services", "getServiceParameters"].map((m) => [m, vi.fn().mockResolvedValue(EMPTY)]),
+  ) as Record<string, Mock>;
+  return { search, client: clientOf({ search }) };
 }
-
-function makeClient(accountNs: ReturnType<typeof makeAccountNs>) {
-  return {
-    account: vi.fn().mockReturnValue(accountNs),
-  };
+/** Run one search kind with `args` on top of {account, json}; resolve the request body the SDK got. */
+async function body(kind: string, args: Record<string, unknown>) {
+  const { search, client } = setup();
+  await kinds[kind]!(client as never, { account: "acc_1", json: true, ...args } as never, mkOut() as never);
+  return arg0(search[kind]!);
 }
+const neverCalled = (search: Record<string, Mock>) => Object.values(search).forEach((f) => expect(f).not.toHaveBeenCalled());
+afterEach(() => vi.restoreAllMocks());
 
-type SearchArgs = {
-  keywords?: string;
-  url?: string;
-  type?: string;
-  limit?: string;
-  cursor?: string;
-  all?: boolean;
-  "max-pages"?: string;
-  account?: string;
-  json?: boolean;
-  verbose?: boolean;
-  preview?: boolean;
-  fields?: string;
-  "api-key"?: string;
-  "base-url"?: string;
-  timeout?: string;
-  profile?: string;
-  // filter escape hatch + named convenience flags
-  filters?: string;
-  "filters-file"?: string;
-  industry?: string;
-  location?: string;
-  company?: string;
-  "past-company"?: string;
-  school?: string;
-  "network-distance"?: string;
-  "connections-of"?: string;
-  "followers-of"?: string;
-  "sort-by"?: string;
-  "date-posted"?: string;
-  "content-type"?: string;
-  seniority?: string;
-  function?: string;
-  "employment-type"?: string;
-  "job-type"?: string;
-  region?: string;
-  // People-specific filter flags
-  title?: string;
-  "profile-language"?: string;
-  // search-AX v2: search companies
-  "has-job-offers"?: boolean;
-  headcount?: string;
-  // search-AX v2: search jobs
-  presence?: string;
-  benefits?: string;
-  commitments?: string;
-  "has-verifications"?: boolean;
-  "under-10-applicants"?: boolean;
-  "in-your-network"?: boolean;
-  "fair-chance-employer"?: boolean;
-  "location-within-area"?: string;
-  // search-AX v2: search posts
-  "posted-by-member"?: string;
-  "posted-by-company"?: string;
-  "posted-by-me"?: boolean;
-  "mentioning-member"?: string;
-  "mentioning-company"?: string;
-  "author-industry"?: string;
-  "author-company"?: string;
-  "author-keywords"?: string;
-  // search groups
-  query?: string;
-  // search services
-  "service-category"?: string;
-  connections?: string;
-  language?: string;
-};
-
-function makeExitMock() {
-  return vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-    throw new Error(`process.exit(${code})`);
-  });
-}
-
-describe("search people", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.people as Mock).mockResolvedValue({ object: "people_search_result", items: [], cursor: null });
-    (accountNs.search.companies as Mock).mockResolvedValue({ object: "company_search_result", items: [], cursor: null });
-    (accountNs.search.posts as Mock).mockResolvedValue({ object: "post_search_result", items: [], cursor: null });
-    (accountNs.search.jobs as Mock).mockResolvedValue({ object: "job_search_result", items: [], cursor: null });
-    (accountNs.search.getParameters as Mock).mockResolvedValue({ object: "search_parameter_list", parameters: [] });
+describe("flags map to the exact request body", () => {
+  it.each<[string, string, Record<string, unknown>, Record<string, unknown>]>([
+    ["people", "keywords", { keywords: "ai" }, { keywords: "ai" }],
+    ["people", "--filters verbatim", { filters: '{"open_to":["recruiters"],"profile_language":["en"]}' }, { open_to: ["recruiters"], profile_language: ["en"] }],
+    ["people", "keywords + filters", { keywords: "ml", filters: '{"industry":["96"]}' }, { industry: ["96"], keywords: "ml" }],
+    ["people", "named flags (arrays comma-split, distance numeric)", {
+      industry: "96,4", location: "103644278", company: "1441", "past-company": "111", school: "222",
+      "network-distance": "1,2", "connections-of": "ACoAAB", "followers-of": "ACoAAC",
+    }, {
+      industry: ["96", "4"], location: ["103644278"], current_company: ["1441"], past_company: ["111"], school: ["222"],
+      network_distance: [1, 2], connections_of: ["ACoAAB"], followers_of: ["ACoAAC"],
+    }],
+    ["people", "named flag wins over --filters, other filter keys kept", { filters: '{"industry":["OLD"],"keywords":"kept"}', industry: "96" }, { industry: ["96"], keywords: "kept" }],
+    ["people", "--title -> advanced_keywords.title", { title: "AI Engineer" }, { advanced_keywords: { title: "AI Engineer" } }],
+    ["people", "--title merges into advanced_keywords from --filters", { filters: '{"advanced_keywords":{"company":"Acme","title":"OLD"}}', title: "AI Engineer" }, { advanced_keywords: { company: "Acme", title: "AI Engineer" } }],
+    ["people", "--profile-language", { "profile-language": "en,de,fr" }, { profile_language: ["en", "de", "fr"] }],
+    ["people", "--connections-of single urn is wrapped", { "connections-of": "urn:li:member:747216553" }, { connections_of: ["urn:li:member:747216553"] }],
+    ["people", "--connections-of / --followers-of comma list", { "connections-of": "id1,id2", "followers-of": "id1" }, { connections_of: ["id1", "id2"], followers_of: ["id1"] }],
+    ["companies", "keywords", { keywords: "acme" }, { keywords: "acme" }],
+    ["companies", "named flags + --filters", { industry: "96", location: "103644278", "has-job-offers": true, filters: '{"keywords":"from-filters"}' },
+      { has_job_postings: true, industry: ["96"], location: ["103644278"], keywords: "from-filters" }],
+    ["companies", "--headcount one bucket", { headcount: "1001-5000" }, { headcount: [{ min: 1001, max: 5000 }] }],
+    ["companies", "--headcount two buckets in order, with --has-job-offers", { headcount: "1-10,501-1000", "has-job-offers": true },
+      { has_job_postings: true, headcount: [{ min: 1, max: 10 }, { min: 501, max: 1000 }] }],
+    ["posts", "keywords", { keywords: "ai" }, { keywords: "ai" }],
+    ["posts", "scalar flags (date-posted hyphen -> underscore)", { "sort-by": "relevance", "date-posted": "past-week", "content-type": "videos" },
+      { sort_by: "relevance", date_posted: "past_week", content_type: "videos" }],
+    ["posts", "--date-posted past-day", { "date-posted": "past-day" }, { date_posted: "past_day" }],
+    ["posts", "--date-posted past-month", { "date-posted": "past-month" }, { date_posted: "past_month" }],
+    ["posts", "--date-posted already underscored", { "date-posted": "past_week" }, { date_posted: "past_week" }],
+    ["posts", "posted_by merges member + me into one object", { "posted-by-member": "id1", "posted-by-me": true }, { posted_by: { member: ["id1"], me: true } }],
+    ["posts", "mentioning member + company", { "mentioning-member": "id1", "mentioning-company": "c1" }, { mentioning: { member: ["id1"], company: ["c1"] } }],
+    ["posts", "author industry / company / keywords", { "author-industry": "i1", "author-company": "c1", "author-keywords": "CTO" },
+      { author: { industry: ["i1"], company: ["c1"], keywords: "CTO" } }],
+    ["posts", "posted_by and mentioning stay separate keys", { "posted-by-member": "id1", "mentioning-company": "c1" },
+      { posted_by: { member: ["id1"] }, mentioning: { company: ["c1"] } }],
+    ["jobs", "keywords", { keywords: "engineer" }, { keywords: "engineer" }],
+    ["jobs", "named flags; --region wins over --location; --filters merged", {
+      location: "103644278,90000084", industry: "96", seniority: "3", function: "eng", "job-type": "F", company: "1441",
+      "sort-by": "DD", region: "eu", filters: '{"easy_apply":true}',
+    }, { easy_apply: true, industry: ["96"], seniority: ["3"], function: ["eng"], job_type: ["F"], company: ["1441"], sort_by: "DD", region: "eu" }],
+    ["jobs", "--location is the single region id, not a location array", { location: "103644278" }, { region: "103644278" }],
+    ["jobs", "--region", { region: "eu" }, { region: "eu" }],
+    ["jobs", "--date-posted is a number of days", { "date-posted": "14" }, { date_posted: 14 }],
+    ["jobs", "--title -> role ids", { title: "30128,26089", keywords: "engineer" }, { keywords: "engineer", role: ["30128", "26089"] }],
+    ["jobs", "all seven additional flags together", {
+      presence: "remote", benefits: "medical_insurance", commitments: "full_time", "has-verifications": true,
+      "under-10-applicants": true, "in-your-network": true, "fair-chance-employer": true,
+    }, {
+      presence: ["remote"], benefits: ["medical_insurance"], commitments: ["full_time"], has_verifications: true,
+      under_10_applicants: true, in_your_network: true, fair_chance_employer: true,
+    }],
+    ["jobs", "--location-within-area is a number", { "location-within-area": "25", location: "101282230" }, { location_within_area: 25, region: "101282230" }],
+  ])("%s: %s", async (kind, _label, args, expected) => {
+    expect(await body(kind, args)).toEqual(expected);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search people --keywords ai — calls search.people with body containing keywords", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
+  it("--cursor / --limit are passed to the SDK call; --all walks the pages as NDJSON", async () => {
+    expect(await body("people", { cursor: "c1", limit: "5" })).toEqual({ cursor: "c1", limit: 5 });
+    const { search, client } = setup();
+    search.people!.mockResolvedValueOnce({ items: [{ id: "p1" }, { id: "p2" }], cursor: "c1" }).mockResolvedValueOnce({ items: [{ id: "p3" }], cursor: null });
+    const out = mkOut();
+    await runSearchPeople(client as never, { account: "acc_1", all: true } as never, out);
     expect(client.account).toHaveBeenCalledWith("acc_1");
-    expect(accountNs.search.people).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "ai" }),
-    );
-  });
-
-  it("search people --cursor c1 --limit 5 — passes cursor+limit to SDK method", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      cursor: "c1",
-      limit: "5",
-      json: true,
-    } as SearchArgs, out);
-
-    // The SDK method receives cursor+limit merged into the body/query param
-    // (the SDK internally splits them out to query)
-    expect(accountNs.search.people).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: "c1", limit: 5 }),
-    );
-  });
-
-  it("search people --all — streams NDJSON over 2 pages", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.people as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "p1" }, { id: "p2" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "p3" }], cursor: null });
-
-    await runSearchPeople(client as never, { account: "acc_1", all: true } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const ndjsonLines = writtenLines.filter((l) => l.trim().startsWith("{"));
-    expect(ndjsonLines).toHaveLength(3);
+    expect(ndjson(out)).toHaveLength(3);
   });
 });
 
-describe("search people — filters escape hatch + named flags", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.people as Mock).mockResolvedValue({ items: [], cursor: null });
+describe("refusals happen before any SDK call (exit 2)", () => {
+  it.each<[string, Record<string, unknown>]>([
+    ["people", { filters: "{ not valid json " }],
+    ["people", { filters: "[1,2,3]" }],
+    ["people", { seniority: "3" }],
+    ["people", { function: "eng" }],
+    ["people", { "employment-type": "F" }],
+    ["people", { "sort-by": "recent" }],
+    ["jobs", { filters: "{bad" }],
+    ["jobs", { "location-within-area": "abc" }],
+    ["companies", { headcount: "not-a-bucket" }],
+    ["companies", { headcount: "10001+" }],
+    // an Object.prototype member name must not resolve to an inherited bucket
+    ...["__proto__", "constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"].map((h): [string, Record<string, unknown>] => ["companies", { headcount: h }]),
+  ])("search %s %j", async (kind, args) => {
+    const { search, client } = setup();
+    expect(await exitCode(() => kinds[kind]!(client as never, { account: "acc_1", ...args } as never, mkOut() as never))).toBe(2);
+    neverCalled(search);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--filters '<json>' merges the parsed object into the POST body verbatim", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      filters: '{"open_to":["recruiters"],"profile_language":["en"]}',
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ open_to: ["recruiters"], profile_language: ["en"] });
-  });
-
-  it("--keywords + --filters combine (keywords merges over filters)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ml",
-      filters: '{"industry":["96"]}',
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ industry: ["96"], keywords: "ml" });
-  });
-
-  it("named flags map to the exact API field names (string arrays comma-split)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      industry: "96,4",
-      location: "103644278",
-      company: "1441",
-      "past-company": "111",
-      school: "222",
-      "network-distance": "1,2",
-      "connections-of": "ACoAAB",
-      "followers-of": "ACoAAC",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      industry: ["96", "4"],
-      location: ["103644278"],
-      current_company: ["1441"],
-      past_company: ["111"],
-      school: ["222"],
-      network_distance: [1, 2],
-      connections_of: ["ACoAAB"],
-      followers_of: ["ACoAAC"],
-    });
-  });
-
-  it("named flags merge OVER --filters for the same key", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      filters: '{"industry":["OLD"],"keywords":"from-filters"}',
-      industry: "96",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["industry"]).toEqual(["96"]);
-    expect(body["keywords"]).toBe("from-filters");
-  });
-
-  it("bad --filters JSON exits 2 before any SDK call", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        filters: "{ not valid json ",
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
-  });
-
-  it("non-object --filters (array) exits 2 before any SDK call", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        filters: "[1,2,3]",
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
-  });
-});
-
-describe("search companies / posts / jobs", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.companies as Mock).mockResolvedValue({ items: [], cursor: null });
-    (accountNs.search.posts as Mock).mockResolvedValue({ items: [], cursor: null });
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search companies --keywords acme — calls search.companies", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, { keywords: "acme", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.companies).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "acme" }),
-    );
-  });
-
-  it("search companies named flags + --filters map to exact API fields", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, {
-      account: "acc_1",
-      industry: "96",
-      location: "103644278",
-      "has-job-offers": true,
-      filters: '{"keywords":"from-filters"}',
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      has_job_postings: true,
-      industry: ["96"],
-      location: ["103644278"],
-      keywords: "from-filters",
-    });
-  });
-
-  it("search posts --keywords ai — calls search.posts", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.posts).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "ai" }),
-    );
-  });
-
-  it("search posts named scalar flags map to exact API fields", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      "sort-by": "relevance",
-      "date-posted": "past-week",
-      "content-type": "videos",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      sort_by: "relevance",
-      date_posted: "past_week",  // hyphen → underscore normalized
-      content_type: "videos",
-    });
-  });
-
-  it("search jobs --keywords engineer — calls search.jobs", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { keywords: "engineer", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.jobs).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "engineer" }),
-    );
-  });
-
-  it("search jobs named flags (string arrays + scalars) map to exact API fields", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      location: "103644278,90000084",
-      industry: "96",
-      seniority: "3",
-      function: "eng",
-      "job-type": "F",
-      company: "1441",
-      "sort-by": "DD",
-      region: "eu",
-      filters: '{"easy_apply":true}',
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    // --location on jobs maps to body region (single string, not location array).
-    // When both --location and --region are supplied, --region wins (applied last).
-    expect(body).toEqual({
-      easy_apply: true,
-      industry: ["96"],
-      seniority: ["3"],
-      function: ["eng"],
-      job_type: ["F"],
-      company: ["1441"],
-      sort_by: "DD",
-      region: "eu",  // --region wins over --location on jobs
-    });
-  });
-
-  it("search jobs bad --filters exits 2 before any SDK call", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchJobs(client as never, {
-        account: "acc_1",
-        filters: "{bad",
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.jobs).not.toHaveBeenCalled();
-  });
-});
-
-describe("search parameters — GET, paginated", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.getParameters as Mock).mockResolvedValue({
-      object: "search_parameter_list",
-      items: [{ id: "id_1", name: "London" }],
-      cursor: null,
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search parameters --type LOCATION --keywords london — calls getParameters", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    expect(accountNs.search.getParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "LOCATION", keywords: "london" }),
-    );
-  });
-
-  it("search parameters — missing --keywords exits 2 before any SDK call (v2: keywords always required)", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runSearchParameters(client as never, {
-        type: "EMPLOYMENT_TYPE",
-        account: "acc_1",
-      } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.getParameters).not.toHaveBeenCalled();
-  });
-
-  it("search parameters --preview → usage error exit 2", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => { throw new Error(`process.exit(${code})`); });
-    try {
-      await runSearchParameters(client as never, {
-        type: "LOCATION",
-        account: "acc_1",
-        preview: true,
-      } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
+  it("every documented --headcount bucket is accepted", async () => {
+    for (const headcount of ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000"]) {
+      expect(await body("companies", { headcount })).toHaveProperty("headcount");
     }
   });
 
-  // The endpoint gained a `cursor` query input, so the command that used to
-  // refuse --all now pages like every sibling paginated search command.
-
-  it("search parameters --cursor — passes the cursor through to the SDK query", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      cursor: "cur_1",
-      limit: "5",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    expect(accountNs.search.getParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "LOCATION", keywords: "london", limit: 5, cursor: "cur_1" }),
-    );
-  });
-
-  it("search parameters without --cursor — no cursor key reaches the SDK", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const arg = (accountNs.search.getParameters as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect("cursor" in arg).toBe(false);
-    // Same-path positive control: the query that WAS built is the one asserted
-    // on, so the missing key is a real absence, not an uncaptured call.
-    expect(arg["keywords"]).toBe("london");
-  });
-
-  it("search parameters --cursor '' — a lost cursor is refused (exit 2), never an omission", async () => {
-    // INVERTED in 0.39.0. This used to assert the empty value was dropped and
-    // the call went out at page one, which is precisely the silent-restart
-    // this release refuses: a paging loop whose variable went unset re-read
-    // page one forever at exit 0. The refusal is now shared by every
-    // paginated command (lib/paginate.ts readCursorFlag).
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    }) as never);
-
-    await expect(
-      runSearchParameters(client as never, {
-        type: "LOCATION",
-        keywords: "london",
-        cursor: "",
-        account: "acc_1",
-        json: true,
-      } as SearchArgs, out),
-    ).rejects.toThrow("process.exit(2)");
-
-    expect(exit).toHaveBeenCalledWith(2);
-    expect(accountNs.search.getParameters as Mock).not.toHaveBeenCalled();
-    exit.mockRestore();
-  });
-
-  it("search parameters --all — walks until the cursor comes back null", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getParameters as Mock)
-      .mockReset()
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "2" }], cursor: "cur_2" })
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "3" }], cursor: null });
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      account: "acc_1",
-      all: true,
-      "page-delay": "0",
-    } as SearchArgs, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    expect(lines).toHaveLength(3);
-    // It stopped because the cursor went null, not because it ran out of mocks.
-    expect((accountNs.search.getParameters as Mock).mock.calls).toHaveLength(3);
-    // No truncation sentinel on a natural exhaust.
-    expect(lines.some((l) => l.includes("stream_truncated"))).toBe(false);
-    // Each page after the first carried the previous page's cursor.
-    const sent = (accountNs.search.getParameters as Mock).mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"]);
-    expect(sent).toEqual([undefined, "cur_1", "cur_2"]);
-  });
-
-  it("search parameters --cursor with --all — the given cursor starts the walk, responses drive the rest", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getParameters as Mock)
-      .mockReset()
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "5" }], cursor: "cur_9" })
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [{ id: "6" }], cursor: null });
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "london",
-      cursor: "cur_start",
-      account: "acc_1",
-      all: true,
-      "page-delay": "0",
-    } as SearchArgs, out);
-
-    const sent = (accountNs.search.getParameters as Mock).mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"]);
-    expect(sent).toEqual(["cur_start", "cur_9"]);
-  });
-
-  it("search parameters --all over an empty set — no items, no truncation sentinel, one call", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getParameters as Mock)
-      .mockReset()
-      .mockResolvedValueOnce({ object: "search_parameter_list", items: [], cursor: null });
-
-    await runSearchParameters(client as never, {
-      type: "LOCATION",
-      keywords: "zzzzz-no-such-place",
-      account: "acc_1",
-      all: true,
-      "page-delay": "0",
-    } as SearchArgs, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    expect(lines).toHaveLength(0);
-    expect((accountNs.search.getParameters as Mock).mock.calls).toHaveLength(1);
-  });
-
-  it("search parameters --cursor <garbage> — the API's 400 surfaces as exit 2", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const { CurviateError } = await import("@curviate/sdk");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getParameters as Mock).mockReset().mockRejectedValue(
-      new CurviateError({
-        code: "INVALID_REQUEST",
-        message: "cursor is not a valid pagination cursor.",
-        httpStatus: 400,
-        userFixable: true,
-        retryLikelyToSucceed: false,
-      }),
-    );
-
-    const exitSpy = makeExitMock();
-    try {
-      await runSearchParameters(client as never, {
-        type: "LOCATION",
-        keywords: "london",
-        cursor: "not-a-cursor",
-        account: "acc_1",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
+  it("groups without <query>, parameters without --keywords / with an empty --cursor / --max-pages without --all, service-parameters without --keywords", async () => {
+    const { search, client } = setup();
+    const o = mkOut() as never;
+    const base = { type: "LOCATION", keywords: "london", account: "acc_1" };
+    expect(await exitCode(() => runSearchGroups(client as never, { account: "acc_1" } as never, o))).toBe(2);
+    for (const extra of [{ keywords: undefined }, { cursor: "" }, { "max-pages": "2" }]) {
+      expect(await exitCode(() => runSearchParameters(client as never, { ...base, ...extra } as never, o)), JSON.stringify(extra)).toBe(2);
     }
-    // The garbage reached the API rather than being swallowed client-side.
-    expect(accountNs.search.getParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: "not-a-cursor" }),
-    );
+    expect(await exitCode(() => runSearchServiceParameters(client as never, { type: "location", account: "acc_1" } as never, o))).toBe(2);
+    neverCalled(search);
   });
 
-  it("search parameters — a 2xx that is not a page exits 7, like every sibling list read", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getParameters as Mock).mockReset().mockResolvedValue({ object: "search_parameter_list", cursor: null });
-
-    const exitSpy = makeExitMock();
-    try {
-      await runSearchParameters(client as never, {
-        type: "LOCATION",
-        keywords: "london",
-        account: "acc_1",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(7)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-
-  it("search parameters --max-pages without --all → usage error exit 2", async () => {
-    const { runSearchParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchParameters(client as never, {
-        type: "LOCATION",
-        keywords: "london",
-        account: "acc_1",
-        "max-pages": "2",
-      } as SearchArgs, out);
-      expect.fail("Should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.getParameters).not.toHaveBeenCalled();
+  it("services without an account exits 2", async () => {
+    const { client } = setup();
+    expect(await exitCode(() => runSearchServices(noConnectedAccounts(client) as never, { keywords: "marketing", json: true } as never, mkOut() as never))).toBe(2);
   });
 });
 
-// ---------------------------------------------------------------------------
-// search people new filter flags + invalid-flag rejection
-// ---------------------------------------------------------------------------
-
-describe("search people filter flags (title, profile-language, invalid-flag rejection)", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.people as Mock).mockResolvedValue({ items: [], cursor: null });
+describe("search parameters / groups / services / service-parameters", () => {
+  it("parameters: type + keywords; --cursor reaches the query and is absent when not given", async () => {
+    const { search, client } = setup();
+    const run = (extra: object) => runSearchParameters(client as never, { type: "LOCATION", keywords: "london", account: "acc_1", json: true, ...extra } as never, mkOut() as never);
+    await run({});
+    await run({ cursor: "cur_1", limit: "5" });
+    expect(arg0(search.getParameters!, 0)).toEqual({ type: "LOCATION", keywords: "london" });
+    expect(arg0(search.getParameters!, 1)).toMatchObject({ type: "LOCATION", keywords: "london", limit: 5, cursor: "cur_1" });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it("parameters --all walks until the cursor is null, each page carrying the previous cursor; --cursor starts the walk", async () => {
+    const { search, client } = setup();
+    const page = (id: string, cursor: string | null) => ({ object: "search_parameter_list", items: [{ id }], cursor });
+    search.getParameters!.mockReset().mockResolvedValueOnce(page("1", "cur_1")).mockResolvedValueOnce(page("2", "cur_2")).mockResolvedValueOnce(page("3", null));
+    const out = mkOut();
+    await runSearchParameters(client as never, { type: "LOCATION", keywords: "l", account: "acc_1", all: true, "page-delay": "0" } as never, out as never);
+    expect(ndjson(out)).toHaveLength(3);
+    expect(text(out.stdout)).not.toContain("stream_truncated");
+    expect(search.getParameters!.mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"])).toEqual([undefined, "cur_1", "cur_2"]);
+
+    search.getParameters!.mockReset().mockResolvedValueOnce(page("5", "cur_9")).mockResolvedValueOnce(page("6", null));
+    await runSearchParameters(client as never, { type: "LOCATION", keywords: "l", cursor: "cur_start", account: "acc_1", all: true, "page-delay": "0" } as never, mkOut() as never);
+    expect(search.getParameters!.mock.calls.map((c) => (c[0] as Record<string, unknown>)["cursor"])).toEqual(["cur_start", "cur_9"]);
   });
 
-  it("--title maps to advanced_keywords.title (keyword string, not id)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      title: "AI Engineer",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["advanced_keywords"]).toEqual({ title: "AI Engineer" });
+  it("parameters: an API 400 on a garbage cursor exits 2 (the cursor still reaches the API); a 2xx that is not a page exits 7", async () => {
+    const { search, client } = setup();
+    const run = (extra: object) => exitCode(() => runSearchParameters(client as never, { type: "LOCATION", keywords: "l", account: "acc_1", json: true, ...extra } as never, mkOut() as never));
+    search.getParameters!.mockReset().mockRejectedValue(sdkError("INVALID_REQUEST", 400));
+    expect(await run({ cursor: "not-a-cursor" })).toBe(2);
+    expect(arg0(search.getParameters!)).toMatchObject({ cursor: "not-a-cursor" });
+    search.getParameters!.mockReset().mockResolvedValue({ object: "search_parameter_list", cursor: null });
+    expect(await run({})).toBe(7);
   });
 
-  it("--title merges INTO existing advanced_keywords from --filters (named flag wins on conflict)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      filters: '{"advanced_keywords":{"company":"Acme","title":"OLD"}}',
-      title: "AI Engineer",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    // title overrides, company preserved (merge not overwrite)
-    expect(body["advanced_keywords"]).toEqual({ company: "Acme", title: "AI Engineer" });
+  it("groups: <query> becomes keywords, limit/cursor pass through, full response is printed, --all streams", async () => {
+    const { search, client } = setup();
+    const item = { object: "group", id: "9123014", name: "GTM Engineering", member_count: 4000 };
+    search.groups!.mockResolvedValue({ items: [item], cursor: null });
+    const out = mkOut();
+    await runSearchGroups(client as never, { query: "gtm", account: "acc_1", limit: "5", cursor: "cur_1", json: true } as never, out as never);
+    expect(arg0(search.groups!)).toMatchObject({ keywords: "gtm", limit: 5, cursor: "cur_1" });
+    expect(json(out)["items"][0]).toEqual(item);
+    search.groups!.mockReset().mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "c" }).mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
+    const all = mkOut();
+    await runSearchGroups(client as never, { query: "gtm", account: "acc_1", all: true } as never, all as never);
+    expect(ndjson(all)).toHaveLength(2);
   });
 
-  it("--profile-language maps to profile_language (comma-split array)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      "profile-language": "en,de,fr",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["profile_language"]).toEqual(["en", "de", "fr"]);
+  it("services: flags map to the body, response printed, --all streams", async () => {
+    const { search, client } = setup();
+    const item = { object: "service_provider", id: "ACoAA1", name: "Jane Doe" };
+    search.services!.mockResolvedValue({ items: [item], cursor: null });
+    const out = mkOut();
+    await runSearchServices(client as never, {
+      keywords: "marketing", "service-category": "cat_1,cat_2", location: "loc_1", connections: "1,2", language: "en,de", account: "acc_1", json: true,
+    } as never, out as never);
+    expect(arg0(search.services!)).toMatchObject({ keywords: "marketing", service_category: ["cat_1", "cat_2"], location: ["loc_1"], connections: [1, 2], language: ["en", "de"] });
+    expect(json(out)["items"][0]).toEqual(item);
+    search.services!.mockReset().mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "c" }).mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
+    const all = mkOut();
+    await runSearchServices(client as never, { keywords: "m", account: "acc_1", all: true } as never, all as never);
+    expect(ndjson(all)).toHaveLength(2);
   });
 
-  it("--seniority on people → exit 2 (invalid on classic search)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        seniority: "3",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
-  });
-
-  it("--function on people → exit 2 (invalid on classic search)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        function: "eng",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
-  });
-
-  it("--employment-type on people → exit 2 (invalid on classic search)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        "employment-type": "F",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
-  });
-
-  it("--sort-by on people → exit 2 (invalid on classic search)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchPeople(client as never, {
-        account: "acc_1",
-        "sort-by": "recent",
-        json: true,
-      } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.people).not.toHaveBeenCalled();
+  it("service-parameters: --type optional, --cursor reaches the request, --all walks to a null cursor", async () => {
+    const { search, client } = setup();
+    const run = (extra: object) => runSearchServiceParameters(client as never, { keywords: "marke", account: "acc_1", json: true, ...extra } as never, mkOut() as never);
+    await run({});
+    await run({ type: "service_category", cursor: "cur_9" });
+    expect(arg0(search.getServiceParameters!, 0)).toEqual({ keywords: "marke" });
+    expect(arg0(search.getServiceParameters!, 1)).toMatchObject({ type: "service_category", cursor: "cur_9" });
+    search.getServiceParameters!.mockReset().mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" }).mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
+    await run({ all: true, "page-delay": "0" });
+    expect(search.getServiceParameters!.mock.calls).toHaveLength(2);
+    expect(arg0(search.getServiceParameters!, 1)["cursor"]).toBe("cur_1");
   });
 });
 
-// ---------------------------------------------------------------------------
-// search jobs --location → body region (single string)
-// ---------------------------------------------------------------------------
-
-describe("search jobs --location maps to region body field", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
+describe("--all truncation: JSON sentinel on stdout AND prose note on stderr (all-truncation-sentinel does not drive search)", () => {
+  it.each(["people", "companies", "posts", "jobs"])("search %s stopped by --max-pages", async (kind) => {
+    const { search, client } = setup();
+    search[kind]!.mockResolvedValueOnce({ items: [{ id: "a" }], cursor: "c1" }).mockResolvedValueOnce({ items: [{ id: "b" }], cursor: null });
+    const out = mkOut();
+    await kinds[kind]!(client as never, { account: "acc_1", all: true, "max-pages": "1" } as never, out as never);
+    const last = text(out.stdout).trim().split("\n").pop()!;
+    expect(JSON.parse(last)).toEqual({ object: "stream_truncated", pages_fetched: 1, has_more: true });
+    expect(text(out.stderr)).toMatch(/truncat/i);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--location on jobs maps to body region (single string, not location array)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      location: "103644278",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["region"]).toBe("103644278");
-    expect(body["location"]).toBeUndefined();
-  });
-
-  it("--region on jobs maps to body region (alias)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      region: "eu",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["region"]).toBe("eu");
-  });
-
-  it("--location on people/companies still maps to location array (unchanged)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    (accountNs.search.people as Mock).mockResolvedValue({ items: [], cursor: null });
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      location: "103644278",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["location"]).toEqual(["103644278"]);
-    expect(body["region"]).toBeUndefined();
+  it("natural exhaustion writes neither", async () => {
+    const { search, client } = setup();
+    search.people!.mockResolvedValueOnce({ items: [{ id: "p1" }], cursor: "c1" }).mockResolvedValueOnce({ items: [{ id: "p2" }], cursor: null });
+    const out = mkOut();
+    await runSearchPeople(client as never, { account: "acc_1", all: true } as never, out as never);
+    expect(ndjson(out)).toHaveLength(2);
+    expect(text(out.stdout)).not.toContain("stream_truncated");
+    expect(text(out.stderr)).not.toMatch(/truncat/i);
   });
 });
 
-// ---------------------------------------------------------------------------
-// search posts --date-posted hyphen → underscore normalization
-// ---------------------------------------------------------------------------
+describe("slim output (default) vs --verbose", () => {
+  async function items(kind: string, response: object, args: object = {}) {
+    const { search, client } = setup();
+    search[kind]!.mockResolvedValue(response);
+    const out = mkOut();
+    await kinds[kind]!(client as never, { keywords: "ai", account: "acc_1", json: true, ...args } as never, out as never);
+    return json(out)["items"] as Array<Record<string, unknown>>;
+  }
 
-describe("search posts --date-posted normalization (hyphen to underscore)", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.posts as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("past-day alias normalizes to past_day", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      "date-posted": "past-day",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe("past_day");
-  });
-
-  it("past-week alias normalizes to past_week", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      "date-posted": "past-week",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe("past_week");
-  });
-
-  it("past-month alias normalizes to past_month", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      "date-posted": "past-month",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe("past_month");
-  });
-
-  it("already-underscore value passes through unchanged", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      "date-posted": "past_week",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe("past_week");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// --all truncation: JSON sentinel to stdout AND prose note to stderr —
-// unified across all four search entities (D11 — search previously wrote
-// the stdout sentinel but silently dropped the stderr prose that every
-// other --all command emits; both channels are now mandatory everywhere).
-// ---------------------------------------------------------------------------
-
-describe("--all truncation: JSON sentinel on stdout AND prose note on stderr", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search people --all truncated → last stdout line is stream_truncated JSON object", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    // Two pages with cursor — max-pages=1 triggers truncation after page 1
-    (accountNs.search.people as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "p1" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "p2" }], cursor: null });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      all: true,
-      "max-pages": "1",
-    } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const lastLine = writtenLines[writtenLines.length - 1]!.trim();
-    const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-    expect(parsed["object"]).toBe("stream_truncated");
-    expect(parsed["pages_fetched"]).toBe(1);
-    expect(parsed["has_more"]).toBe(true);
-    // Complementary, not exclusive: a human-readable note also goes to stderr
-    // (previously search silently dropped this while every other --all
-    // command emitted it — D11's "inverse" finding, now unified).
-    expect((out.stderr.write as Mock).mock.calls.some((c) => String(c[0]).match(/truncat/i))).toBe(true);
-  });
-
-  it("search companies --all truncated → last stdout line is stream_truncated JSON, stderr gets the prose note", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.companies as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "co1" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "co2" }], cursor: null });
-
-    await runSearchCompanies(client as never, {
-      account: "acc_1",
-      all: true,
-      "max-pages": "1",
-    } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const lastLine = writtenLines[writtenLines.length - 1]!.trim();
-    const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-    expect(parsed).toEqual({ object: "stream_truncated", pages_fetched: 1, has_more: true });
-    expect((out.stderr.write as Mock).mock.calls.some((c) => String(c[0]).match(/truncat/i))).toBe(true);
-  });
-
-  it("search posts --all truncated → last stdout line is stream_truncated JSON, stderr gets the prose note", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.posts as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "post1" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "post2" }], cursor: null });
-
-    await runSearchPosts(client as never, {
-      account: "acc_1",
-      all: true,
-      "max-pages": "1",
-    } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const lastLine = writtenLines[writtenLines.length - 1]!.trim();
-    const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-    expect(parsed).toEqual({ object: "stream_truncated", pages_fetched: 1, has_more: true });
-    expect((out.stderr.write as Mock).mock.calls.some((c) => String(c[0]).match(/truncat/i))).toBe(true);
-  });
-
-  it("search jobs --all truncated → last stdout line is stream_truncated JSON, stderr gets the prose note", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.jobs as Mock)
-      .mockResolvedValueOnce({ items: [{ job_urn: "j1" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ job_urn: "j2" }], cursor: null });
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      all: true,
-      "max-pages": "1",
-    } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const lastLine = writtenLines[writtenLines.length - 1]!.trim();
-    const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-    expect(parsed["object"]).toBe("stream_truncated");
-    expect(parsed["pages_fetched"]).toBe(1);
-    expect(parsed["has_more"]).toBe(true);
-    expect((out.stderr.write as Mock).mock.calls.some((c) => String(c[0]).match(/truncat/i))).toBe(true);
-  });
-
-  it("search people --all with natural exhaustion (cursor null) → no truncation line on stdout or stderr", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.people as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "p1" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "p2" }], cursor: null });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      all: true,
-      // no --max-pages cap hit: default maxPages(100) never reached before natural exhaustion
-    } as SearchArgs, out);
-
-    const writtenLines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(writtenLines.some((l) => l.includes("stream_truncated"))).toBe(false);
-    expect((out.stderr.write as Mock).mock.calls.some((c) => String(c[0]).match(/truncat/i))).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search people slim defaults
-// ---------------------------------------------------------------------------
-
-describe("search people slim: correct field names, excluded fields, verbose restores", () => {
-  const peopleItem = {
-    id: "abc123",
-    full_name: "Alice Smith",
-    public_identifier: "alice-smith",
-    headline: "AI Engineer",
-    location: "Berlin, Germany",
-    network_distance: "DISTANCE_2",
-    visibility: "full",
-    avatar_url: "https://example.com/pic.jpg",
-    linkedin_urn: "urn:li:member:123",
-    is_premium: false,
-    is_open_profile: false,
-  };
-
-  const sdkResponse = {
-    object: "people_search_result",
-    items: [peopleItem],
-    config: { params: {} },
-    paging: { start: 0, page_count: 1, total_count: 1 },
-    cursor: null,
-  };
-
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.people as Mock).mockResolvedValue(sdkResponse);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("slim mode: contains id/full_name/public_identifier/headline/location/network_distance/visibility ONLY", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-
-    // Expected slim fields
-    expect(item["id"]).toBe("abc123");
-    expect(item["full_name"]).toBe("Alice Smith");
-    expect(item["public_identifier"]).toBe("alice-smith");
-    expect(item["headline"]).toBe("AI Engineer");
-    expect(item["location"]).toBe("Berlin, Germany");
-    expect(item["network_distance"]).toBe("DISTANCE_2");
-    // `visibility` ships in the DEFAULT (non-verbose) view, not verbose-only:
-    // it is what tells a default-mode user which rows are actually usable.
-    expect(item["visibility"]).toBe("full");
-
-    // Excluded verbose-only fields
-    expect(item["avatar_url"]).toBeUndefined();
-    expect(item["linkedin_urn"]).toBeUndefined();
-    expect(item["is_premium"]).toBeUndefined();
-    expect(item["is_open_profile"]).toBeUndefined();
-
-    // Must NOT use old incorrect field names
-    expect(item["provider_id"]).toBeUndefined();
-    expect(item["first_name"]).toBeUndefined();
-    expect(item["last_name"]).toBeUndefined();
-  });
-
-  it("slim mode: a hidden item's visibility reaches the default view (not silently dropped)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      ...sdkResponse,
-      items: [{ ...peopleItem, id: "hidden1", full_name: "LinkedIn Member", public_identifier: undefined, visibility: "hidden" }],
+  it("people: slim keeps the identification fields (incl. visibility, hidden stays hidden), drops the rest; --verbose restores", async () => {
+    const person = {
+      id: "abc123", full_name: "Alice Smith", public_identifier: "alice-smith", headline: "AI Engineer", location: "Berlin, Germany",
+      network_distance: "DISTANCE_2", visibility: "full", avatar_url: "https://example.com/pic.jpg", linkedin_urn: "urn:li:member:123", is_premium: false,
+    };
+    const res = { object: "people_search_result", items: [person], paging: { total_count: 1 }, cursor: null };
+    const [slim] = await items("people", res);
+    expect(slim).toEqual({
+      id: "abc123", full_name: "Alice Smith", public_identifier: "alice-smith", headline: "AI Engineer", location: "Berlin, Germany",
+      network_distance: "DISTANCE_2", visibility: "full",
     });
-
-    await runSearchPeople(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    expect(result.items[0]!["visibility"]).toBe("hidden");
+    const [hidden] = await items("people", { ...res, items: [{ ...person, visibility: "hidden" }] });
+    expect(hidden!["visibility"]).toBe("hidden");
+    const [verbose] = await items("people", res, { verbose: true });
+    expect(verbose).toMatchObject({ avatar_url: "https://example.com/pic.jpg", linkedin_urn: "urn:li:member:123", is_premium: false });
   });
 
-  it("--verbose restores avatar_url, linkedin_urn, is_premium", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, { keywords: "ai", account: "acc_1", json: true, verbose: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-    expect(item["avatar_url"]).toBe("https://example.com/pic.jpg");
-    expect(item["linkedin_urn"]).toBe("urn:li:member:123");
-    expect(item["is_premium"]).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search companies slim defaults
-// ---------------------------------------------------------------------------
-
-describe("search companies slim: field set, industry conditional omission", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
+  it("companies: slim keeps id/name/industry/location/followers_count; industry key is ABSENT when the server sent none; --verbose restores", async () => {
+    const co = { id: "c1", name: "Acme AI", industry: ["technology"], location: "SF", followers_count: 5000, summary: "AI", headcount: "51-200", profile_url: "https://linkedin.com/company/acme" };
+    const [slim] = await items("companies", { items: [co], cursor: null });
+    expect(slim).toEqual({ id: "c1", name: "Acme AI", industry: ["technology"], location: "SF", followers_count: 5000 });
+    const [noIndustry] = await items("companies", { items: [{ id: "c2", name: "BetaCo", location: null, followers_count: null }], cursor: null });
+    expect(Object.keys(noIndustry!)).not.toContain("industry");
+    const [verbose] = await items("companies", { items: [co], cursor: null }, { verbose: true });
+    expect(verbose).toMatchObject({ summary: "AI", headcount: "51-200", profile_url: "https://linkedin.com/company/acme" });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("slim mode: id/name/industry/location/followers_count; excludes summary/headcount/profile_url", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.companies as Mock).mockResolvedValue({
-      items: [{
-        id: "c1",
-        name: "Acme AI",
-        industry: ["technology", "internet"],
-        location: "San Francisco, CA",
-        followers_count: 5000,
-        summary: "AI solutions",
-        headcount: "51-200",
-        profile_url: "https://linkedin.com/company/acme",
-      }],
-      cursor: null,
-    });
-
-    await runSearchCompanies(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-
-    expect(item["id"]).toBe("c1");
-    expect(item["name"]).toBe("Acme AI");
-    expect(item["industry"]).toEqual(["technology", "internet"]);
-    expect(item["location"]).toBe("San Francisco, CA");
-    expect(item["followers_count"]).toBe(5000);
-    expect(item["summary"]).toBeUndefined();
-    expect(item["headcount"]).toBeUndefined();
-    expect(item["profile_url"]).toBeUndefined();
-  });
-
-  it("industry key ABSENT (not null/empty) when not returned by server", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.companies as Mock).mockResolvedValue({
-      items: [{ id: "c2", name: "BetaCo", location: null, followers_count: null }],
-      cursor: null,
-    });
-
-    await runSearchCompanies(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-
-    expect(item["id"]).toBe("c2");
-    expect(Object.prototype.hasOwnProperty.call(item, "industry")).toBe(false);
-  });
-
-  it("--verbose restores summary, headcount, profile_url", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.companies as Mock).mockResolvedValue({
-      items: [{
-        id: "c1", name: "Acme AI",
-        summary: "AI solutions", headcount: "51-200", profile_url: "https://linkedin.com/company/acme",
-      }],
-      cursor: null,
-    });
-
-    await runSearchCompanies(client as never, { keywords: "ai", account: "acc_1", json: true, verbose: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-    expect(item["summary"]).toBe("AI solutions");
-    expect(item["headcount"]).toBe("51-200");
-    expect(item["profile_url"]).toBe("https://linkedin.com/company/acme");
+  it("jobs: company_name comes from the nested company.name (null for a company-less listing); --verbose keeps the raw company object", async () => {
+    const job = {
+      job_urn: "urn:li:job:1", title: "AI Engineer", location: "Berlin", posted_at: "2026-01-01T00:00:00Z", easy_apply: true,
+      company: { id: "c1", name: "Acme AI" }, reference_id: "ref", url: "https://linkedin.com/jobs/view/1", benefits: [],
+    };
+    const [slim] = await items("jobs", { items: [job], cursor: null });
+    expect(slim).toEqual({ job_urn: "urn:li:job:1", title: "AI Engineer", location: "Berlin", posted_at: "2026-01-01T00:00:00Z", easy_apply: true, company_name: "Acme AI" });
+    const [none] = await items("jobs", { items: [{ ...job, company: null }], cursor: null });
+    expect(none!["company_name"]).toBeNull();
+    const [verbose] = await items("jobs", { items: [job], cursor: null }, { verbose: true });
+    expect(verbose!["company"]).toEqual(job.company);
+    expect(verbose).not.toHaveProperty("company_name");
   });
 });
 
-// ---------------------------------------------------------------------------
-// search jobs slim defaults
-// ---------------------------------------------------------------------------
-
-describe("search jobs slim: company_name synthesized from nested company.name, verbose restores raw company object", () => {
-  // REQ-164 regression fixture: NO top-level company_name key anywhere — only
-  // the nested company.name. A projector reading item["company_name"] directly
-  // would emit null here; only reading company.name passes.
-  const jobItem = {
-    job_urn: "urn:li:job:1",
-    title: "AI Engineer",
-    location: "Berlin, Germany",
-    posted_at: "2026-01-01T00:00:00Z",
-    easy_apply: true,
-    company: { id: "c1", name: "Acme AI", logo_url: "https://logo.example.com" },
-    reference_id: "ref_abc",
-    url: "https://linkedin.com/jobs/view/1",
-    reposted: false,
-    promoted: false,
-    benefits: [],
-  };
-
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [jobItem], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("slim mode: company_name derived from nested company.name (no top-level key exists)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-
-    expect(item["job_urn"]).toBe("urn:li:job:1");
-    expect(item["title"]).toBe("AI Engineer");
-    expect(item["location"]).toBe("Berlin, Germany");
-    // This is the REQ-164 regression assertion: derived from company.name, not
-    // a flat item["company_name"] passthrough (which does not exist on the fixture).
-    expect(item["company_name"]).toBe("Acme AI");
-    expect(item["posted_at"]).toBe("2026-01-01T00:00:00Z");
-    expect(item["easy_apply"]).toBe(true);
-    expect(item["company"]).toBeUndefined();
-    expect(item["reference_id"]).toBeUndefined();
-    expect(item["url"]).toBeUndefined();
-    expect(item["reposted"]).toBeUndefined();
-    expect(item["promoted"]).toBeUndefined();
-    expect(item["benefits"]).toBeUndefined();
-  });
-
-  it("--verbose restores the raw company nested object; company_name is NOT synthesized in verbose", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { keywords: "ai", account: "acc_1", json: true, verbose: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-    expect(item["company"]).toEqual({ id: "c1", name: "Acme AI", logo_url: "https://logo.example.com" });
-    // --verbose prints the raw response verbatim (no synthesis) — the raw
-    // response has no top-level company_name key at all.
-    expect(item["company_name"]).toBeUndefined();
-  });
-
-  it("company: null (REQ-177 — agency/confidential listing) → slim company_name is null, no crash", async () => {
-    (accountNs.search.jobs as Mock).mockResolvedValue({
-      items: [{ ...jobItem, company: null }],
-      cursor: null,
-    });
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-    expect(item["company_name"]).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search posts slim: full text, author.name, created_at, share_url
-// ---------------------------------------------------------------------------
-
-describe("search posts slim: full text and author projection", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("text >200 chars passes through whole in slim mode; created_at and share_url kept", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.posts as Mock).mockResolvedValue({
-      items: [{
-        id: "urn:li:activity:123",
-        author: { name: "Bob", id: "urn:li:member:456", is_company: false, public_identifier: "bob" },
-        text: "A".repeat(300),
-        created_at: "2026-09-29T22:42:33.764Z",
-        reaction_count: 42,
-        comment_count: 7,
-        share_url: "https://linkedin.com/posts/bob_1",
-        repost_count: 1,
-        is_repost: false,
-      }],
-      cursor: null,
-    });
-
-    await runSearchPosts(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-
-    // Expected slim fields (D13: id is the real wire identifier — post_urn
-    // and posted_at were never real keys on this v2 response)
-    expect(item["id"]).toBe("urn:li:activity:123");
-    expect(item["author"]).toEqual({ name: "Bob" });  // only name sub-field
-    expect(item["text"]).toBe("A".repeat(300));
-    expect(item["created_at"]).toBe("2026-09-29T22:42:33.764Z");
-    expect(item["share_url"]).toBe("https://linkedin.com/posts/bob_1");
-    expect(item["reaction_count"]).toBe(42);
-    expect(item["comment_count"]).toBe(7);
-
-    // Excluded verbose-only fields
-    expect(item["repost_count"]).toBeUndefined();
-    expect(item["is_repost"]).toBeUndefined();
-    expect(item["post_urn"]).toBeUndefined();
-    expect(item["posted_at"]).toBeUndefined();
-    // author sub-fields beyond name excluded
-    expect((item["author"] as Record<string, unknown>)["id"]).toBeUndefined();
-    expect((item["author"] as Record<string, unknown>)["is_company"]).toBeUndefined();
-    expect((item["author"] as Record<string, unknown>)["public_identifier"]).toBeUndefined();
-  });
-
-  it("text <=200 chars not truncated", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.posts as Mock).mockResolvedValue({
-      items: [{ id: "urn:li:activity:124", author: { name: "Alice" }, text: "Short post", reaction_count: 1, comment_count: 0 }],
-      cursor: null,
-    });
-
-    await runSearchPosts(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    expect(result.items[0]!["text"]).toBe("Short post");
-  });
-
-  it("null text emits text: null", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.posts as Mock).mockResolvedValue({
-      items: [{ id: "urn:li:activity:125", author: { name: "Carl" }, text: null, reaction_count: 0, comment_count: 0 }],
-      cursor: null,
-    });
-
-    await runSearchPosts(client as never, { keywords: "ai", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    expect(result.items[0]!["text"]).toBeNull();
-  });
-
-  it("--verbose restores full text and full author object", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const longText = "A".repeat(300);
-    (accountNs.search.posts as Mock).mockResolvedValue({
-      items: [{
-        id: "urn:li:activity:123",
-        author: { name: "Bob", id: "urn:li:member:456" },
-        text: longText,
-        reaction_count: 42,
-        comment_count: 7,
-        share_url: "https://linkedin.com/posts/bob_1",
-        repost_count: 1,
-      }],
-      cursor: null,
-    });
-
-    await runSearchPosts(client as never, { keywords: "ai", account: "acc_1", json: true, verbose: true } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const result = JSON.parse(written) as { items: Array<Record<string, unknown>> };
-    const item = result.items[0]!;
-    expect(item["text"]).toBe(longText);
-    expect((item["author"] as Record<string, unknown>)["id"]).toBe("urn:li:member:456");
-    expect(item["share_url"]).toBe("https://linkedin.com/posts/bob_1");
-    expect(item["repost_count"]).toBe(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search jobs --date-posted: numeric days, no enum normalization
-// ---------------------------------------------------------------------------
-
-describe("search jobs --date-posted: numeric body field, no hyphen normalization", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--date-posted 7 → body date_posted: 7 (number)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      "date-posted": "7",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe(7);
-    expect(typeof body["date_posted"]).toBe("number");
-  });
-
-  it("--date-posted 30 → body date_posted: 30 (number)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      "date-posted": "30",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe(30);
-    expect(typeof body["date_posted"]).toBe("number");
-  });
-
-  it("jobs --date-posted is NOT hyphen-normalized (no string replacement applied)", async () => {
-    // Posts normalise past-week → past_week; jobs just coerces to Number.
-    // Passing "14" should arrive as the number 14, not a string.
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      account: "acc_1",
-      "date-posted": "14",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body["date_posted"]).toBe(14);
-    expect(typeof body["date_posted"]).toBe("number");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search companies --has-job-offers / --headcount
-// ---------------------------------------------------------------------------
-
-describe("search companies: --has-job-offers / --headcount named flags", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.companies as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--has-job-offers → body has_job_postings: true", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, { "has-job-offers": true, account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ has_job_postings: true });
-  });
-
-  it("--headcount 1001-5000 → body headcount: [{min:1001,max:5000}]", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, { headcount: "1001-5000", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ headcount: [{ min: 1001, max: 5000 }] });
-  });
-
-  it("--headcount 1-10,501-1000 → two bucket objects in listed order", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, { headcount: "1-10,501-1000", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      headcount: [
-        { min: 1, max: 10 },
-        { min: 501, max: 1000 },
-      ],
-    });
-  });
-
-  it("--has-job-offers + --headcount 51-200 → both keys present", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchCompanies(client as never, {
-      "has-job-offers": true,
-      headcount: "51-200",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.companies as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ has_job_postings: true, headcount: [{ min: 51, max: 200 }] });
-  });
-
-  it("--headcount not-a-bucket → exit 2, no SDK call", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchCompanies(client as never, { headcount: "not-a-bucket", account: "acc_1" } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.companies).not.toHaveBeenCalled();
-  });
-
-  it("all 7 fully-specified buckets are individually recognized (no exit 2)", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const buckets = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000"];
-
-    for (const bucket of buckets) {
-      accountNs = makeAccountNs();
-      client = makeClient(accountNs);
-      (accountNs.search.companies as Mock).mockResolvedValue({ items: [], cursor: null });
-      const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-      await runSearchCompanies(client as never, { headcount: bucket, account: "acc_1", json: true } as SearchArgs, out);
-
-      expect(accountNs.search.companies).toHaveBeenCalledTimes(1);
-    }
-  });
-
-  it("--headcount 10001+ (open/unresolved top bucket) → exit 2, deferred rather than guessed", async () => {
-    const { runSearchCompanies } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchCompanies(client as never, { headcount: "10001+", account: "acc_1" } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.companies).not.toHaveBeenCalled();
-  });
-
-  // -------------------------------------------------------------------------
-  // HEADCOUNT_BUCKETS is a plain object literal indexed by the user-typed
-  // --headcount bucket string. An Object.prototype member name as that
-  // string resolves to the inherited member instead of undefined, so the
-  // `if (!range)` guard never fires: "__proto__" pushed the object's own
-  // prototype (serializes as {}), "constructor" pushed the live Function
-  // (serializes as null), shipping a malformed body instead of exit 2.
-  // -------------------------------------------------------------------------
-  it.each(["__proto__", "constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf"])(
-    "--headcount %j → exit 2, unrecognized bucket, no SDK call (not an inherited Object.prototype member)",
-    async (bucket) => {
-      const { runSearchCompanies } = await import("../../src/commands/search.js");
-      const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-      const exitSpy = makeExitMock();
-
-      try {
-        await runSearchCompanies(client as never, { headcount: bucket, account: "acc_1" } as SearchArgs, out);
-        expect.fail("should have exited");
-      } catch (e) {
-        expect((e as Error).message).toContain("process.exit(2)");
-      } finally {
-        exitSpy.mockRestore();
-      }
-      expect(accountNs.search.companies).not.toHaveBeenCalled();
-    },
-  );
-});
-
-// ---------------------------------------------------------------------------
-// search jobs --title → body role
-// ---------------------------------------------------------------------------
-
-describe("search jobs --title maps to body role", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--title 30128 → body role: ['30128']", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { title: "30128", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ role: ["30128"] });
-  });
-
-  it("--title 30128,26089 → body role: ['30128','26089']", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { title: "30128,26089", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ role: ["30128", "26089"] });
-  });
-
-  it("--keywords engineer --title 30128 → both keywords and role present", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      keywords: "engineer",
-      title: "30128",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ keywords: "engineer", role: ["30128"] });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search jobs additional named flags
-// ---------------------------------------------------------------------------
-
-describe("search jobs: presence/benefits/commitments/has-verifications/under-10-applicants/in-your-network/fair-chance-employer", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--presence remote,hybrid → body presence: ['remote','hybrid']", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { presence: "remote,hybrid", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ presence: ["remote", "hybrid"] });
-  });
-
-  it("--benefits medical_insurance → body benefits: ['medical_insurance']", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { benefits: "medical_insurance", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ benefits: ["medical_insurance"] });
-  });
-
-  it("--commitments full_time → body commitments: ['full_time']", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { commitments: "full_time", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ commitments: ["full_time"] });
-  });
-
-  it("--has-verifications → body has_verifications: true", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { "has-verifications": true, account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ has_verifications: true });
-  });
-
-  it("--under-10-applicants → body under_10_applicants: true", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { "under-10-applicants": true, account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ under_10_applicants: true });
-  });
-
-  it("--in-your-network → body in_your_network: true", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { "in-your-network": true, account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ in_your_network: true });
-  });
-
-  it("--fair-chance-employer → body fair_chance_employer: true", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, { "fair-chance-employer": true, account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ fair_chance_employer: true });
-  });
-
-  it("all 7 flags combined → all 7 keys present together", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      presence: "remote",
-      benefits: "medical_insurance",
-      commitments: "full_time",
-      "has-verifications": true,
-      "under-10-applicants": true,
-      "in-your-network": true,
-      "fair-chance-employer": true,
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      presence: ["remote"],
-      benefits: ["medical_insurance"],
-      commitments: ["full_time"],
-      has_verifications: true,
-      under_10_applicants: true,
-      in_your_network: true,
-      fair_chance_employer: true,
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search people --connections-of / --followers-of → array
-// ---------------------------------------------------------------------------
-
-describe("search people: --connections-of / --followers-of comma-separated → array", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.people as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--connections-of urn:li:member:747216553 → body connections_of: [<value>] (single value wrapped in array)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, {
-      "connections-of": "urn:li:member:747216553",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ connections_of: ["urn:li:member:747216553"] });
-  });
-
-  it("--connections-of 'id1,id2' → body connections_of: ['id1','id2']", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, { "connections-of": "id1,id2", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ connections_of: ["id1", "id2"] });
-  });
-
-  it("--followers-of id1 → body followers_of: ['id1']", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPeople(client as never, { "followers-of": "id1", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.people as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ followers_of: ["id1"] });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search posts nested filter flags
-// ---------------------------------------------------------------------------
-
-describe("search posts: posted_by / mentioning / author nested filter flags merge, do not replace", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.posts as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--posted-by-member id1 → body posted_by: {member:['id1']}", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, { "posted-by-member": "id1", account: "acc_1", json: true } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ posted_by: { member: ["id1"] } });
-  });
-
-  it("--posted-by-member id1 --posted-by-me → both merge into ONE posted_by object", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      "posted-by-member": "id1",
-      "posted-by-me": true,
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ posted_by: { member: ["id1"], me: true } });
-  });
-
-  it("--mentioning-member id1 --mentioning-company c1 → body mentioning: {member:['id1'],company:['c1']}", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      "mentioning-member": "id1",
-      "mentioning-company": "c1",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ mentioning: { member: ["id1"], company: ["c1"] } });
-  });
-
-  it("--author-industry i1 --author-company c1 --author-keywords 'CTO' → body author: {industry:['i1'],company:['c1'],keywords:'CTO'}", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      "author-industry": "i1",
-      "author-company": "c1",
-      "author-keywords": "CTO",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ author: { industry: ["i1"], company: ["c1"], keywords: "CTO" } });
-  });
-
-  it("--posted-by-member id1 --mentioning-company c1 → distinct top-level keys, not merged with each other", async () => {
-    const { runSearchPosts } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchPosts(client as never, {
-      "posted-by-member": "id1",
-      "mentioning-company": "c1",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.posts as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      posted_by: { member: ["id1"] },
-      mentioning: { company: ["c1"] },
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// search jobs --location-within-area
-// ---------------------------------------------------------------------------
-
-describe("search jobs --location-within-area parses to a number", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.jobs as Mock).mockResolvedValue({ items: [], cursor: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--location-within-area 25 --location 101282230 → location_within_area: 25 (number) + region (jobs geo mapping)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchJobs(client as never, {
-      "location-within-area": "25",
-      location: "101282230",
-      account: "acc_1",
-      json: true,
-    } as SearchArgs, out);
-
-    const body = (accountNs.search.jobs as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({ location_within_area: 25, region: "101282230" });
-    expect(typeof body["location_within_area"]).toBe("number");
-  });
-
-  it("--location-within-area abc → exit 2, no SDK call (non-numeric, before any SDK call)", async () => {
-    const { runSearchJobs } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchJobs(client as never, { "location-within-area": "abc", account: "acc_1" } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.jobs).not.toHaveBeenCalled();
-  });
-});
-
-describe("search groups — GET, keyword-only", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.groups as Mock).mockResolvedValue({
-      object: "group_search_result",
-      items: [{ object: "group", id: "9123014", name: "GTM Engineering", member_count: 4000 }],
-      cursor: null,
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search groups <query> — calls search.groups with keywords", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchGroups(client as never, { query: "gtm engineering", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.groups).toHaveBeenCalledWith(expect.objectContaining({ keywords: "gtm engineering" }));
-  });
-
-  it("search groups --json prints the full response shape", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchGroups(client as never, { query: "gtm", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = JSON.parse((out.stdout.write as Mock).mock.calls[0]![0] as string);
-    expect(written.items[0]).toEqual({ object: "group", id: "9123014", name: "GTM Engineering", member_count: 4000 });
-  });
-
-  it("search groups — --limit/--cursor pass through", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchGroups(
-      client as never,
-      { query: "gtm", account: "acc_1", limit: "5", cursor: "cur_1", json: true } as SearchArgs,
-      out,
-    );
-
-    expect(accountNs.search.groups).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "gtm", limit: 5, cursor: "cur_1" }),
-    );
-  });
-
-  it("search groups --all — streams NDJSON across pages", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.groups as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
-
-    await runSearchGroups(client as never, { query: "gtm", account: "acc_1", all: true } as SearchArgs, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    expect(lines).toHaveLength(2);
-  });
-
-  it("search groups — missing <query> exits 2 before any SDK call", async () => {
-    const { runSearchGroups } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchGroups(client as never, { account: "acc_1" } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.groups).not.toHaveBeenCalled();
-  });
-});
-
-describe("search services — POST body", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.services as Mock).mockResolvedValue({
-      object: "service_search_result",
-      items: [{ object: "service_provider", id: "ACoAA1", name: "Jane Doe" }],
-      cursor: null,
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search services --keywords marketing — calls search.services with keywords in the body", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServices(client as never, { keywords: "marketing", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.services).toHaveBeenCalledWith(expect.objectContaining({ keywords: "marketing" }));
-  });
-
-  it("search services --json prints the full response shape", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServices(client as never, { keywords: "marketing", account: "acc_1", json: true } as SearchArgs, out);
-
-    const written = JSON.parse((out.stdout.write as Mock).mock.calls[0]![0] as string);
-    expect(written.items[0]).toEqual({ object: "service_provider", id: "ACoAA1", name: "Jane Doe" });
-  });
-
-  it("search services --service-category/--location/--connections/--language map to the request body", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServices(
-      client as never,
-      {
-        "service-category": "cat_1,cat_2",
-        location: "loc_1",
-        connections: "1,2",
-        language: "en,de",
-        account: "acc_1",
-        json: true,
-      } as SearchArgs,
-      out,
-    );
-
-    expect(accountNs.search.services).toHaveBeenCalledWith(
-      expect.objectContaining({
-        service_category: ["cat_1", "cat_2"],
-        location: ["loc_1"],
-        connections: [1, 2],
-        language: ["en", "de"],
-      }),
-    );
-  });
-
-  it("search services --all — streams NDJSON across pages", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.services as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
-
-    await runSearchServices(client as never, { keywords: "marketing", account: "acc_1", all: true } as SearchArgs, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    expect(lines).toHaveLength(2);
-  });
-
-  it("search services — missing account exits 2", async () => {
-    const { runSearchServices } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchServices(noConnectedAccounts(client) as never, { keywords: "marketing", json: true } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-});
-
-describe("search service-parameters — GET, not paginated", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.search.getServiceParameters as Mock).mockResolvedValue({
-      object: "search_parameter_list",
-      items: [{ id: "cat_1", name: "Marketing" }],
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("search service-parameters --keywords marke --type service_category — calls getServiceParameters", async () => {
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServiceParameters(
-      client as never,
-      { keywords: "marke", type: "service_category", account: "acc_1", json: true } as SearchArgs,
-      out,
-    );
-
-    expect(accountNs.search.getServiceParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "marke", type: "service_category" }),
-    );
-  });
-
-  it("search service-parameters — --type omitted still calls the SDK (server defaults to service_category)", async () => {
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServiceParameters(client as never, { keywords: "berlin", account: "acc_1", json: true } as SearchArgs, out);
-
-    expect(accountNs.search.getServiceParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "berlin" }),
-    );
-    const call = (accountNs.search.getServiceParameters as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(call).not.toHaveProperty("type");
-  });
-
-  it("search service-parameters — missing --keywords exits 2 before any SDK call", async () => {
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = makeExitMock();
-
-    try {
-      await runSearchServiceParameters(client as never, { type: "location", account: "acc_1" } as SearchArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(accountNs.search.getServiceParameters).not.toHaveBeenCalled();
-  });
-
-  it("search service-parameters --all — walks until the cursor comes back null", async () => {
-    // INVERTED in 0.39.0. This used to assert --all was a usage error "(not
-    // paginated)", which was never a property of the endpoint: the served
-    // document gives it a cursor input and it returns a cursor. The command
-    // declared --cursor and dropped it, so it answered page one forever.
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.getServiceParameters as Mock)
-      .mockReset()
-      .mockResolvedValueOnce({ object: "list", items: [{ id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ object: "list", items: [{ id: "2" }], cursor: null });
-
-    await runSearchServiceParameters(
-      client as never,
-      { keywords: "marke", account: "acc_1", all: true, "page-delay": "0", json: true } as SearchArgs,
-      out,
-    );
-
-    expect((accountNs.search.getServiceParameters as Mock).mock.calls).toHaveLength(2);
-    const second = (accountNs.search.getServiceParameters as Mock).mock.calls[1]![0] as Record<string, unknown>;
-    expect(second["cursor"]).toBe("cur_1");
-    const lines = out.stdout.write.mock.calls.map((c) => String(c[0])).join("");
-    expect(lines).toContain('"id":"1"');
-    expect(lines).toContain('"id":"2"');
-  });
-
-  it("search service-parameters --cursor reaches the request", async () => {
-    const { runSearchServiceParameters } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runSearchServiceParameters(
-      client as never,
-      { keywords: "marke", account: "acc_1", cursor: "cur_9", json: true } as SearchArgs,
-      out,
-    );
-
-    expect(accountNs.search.getServiceParameters).toHaveBeenCalledWith(
-      expect.objectContaining({ keywords: "marke", cursor: "cur_9" }),
-    );
-  });
-});
-
-/**
- * The CLI renderer must not drop a response's top-level `notices[]` —
- * covering both a filter value that took the id fast path (field + value
- * present) and a page whose results are anonymised upstream (page-scoped,
- * no field/value). These drive the actual shipped command handler
- * (`runSearchPeople`) against a mocked SDK response, the same boundary the
- * real CLI crosses when the server returns notices, and assert on the real
- * bytes written to stdout, not on an intermediate formatter call.
- */
-describe("search people: renders notices[] from the SDK response", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
+describe("search people renders notices[] from the response", () => {
   const originalIsTTY = process.stdout.isTTY;
-
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-  });
-
   afterEach(() => {
-    vi.restoreAllMocks();
     process.stdout.isTTY = originalIsTTY;
   });
+  const filterNotice = { code: "FILTER_VALUE_UNCHECKED", message: "The value was treated as an id and was not looked up.", field: "industry", value: "42" };
+  const pageNotice = { code: "ALL_RESULTS_HIDDEN", message: "Every result on this page is hidden from the connected account." };
+  const person = { id: "p_1", public_identifier: "alice", full_name: "Alice", headline: null, location: null, network_distance: "FIRST_DEGREE" };
 
-  // filter-value shape: a filter value took the id fast path (field + value present).
-  const filterNotice = {
-    code: "FILTER_VALUE_UNCHECKED",
-    message: "The value was treated as an id and was not looked up.",
-    field: "industry",
-    value: "42",
-  };
+  async function run(response: object, args: object = {}) {
+    const { search, client } = setup();
+    search.people!.mockResolvedValue(response);
+    const out = mkOut();
+    await runSearchPeople(client as never, { account: "acc_1", keywords: "ai", ...args } as never, out as never);
+    return out;
+  }
 
-  // page-scope shape: page-scoped, no field/value (an anonymised-results page).
-  const pageNotice = {
-    code: "ALL_RESULTS_HIDDEN",
-    message: "Every result on this page is hidden from the connected account.",
-  };
-
-  it("--json: the response's notices[] array reaches stdout intact (filter-value shape: field + value)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [],
-      cursor: null,
-      notices: [filterNotice],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      industry: "42",
-      json: true,
-    } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written) as { notices?: unknown[] };
-    expect(parsed.notices).toEqual([filterNotice]);
+  it("--json: notices[] reaches stdout intact, in both shapes (field+value, page-scoped)", async () => {
+    expect(json(await run({ items: [], cursor: null, notices: [filterNotice] }, { json: true, industry: "42" }))["notices"]).toEqual([filterNotice]);
+    expect(json(await run({ items: [{ ...person, visibility: "hidden" }], cursor: null, notices: [pageNotice] }, { json: true }))["notices"]).toEqual([pageNotice]);
   });
 
-  it("--json: the response's notices[] array reaches stdout intact (page-scope shape: page-scoped, no field/value)", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [{ id: "p_1", full_name: "LinkedIn Member", visibility: "hidden" }],
-      cursor: null,
-      notices: [pageNotice],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      json: true,
-    } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written) as { notices?: unknown[] };
-    expect(parsed.notices).toEqual([pageNotice]);
-  });
-
-  it("human mode (TTY, no --json): a notice renders as visible text on stdout, not silently dropped", async () => {
+  it("human mode: a notice renders as text; a partly-hidden page marks the row AND surfaces the notice", async () => {
     process.stdout.isTTY = true;
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [],
-      cursor: null,
-      notices: [filterNotice],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      industry: "42",
-      json: false,
-    } as SearchArgs, out);
-
-    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(rendered).toContain("FILTER_VALUE_UNCHECKED");
-    expect(rendered).toContain("The value was treated as an id and was not looked up.");
-    expect(rendered).toContain("field: industry");
-    expect(rendered).toContain("value: 42");
+    const filter = text((await run({ items: [], cursor: null, notices: [filterNotice] }, { industry: "42" })).stdout);
+    for (const s of ["FILTER_VALUE_UNCHECKED", filterNotice.message, "field: industry", "value: 42"]) expect(filter).toContain(s);
+    const partly = text((await run({ items: [{ ...person, visibility: "hidden" }], cursor: null, notices: [{ code: "SOME_RESULTS_HIDDEN", message: "Some results are hidden." }] })).stdout);
+    expect(partly).toContain("SOME_RESULTS_HIDDEN");
+    expect(partly).toContain("visibility: hidden");
   });
 
-  it("human mode (TTY, no --json): an all-hidden page (page-scope notice) still tells the user something was returned, not just an empty list", async () => {
+  it("a response with no notices renders byte-identically (json and human)", async () => {
+    const res = { items: [{ ...person, visibility: "full" }], cursor: null };
+    const j = text((await run(res, { json: true })).stdout);
+    expect(j).toBe(JSON.stringify(slimSearchPeople(res)) + "\n");
+    expect(j).not.toContain("notice");
     process.stdout.isTTY = true;
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [],
-      cursor: null,
-      notices: [pageNotice],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      json: false,
-    } as SearchArgs, out);
-
-    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(rendered).toContain("ALL_RESULTS_HIDDEN");
-    expect(rendered).toContain("Every result on this page is hidden from the connected account.");
+    expect(text((await run(res)).stdout)).toBe("id: p_1\npublic_identifier: alice\nfull_name: Alice\nheadline: null\nlocation: null\nnetwork_distance: FIRST_DEGREE\nvisibility: full\n");
   });
 
-  it("human mode (TTY, no --json): a partly-hidden page marks the hidden row AND surfaces the page notice, the full reported harm", async () => {
-    process.stdout.isTTY = true;
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [
-        { id: "p_1", full_name: "LinkedIn Member", public_identifier: null, headline: null, location: null, network_distance: "OUT_OF_NETWORK", visibility: "hidden" },
-      ],
-      cursor: null,
-      notices: [{
-        code: "SOME_RESULTS_HIDDEN",
-        message: "Some results on this page are hidden from the connected account.",
-      }],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      json: false,
-    } as SearchArgs, out);
-
-    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    // The page-level explanation is present...
-    expect(rendered).toContain("SOME_RESULTS_HIDDEN");
-    // ...AND the row itself carries the discriminator, not just an unmarked
-    // "LinkedIn Member" name with nothing telling the user it is unusable.
-    expect(rendered).toContain("visibility: hidden");
-  });
-
-  it("REGRESSION: a response with no notices renders byte-identically in --json mode", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const { slimSearchPeople } = await import("../../src/lib/slim.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const response = { items: [{ id: "p_1", full_name: "Alice", public_identifier: "alice", headline: null, location: null, network_distance: "FIRST_DEGREE" }], cursor: null };
-    (accountNs.search.people as Mock).mockResolvedValue(response);
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      json: true,
-    } as SearchArgs, out);
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    // Compared against the existing slim-projection output (unaffected by this
-    // fix), not a hand-typed literal, so key ordering from `slimSearchPeople`
-    // does not create a spurious mismatch unrelated to notices.
-    expect(written).toBe(JSON.stringify(slimSearchPeople(response)) + "\n");
-    expect(written).not.toContain("notice");
-  });
-
-  it("REGRESSION: a response with no notices renders byte-identically in human mode", async () => {
-    process.stdout.isTTY = true;
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    (accountNs.search.people as Mock).mockResolvedValue({
-      items: [{ id: "p_1", public_identifier: "alice", full_name: "Alice", headline: null, location: null, network_distance: "FIRST_DEGREE", visibility: "full" }],
-      cursor: null,
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      json: false,
-    } as SearchArgs, out);
-
-    const rendered = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(rendered).not.toContain("notice");
-    expect(rendered).toBe(
-      "id: p_1\npublic_identifier: alice\nfull_name: Alice\nheadline: null\nlocation: null\nnetwork_distance: FIRST_DEGREE\nvisibility: full\n",
-    );
-  });
-
-  it("--all: a page's notices[] reach stderr (diagnostics), and stdout stays pure NDJSON data", async () => {
-    const { runSearchPeople } = await import("../../src/commands/search.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    (accountNs.search.people as Mock).mockResolvedValueOnce({
-      items: [],
-      cursor: null,
-      notices: [pageNotice],
-    });
-
-    await runSearchPeople(client as never, {
-      account: "acc_1",
-      keywords: "ai",
-      all: true,
-    } as SearchArgs, out);
-
-    const stderrText = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(stderrText).toContain("ALL_RESULTS_HIDDEN");
-    const stdoutText = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    expect(stdoutText).not.toContain("ALL_RESULTS_HIDDEN");
+  it("--all: notices go to stderr, stdout stays pure NDJSON", async () => {
+    const out = await run({ items: [], cursor: null, notices: [pageNotice] }, { all: true });
+    expect(text(out.stderr)).toContain("ALL_RESULTS_HIDDEN");
+    expect(text(out.stdout)).not.toContain("ALL_RESULTS_HIDDEN");
   });
 });
 
-describe("search posts --help: text caveat", () => {
-  it("names the repeated-fragment caveat and points at post get for the clean body", async () => {
-    const { searchCommand } = await import("../../src/commands/search.js");
-    const subs = (searchCommand as Record<string, unknown>).subCommands as Record<string, { meta?: { description?: string } }>;
+describe("help text an agent depends on", () => {
+  type Sub = { meta?: { description?: string }; args?: Record<string, { description?: string }> };
+  const subs = (searchCommand as unknown as { subCommands: Record<string, Sub> }).subCommands;
+  const desc = (sub: string, flag: string) => subs[sub]?.args?.[flag]?.description ?? "";
+
+  it("search parameters --type lists the served values (RELATION, never the pre-v2 CONNECTIONS); --connections-of points at it", () => {
+    const d = desc("parameters", "type");
+    for (const t of ["LOCATION", "PEOPLE", "RELATION", "COMPANY", "SCHOOL", "INDUSTRY", "JOB_FUNCTION", "JOB_TITLE", "EMPLOYMENT_TYPE", "SKILL"]) expect(d).toContain(t);
+    expect(d).not.toContain("CONNECTIONS");
+    expect(desc("people", "connections-of")).toContain("--type RELATION");
+  });
+
+  it("--filters help says the body is strict (unknown fields are rejected), never that they are stripped; posts help names the repeated-fragment caveat", () => {
+    const f = desc("people", "filters").toLowerCase();
+    expect(f).toContain("unknown");
+    expect(f).toMatch(/reject|400|strict/);
+    expect(f).not.toContain("strips");
     const d = subs["posts"]?.meta?.description ?? "";
     expect(d).toMatch(/repeat fragments/);
     expect(d).toMatch(/post get/);
+  });
+});
+
+describe("search <url> -> search.fromUrl", () => {
+  const URL = "https://www.linkedin.com/search/results/people/?keywords=founder";
+  const mk = () => {
+    const fromUrl = vi.fn().mockResolvedValue({ object: "search_result_list", items: [], cursor: null });
+    return { fromUrl, client: clientOf({ search: { fromUrl } }) };
+  };
+
+  it("sends the url (plus --limit / --cursor) in the body; the group keeps a bare url positional and its subcommands", async () => {
+    const { fromUrl, client } = mk();
+    await runSearchFromUrl(client as never, { url: URL, account: "acc_1", json: true } as never, mkOut() as never);
+    await runSearchFromUrl(client as never, { url: URL, limit: "20", cursor: "c1", account: "acc_1", json: true } as never, mkOut() as never);
+    expect(fromUrl.mock.calls.map((c) => c[0])).toEqual([{ url: URL }, { url: URL, limit: 20, cursor: "c1" }]);
+    const cmd = searchCommand as unknown as { args?: Record<string, { type?: string }>; subCommands?: Record<string, unknown> };
+    expect(cmd.args?.["url"]?.type).toBe("positional");
+    for (const name of ["people", "companies", "posts", "jobs", "parameters"]) expect(cmd.subCommands).toHaveProperty(name);
+  });
+
+  it("without an account exits 2 before any SDK call", async () => {
+    const { fromUrl, client } = mk();
+    expect(await exitCode(() => runSearchFromUrl(noConnectedAccounts(client) as never, { url: URL } as never, mkOut() as never))).toBe(2);
+    expect(fromUrl).not.toHaveBeenCalled();
   });
 });

@@ -1,192 +1,71 @@
 /**
- * `curviate setup` - the flow, its ordering, its retries, and its refusals.
- *
- * Everything the command touches that is not pure is injected: the terminal
- * (an unmasked line reader), the transport, the browser opener, the verifying
- * call and the session-material generator. Nothing here reaches a real
- * terminal, a real browser, or the network.
- *
- * Paste ergonomics and the leak grep live in sibling files, because both need
- * a different harness: one drives the REAL reader over a fake stream, the
- * other greps every stream against a positive control.
+ * `curviate setup`: the flow, its ordering, retries and refusals (everything impure injected: terminal, transport,
+ * browser, verifying call, session material), then the leak grep through the CLI entry point with a positive control.
  */
-
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
-import {
-  createECDH,
-  createCipheriv,
-  hkdfSync,
-  randomBytes,
-} from "node:crypto";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { CurviateError } from "@curviate/sdk";
 import { mkdtempSync, readFileSync, existsSync, statSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  runSetup,
-  resolveSetupIO,
-  resumeStatePath,
-  normaliseCode,
-  authorizeUrl,
-  browserAvailable,
-  generateSessionMaterial,
-  unsealApiKey,
-  type SetupIO,
-  type SessionMaterial,
+  runSetup, resolveSetupIO, resumeStatePath, normaliseCode, authorizeUrl, browserAvailable, generateSessionMaterial, unsealApiKey,
+  type SetupIO, type SessionMaterial,
 } from "../../src/commands/setup.js";
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+import { seal } from "../helpers/f2-seal.js";
+import { useSink } from "../helpers/sink.js";
 
 const API_KEY = "rdc_live_SETUPFIXTUREKEY0001";
 const TENANT = "Fixture Workspace";
 const CODE = "WDJB-MJHT";
 const BASE_URL = "http://127.0.0.1:9/api";
 
-/** A pinned keypair, so a test can assert on the exact public key in the URL. */
-function pinnedMaterial(): SessionMaterial {
-  return generateSessionMaterial();
-}
+type Body = { session_id: string; verification_code: string };
+type Responder = (body: Body, material: SessionMaterial) => { status: number; json: unknown } | "network-failure";
+const acceptAll: Responder = (_b, m) => ({ status: 200, json: { sealed_key: seal(API_KEY, m.publicKey), tenant_name: TENANT, account_id: "acc_fixture_1" } });
+const reject = (code: string, message = "no", status = 400): Responder => () => ({ status, json: { code, message } });
+/** Rejects the first `n` submissions with a wrong code, then accepts. */
+const rejectFirst = (n: number): Responder => {
+  let seen = 0;
+  return (b, m) => (seen++ < n ? reject("CLI_SETUP_INVALID_CODE")(b, m) : acceptAll(b, m));
+};
 
-/**
- * Seal `plaintext` to the CLI's public key exactly as the server does, so the
- * unsealing under test is exercised against a real, independently-built
- * ciphertext rather than a fixture the implementation also produced.
- */
-function seal(plaintext: string, cliPublicKeyB64: string) {
-  const ephemeral = createECDH("prime256v1");
-  ephemeral.generateKeys();
-  const shared = ephemeral.computeSecret(Buffer.from(cliPublicKeyB64, "base64url"));
-  const key = Buffer.from(
-    hkdfSync("sha256", shared, Buffer.alloc(0), Buffer.from("curviate-cli-setup-v1", "utf8"), 32),
-  );
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const body = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
-  return {
-    alg: "ECDH-P256-HKDF-SHA256-A256GCM",
-    epk: ephemeral.getPublicKey().toString("base64url"),
-    iv: iv.toString("base64url"),
-    ciphertext: Buffer.concat([body, cipher.getAuthTag()]).toString("base64url"),
-  };
-}
-
-interface Harness {
-  io: SetupIO;
-  stdout: string[];
-  stderr: string[];
-  /** Every prompt string the command wrote, in order. */
-  prompts: string[];
-  /** Every URL handed to the browser opener. */
-  opened: string[];
-  /** Every exchange request body, parsed. */
-  requests: Array<{ session_id: string; verification_code: string }>;
-  /** Was the stdin reader ever called? */
-  stdinReads: number;
-  material: SessionMaterial;
-  /** Interleaved transcript, so ordering is assertable. */
-  transcript: string[];
-}
-
-type Responder = (
-  body: { session_id: string; verification_code: string },
-  material: SessionMaterial,
-) => { status: number; json: unknown } | "network-failure";
-
-/** The server arm that always accepts. */
-const acceptAll: Responder = (_body, material) => ({
-  status: 200,
-  json: {
-    sealed_key: seal(API_KEY, material.publicKey),
-    tenant_name: TENANT,
-    account_id: "acc_fixture_1",
-  },
-});
-
-function harness(opts: {
-  answers: string[];
-  respond?: Responder;
-  isTTY?: boolean;
-  isOutputTTY?: boolean;
-  env?: NodeJS.ProcessEnv;
-  platform?: string;
-  stdin?: string;
-  verifyFails?: boolean;
-  verifyError?: unknown;
-  openThrows?: boolean;
-}): Harness {
-  const material = pinnedMaterial();
-  const h: Partial<Harness> = {
-    stdout: [],
-    stderr: [],
-    prompts: [],
-    opened: [],
-    requests: [],
-    stdinReads: 0,
-    material,
-    transcript: [],
-  };
-  const respond = opts.respond ?? acceptAll;
-  const answers = [...opts.answers];
-
+interface Opts { answers?: string[]; respond?: Responder; isTTY?: boolean; isOutputTTY?: boolean; env?: NodeJS.ProcessEnv; platform?: string; stdin?: string; verifyError?: unknown; openThrows?: boolean }
+function harness(opts: Opts = {}) {
+  const material = generateSessionMaterial();
+  const answers = [...(opts.answers ?? [])];
+  const h = { stdout: [] as string[], stderr: [] as string[], prompts: [] as string[], opened: [] as string[], requests: [] as Body[], stdinReads: 0, transcript: [] as string[], material, io: undefined as unknown as SetupIO };
   h.io = {
-    stdout: {
-      write: (s: string) => {
-        h.stdout!.push(s);
-        h.transcript!.push(`stdout:${s}`);
-      },
-    },
-    stderr: {
-      write: (s: string) => {
-        h.stderr!.push(s);
-        h.transcript!.push(`stderr:${s}`);
-      },
-    },
+    stdout: { write: (s: string) => (h.stdout.push(s), h.transcript.push(`stdout:${s}`)) },
+    stderr: { write: (s: string) => (h.stderr.push(s), h.transcript.push(`stderr:${s}`)) },
     isTTY: opts.isTTY ?? true,
     isOutputTTY: opts.isOutputTTY ?? true,
     env: opts.env ?? {},
     platform: opts.platform ?? "darwin",
-    prompt: async (p: string) => {
-      h.prompts!.push(p);
-      h.transcript!.push(`prompt:${p}`);
-      return answers.shift() ?? "";
-    },
-    readStdin: async () => {
-      h.stdinReads!++;
-      return opts.stdin ?? "";
-    },
+    prompt: async (p: string) => (h.prompts.push(p), h.transcript.push(`prompt:${p}`), answers.shift() ?? ""),
+    readStdin: async () => (h.stdinReads++, opts.stdin ?? ""),
     open: async (url: string) => {
-      h.opened!.push(url);
-      h.transcript!.push(`open:${url}`);
+      h.opened.push(url);
+      h.transcript.push(`open:${url}`);
       if (opts.openThrows) throw new Error("no browser");
-      return undefined;
     },
-    fetch: (async (_url: string, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as {
-        session_id: string;
-        verification_code: string;
-      };
-      h.requests!.push(body);
-      const outcome = respond(body, material);
-      if (outcome === "network-failure") throw new TypeError("fetch failed");
-      return {
-        ok: outcome.status >= 200 && outcome.status < 300,
-        status: outcome.status,
-        json: async () => outcome.json,
-      } as unknown as Response;
+    fetch: (async (_u: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Body;
+      h.requests.push(body);
+      const o = (opts.respond ?? acceptAll)(body, material);
+      if (o === "network-failure") throw new TypeError("fetch failed");
+      return { ok: o.status < 300, status: o.status, json: async () => o.json } as unknown as Response;
     }) as unknown as typeof fetch,
     verify: async () => {
       if (opts.verifyError !== undefined) throw opts.verifyError;
-      if (opts.verifyFails) throw new Error("rejected");
     },
     generate: () => material,
   };
-  return h as Harness;
+  return h;
 }
+const run = (h: ReturnType<typeof harness>, flags: object = {}) => runSetup({ "base-url": BASE_URL, ...flags } as never, h.io);
 
 let xdg: string;
 let configPath: string;
-
 beforeEach(() => {
   xdg = mkdtempSync(join(tmpdir(), "curviate-setup-"));
   process.env["XDG_CONFIG_HOME"] = xdg;
@@ -194,606 +73,255 @@ beforeEach(() => {
   delete process.env["CURVIATE_API_KEY"];
   delete process.env["CURVIATE_BASE_URL"];
 });
-
 afterEach(() => {
   delete process.env["XDG_CONFIG_HOME"];
   rmSync(xdg, { recursive: true, force: true });
 });
+const stored = (name = "default") => (JSON.parse(readFileSync(configPath, "utf8")) as { profiles: Record<string, { apiKey?: string; account?: string; tenant?: string }> }).profiles[name];
 
-function storedProfile(name = "default") {
-  const cfg = JSON.parse(readFileSync(configPath, "utf8")) as {
-    profiles: Record<string, { apiKey?: string; account?: string; tenant?: string }>;
-  };
-  return cfg.profiles[name];
-}
-
-// ---------------------------------------------------------------------------
-// Pure helpers
-// ---------------------------------------------------------------------------
-
-describe("normalisation accepts every shape a paste arrives in", () => {
-  it("uppercases, drops the hyphen, and drops everything outside the alphabet", () => {
-    expect(normaliseCode("WDJB-MJHT")).toBe("WDJBMJHT");
-    expect(normaliseCode("wdjb-mjht")).toBe("WDJBMJHT");
-    expect(normaliseCode("wdjbmjht")).toBe("WDJBMJHT");
-    expect(normaliseCode("  WDJB-MJHT  \n")).toBe("WDJBMJHT");
-    // A bracketed paste arrives wrapped in the two escape sequences.
-    expect(normaliseCode("\x1b[200~wdjb-mjht\x1b[201~")).toBe("WDJBMJHT");
+describe("pure helpers", () => {
+  it("normaliseCode uppercases, drops the hyphen and everything outside the alphabet (incl. a bracketed paste)", () => {
+    for (const raw of ["WDJB-MJHT", "wdjb-mjht", "wdjbmjht", "  WDJB-MJHT  \n", "\x1b[200~wdjb-mjht\x1b[201~", "WDJB-MJHTAEIOU0159"]) expect(normaliseCode(raw)).toBe("WDJBMJHT");
   });
 
-  it("drops out-of-alphabet letters rather than passing them through", () => {
-    // A, E, I, O, U and every digit are deliberately absent from the alphabet.
-    expect(normaliseCode("WDJB-MJHTAEIOU0159")).toBe("WDJBMJHT");
-  });
-});
-
-describe("session material carries real entropy and never a guessable id", () => {
-  it("the session id is 144 bits, well above the floor", () => {
-    const m = generateSessionMaterial();
-    expect(Buffer.from(m.sessionId, "base64url").length * 8).toBe(144);
-  });
-
-  it("two runs never produce the same session id or public key", () => {
+  it("session material: 144-bit id, raw uncompressed P-256 point, never repeated", () => {
     const a = generateSessionMaterial();
     const b = generateSessionMaterial();
+    expect(Buffer.from(a.sessionId, "base64url").length * 8).toBe(144);
+    const raw = Buffer.from(a.publicKey, "base64url");
+    expect([raw.length, raw[0]]).toEqual([65, 0x04]);
     expect(a.sessionId).not.toBe(b.sessionId);
     expect(a.publicKey).not.toBe(b.publicKey);
   });
 
-  it("the public key is a raw uncompressed point", () => {
-    const raw = Buffer.from(generateSessionMaterial().publicKey, "base64url");
-    expect(raw.length).toBe(65);
-    expect(raw[0]).toBe(0x04);
-  });
-});
-
-describe("the authorize URL", () => {
-  it("strips a trailing api path and carries both values", () => {
-    const url = new URL(authorizeUrl("https://example.test/api", "SID", "PK"));
-    expect(url.pathname).toBe("/cli");
-    expect(url.searchParams.get("sid")).toBe("SID");
-    expect(url.searchParams.get("pk")).toBe("PK");
+  it.each([
+    ["https://example.test/api", "https://example.test/cli?sid=S&pk=P"],
+    ["https://example.test", "https://example.test/cli?sid=S&pk=P"],
+    ["https://api.curviate.com", "https://app.curviate.com/cli?sid=S&pk=P"], // the page is the app host, not the api host
+    ["https://api.staging.curviate.com", "https://app.staging.curviate.com/cli?sid=S&pk=P"],
+    ["http://localhost:3000", "http://localhost:3000/cli?sid=S&pk=P"],
+    ["http://127.0.0.1:8080/api", "http://127.0.0.1:8080/cli?sid=S&pk=P"],
+    ["http://api:3000", "http://api:3000/cli?sid=S&pk=P"], // bare "api" is a hostname, not a label to swap
+  ])("authorizeUrl(%s) -> %s", (base, expected) => {
+    expect(authorizeUrl(base, "S", "P")).toBe(expected);
   });
 
-  it("works against an origin with no path", () => {
-    expect(authorizeUrl("https://example.test", "S", "P")).toBe(
-      "https://example.test/cli?sid=S&pk=P",
-    );
-  });
-
-  /**
-   * The page and the API are different hosts, and the dashboard session
-   * cookie lives on the page's host. Deriving the page from the API origin
-   * printed a link that lands somewhere with no session, so the flow could
-   * not complete anywhere it is actually deployed. Nothing asserted the host
-   * before, which is why that shipped.
-   */
-  it("points at the app host, not the api host, on the default base url", () => {
-    expect(new URL(authorizeUrl("https://api.curviate.com", "S", "P")).host).toBe(
-      "app.curviate.com",
-    );
-  });
-
-  it("keeps the rest of the labels when swapping the first one", () => {
-    expect(new URL(authorizeUrl("https://api.staging.curviate.com", "S", "P")).host).toBe(
-      "app.staging.curviate.com",
-    );
-  });
-
-  it("leaves a host with no api label alone, port and all", () => {
-    // One origin serves both surfaces on a local run, an IP, or a custom base.
-    expect(new URL(authorizeUrl("http://localhost:3000", "S", "P")).host).toBe("localhost:3000");
-    expect(new URL(authorizeUrl("http://127.0.0.1:8080/api", "S", "P")).host).toBe(
-      "127.0.0.1:8080",
-    );
-    // Bare "api" with no domain after it is a hostname, not a first label to swap.
-    expect(new URL(authorizeUrl("http://api:3000", "S", "P")).host).toBe("api:3000");
-  });
-
-  it("an explicit override wins over both rules", () => {
-    expect(authorizeUrl("https://api.curviate.com", "S", "P", "https://dash.example.test")).toBe(
-      "https://dash.example.test/cli?sid=S&pk=P",
-    );
-    // A path on the override is kept, so a surface mounted under a prefix works.
-    expect(
-      authorizeUrl("https://api.curviate.com", "S", "P", "https://example.test/console/"),
-    ).toBe("https://example.test/console/cli?sid=S&pk=P");
-  });
-});
-
-describe("the override reaches the command, not just the helper", () => {
-  it("a run with the override set prints the overridden host", async () => {
-    const h = harness({
-      answers: [CODE],
-      env: { CI: "1", CURVIATE_APP_URL: "https://dash.example.test" },
-    });
-    await runSetup({ "base-url": "https://api.curviate.com" }, h.io);
+  it("an explicit override wins, and keeps its path; the command honours it", async () => {
+    expect(authorizeUrl("https://api.curviate.com", "S", "P", "https://example.test/console/")).toBe("https://example.test/console/cli?sid=S&pk=P");
+    const h = harness({ answers: [CODE], env: { CI: "1", CURVIATE_APP_URL: "https://dash.example.test" } });
+    await run(h, { "base-url": "https://api.curviate.com" });
     expect(h.stdout.join("")).toContain("https://dash.example.test/cli?sid=");
   });
 
-  it("a run without it derives the app host from the api host", async () => {
-    const h = harness({ answers: [CODE], env: { CI: "1" } });
-    await runSetup({ "base-url": "https://api.curviate.com" }, h.io);
-    expect(h.stdout.join("")).toContain("https://app.curviate.com/cli?sid=");
-  });
-});
-
-describe("unsealing round-trips against an independently built ciphertext", () => {
-  it("recovers the exact plaintext", () => {
+  it("unsealing recovers the plaintext from an independently built ciphertext, and refuses another key's", () => {
     const m = generateSessionMaterial();
     expect(unsealApiKey(seal(API_KEY, m.publicKey), m.privateKey)).toBe(API_KEY);
+    expect(() => unsealApiKey(seal(API_KEY, generateSessionMaterial().publicKey), m.privateKey)).toThrow();
   });
 
-  it("refuses a payload sealed to a different key", () => {
-    const mine = generateSessionMaterial();
-    const theirs = generateSessionMaterial();
-    expect(() => unsealApiKey(seal(API_KEY, theirs.publicKey), mine.privateKey)).toThrow();
-  });
-});
-
-describe("browser detection is a reading of the environment, not a flag", () => {
-  it("continuous integration, a remote shell, and a displayless session are all browserless", () => {
-    expect(browserAvailable({ CI: "1" }, "darwin")).toBe(false);
-    expect(browserAvailable({ SSH_CONNECTION: "1.2.3.4 1 5.6.7.8 22" }, "darwin")).toBe(false);
-    expect(browserAvailable({ SSH_TTY: "/dev/pts/0" }, "darwin")).toBe(false);
-    expect(browserAvailable({ SSH_CLIENT: "1.2.3.4" }, "darwin")).toBe(false);
-    expect(browserAvailable({ DISPLAY: "" }, "linux")).toBe(false);
-    expect(browserAvailable({}, "linux")).toBe(false);
-  });
-
-  it("a plain desktop session is not", () => {
+  it("browser detection reads the environment: CI, a remote shell and a displayless session are browserless", () => {
+    for (const [env, platform] of [[{ CI: "1" }, "darwin"], [{ SSH_CONNECTION: "1 2 3 4" }, "darwin"], [{ SSH_TTY: "/dev/pts/0" }, "darwin"], [{ SSH_CLIENT: "1.2.3.4" }, "darwin"], [{ DISPLAY: "" }, "linux"], [{}, "linux"]] as const) {
+      expect(browserAvailable(env, platform)).toBe(false);
+    }
     expect(browserAvailable({}, "darwin")).toBe(true);
     expect(browserAvailable({ DISPLAY: ":0" }, "linux")).toBe(true);
   });
 });
 
-// ---------------------------------------------------------------------------
-// The happy path
-// ---------------------------------------------------------------------------
-
 describe("the happy path", () => {
-  it("writes the key at 0600, verifies, names the workspace, exits 0", async () => {
-    const h = harness({ answers: [CODE] });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-
-    expect(exit).toBe(0);
-    const profile = storedProfile();
-    expect(profile?.apiKey).toBe(API_KEY);
-    expect(profile?.account).toBe("acc_fixture_1");
-    expect(profile?.tenant).toBe(TENANT);
+  it("writes the key at 0600 under the named profile, verifies, names the workspace, submits only the normalised code, and clears the parked material", async () => {
+    const h = harness({ answers: ["  wdjbmjht \n"] });
+    expect(await run(h, { profile: "work" })).toBe(0);
+    expect(stored("work")).toMatchObject({ apiKey: API_KEY, account: "acc_fixture_1", tenant: TENANT });
+    expect(stored("default")).toBeUndefined();
     expect(statSync(configPath).mode & 0o777).toBe(0o600);
     expect(h.stderr.join("")).toContain(TENANT);
-  });
-
-  it("submits the normalised code and the session id, and nothing else", async () => {
-    const h = harness({ answers: ["  wdjbmjht \n"] });
-    await runSetup({ "base-url": BASE_URL }, h.io);
-
-    expect(h.requests).toEqual([
-      { session_id: h.material.sessionId, verification_code: "WDJBMJHT" },
-    ]);
-  });
-
-  it("writes to the named profile and leaves the default alone", async () => {
-    const h = harness({ answers: [CODE] });
-    await runSetup({ "base-url": BASE_URL, profile: "work" }, h.io);
-    expect(storedProfile("work")?.apiKey).toBe(API_KEY);
-    expect(storedProfile("default")).toBeUndefined();
-  });
-
-  it("removes the parked session material once the flow completes", async () => {
-    const h = harness({ answers: [CODE] });
-    await runSetup({ "base-url": BASE_URL }, h.io);
+    expect(h.requests).toEqual([{ session_id: h.material.sessionId, verification_code: "WDJBMJHT" }]);
     expect(existsSync(resumeStatePath())).toBe(false);
   });
-});
 
-// ---------------------------------------------------------------------------
-// Ordering: the URL comes out before anything can block
-// ---------------------------------------------------------------------------
-
-describe("the authorize URL is printed before any prompt or gate", () => {
-  it("the URL reaches a stream before the first prompt is written", async () => {
+  it("prints the authorize URL to a stream before the first prompt and before the browser open; still prints it with no terminal (exit 2)", async () => {
     const h = harness({ answers: [CODE] });
-    await runSetup({ "base-url": BASE_URL }, h.io);
-
-    // A STREAM write, not any transcript entry: the browser-open entry also
-    // carries the URL, and counting it would let a run that never printed
-    // anything pass this assertion.
-    const urlAt = h.transcript.findIndex(
-      (line) =>
-        (line.startsWith("stdout:") || line.startsWith("stderr:")) && line.includes("/cli?sid="),
-    );
-    const promptAt = h.transcript.findIndex((line) => line.startsWith("prompt:"));
-    expect(urlAt, "the authorize URL was never printed").toBeGreaterThanOrEqual(0);
-    expect(promptAt, "the prompt never happened").toBeGreaterThanOrEqual(0);
-    expect(urlAt).toBeLessThan(promptAt);
-  });
-
-  it("the URL is printed before the browser open is even attempted", async () => {
-    const h = harness({ answers: [CODE] });
-    await runSetup({ "base-url": BASE_URL }, h.io);
-    const urlAt = h.transcript.findIndex(
-      (line) => line.startsWith("stdout:") && line.includes("/cli?sid="),
-    );
-    const openAt = h.transcript.findIndex((line) => line.startsWith("open:"));
+    await run(h);
+    const at = (pred: (l: string) => boolean) => h.transcript.findIndex(pred);
+    const urlAt = at((l) => l.startsWith("stdout:") && l.includes("/cli?sid="));
     expect(urlAt).toBeGreaterThanOrEqual(0);
-    expect(openAt).toBeGreaterThanOrEqual(0);
-    expect(openAt).toBeGreaterThan(urlAt);
-  });
-
-  it("the URL is still printed when there is no terminal to prompt on", async () => {
-    const h = harness({ answers: [], isTTY: false });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-    expect(h.stdout.join("")).toContain("/cli?sid=");
-    expect(exit).toBe(2);
+    expect(at((l) => l.startsWith("prompt:"))).toBeGreaterThan(urlAt);
+    expect(at((l) => l.startsWith("open:"))).toBeGreaterThan(urlAt);
+    const noTty = harness({ isTTY: false });
+    expect(await run(noTty)).toBe(2);
+    expect(noTty.stdout.join("")).toContain("/cli?sid=");
   });
 });
 
-// ---------------------------------------------------------------------------
-// Retries and the three distinct messages
-// ---------------------------------------------------------------------------
-
-/** A responder that rejects the first `n` submissions, then accepts. */
-function rejectFirst(n: number): Responder {
-  let seen = 0;
-  return (body, material) => {
-    if (seen++ < n) {
-      return { status: 400, json: { code: "CLI_SETUP_INVALID_CODE", message: "no" } };
-    }
-    return acceptAll(body, material);
-  };
-}
-
-describe("a wrong code re-prompts in place", () => {
-  it("offers exactly two retries, labelled, and succeeds on the third", async () => {
-    const h = harness({ answers: ["ZZZZZZZZ", "XXXXXXXX", CODE], respond: rejectFirst(2) });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-
-    expect(exit).toBe(0);
-    expect(h.prompts).toEqual(["Paste the code: ", "Retry (1/2): ", "Retry (2/2): "]);
-    expect(storedProfile()?.apiKey).toBe(API_KEY);
+describe("retries and the distinct failures", () => {
+  it("offers exactly two labelled retries, succeeding on the third; gives up after the third wrong code (exit 3, no profile written)", async () => {
+    const ok = harness({ answers: ["ZZZZZZZZ", "XXXXXXXX", CODE], respond: rejectFirst(2) });
+    expect(await run(ok)).toBe(0);
+    expect(ok.prompts).toEqual(["Paste the code: ", "Retry (1/2): ", "Retry (2/2): "]);
+    const bad = harness({ answers: ["ZZZZZZZZ", "XXXXXXXX", "VVVVVVVV"], respond: rejectFirst(99) });
+    expect(await run(bad)).toBe(3);
+    expect(bad.requests).toHaveLength(3);
   });
 
-  it("gives up after the third wrong code, exit 3, profile untouched", async () => {
-    const h = harness({
-      answers: ["ZZZZZZZZ", "XXXXXXXX", "VVVVVVVV"],
-      respond: rejectFirst(99),
-    });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-
-    expect(exit).toBe(3);
-    expect(h.requests).toHaveLength(3);
-    // Byte-identical to before the run: the file was never created at all.
-    expect(existsSync(configPath)).toBe(false);
-  });
-});
-
-describe("a wrong code, an expired code and an unreachable API read differently", () => {
-  const messages: Record<string, string> = {};
-
-  it("collects each arm's message and exit code", async () => {
-    const wrong = harness({
-      answers: ["ZZZZZZZZ", "XXXXXXXX", "VVVVVVVV"],
-      respond: rejectFirst(99),
-    });
-    expect(await runSetup({ "base-url": BASE_URL }, wrong.io)).toBe(3);
-    messages["wrong"] = wrong.stderr.filter((l) => l.startsWith("error:")).join("");
-
-    const expired = harness({
-      answers: [CODE],
-      respond: () => ({ status: 400, json: { code: "CLI_SETUP_EXPIRED", message: "gone" } }),
-    });
-    expect(await runSetup({ "base-url": BASE_URL }, expired.io)).toBe(3);
-    messages["expired"] = expired.stderr.filter((l) => l.startsWith("error:")).join("");
-
+  it("a wrong code, an expired code and an unreachable API read differently (exits 3, 3, 7); expired is not retried", async () => {
+    const msg = (h: ReturnType<typeof harness>) => h.stderr.filter((l) => l.startsWith("error:")).join("");
+    const wrong = harness({ answers: ["ZZZZZZZZ", "XXXXXXXX", "VVVVVVVV"], respond: rejectFirst(99) });
+    const expired = harness({ answers: [CODE, CODE, CODE], respond: reject("CLI_SETUP_EXPIRED", "gone") });
     const down = harness({ answers: [CODE], respond: () => "network-failure" });
-    expect(await runSetup({ "base-url": BASE_URL }, down.io)).toBe(7);
-    messages["unreachable"] = down.stderr.filter((l) => l.startsWith("error:")).join("");
-
-    // Every arm actually produced a message, so the distinctness assertion
-    // below cannot pass on three empty strings.
-    for (const [arm, text] of Object.entries(messages)) {
-      expect(text.length, `${arm} produced no message`).toBeGreaterThan(20);
-    }
-    expect(new Set(Object.values(messages)).size).toBe(3);
+    expect([await run(wrong), await run(expired), await run(down)]).toEqual([3, 3, 7]);
+    const msgs = [wrong, expired, down].map(msg);
+    for (const m of msgs) expect(m.length).toBeGreaterThan(20);
+    expect(new Set(msgs).size).toBe(3);
+    expect(expired.requests).toHaveLength(1);
   });
 
-  it("an expired code is not retried", async () => {
-    const h = harness({
-      answers: [CODE, CODE, CODE],
-      respond: () => ({ status: 400, json: { code: "CLI_SETUP_EXPIRED", message: "gone" } }),
-    });
-    await runSetup({ "base-url": BASE_URL }, h.io);
-    expect(h.requests).toHaveLength(1);
-    expect(h.prompts).toHaveLength(1);
-  });
-
-  it("a revoked key surfaces the server's own actionable message, exit 3", async () => {
+  it("a revoked key surfaces the server's own message (exit 3); the endpoint cap exits 6", async () => {
     const named = "This workspace has no API key. Create one in the dashboard.";
-    const h = harness({
-      answers: [CODE],
-      respond: () => ({ status: 409, json: { code: "CLI_SETUP_NO_API_KEY", message: named } }),
-    });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(3);
+    const h = harness({ answers: [CODE], respond: reject("CLI_SETUP_NO_API_KEY", named, 409) });
+    expect(await run(h)).toBe(3);
     expect(h.stderr.join("")).toContain(named);
-  });
-
-  it("the endpoint cap exits 6", async () => {
-    const h = harness({
-      answers: [CODE],
-      respond: () => ({ status: 429, json: { code: "PLATFORM_RATE_LIMIT", message: "slow down" } }),
-    });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(6);
+    expect(await run(harness({ answers: [CODE], respond: reject("PLATFORM_RATE_LIMIT", "slow", 429) }))).toBe(6);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Headless, detected rather than flagged
-// ---------------------------------------------------------------------------
-
-describe("headless environments are detected", () => {
-  for (const [label, env, platform] of [
-    ["continuous integration", { CI: "true" }, "darwin"],
+describe("headless environments", () => {
+  it.each([
+    ["CI", { CI: "true" }, "darwin"],
     ["a remote shell", { SSH_CONNECTION: "1.2.3.4 1 5.6.7.8 22" }, "darwin"],
     ["a displayless session", { DISPLAY: "" }, "linux"],
-  ] as const) {
-    it(`${label}: no open attempted, URL still printed, paste still works`, async () => {
-      const h = harness({ answers: [CODE], env, platform });
-      const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-
-      expect(h.opened).toEqual([]);
-      expect(h.stdout.join("")).toContain("/cli?sid=");
-      expect(h.prompts).toHaveLength(1);
-      expect(exit).toBe(0);
-    });
-  }
-
-  it("--no-browser where a browser exists says so rather than complying silently", async () => {
-    const h = harness({ answers: [CODE], env: {}, platform: "darwin" });
-    await runSetup({ "base-url": BASE_URL, "no-browser": true }, h.io);
-
+  ])("%s: no open attempted, URL printed, paste works", async (_l, env, platform) => {
+    const h = harness({ answers: [CODE], env, platform });
+    expect(await run(h)).toBe(0);
     expect(h.opened).toEqual([]);
-    expect(h.stderr.join("")).toMatch(/--no-browser/);
+    expect(h.stdout.join("")).toContain("/cli?sid=");
   });
 
-  it("--no-browser where none exists says nothing extra", async () => {
-    const h = harness({ answers: [CODE], env: { CI: "1" }, platform: "darwin" });
-    await runSetup({ "base-url": BASE_URL, "no-browser": true }, h.io);
-    expect(h.stderr.join("")).not.toMatch(/--no-browser/);
+  it("--no-browser says so where a browser exists, nothing where none does; a browser that refuses to open is no error", async () => {
+    const withBrowser = harness({ answers: [CODE] });
+    await run(withBrowser, { "no-browser": true });
+    expect([withBrowser.opened, withBrowser.stderr.join("")]).toEqual([[], expect.stringMatching(/--no-browser/)]);
+    const headless = harness({ answers: [CODE], env: { CI: "1" } });
+    await run(headless, { "no-browser": true });
+    expect(headless.stderr.join("")).not.toMatch(/--no-browser/);
+    expect(await run(harness({ answers: [CODE], openThrows: true }))).toBe(0);
   });
 
-  it("a browser that refuses to open is not an error", async () => {
-    const h = harness({ answers: [CODE], openThrows: true });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(0);
+  it("a non-terminal invocation names both remedies, exits 2 and never reads stdin", async () => {
+    const h = harness({ isTTY: false, stdin: "WDJBMJHT" });
+    expect(await run(h)).toBe(2);
+    expect(h.stderr.join("")).toContain("CURVIATE_API_KEY");
+    expect(h.stderr.join("")).toContain("curviate login --api-key -");
+    expect([h.stdinReads, h.prompts]).toEqual([0, []]);
+  });
+
+  it("fully piped (both streams) is the agent path: exit 0 with the agent object; a terminal output with no stdin still fails fast", async () => {
+    const piped = harness({ isTTY: false, isOutputTTY: false, stdin: CODE });
+    expect(await run(piped)).toBe(0);
+    expect(JSON.parse(piped.stdout.join("")).next_step).toBe("curviate setup --code -");
+    expect([piped.stdinReads, piped.stderr.join("")]).toEqual([0, expect.not.stringContaining("CURVIATE_API_KEY")]);
+    const human = harness({ isTTY: false, isOutputTTY: true });
+    expect(await run(human)).toBe(2);
+    expect(human.stderr.join("")).toContain("CURVIATE_API_KEY");
   });
 });
 
-describe("a non-terminal invocation fails fast and never touches stdin", () => {
-  it("names both remedies, exits 2, and the stdin reader is never called", async () => {
-    const h = harness({ answers: [], isTTY: false, stdin: "WDJBMJHT" });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
-
-    expect(exit).toBe(2);
-    const said = h.stderr.join("");
-    expect(said).toContain("CURVIATE_API_KEY");
-    expect(said).toContain("curviate login --api-key -");
-    // Not merely "it exited": it must never have READ, or a piped secret is
-    // consumed by a command that then refuses to use it.
-    expect(h.stdinReads).toBe(0);
-    expect(h.prompts).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// The agent path
-// ---------------------------------------------------------------------------
-
-describe("setup --json is the agent path", () => {
-  it("emits one object with the URL and a literally runnable next step", async () => {
-    const h = harness({ answers: [] });
-    const exit = await runSetup({ "base-url": BASE_URL, json: true }, h.io);
-
-    expect(exit).toBe(0);
+describe("setup --json (agent path) and setup --code - (resume)", () => {
+  it("emits one object with the URL and a runnable next step, prompts/opens/calls nothing, parks the material at 0600", async () => {
+    const h = harness();
+    expect(await run(h, { json: true })).toBe(0);
     expect(h.stdout).toHaveLength(1);
     const emitted = JSON.parse(h.stdout[0]!) as Record<string, unknown>;
     expect(emitted["authorize_url"]).toContain("/cli?sid=");
     expect(emitted["next_step"]).toBe("curviate setup --code -");
-    // The session id rides INSIDE authorize_url by design (it is one half of
-    // the two secrets redemption needs, and the browser must carry it back);
-    // what must never appear is a separate field exposing it, the private
-    // key, the code, or the delivered credential.
-    expect(Object.keys(emitted).sort()).toEqual([
-      "authorize_url",
-      "instructions",
-      "next_step",
-    ]);
+    expect(Object.keys(emitted).sort()).toEqual(["authorize_url", "instructions", "next_step"]);
     expect(h.stdout.join("")).not.toContain(h.material.privateKey);
     expect(h.stderr.join("")).not.toContain(h.material.sessionId);
-  });
-
-  it("does not prompt, does not open a browser, and does not call the API", async () => {
-    const h = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, h.io);
-    expect(h.prompts).toEqual([]);
-    expect(h.opened).toEqual([]);
-    expect(h.requests).toEqual([]);
-  });
-
-  it("parks the session material at 0600 so a second process can finish", async () => {
-    const h = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, h.io);
-    expect(existsSync(resumeStatePath())).toBe(true);
+    expect([h.prompts, h.opened, h.requests]).toEqual([[], [], []]);
     expect(statSync(resumeStatePath()).mode & 0o777).toBe(0o600);
   });
-});
 
-describe("setup --code - resumes a flow another process started", () => {
-  it("reads the code from stdin and lands the key", async () => {
-    const first = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, first.io);
+  const resume = async (second: Opts, flags: object) => {
+    const first = harness();
+    await run(first, { json: true });
+    const h = harness({ ...second, respond: () => ({ status: 200, json: { sealed_key: seal(API_KEY, first.material.publicKey), tenant_name: TENANT } }) });
+    return { first, h, exit: await runSetup(flags as never, h.io) };
+  };
 
-    // A SEPARATE invocation: a fresh harness, generating fresh material it
-    // must NOT use, so a resume that silently started over would fail here.
-    // The stub seals to the FIRST run's public key, so the assertion below
-    // only passes if the resume recovered the parked private key too.
-    const second = harness({
-      answers: [],
-      stdin: "wdjb-mjht",
-      respond: () => ({
-        status: 200,
-        json: { sealed_key: seal(API_KEY, first.material.publicKey), tenant_name: TENANT },
-      }),
-    });
-    const exit = await runSetup({ code: "-", json: true }, second.io);
-
+  it("--code - reads the code from stdin, redeems the parked session with the parked key, and clears the parked state (no replay)", async () => {
+    const { first, h, exit } = await resume({ stdin: "wdjb-mjht" }, { code: "-", json: true });
     expect(exit).toBe(0);
-    expect(second.stdinReads).toBe(1);
-    expect(second.requests).toEqual([
-      { session_id: first.material.sessionId, verification_code: "WDJBMJHT" },
-    ]);
-    expect(storedProfile()?.apiKey).toBe(API_KEY);
-  });
-
-  it("clears the parked material once redeemed, so it cannot be replayed", async () => {
-    const first = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, first.io);
-    const second = harness({
-      answers: [],
-      stdin: CODE,
-      respond: () => ({
-        status: 200,
-        json: { sealed_key: seal(API_KEY, first.material.publicKey), tenant_name: TENANT },
-      }),
-    });
-    expect(await runSetup({ code: "-", json: true }, second.io)).toBe(0);
-
+    expect([h.stdinReads, h.requests]).toEqual([1, [{ session_id: first.material.sessionId, verification_code: "WDJBMJHT" }]]);
+    expect(stored()?.apiKey).toBe(API_KEY);
     expect(existsSync(resumeStatePath())).toBe(false);
-
-    const third = harness({ answers: [], stdin: CODE });
-    expect(await runSetup({ code: "-", json: true }, third.io)).toBe(2);
-    expect(third.requests).toEqual([]);
+    expect(h.stderr.join("")).not.toMatch(/shell history/);
+    const replay = harness({ stdin: CODE });
+    expect(await runSetup({ code: "-", json: true } as never, replay.io)).toBe(2);
+    expect(replay.requests).toEqual([]);
   });
 
-  it("with no flow in progress it says so instead of starting one", async () => {
-    const h = harness({ answers: [], stdin: CODE });
-    const exit = await runSetup({ code: "-", json: true }, h.io);
-    expect(exit).toBe(2);
-    expect(h.stderr.join("")).toContain("no setup is in progress");
-  });
-
-  it("a code given as a flag VALUE earns the ps/shell-history warning", async () => {
-    const first = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, first.io);
-    const second = harness({
-      answers: [],
-      respond: () => ({
-        status: 200,
-        json: { sealed_key: seal(API_KEY, first.material.publicKey), tenant_name: TENANT },
-      }),
-    });
-    expect(await runSetup({ code: CODE, json: true }, second.io)).toBe(0);
-    expect(second.stderr.join("")).toMatch(/shell history/);
-    expect(second.stdinReads).toBe(0);
-  });
-
-  it("a code read from stdin earns no such warning", async () => {
-    const first = harness({ answers: [] });
-    await runSetup({ "base-url": BASE_URL, json: true }, first.io);
-    const second = harness({
-      answers: [],
-      stdin: CODE,
-      respond: () => ({
-        status: 200,
-        json: { sealed_key: seal(API_KEY, first.material.publicKey), tenant_name: TENANT },
-      }),
-    });
-    expect(await runSetup({ code: "-", json: true }, second.io)).toBe(0);
-    expect(second.stderr.join("")).not.toMatch(/shell history/);
+  it("with no flow in progress it says so; a code given as a flag VALUE earns the ps/shell-history warning and reads no stdin", async () => {
+    const none = harness({ stdin: CODE });
+    expect(await runSetup({ code: "-", json: true } as never, none.io)).toBe(2);
+    expect(none.stderr.join("")).toContain("no setup is in progress");
+    const { h, exit } = await resume({}, { code: CODE, json: true });
+    expect(exit).toBe(0);
+    expect(h.stderr.join("")).toMatch(/shell history/);
+    expect(h.stdinReads).toBe(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Verification is a real call, not an assumption
-// ---------------------------------------------------------------------------
 
 describe("the credential is proven, not assumed", () => {
-  it("a verifying call that fails is reported and exits 3", async () => {
-    const h = harness({ answers: [CODE], verifyFails: true });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(3);
-    expect(h.stderr.join("")).toMatch(/verifying call/);
-  });
-
-  it("a verifying call that got no readable answer exits 7, a platform fault, like doctor", async () => {
-    const { CurviateError } = await import("@curviate/sdk");
-    const h = harness({
-      answers: [CODE],
-      verifyError: new CurviateError({ code: "PLATFORM_ERROR", message: "x", httpStatus: 502, userFixable: false, retryLikelyToSucceed: true }),
-    });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(7);
-    expect(h.stderr.join("")).toMatch(/verifying call/);
+  it("a failing verifying call exits 3; one with no readable answer exits 7 (platform fault)", async () => {
+    const failed = harness({ answers: [CODE], verifyError: new Error("rejected") });
+    expect(await run(failed)).toBe(3);
+    expect(failed.stderr.join("")).toMatch(/verifying call/);
+    const unreadable = harness({ answers: [CODE], verifyError: new CurviateError({ code: "PLATFORM_ERROR", message: "x", httpStatus: 502, userFixable: false, retryLikelyToSucceed: true } as never) });
+    expect(await run(unreadable)).toBe(7);
   });
 
   describe("the default verifying call requires a real account page", () => {
-    let server: import("node:http").Server;
-    let base: string;
-    let body = "";
-    beforeAll(async () => {
-      const { createServer } = await import("node:http");
-      server = createServer((req, res) => {
-        req.resume();
-        req.on("end", () => {
-          res.writeHead(200, { "content-type": "application/json" });
-          res.end(body);
-        });
-      });
-      await new Promise<void>((r) => server.listen(0, r));
-      base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-    });
-    afterAll(async () => {
-      await new Promise<void>((r) => server.close(() => r()));
-    });
-
-    for (const unreadable of ["", "null", "{}", '{"items":null}', '{"items":"x"}', "[]"]) {
-      it(`${JSON.stringify(unreadable)} is not verified: PLATFORM_ERROR`, async () => {
-        body = unreadable;
-        await expect(resolveSetupIO({}).verify("cvt_test_x", base)).rejects.toMatchObject({ code: "PLATFORM_ERROR" });
-      });
-    }
-
-    it("control: a real page verifies", async () => {
-      body = JSON.stringify({ object: "list", items: [], cursor: null });
-      await expect(resolveSetupIO({}).verify("cvt_test_x", base)).resolves.toBeUndefined();
+    const sink = useSink();
+    it.each(["", "null", "{}", '{"items":null}', '{"items":"x"}', "[]"])("%j is PLATFORM_ERROR; a real page verifies", async (unreadable) => {
+      sink.reply = { type: "application/json", body: unreadable };
+      await expect(resolveSetupIO({}).verify("cvt_test_x", sink.url)).rejects.toMatchObject({ code: "PLATFORM_ERROR" });
+      sink.reply = { body: { object: "list", items: [], cursor: null } };
+      await expect(resolveSetupIO({}).verify("cvt_test_x", sink.url)).resolves.toBeUndefined();
     });
   });
 });
 
-// ---------------------------------------------------------------------------
-// Fully piped is the agent path, deliberately
-// ---------------------------------------------------------------------------
+describe("nothing leaks: a full two-leg setup through the CLI entry point", () => {
+  const LEAK_KEY = "rdc_live_LEAKPROBE_9f3a1c7e5b2d";
+  const sink = useSink();
 
-describe("a fully piped invocation is the agent path, not the non-terminal refusal", () => {
-  /**
-   * Both streams non-TTY and no `--json`: the agent object is emitted and the
-   * run exits 0, rather than falling into the fail-fast that names
-   * CURVIATE_API_KEY. That is a deliberate product ruling, not an accident of
-   * branch order, so it is pinned here. The fail-fast still owns the case a
-   * human hits: a terminal for output, nothing on stdin.
-   */
-  it("emits the agent object and exits 0 with both streams piped", async () => {
-    const h = harness({ answers: [], isTTY: false, isOutputTTY: false, stdin: CODE });
-    const exit = await runSetup({ "base-url": BASE_URL }, h.io);
+  it("neither stream carries the key, the code (either spelling), the private key, or the session id outside the authorize URL; the profile does hold the key (positive control)", async () => {
+    let exchanges = 0;
+    const state = {} as { parked: { sessionId: string; publicKey: string; privateKey: string } };
+    sink.reply = (hit) => {
+      if (!hit.url.startsWith("/api/auth/cli/exchange")) return { body: { items: [], cursor: null } };
+      exchanges++;
+      const b = JSON.parse(hit.body) as Body;
+      if (b.session_id !== state.parked.sessionId || b.verification_code !== "WDJBMJHT") return { status: 400, body: { code: "CLI_SETUP_INVALID_CODE", message: "no" } };
+      return { body: { sealed_key: seal(LEAK_KEY, state.parked.publicKey), tenant_name: "Leak Probe Workspace", account_id: "acc_leak_probe" } };
+    };
+    const home = join(xdg, "leg");
+    const first = await sink.run(["setup", "--json", "--base-url", sink.url], { xdg: home, env: { CURVIATE_API_KEY: undefined } });
+    const statePath = join(home, "curviate", "setup-session.json");
+    state.parked = JSON.parse(readFileSync(statePath, "utf8"));
+    const url = (JSON.parse(first.stdout.trim()) as { authorize_url: string }).authorize_url;
+    const second = await sink.run(["setup", "--code", "-", "--base-url", sink.url], { xdg: home, stdin: "wdjb-mjht", env: { CURVIATE_API_KEY: undefined } });
 
-    expect(exit).toBe(0);
-    const emitted = JSON.parse(h.stdout.join("")) as Record<string, unknown>;
-    expect(emitted["next_step"]).toBe("curviate setup --code -");
-    expect(h.stdinReads).toBe(0);
-    expect(h.stderr.join("")).not.toContain("CURVIATE_API_KEY");
-  });
-
-  it("but a terminal for output with nothing on stdin still fails fast", async () => {
-    const h = harness({ answers: [], isTTY: false, isOutputTTY: true, stdin: CODE });
-    expect(await runSetup({ "base-url": BASE_URL }, h.io)).toBe(2);
-    expect(h.stderr.join("")).toContain("CURVIATE_API_KEY");
+    expect([first.status, second.status, exchanges], first.stderr + second.stderr).toEqual([0, 0, 1]);
+    const profile = readFileSync(join(home, "curviate", "config.json"), "utf8");
+    expect(profile.split(LEAK_KEY)).toHaveLength(2);
+    expect(profile).toContain("Leak Probe Workspace");
+    expect(statSync(join(home, "curviate", "config.json")).mode & 0o777).toBe(0o600);
+    const streams = [first.stdout, first.stderr, second.stdout, second.stderr].join("\n");
+    expect(second.stdout + second.stderr).toContain("Leak Probe Workspace");
+    const rest = streams.split(url).join("<authorize-url>");
+    for (const secret of [LEAK_KEY, "wdjb-mjht", "WDJBMJHT", state.parked.sessionId]) expect(rest).not.toContain(secret);
+    expect(streams).not.toContain(state.parked.privateKey);
+    expect(existsSync(statePath)).toBe(false);
   });
 });

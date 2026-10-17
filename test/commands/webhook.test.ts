@@ -1,590 +1,186 @@
 /**
- * Tests for the `webhook` command group (root-scoped).
- *
- * Covers:
- *   webhook create     — webhooks.create() + --account-ids array + --preview
- *   webhook list       — webhooks.list() + --all pagination
- *   webhook events     — webhooks.listEvents() (non-paginated)
- *   webhook update     — webhooks.update() + --source is usage error (exit 2) + --preview
- *   webhook delete     — webhooks.delete() + --preview
- *   webhook verify     — offline constructEvent(): no Curviate client, valid → event+exit0, error → envelope+exit2
+ * `webhook` command group (root-scoped): create / list / events / get / update / delete with a mock client, and
+ * `webhook verify` (offline, no client) both at the run-function seam and through the CLI entry point against a real
+ * captured delivery (the defect lived in the argv layer: inline JSON was opened as a filename, `--body -` as the sentinel).
  */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { createHmac } from "node:crypto";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runWebhookCreate, runWebhookDelete, runWebhookEvents, runWebhookGet, runWebhookList, runWebhookUpdate, runWebhookVerify, resolveWebhookBody } from "../../src/commands/webhook.js";
+import { STDIN_SENTINEL } from "../../src/lib/stdin.js";
+import { exitCode } from "../helpers/exit-code.js";
+import { runCli } from "../helpers/run-inproc.js";
 
-// ---------------------------------------------------------------------------
-// Client mock factory (root-scoped webhooks)
-// ---------------------------------------------------------------------------
-
-function makeClient() {
-  return {
-    webhooks: {
-      create: vi.fn(),
-      list: vi.fn(),
-      listEvents: vi.fn(),
-      get: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-  };
-}
-
-type Client = ReturnType<typeof makeClient>;
-
-type WebhookFlags = {
-  id?: string;
-  "account-id"?: string;
-  "account-ids"?: string;
-  "request-url"?: string;
-  source?: string;
-  name?: string;
-  enabled?: boolean;
-  events?: string;
-  data?: string;
-  cursor?: string;
-  limit?: string;
-  all?: boolean;
-  "max-pages"?: string;
-  json?: boolean;
-  fields?: string;
-  preview?: boolean;
-  // webhook verify flags
-  secret?: string;
-  header?: string;
-  body?: string;
-  "max-age-secs"?: string;
-  "api-key"?: string;
-  "base-url"?: string;
-  timeout?: string;
-  profile?: string;
-};
-
-function makeOut() {
-  return {
-    stdout: { write: vi.fn() },
-    stderr: { write: vi.fn() },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// HMAC helper for webhook verify tests
-// ---------------------------------------------------------------------------
-
-/**
- * Build a valid `X-Curviate-Signature` header for a given secret + body.
- * Mirrors the SDK's own HMAC-SHA256(secret, "<timestamp>.<body>") approach.
- */
-function buildSignatureHeader(secret: string, bodyStr: string, nowSecs?: number): string {
-  const t = nowSecs ?? Math.floor(Date.now() / 1000);
-  const payload = `${t}.${bodyStr}`;
-  const hmac = createHmac("sha256", secret).update(payload).digest("hex");
-  return `t=${t},v1=${hmac}`;
-}
-
-// ---------------------------------------------------------------------------
-// webhook create
-// ---------------------------------------------------------------------------
-
-describe("webhook create", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.create as Mock).mockResolvedValue({ object: "webhook", id: "wh_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.create with source, request_url, account_ids array", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookCreate(client as never, {
-      source: "messaging",
-      "request-url": "https://example.com/hook",
-      "account-ids": "acc_1,acc_2",
-      json: true,
-    } as WebhookFlags, out);
-
-    expect(client.webhooks.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        source: "messaging",
-        request_url: "https://example.com/hook",
-        account_ids: ["acc_1", "acc_2"],
-      }),
-    );
-  });
-
-  it("missing --source exits 2", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookCreate(client as never, {
-        "request-url": "https://example.com/hook",
-        "account-ids": "acc_1",
-      } as WebhookFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.webhooks.create).not.toHaveBeenCalled();
-  });
-
-  it("missing --request-url exits 2", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookCreate(client as never, {
-        source: "messaging",
-        "account-ids": "acc_1",
-      } as WebhookFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.webhooks.create).not.toHaveBeenCalled();
-  });
-
-  it("missing --account-ids exits 2", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookCreate(client as never, {
-        source: "messaging",
-        "request-url": "https://example.com/hook",
-      } as WebhookFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.webhooks.create).not.toHaveBeenCalled();
-  });
-
-  it("--preview renders request without calling create", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookCreate(client as never, {
-      source: "messaging",
-      "request-url": "https://example.com/hook",
-      "account-ids": "acc_1",
-      preview: true,
-    } as WebhookFlags, out);
-
-    expect(client.webhooks.create).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("webhooks.create");
-  });
-
-  it("dead --format flag removed: a stray format field is never forwarded to the body", async () => {
-    const { runWebhookCreate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookCreate(client as never, {
-      source: "messaging",
-      "request-url": "https://example.com/hook",
-      "account-ids": "acc_1",
-      // Simulates a caller still passing the removed flag through the typed
-      // object (e.g. a stale script) — the server silently ignores `format`
-      // and always persists `json`, so the CLI must not send it either.
-      format: "form",
-      json: true,
-    } as WebhookFlags & { format?: string }, out);
-
-    expect(client.webhooks.create).toHaveBeenCalledWith(
-      expect.not.objectContaining({ format: expect.anything() }),
-    );
-  });
+const client = { webhooks: { create: vi.fn(), list: vi.fn(), listEvents: vi.fn(), get: vi.fn(), update: vi.fn(), delete: vi.fn() } };
+let out: { stdout: { write: Mock }; stderr: { write: Mock } };
+beforeEach(() => {
+  vi.resetAllMocks();
+  out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 });
+afterEach(() => vi.restoreAllMocks());
+const text = (w: { write: Mock }) => w.write.mock.calls.map((c) => c[0] as string).join("");
+const json = () => JSON.parse(text(out.stdout)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+const run = (fn: (...a: never[]) => Promise<unknown>, flags: object) => fn(client as never, flags as never, out as never);
+const CREATE = { source: "messaging", "request-url": "https://example.com/hook", "account-ids": "acc_1,acc_2", json: true };
 
-// ---------------------------------------------------------------------------
-// webhook list
-// ---------------------------------------------------------------------------
-
-describe("webhook list", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.list as Mock).mockResolvedValue({ items: [{ id: "wh_1" }], cursor: null });
+describe("webhook CRUD", () => {
+  it("create builds source, request_url and the account_ids array, and never forwards the removed --format", async () => {
+    client.webhooks.create.mockResolvedValue({ object: "webhook", id: "wh_1" });
+    await run(runWebhookCreate, { ...CREATE, format: "form" });
+    expect(client.webhooks.create).toHaveBeenCalledWith(expect.objectContaining({ source: "messaging", request_url: "https://example.com/hook", account_ids: ["acc_1", "acc_2"] }));
+    expect(client.webhooks.create.mock.calls[0]![0]).not.toHaveProperty("format");
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.list()", async () => {
-    const { runWebhookList } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookList(client as never, { json: true } as WebhookFlags, out);
-    expect(client.webhooks.list).toHaveBeenCalled();
+  it.each([["--source", { source: undefined }], ["--request-url", { "request-url": undefined }], ["--account-ids", { "account-ids": undefined }]])("create without %s exits 2 with no call", async (_f, drop) => {
+    expect(await exitCode(() => run(runWebhookCreate, { ...CREATE, ...drop }))).toBe(2);
+    expect(client.webhooks.create).not.toHaveBeenCalled();
   });
 
-  it("--all streams NDJSON over two pages", async () => {
-    const { runWebhookList } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    (client.webhooks.list as Mock)
-      .mockResolvedValueOnce({ items: [{ id: "wh_1" }, { id: "wh_2" }], cursor: "c1" })
-      .mockResolvedValueOnce({ items: [{ id: "wh_3" }], cursor: null });
-
-    await runWebhookList(client as never, { all: true } as WebhookFlags, out);
-
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string);
-    const ndjson = lines.filter((l) => l.trim().startsWith("{"));
-    expect(ndjson).toHaveLength(3);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// webhook events
-// ---------------------------------------------------------------------------
-
-describe("webhook events", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.listEvents as Mock).mockResolvedValue({ items: [{ event: "message.received" }] });
+  it("update sends id + body fields and never --format; --source is immutable (exit 2)", async () => {
+    client.webhooks.update.mockResolvedValue({ object: "webhook", id: "wh_1" });
+    await run(runWebhookUpdate, { id: "wh_1", name: "new-name", format: "form", json: true });
+    expect(client.webhooks.update).toHaveBeenCalledWith("wh_1", expect.objectContaining({ name: "new-name" }));
+    expect(client.webhooks.update.mock.calls[0]![1]).not.toHaveProperty("format");
+    client.webhooks.update.mockClear();
+    expect(await exitCode(() => run(runWebhookUpdate, { id: "wh_1", source: "user", name: "x" }))).toBe(2);
+    expect(client.webhooks.update).not.toHaveBeenCalled();
   });
 
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.listEvents()", async () => {
-    const { runWebhookEvents } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookEvents(client as never, { json: true } as WebhookFlags, out);
-    expect(client.webhooks.listEvents).toHaveBeenCalled();
-  });
-
-  it("--all on non-paginated exits 2", async () => {
-    const { runWebhookEvents } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookEvents(client as never, { all: true } as WebhookFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// webhook get
-// ---------------------------------------------------------------------------
-
-describe("webhook get", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.get as Mock).mockResolvedValue({ object: "webhook", id: "wh_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.get with verbatim id", async () => {
-    const { runWebhookGet } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookGet(client as never, { id: "wh_1", json: true } as WebhookFlags, out);
+  it("get and delete pass the id verbatim; list calls list; events calls listEvents and rejects --all (exit 2)", async () => {
+    client.webhooks.get.mockResolvedValue({ id: "wh_1" });
+    client.webhooks.delete.mockResolvedValue({ id: "wh_1" });
+    client.webhooks.list.mockResolvedValue({ items: [], cursor: null });
+    client.webhooks.listEvents.mockResolvedValue({ items: [] });
+    await run(runWebhookGet, { id: "wh_1", json: true });
+    await run(runWebhookDelete, { id: "wh_1", json: true });
+    await run(runWebhookList, { json: true });
+    await run(runWebhookEvents, { json: true });
     expect(client.webhooks.get).toHaveBeenCalledWith("wh_1");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// webhook update
-// ---------------------------------------------------------------------------
-
-describe("webhook update", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.update as Mock).mockResolvedValue({ object: "webhook", id: "wh_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.update with id + body fields", async () => {
-    const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookUpdate(client as never, {
-      id: "wh_1",
-      name: "new-name",
-      json: true,
-    } as WebhookFlags, out);
-
-    expect(client.webhooks.update).toHaveBeenCalledWith(
-      "wh_1",
-      expect.objectContaining({ name: "new-name" }),
-    );
-  });
-
-  it("--source on update is a usage error → exit 2 (source is immutable)", async () => {
-    const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookUpdate(client as never, {
-        id: "wh_1",
-        source: "user",
-        name: "x",
-      } as WebhookFlags, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-    expect(client.webhooks.update).not.toHaveBeenCalled();
-  });
-
-  it("--preview renders request without calling update", async () => {
-    const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookUpdate(client as never, {
-      id: "wh_1",
-      name: "renamed",
-      preview: true,
-    } as WebhookFlags, out);
-
-    expect(client.webhooks.update).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("webhooks.update");
-    expect(parsed.args).toHaveProperty("id", "wh_1");
-  });
-
-  it("dead --format flag removed: a stray format field is never forwarded to the body", async () => {
-    const { runWebhookUpdate } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookUpdate(client as never, {
-      id: "wh_1",
-      name: "renamed",
-      format: "form",
-      json: true,
-    } as WebhookFlags & { format?: string }, out);
-
-    expect(client.webhooks.update).toHaveBeenCalledWith(
-      "wh_1",
-      expect.not.objectContaining({ format: expect.anything() }),
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// webhook delete
-// ---------------------------------------------------------------------------
-
-describe("webhook delete", () => {
-  let client: Client;
-
-  beforeEach(() => {
-    client = makeClient();
-    (client.webhooks.delete as Mock).mockResolvedValue({ object: "webhook_deleted", id: "wh_1" });
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls webhooks.delete with verbatim id", async () => {
-    const { runWebhookDelete } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookDelete(client as never, { id: "wh_1", json: true } as WebhookFlags, out);
     expect(client.webhooks.delete).toHaveBeenCalledWith("wh_1");
+    expect(client.webhooks.list).toHaveBeenCalled();
+    expect(client.webhooks.listEvents).toHaveBeenCalled();
+    expect(await exitCode(() => run(runWebhookEvents, { all: true }))).toBe(2);
   });
 
-  it("--preview renders request without calling delete", async () => {
-    const { runWebhookDelete } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-    await runWebhookDelete(client as never, { id: "wh_1", preview: true } as WebhookFlags, out);
-    expect(client.webhooks.delete).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("webhooks.delete");
+  it("list --all streams NDJSON over two pages", async () => {
+    client.webhooks.list.mockResolvedValueOnce({ items: [{ id: "wh_1" }, { id: "wh_2" }], cursor: "c1" }).mockResolvedValueOnce({ items: [{ id: "wh_3" }], cursor: null });
+    await run(runWebhookList, { all: true });
+    expect(text(out.stdout).split("\n").filter((l) => l.trim().startsWith("{"))).toHaveLength(3);
+  });
+
+  it.each([
+    ["create", runWebhookCreate, client.webhooks.create, "webhooks.create", { ...CREATE, json: false }],
+    ["update", runWebhookUpdate, client.webhooks.update, "webhooks.update", { id: "wh_1", name: "renamed" }],
+    ["delete", runWebhookDelete, client.webhooks.delete, "webhooks.delete", { id: "wh_1" }],
+  ])("%s --preview renders the request without calling the SDK", async (_n, fn, sdk, method, flags) => {
+    await run(fn as never, { ...flags, preview: true });
+    expect(sdk).not.toHaveBeenCalled();
+    expect(json().method).toBe(method);
   });
 });
 
-// ---------------------------------------------------------------------------
-// webhook verify (offline constructEvent — no Curviate client, no network)
-// ---------------------------------------------------------------------------
-
-describe("webhook verify", () => {
-  afterEach(() => vi.restoreAllMocks());
-
+describe("webhook verify (run-function seam)", () => {
   const SECRET = "whsec_testkey123";
-  const EVENT_BODY = JSON.stringify({ type: "message.received", data: { account_id: "acc_1" } });
+  const BODY = JSON.stringify({ type: "message.received", data: { account_id: "acc_1" } });
+  const sign = (body: string, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac("sha256", SECRET).update(`${t}.${body}`).digest("hex")}`;
+  const verify = (o: object = {}) => runWebhookVerify({ secret: SECRET, signatureHeader: sign(BODY), rawBody: BODY, ...o }, out);
 
-  it("valid signature → event JSON on stdout, exit 0, NO createClient called", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-
-    const header = buildSignatureHeader(SECRET, EVENT_BODY);
-
-    // Verify that the client factory is NEVER invoked — runWebhookVerify is
-    // purely offline (no network, no Curviate client).
-    const clientModule = await import("../../src/lib/client.js");
-    const createClientSpy = vi.spyOn(clientModule, "createClient").mockImplementation(() => {
-      throw new Error("createClient should NOT be called in webhook verify");
-    });
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-
-    // Run with the raw body string directly (not a file path for the unit test)
-    await runWebhookVerify({
-      secret: SECRET,
-      signatureHeader: header,
-      rawBody: EVENT_BODY,
-    }, out);
-
-    // No exit was called (exit 0 = success means we just return)
-    expect(exitSpy).not.toHaveBeenCalled();
-    expect(createClientSpy).not.toHaveBeenCalled();
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.type).toBe("message.received");
-
-    createClientSpy.mockRestore();
-    exitSpy.mockRestore();
+  it("a valid signature prints the event, exits 0, and never echoes the secret", async () => {
+    expect(await exitCode(verify)).toBeUndefined();
+    expect(json().type).toBe("message.received");
+    expect(text(out.stdout) + text(out.stderr)).not.toContain(SECRET);
   });
 
-  it("replay (stale timestamp) → error envelope on stdout, exit 2", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
+  it.each([
+    ["a stale timestamp", { signatureHeader: sign(BODY, Math.floor(Date.now() / 1000) - 600) }, "replay_detected"],
+    ["a bad HMAC", { signatureHeader: `t=${Math.floor(Date.now() / 1000)},v1=${"deadbeef".repeat(8)}` }, "invalid_signature"],
+    ["a header with no v1", { signatureHeader: "t=12345" }, "malformed_header"],
+    ["a 10 s-old timestamp under --max-age-secs 5", { signatureHeader: sign(BODY, Math.floor(Date.now() / 1000) - 10), replayWindowSecs: 5 }, "replay_detected"],
+  ])("%s: error envelope with reason=%s... exit 2", async (_l, over, reason) => {
+    expect(await exitCode(() => verify(over))).toBe(2);
+    expect(json().error).toMatchObject({ name: "WebhookSignatureError", reason });
+  });
+});
 
-    // 10 minutes ago — replay window default is 5 minutes
-    const staleSecs = Math.floor(Date.now() / 1000) - 600;
-    const header = buildSignatureHeader(SECRET, EVENT_BODY, staleSecs);
+describe("webhook verify --body: every documented form verifies a real captured delivery (through the CLI entry point)", () => {
+  const capture = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "webhook-delivery.capture.json"), "utf8")) as { secret: string; signatureHeader: string; rawBody: string; eventName: string };
+  const WIDE = "999999999"; // the capture's timestamp is fixed in time: widen the window, never re-sign
+  const dir = mkdtempSync(join(tmpdir(), "curviate-webhook-verify-"));
+  const file = join(dir, "body.json");
+  const fileNl = join(dir, "body-newline.json");
+  writeFileSync(file, capture.rawBody);
+  writeFileSync(fileNl, capture.rawBody + "\n");
+  // CURVIATE_API_KEY present on purpose: verify is offline and must never read it
+  const cli = (body: string, stdin = "", extra: string[] = ["--max-age-secs", WIDE]) =>
+    runCli(["webhook", "verify", "--secret", capture.secret, "--header", capture.signatureHeader, ...(body === "" ? [] : ["--body", body]), ...extra], { stdin, env: { CURVIATE_API_KEY: "cvt_live_bin_test_stub" } });
 
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookVerify({ secret: SECRET, signatureHeader: header, rawBody: EVENT_BODY }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
+  it.each([
+    ["inline JSON", () => cli(capture.rawBody)],
+    ["a file path", () => cli(file)],
+    ["a file with the trailing newline a shell redirect adds", () => cli(fileNl)],
+    ["stdin (--body -)", () => cli("-", capture.rawBody)],
+    ["stdin with the trailing newline a pipe adds", () => cli("-", capture.rawBody + "\n")],
+  ])("%s", async (_l, go) => {
+    const r = await go();
+    expect(r.status, r.stderr).toBe(0);
+    const parsed = JSON.parse(r.stdout.trim()) as Record<string, unknown>;
+    expect(parsed["event"]).toBe(capture.eventName);
+    expect(parsed["id"]).toBe((JSON.parse(capture.rawBody) as { id: string }).id);
+    expect(r.stderr).toBe("");
+    expect(r.stdout + r.stderr).not.toContain(capture.secret);
+  });
+
+  it("the verdict is unchanged by how the body arrived: a tampered inline or piped body is invalid_signature, the aged capture is replay_detected under the default window; all exit 2", async () => {
+    const reason = (r: { status: number; stdout: string }) => (r.status === 2 ? (JSON.parse(r.stdout.trim()) as { error: { reason: string } }).error.reason : `exit ${r.status}`);
+    expect(reason(await cli(capture.rawBody.replace("message.received", "message.deleted")))).toBe("invalid_signature");
+    expect(reason(await cli("-", capture.rawBody.replace("acc_capture", "acc_attacker")))).toBe("invalid_signature");
+    expect(reason(await cli(file, "", []))).toBe("replay_detected");
+  });
+
+  it("unusable input is a usage error (exit 2) that never masquerades as a signature verdict: a missing file names all three forms, an omitted --body, empty stdin", async () => {
+    const missing = await cli(join(dir, "no-such-file.json"), "", []);
+    expect(missing.status).toBe(2);
+    for (const re of [/--body/, /inline JSON/i, /file/i, /stdin/i]) expect(missing.stderr).toMatch(re);
+    expect(missing.stdout.trim()).toBe("");
+    const omitted = await cli("", "", []);
+    const empty = await cli("-", "", []);
+    expect([omitted.status, empty.status]).toEqual([2, 2]);
+    expect(omitted.stderr).toContain("--body");
+    expect(empty.stderr).toMatch(/stdin/i);
+    expect(omitted.stdout + empty.stdout).not.toContain("WebhookSignatureError");
+  });
+});
+
+describe("resolveWebhookBody (byte-exactness the HMAC depends on)", () => {
+  const BODY = '{"id":"wdl_1","event":"message.received","data":{"account_id":"acc_1"}}';
+  const dir = mkdtempSync(join(tmpdir(), "curviate-webhook-body-"));
+  const fileWith = (name: string, content: string) => (writeFileSync(join(dir, name), content), join(dir, name));
+  const resolve = (v: string | undefined, stdin = vi.fn()) => resolveWebhookBody(v, out, stdin);
+
+  it("inline JSON (even with leading whitespace) is returned verbatim and never opened as a file; a file loses only its trailing LF/CRLF, keeping newlines inside", async () => {
+    const stdin = vi.fn();
+    expect(await resolve(BODY, stdin)).toBe(BODY);
+    expect(await resolve(`  ${BODY}`, stdin)).toBe(`  ${BODY}`);
+    expect(stdin).not.toHaveBeenCalled();
+    expect(await resolve(fileWith("a.json", BODY))).toBe(BODY);
+    expect(await resolve(fileWith("b.json", `${BODY}\r\n`))).toBe(BODY);
+    expect(await resolve(fileWith("c.json", '{\n  "id": "wdl_1"\n}\n'))).toBe('{\n  "id": "wdl_1"\n}');
+    expect(text(out.stdout) + text(out.stderr)).toBe("");
+  });
+
+  it("a bare dash and the dispatcher's stdin sentinel both read stdin", async () => {
+    for (const spelling of ["-", STDIN_SENTINEL]) {
+      const stdin = vi.fn().mockResolvedValue(BODY);
+      expect(await resolve(spelling, stdin)).toBe(BODY);
+      expect(stdin).toHaveBeenCalledTimes(1);
     }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error).toBeDefined();
-    expect(parsed.error.name).toBe("WebhookSignatureError");
-    expect(parsed.error.reason).toBe("replay_detected");
   });
 
-  it("bad HMAC → error envelope with reason=invalid_signature, exit 2", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-
-    const nowSecs = Math.floor(Date.now() / 1000);
-    const badHeader = `t=${nowSecs},v1=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef`;
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookVerify({ secret: SECRET, signatureHeader: badHeader, rawBody: EVENT_BODY }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.reason).toBe("invalid_signature");
-  });
-
-  it("malformed header (missing v1) → error envelope with reason=malformed_header, exit 2", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookVerify({
-        secret: SECRET,
-        signatureHeader: "t=12345",  // missing v1=
-        rawBody: EVENT_BODY,
-      }, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.error.reason).toBe("malformed_header");
-  });
-
-  it("secret is NOT echoed in stdout or stderr", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-
-    const header = buildSignatureHeader(SECRET, EVENT_BODY);
-
-    // valid call — should succeed
-    await runWebhookVerify({ secret: SECRET, signatureHeader: header, rawBody: EVENT_BODY }, out);
-
-    const allOut = [
-      ...(out.stdout.write as Mock).mock.calls.map((c) => c[0] as string),
-      ...(out.stderr.write as Mock).mock.calls.map((c) => c[0] as string),
-    ].join("");
-
-    expect(allOut).not.toContain(SECRET);
-  });
-
-  it("--max-age-secs overrides the replay window", async () => {
-    const { runWebhookVerify } = await import("../../src/commands/webhook.js");
-    const out = makeOut();
-
-    // 10-second-old timestamp; with max-age-secs=5, it should be rejected
-    const staleSecs = Math.floor(Date.now() / 1000) - 10;
-    const header = buildSignatureHeader(SECRET, EVENT_BODY, staleSecs);
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runWebhookVerify({
-        secret: SECRET,
-        signatureHeader: header,
-        rawBody: EVENT_BODY,
-        replayWindowSecs: 5,
-      }, out);
-      expect.fail("should have been rejected");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it.each([["empty stdin", "-"], ["an omitted --body", undefined], ["an empty --body", ""], ["a missing file", "/nonexistent/absent.json"]])("%s is a usage error (exit 2) naming --body", async (_l, v) => {
+    expect(await exitCode(() => resolve(v, vi.fn().mockResolvedValue("")))).toBe(2);
+    expect(text(out.stderr)).toMatch(v === "-" ? /stdin/i : /--body/);
   });
 });

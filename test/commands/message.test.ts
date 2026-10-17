@@ -1,803 +1,272 @@
 /**
- * Tests for the `message` command group.
- *
- * Coverage:
- *   message new --to <attendee> "<text>" [--attach <file>…]   → messaging.startChat (base64 JSON)
- *   message <chat_id> "<text>" [--attach <file>…]             → messaging.sendMessage (base64 JSON)
- *   message get <chat_id> <message_id>                          → messaging.getMessage
- *   message edit <chat_id> <message_id> "<text>"               → messaging.editMessage
- *   message delete <chat_id> <message_id>                      → messaging.deleteMessage
- *   message react <chat_id> <message_id> --emoji <e>           → messaging.addReaction (body field: `reaction`)
- *   message attachment <chat_id> <message_id> <attachment_id> -o <file> → messaging.getAttachment (binary)
- *   message inmail --to <id> --subject <s> "<text>"           → messaging.sendInMail (--to via resolveIdentifier)
- *   message inmail-balance                                     → users.getInMailCredits
- *
- * v2: get/edit/delete/react/attachment are re-homed under chat_id (leading
- * positional); attachments travel as base64 {content,content_type,filename}
- * objects, never raw Buffers; sendInMail has no --surface (dropped, no v2
- * home); inmail-balance relocated from messaging.getInMailBalance to
- * users.getInMailCredits.
- *
- * --preview on writes: renders preview, no SDK call.
- * --preview on reads: exit 2.
- * --attach missing file: exit 2 before SDK call.
- * binary: -o writes file; TTY without -o exits 2.
- * --all rejected on non-paginated commands: exit 2.
+ * `message` group run functions against a mock SDK client: request building
+ * (flag -> SDK method/body), recipient and chat-id resolution, stdin text,
+ * acting-identity notices, exit codes. Argv routing is in test/message-routing.test.ts.
  */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { Mock } from "vitest";
-import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { CurviateError } from "@curviate/sdk";
+import {
+  runMessageAttachment, runMessageDelete, runMessageEdit, runMessageGet, runMessageInMail, runMessageInMailBalance,
+  runMessageNew, runMessageReact, runMessageSend,
+} from "../../src/commands/message.js";
+import { runPostCreate } from "../../src/commands/post.js";
+import { exitCode } from "../helpers/exit-code.js";
+import { mkClient, mkOut, written } from "../helpers/f4-unit.js";
 
-function makeMessagingNs() {
+type Fn = (client: never, args: never, out: never, stdin?: never) => Promise<void>;
+const PROFILE = { id: "ACoAAA123", public_identifier: "raphael-redmer" };
+const err = (code: string, httpStatus: number) => new CurviateError({ code, message: code, httpStatus, userFixable: false, retryLikelyToSucceed: false } as never);
+
+let ns: ReturnType<typeof makeNs>;
+let client: ReturnType<typeof mkClient>;
+let dir: string;
+function makeNs() {
   return {
+    users: { get: vi.fn().mockResolvedValue(PROFILE), getInMailCredits: vi.fn().mockResolvedValue({ balance: 50 }) },
+    posts: { create: vi.fn().mockResolvedValue({ post_id: "p1" }) },
     messaging: {
-      startChat: vi.fn(),
-      sendMessage: vi.fn(),
-      getMessage: vi.fn(),
-      editMessage: vi.fn(),
-      deleteMessage: vi.fn(),
-      addReaction: vi.fn(),
+      startChat: vi.fn().mockResolvedValue({ chat_id: "c1" }),
+      sendMessage: vi.fn().mockResolvedValue({ message_id: "m1" }),
+      getMessage: vi.fn().mockResolvedValue({ id: "msg_1" }),
+      editMessage: vi.fn().mockResolvedValue({}),
+      deleteMessage: vi.fn().mockResolvedValue({}),
+      addReaction: vi.fn().mockResolvedValue({}),
       getAttachment: vi.fn(),
-      sendInMail: vi.fn(),
-    },
-    users: {
-      getInMailCredits: vi.fn(),
+      sendInMail: vi.fn().mockResolvedValue({ inmail_id: "im1" }),
     },
   };
 }
+beforeEach(async () => {
+  ns = makeNs();
+  client = mkClient(ns);
+  dir = await mkdtemp(join(tmpdir(), "curviate-test-msg-"));
+});
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await rm(dir, { recursive: true, force: true });
+});
 
-function makeClient(ns: ReturnType<typeof makeMessagingNs>) {
-  return {
-    account: vi.fn().mockReturnValue(ns),
-  };
+/** Run `fn` with account + json defaults; returns the captured out. */
+async function call(fn: unknown, args: Record<string, unknown>, stdin?: () => Promise<string>) {
+  const out = mkOut();
+  await (fn as Fn)(client as never, { account: "acc_1", json: true, ...args } as never, out as never, stdin as never);
+  return out;
 }
-
-type MessageArgs = {
-  chatId?: string;
-  messageId?: string;
-  attachmentId?: string;
-  to?: string;
-  text?: string;
-  emoji?: string;
-  subject?: string;
-  output?: string;
-  attach?: string | string[];
-  account?: string;
-  json?: boolean;
-  preview?: boolean;
-  all?: boolean;
-  limit?: string;
-  cursor?: string;
-  "max-pages"?: string;
-  fields?: string;
-  "api-key"?: string;
-  "base-url"?: string;
-  timeout?: string;
-  profile?: string;
+const exits = (fn: unknown, args: Record<string, unknown>, stdin?: () => Promise<string>) => exitCode(() => call(fn, args, stdin));
+const preview = (out: ReturnType<typeof mkOut>) => JSON.parse(written(out.stdout)) as { method: string; body?: unknown; attachments?: string[] };
+const file = async (name: string, content: string) => {
+  const p = join(dir, name);
+  await writeFile(p, content);
+  return p;
 };
 
 describe("message new", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-  let tmpDir: string;
-
-  beforeEach(async () => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    (ns.messaging.startChat as Mock).mockResolvedValue({ chat_id: "chat_1", message_id: "msg_1" });
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-msg-"));
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("message new --to ACo123 'hello' — calls startChat with attendees_ids and text", async () => {
-    const { runMessageNew } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageNew(client as never, {
-      to: "ACo123",
-      text: "hello",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
+  it("startChat gets attendees_ids and text; --subject is verbatim, absent when omitted, 200 chars is the ceiling", async () => {
+    await call(runMessageNew, { to: "ACo123", text: "hello", subject: "Intro" });
     expect(client.account).toHaveBeenCalledWith("acc_1");
-    expect(ns.messaging.startChat).toHaveBeenCalledWith(
-      expect.objectContaining({ attendees_ids: ["ACo123"], text: "hello" }),
-    );
+    expect(ns.messaging.startChat).toHaveBeenCalledWith(expect.objectContaining({ attendees_ids: ["ACo123"], text: "hello", subject: "Intro" }));
+    await call(runMessageNew, { to: "ACo123", text: "hello" });
+    expect(Object.keys(ns.messaging.startChat.mock.calls[1]![0])).not.toContain("subject");
+    await call(runMessageNew, { to: "ACo123", text: "hello", subject: "x".repeat(200) });
+    expect(ns.messaging.startChat).toHaveBeenCalledTimes(3);
   });
 
-  it("message new --to ACo123 'hello' --attach <file> — reads file and passes base64 payload in attachments (v2: no multipart)", async () => {
-    const { runMessageNew } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const filePath = join(tmpDir, "file.txt");
-    await writeFile(filePath, "content");
-
-    await runMessageNew(client as never, {
-      to: "ACo123",
-      text: "hello",
-      attach: filePath,
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    const callArgs = (ns.messaging.startChat as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(Array.isArray(attachments)).toBe(true);
-    expect(attachments[0]).toEqual({
-      content: Buffer.from("content").toString("base64"),
-      content_type: "application/octet-stream",
-      filename: "file.txt",
-    });
-  });
-
-  it("message new --attach <missing-file> — exits 2 before SDK call", async () => {
-    const { runMessageNew } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageNew(client as never, {
-        to: "ACo123",
-        text: "hello",
-        attach: join(tmpDir, "no-such-file.txt"),
-        account: "acc_1",
-      } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it.each(["", "   ", "x".repeat(201)])("a %j-length subject is refused with exit 2 and nothing sent", async (subject) => {
+    expect(await exits(runMessageNew, { to: "ACo123", text: "hi", subject })).toBe(2);
     expect(ns.messaging.startChat).not.toHaveBeenCalled();
   });
 
-  it("message new --preview — renders preview, does not call startChat", async () => {
-    const { runMessageNew } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageNew(client as never, {
-      to: "ACo123",
-      text: "hello",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
+  it("--attach sends a base64 payload; a missing file exits 2 before the call", async () => {
+    await call(runMessageNew, { to: "ACo123", text: "hi", attach: await file("file.txt", "content") });
+    const a = ns.messaging.startChat.mock.calls[0]![0].attachments;
+    expect(a[0]).toEqual({ content: Buffer.from("content").toString("base64"), content_type: "application/octet-stream", filename: "file.txt" });
+    ns.messaging.startChat.mockClear();
+    expect(await exits(runMessageNew, { to: "ACo123", text: "hi", attach: join(dir, "nope.txt") })).toBe(2);
     expect(ns.messaging.startChat).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.startChat");
   });
 
-  it("message new --preview with attachment — preview shows attachment name+size, no bytes", async () => {
-    const { runMessageNew } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const filePath = join(tmpDir, "attach.pdf");
-    await writeFile(filePath, "pdfcontent");
-
-    await runMessageNew(client as never, {
-      to: "ACo123",
-      text: "hello",
-      attach: filePath,
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
+  it("--preview renders the request (subject, attachment name+size, no bytes) and calls nothing", async () => {
+    const out = await call(runMessageNew, { to: "ACo123", text: "hi", subject: "Intro", attach: await file("attach.pdf", "pdfcontent"), preview: true });
     expect(ns.messaging.startChat).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.attachments).toBeDefined();
-    expect(parsed.attachments[0]).toMatch(/attach\.pdf \(\d+ bytes\)/);
+    const p = preview(out);
+    expect(p.method).toBe("messaging.startChat");
+    expect(p.attachments![0]).toMatch(/attach\.pdf \(\d+ bytes\)/);
+    expect(written(out.stdout)).toContain("Intro");
+  });
+
+  it.each([
+    ["https://www.linkedin.com/in/raphael-redmer", "raphael-redmer"],
+    ["https://www.linkedin.com/in/raphael-redmer/", "raphael-redmer"],
+    ["raphael-redmer", "raphael-redmer"],
+  ])("--to %s resolves via one users.get(%s), then one startChat with the provider id", async (to, slug) => {
+    await call(runMessageNew, { to, text: "Hello" });
+    expect(ns.users.get).toHaveBeenCalledTimes(1);
+    expect(ns.users.get).toHaveBeenCalledWith(slug, expect.anything());
+    expect(ns.messaging.startChat).toHaveBeenCalledTimes(1);
+    expect(ns.messaging.startChat).toHaveBeenCalledWith(expect.objectContaining({ attendees_ids: ["ACoAAA123"] }));
+  });
+
+  it("a provider id skips users.get; a lookup 404 exits 4 and never starts a chat", async () => {
+    await call(runMessageNew, { to: "ACoAAA123", text: "Hello" });
+    expect(ns.users.get).not.toHaveBeenCalled();
+    ns.users.get.mockRejectedValue(err("RESOURCE_NOT_FOUND", 404));
+    expect(await exits(runMessageNew, { to: "not-found-slug", text: "Hello" })).toBe(4);
+    expect(ns.messaging.startChat).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("message send (message <chat_id>)", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-  let tmpDir: string;
-
-  beforeEach(async () => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    (ns.messaging.sendMessage as Mock).mockResolvedValue({ message_id: "msg_2" });
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-send-"));
+describe("message send", () => {
+  it("sendMessage gets the chat id and text; --attach is base64; a missing file exits 2", async () => {
+    await call(runMessageSend, { chatId: "chat_abc", text: "hi there", attach: await file("img.png", "imgdata") });
+    const [id, body] = ns.messaging.sendMessage.mock.calls[0]!;
+    expect(id).toBe("chat_abc");
+    expect(body).toMatchObject({ text: "hi there" });
+    expect(body.attachments[0]).toEqual({ content: Buffer.from("imgdata").toString("base64"), content_type: "image/png", filename: "img.png" });
+    expect(await exits(runMessageSend, { chatId: "chat_abc", text: "hi", attach: join(dir, "ghost.png") })).toBe(2);
+    expect(ns.messaging.sendMessage).toHaveBeenCalledTimes(1);
   });
 
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await rm(tmpDir, { recursive: true, force: true });
+  it.each([
+    ["https://www.linkedin.com/messaging/thread/2-AbCd==", "2-AbCd=="],
+    ["2-AbCd==", "2-AbCd=="],
+  ])("chat id %s reaches sendMessage as %s", async (chatId, sent) => {
+    await call(runMessageSend, { chatId, text: "Hello" });
+    expect(ns.messaging.sendMessage).toHaveBeenCalledWith(sent, expect.anything());
   });
 
-  it("message <chat_id> '<text>' — calls sendMessage with chatId and text", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(client as never, {
-      chatId: "chat_abc",
-      text: "hi there",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.sendMessage).toHaveBeenCalledWith(
-      "chat_abc",
-      expect.objectContaining({ text: "hi there" }),
-    );
+  it.each([
+    [{ kind: "company", company_id: "112013061", name: "RedHire" }, "Sent as RedHire (company page)\n"],
+    [{ kind: "company", company_id: null, name: null }, "Sent as a company page\n"],
+    [{ kind: "personal" }, null],
+    [undefined, null],
+  ])("sent_as %j prints %j on stderr", async (sent_as, note) => {
+    ns.messaging.sendMessage.mockResolvedValue({ message_id: "m", sent_as });
+    const out = await call(runMessageSend, { chatId: "COMPANY_1-abc", text: "hi" });
+    const err = written(out.stderr);
+    if (note) expect(err).toContain(note);
+    else expect(err).not.toContain("Sent as");
   });
 
-  it("message <chat_id> '<text>' --attach <file> — passes base64 payload in attachments (v2: no multipart)", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const filePath = join(tmpDir, "img.png");
-    await writeFile(filePath, "imgdata");
-
-    await runMessageSend(client as never, {
-      chatId: "chat_abc",
-      text: "see attached",
-      attach: filePath,
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    const callArgs = (ns.messaging.sendMessage as Mock).mock.calls[0]![1] as Record<string, unknown>;
-    const attachments = callArgs["attachments"] as Array<Record<string, unknown>>;
-    expect(attachments[0]).toEqual({
-      content: Buffer.from("imgdata").toString("base64"),
-      content_type: "image/png",
-      filename: "img.png",
-    });
-  });
-
-  it("message <chat_id> --attach <missing> — exits 2, no SDK call", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageSend(client as never, {
-        chatId: "chat_abc",
-        text: "hi",
-        attach: join(tmpDir, "ghost.png"),
-        account: "acc_1",
-      } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it("--preview calls nothing; it says 'Will send as a company page' only for a COMPANY_ chat", async () => {
+    const co = await call(runMessageSend, { chatId: "COMPANY_83734124_2-abc", text: "hi", preview: true });
+    expect(preview(co).method).toBe("messaging.sendMessage");
+    expect(written(co.stderr)).toContain("Will send as a company page\n");
+    const personal = await call(runMessageSend, { chatId: "CLASSIC_1-abc", text: "hi", preview: true });
+    expect(written(personal.stderr)).not.toContain("Will send as");
     expect(ns.messaging.sendMessage).not.toHaveBeenCalled();
   });
-
-  it("message <chat_id> --preview — renders preview, no SDK call", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(client as never, {
-      chatId: "chat_abc",
-      text: "preview this",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.sendMessage).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.sendMessage");
-  });
 });
 
-// ---------------------------------------------------------------------------
-// AX P1: sent_as acting-identity notice (default output, not just --verbose --json)
-// ---------------------------------------------------------------------------
-
-describe("message send — sent_as acting-identity notice", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
+describe("message get / edit / delete / react", () => {
+  it.each([
+    ["get", runMessageGet, {}, "getMessage", ["chat_abc", "msg_xyz"]],
+    ["edit", runMessageEdit, { text: "updated" }, "editMessage", ["chat_abc", "msg_xyz", { text: "updated" }]],
+    ["delete", runMessageDelete, {}, "deleteMessage", ["chat_abc", "msg_xyz"]],
+    ["react", runMessageReact, { emoji: "👍" }, "addReaction", ["chat_abc", "msg_xyz", { reaction: "👍" }]],
+  ])("message %s -> the wire args; --preview renders it and calls nothing", async (_n, fn, extra, method, args) => {
+    await call(fn, { chatId: "chat_abc", messageId: "msg_xyz", ...extra });
+    expect((ns.messaging as Record<string, ReturnType<typeof vi.fn>>)[method]).toHaveBeenCalledWith(...args);
+    (ns.messaging as Record<string, ReturnType<typeof vi.fn>>)[method]!.mockClear();
+    if (method === "getMessage") return; // a read has no preview
+    const out = await call(fn, { chatId: "chat_abc", messageId: "msg_xyz", preview: true, ...extra });
+    expect((ns.messaging as Record<string, ReturnType<typeof vi.fn>>)[method]).not.toHaveBeenCalled();
+    expect(preview(out).method).toBe(`messaging.${method}`);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("a company-page send with a resolved name prints 'Sent as <name> (company page)' to stderr", async () => {
-    (ns.messaging.sendMessage as Mock).mockResolvedValue({
-      message_id: "msg_1",
-      sent_as: { kind: "company", company_id: "112013061", name: "RedHire" },
-    });
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "COMPANY_83734124_2-abc", text: "hi", account: "acc_1", json: true } as MessageArgs,
-      out,
-    );
-
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines).toContain("Sent as RedHire (company page)\n");
-  });
-
-  it("a company-page send with an uncorrelated page (name null) prints the generic fallback", async () => {
-    (ns.messaging.sendMessage as Mock).mockResolvedValue({
-      message_id: "msg_1",
-      sent_as: { kind: "company", company_id: null, name: null },
-    });
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "COMPANY_83734124_2-abc", text: "hi", account: "acc_1", json: true } as MessageArgs,
-      out,
-    );
-
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines).toContain("Sent as a company page\n");
-  });
-
-  it("a personal send prints no acting-identity notice", async () => {
-    (ns.messaging.sendMessage as Mock).mockResolvedValue({
-      message_id: "msg_1",
-      sent_as: { kind: "personal" },
-    });
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "CLASSIC_1-abc", text: "hi", account: "acc_1", json: true } as MessageArgs,
-      out,
-    );
-
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines.some((l) => l.includes("Sent as"))).toBe(false);
-  });
-
-  it("a response with no sent_as field at all prints no notice (defensive, older/mocked responses)", async () => {
-    (ns.messaging.sendMessage as Mock).mockResolvedValue({ message_id: "msg_1" });
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "CLASSIC_1-abc", text: "hi", account: "acc_1", json: true } as MessageArgs,
-      out,
-    );
-
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines.some((l) => l.includes("Sent as"))).toBe(false);
-  });
-});
-
-describe("message send --preview — acting-identity echo (zero network calls)", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("--preview on a COMPANY_ chat id prints 'Will send as a company page' without any SDK call", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "COMPANY_83734124_2-abc", text: "hi", account: "acc_1", preview: true } as MessageArgs,
-      out,
-    );
-
-    expect(ns.messaging.sendMessage).not.toHaveBeenCalled();
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines).toContain("Will send as a company page\n");
-  });
-
-  it("--preview on a CLASSIC_ (personal) chat id prints no acting-identity note", async () => {
-    const { runMessageSend } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageSend(
-      client as never,
-      { chatId: "CLASSIC_1-abc", text: "hi", account: "acc_1", preview: true } as MessageArgs,
-      out,
-    );
-
-    const stderrLines = (out.stderr.write as Mock).mock.calls.map((c) => c[0] as string);
-    expect(stderrLines.some((l) => l.includes("Will send as"))).toBe(false);
-  });
-});
-
-describe("message get / edit / delete", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    (ns.messaging.getMessage as Mock).mockResolvedValue({ id: "msg_1" });
-    (ns.messaging.editMessage as Mock).mockResolvedValue({ id: "msg_1" });
-    (ns.messaging.deleteMessage as Mock).mockResolvedValue({ deleted: true });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("message get <chat_id> <message_id> — calls getMessage with chat_id + message_id", async () => {
-    const { runMessageGet } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageGet(client as never, { chatId: "chat_abc", messageId: "msg_xyz", account: "acc_1", json: true } as MessageArgs, out);
-
-    expect(ns.messaging.getMessage).toHaveBeenCalledWith("chat_abc", "msg_xyz");
-  });
-
-  it("message edit <chat_id> <message_id> '<text>' — calls editMessage with chat_id, message_id, and text body", async () => {
-    const { runMessageEdit } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageEdit(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_xyz",
-      text: "updated text",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.editMessage).toHaveBeenCalledWith("chat_abc", "msg_xyz", { text: "updated text" });
-  });
-
-  it("message edit --preview — renders preview, no editMessage call", async () => {
-    const { runMessageEdit } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageEdit(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_xyz",
-      text: "updated",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.editMessage).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.editMessage");
-  });
-
-  it("message delete <chat_id> <message_id> — calls deleteMessage with chat_id + message_id", async () => {
-    const { runMessageDelete } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageDelete(client as never, { chatId: "chat_abc", messageId: "msg_xyz", account: "acc_1", json: true } as MessageArgs, out);
-
-    expect(ns.messaging.deleteMessage).toHaveBeenCalledWith("chat_abc", "msg_xyz");
-  });
-
-  it("message delete --preview — renders preview, no deleteMessage call", async () => {
-    const { runMessageDelete } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageDelete(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_xyz",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.deleteMessage).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.deleteMessage");
-  });
-});
-
-describe("message react", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    (ns.messaging.addReaction as Mock).mockResolvedValue({ message_id: "msg_1", reaction: "👍" });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("message react <chat_id> <id> --emoji 👍 — calls addReaction with chat_id, message_id, and body field 'reaction'", async () => {
-    const { runMessageReact } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageReact(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_xyz",
-      emoji: "👍",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    // SDK body field is `reaction`, not `emoji`
-    expect(ns.messaging.addReaction).toHaveBeenCalledWith("chat_abc", "msg_xyz", { reaction: "👍" });
-  });
-
-  it("message react --preview — renders preview, no addReaction call", async () => {
-    const { runMessageReact } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageReact(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_xyz",
-      emoji: "👍",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.addReaction).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.addReaction");
-  });
-});
-
-describe("message attachment (binary)", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-  let tmpDir: string;
-
-  beforeEach(async () => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    // Use Buffer.allocUnsafeSlow to get a dedicated (non-pooled) ArrayBuffer so
-    // that buffer.buffer contains only "binary content" and nothing else.
-    const fakeBuffer = Buffer.allocUnsafeSlow(14);
-    Buffer.from("binary content").copy(fakeBuffer);
-    (ns.messaging.getAttachment as Mock).mockResolvedValue(fakeBuffer.buffer);
-    tmpDir = await mkdtemp(join(tmpdir(), "curviate-test-bin-"));
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("message attachment <chat_id> <msg_id> <att_id> -o <file> — writes binary to file", async () => {
-    const { runMessageAttachment } = await import("../../src/commands/message.js");
-    const outFile = join(tmpDir, "out.bin");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageAttachment(client as never, {
-      chatId: "chat_abc",
-      messageId: "msg_1",
-      attachmentId: "att_1",
-      output: outFile,
-      account: "acc_1",
-    } as MessageArgs, out, false);
-
+  it("attachment -o writes the bytes; on a TTY without -o it exits 2", async () => {
+    const buf = Buffer.allocUnsafeSlow(14);
+    Buffer.from("binary content").copy(buf);
+    ns.messaging.getAttachment.mockResolvedValue(buf.buffer);
+    const outFile = join(dir, "out.bin");
+    const args = { chatId: "chat_abc", messageId: "msg_1", attachmentId: "att_1" };
+    await (runMessageAttachment as unknown as (...a: unknown[]) => Promise<void>)(client, { account: "acc_1", ...args, output: outFile }, mkOut(), false);
     expect(ns.messaging.getAttachment).toHaveBeenCalledWith("chat_abc", "msg_1", "att_1");
-
-    // Verify file was written
-    const { readFile } = await import("node:fs/promises");
-    const written = await readFile(outFile);
-    expect(written.toString()).toBe("binary content");
-  });
-
-  it("message attachment without -o on TTY — exits 2", async () => {
-    const { runMessageAttachment } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      // isTTY=true, no outputPath
-      await runMessageAttachment(client as never, {
-        chatId: "chat_abc",
-        messageId: "msg_1",
-        attachmentId: "att_1",
-        account: "acc_1",
-      } as MessageArgs, out, true);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+    expect((await readFile(outFile)).toString()).toBe("binary content");
+    expect(await exitCode(() => (runMessageAttachment as unknown as (...a: unknown[]) => Promise<void>)(client, { account: "acc_1", ...args }, mkOut(), true))).toBe(2);
   });
 });
 
-describe("message inmail / inmail-balance", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
+describe("message inmail", () => {
+  const BASE = { to: "urn:li:member:99", subject: "Hi", text: "Hello" };
 
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-    (ns.messaging.sendInMail as Mock).mockResolvedValue({ inmail_id: "im_1" });
-    (ns.users.getInMailCredits as Mock).mockResolvedValue({ balance: 50 });
+  it("the body carries exactly recipient_urn, subject, text (no surface)", async () => {
+    await call(runMessageInMail, BASE);
+    expect(ns.messaging.sendInMail.mock.calls[0]![0]).toEqual({ recipient_urn: "urn:li:member:99", subject: "Hi", text: "Hello" });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it.each([
+    ["https://www.linkedin.com/in/raphael-redmer", "ACoAAA123", true],
+    ["raphael-redmer", "ACoAAA123", true],
+    ["ACoAAA123", "ACoAAA123", false],
+    ["urn:li:member:12345", "urn:li:member:12345", false],
+  ])("--to %s -> recipient_urn %s (users.get: %s)", async (to, urn, looksUp) => {
+    await call(runMessageInMail, { ...BASE, to });
+    expect(ns.users.get).toHaveBeenCalledTimes(looksUp ? 1 : 0);
+    expect(ns.messaging.sendInMail).toHaveBeenCalledWith(expect.objectContaining({ recipient_urn: urn }));
   });
 
-  it("message inmail --to urn:li:member:99 --subject 'Hi' 'text' — calls sendInMail with correct body", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageInMail(client as never, {
-      to: "urn:li:member:99",
-      subject: "Hi",
-      text: "Hello there",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    // --to for inmail runs through resolveIdentifier (URN passes unchanged)
-    expect(ns.messaging.sendInMail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        recipient_urn: "urn:li:member:99",
-        subject: "Hi",
-        text: "Hello there",
-      }),
-    );
-  });
-
-  // ── Wire-encoding regression: the body MUST carry every API-required field
-  // and NOTHING else. OpenAPI required = [account_id, recipient_urn, subject,
-  // text] — v2 has no `surface` field at all (was removed upstream; a prior
-  // CLI version sent it anyway → guaranteed API 400 for an unrecognized
-  // field). This test asserts the exact key set + values the SDK method
-  // receives.
-  it("message inmail — body carries exactly recipient_urn, subject, text (no surface)", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageInMail(client as never, {
-      to: "urn:li:member:12345",
-      subject: "Role at Acme",
-      text: "Body text",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    expect(client.account).toHaveBeenCalledWith("acc_1");
-    const body = (ns.messaging.sendInMail as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    // Every body-level required field present, with exact key names + shapes
-    // — and no stray `surface` key.
-    expect(body).toEqual({
-      recipient_urn: "urn:li:member:12345",
-      subject: "Role at Acme",
-      text: "Body text",
-    });
-  });
-
-  it("message inmail --to <provider-id> — accepts a provider id directly", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageInMail(client as never, {
-      to: "ACoAAA1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwX",
-      subject: "Exploring synergies",
-      text: "Hi there",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    const body = (ns.messaging.sendInMail as Mock).mock.calls[0]![0] as Record<string, unknown>;
-    expect(body).toEqual({
-      recipient_urn: "ACoAAA1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwX",
-      subject: "Exploring synergies",
-      text: "Hi there",
-    });
-  });
-
-  it("message inmail --to <urn> — a URN recipient still passes through", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageInMail(client as never, {
-      to: "urn:li:member:778899",
-      subject: "Hi",
-      text: "Hello",
-      account: "acc_1",
-      json: true,
-    } as MessageArgs, out);
-
-    expect(ns.messaging.sendInMail).toHaveBeenCalledWith(
-      expect.objectContaining({ recipient_urn: "urn:li:member:778899" }),
-    );
-  });
-
-  it("message inmail — empty --to exits 2 before any SDK call", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageInMail(client as never, {
-        to: "",
-        subject: "Hi",
-        text: "Hello",
-        account: "acc_1",
-      } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it.each([
+    [{ to: "" }, undefined, 2],
+    [{ to: "raphael-redmer" }, err("RESOURCE_NOT_FOUND", 404), 4],
+    [{ to: "not-valid-form" }, err("INVALID_REQUEST", 400), 2],
+  ])("%j (lookup: %s) exits %i and sends nothing", async (extra, lookup, code) => {
+    if (lookup) ns.users.get.mockRejectedValue(lookup);
+    expect(await exits(runMessageInMail, { ...BASE, ...extra })).toBe(code);
     expect(ns.messaging.sendInMail).not.toHaveBeenCalled();
   });
 
-  it("message inmail --preview — renders preview, no sendInMail call", async () => {
-    const { runMessageInMail } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-
-    await runMessageInMail(client as never, {
-      to: "urn:li:member:99",
-      subject: "Hi",
-      text: "Hello",
-      account: "acc_1",
-      preview: true,
-    } as MessageArgs, out);
-
+  it.each(["", "   ", "x".repeat(201)])("a %j-length subject exits 2 BEFORE --to resolution or any request", async (subject) => {
+    expect(await exits(runMessageInMail, { ...BASE, to: "raphael-redmer", subject })).toBe(2);
+    expect(ns.users.get).not.toHaveBeenCalled();
     expect(ns.messaging.sendInMail).not.toHaveBeenCalled();
-    const written = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).join("");
-    const parsed = JSON.parse(written);
-    expect(parsed.method).toBe("messaging.sendInMail");
-    // Preview must be honest: the assembled body has no surface field.
-    expect(parsed.body).toEqual({ recipient_urn: "urn:li:member:99", subject: "Hi", text: "Hello" });
   });
 
-  it("message inmail-balance — calls users.getInMailCredits", async () => {
-    const { runMessageInMailBalance } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+  it("a 200-char subject is sent; --preview shows the honest body and calls nothing", async () => {
+    const subject = "x".repeat(200);
+    await call(runMessageInMail, { ...BASE, subject });
+    expect(ns.messaging.sendInMail).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+    ns.messaging.sendInMail.mockClear();
+    const p = preview(await call(runMessageInMail, { ...BASE, preview: true }));
+    expect(ns.messaging.sendInMail).not.toHaveBeenCalled();
+    expect([p.method, p.body]).toEqual(["messaging.sendInMail", { recipient_urn: "urn:li:member:99", subject: "Hi", text: "Hello" }]);
+  });
 
-    await runMessageInMailBalance(client as never, { account: "acc_1", json: true } as MessageArgs, out);
-
+  it("inmail-balance reads users.getInMailCredits and is not paginated (--all exits 2)", async () => {
+    await call(runMessageInMailBalance, {});
     expect(ns.users.getInMailCredits).toHaveBeenCalled();
+    expect(await exits(runMessageInMailBalance, { all: true })).toBe(2);
+  });
+});
+
+describe("text '-' reads stdin", () => {
+  const cases: Array<[string, unknown, Record<string, unknown>, () => ReturnType<typeof vi.fn>]> = [
+    ["message send", runMessageSend, { chatId: "chat_1" }, () => ns.messaging.sendMessage],
+    ["message new", runMessageNew, { to: "ACoAAA123" }, () => ns.messaging.startChat],
+    ["message edit", runMessageEdit, { chatId: "chat_1", messageId: "msg_1" }, () => ns.messaging.editMessage],
+    ["message inmail", runMessageInMail, { to: "ACoAAA123", subject: "Hi" }, () => ns.messaging.sendInMail],
+    ["post create", runPostCreate, {}, () => ns.posts.create],
+  ];
+
+  it.each(cases)("%s: the (already trimmed) stdin becomes the text, newlines inside kept", async (_n, fn, extra, spy) => {
+    await call(fn, { ...extra, text: "-" }, async () => "Line 1\nLine 2");
+    expect(JSON.stringify(spy().mock.calls[0])).toContain("Line 1\\nLine 2");
   });
 
-  it("message inmail-balance --all — exits 2 (not paginated)", async () => {
-    const { runMessageInMailBalance } = await import("../../src/commands/message.js");
-    const out = { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
+  it.each(cases)("%s: empty stdin exits 2 with 'stdin: empty input' and sends nothing", async (_n, fn, extra, spy) => {
+    const out = mkOut();
+    const code = await exitCode(() => (fn as Fn)(client as never, { account: "acc_1", json: true, ...extra, text: "-" } as never, out as never, (async () => "") as never));
+    expect(code).toBe(2);
+    expect(written(out.stderr)).toContain("stdin: empty input");
+    expect(spy()).not.toHaveBeenCalled();
+  });
 
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${code})`);
-    });
-    try {
-      await runMessageInMailBalance(client as never, { account: "acc_1", all: true } as MessageArgs, out);
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it("plain text never touches the stdin reader", async () => {
+    const reader = vi.fn();
+    await call(runMessageSend, { chatId: "chat_1", text: "Plain text" }, reader);
+    expect(reader).not.toHaveBeenCalled();
+    expect(ns.messaging.sendMessage).toHaveBeenCalledWith("chat_1", expect.objectContaining({ text: "Plain text" }));
   });
 });

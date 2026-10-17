@@ -1,130 +1,17 @@
-/**
- * Tests for the new `feed` command group closing the SDK-parity gap.
- *
- *   feed home [--sort recent|relevant] [--limit] [--cursor] [--all] → feed.home(params)
- *
- * `feed home` is the only callable form (see the grammar note in
- * src/commands/feed.ts on why a bare `feed <value-flag>` is not wired).
- */
+/** `feed home`: flag -> feed.home params, output, --all, account refusal. */
+import { describe, expect } from "vitest";
+import { runFeedHome } from "../../src/commands/feed.js";
+import { calls, prints, refuses, streams } from "../helpers/f3-unit.js";
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { Mock } from "vitest";
-import { resolveLeaf } from "../../src/dispatch.js";
-import { feedCommand } from "../../src/commands/feed.js";
-import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
-
-function makeAccountNs() {
-  return {
-    feed: {
-      home: vi.fn(),
-    },
-  };
-}
-
-function makeClient(accountNs: ReturnType<typeof makeAccountNs>) {
-  return { account: vi.fn().mockReturnValue(accountNs) };
-}
-
-function makeOut() {
-  return { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-}
-
-function mockExit() {
-  return vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-    throw new Error(`process.exit(${code})`);
-  });
-}
-
-type Args = Record<string, unknown>;
+const SHAPE = { feed: { home: { object: "feed", items: [{ activity_id: "1", author_name: "Jane Doe" }], cursor: null } } };
 
 describe("feed home", () => {
-  let accountNs: ReturnType<typeof makeAccountNs>;
-  let client: ReturnType<typeof makeClient>;
-  beforeEach(() => {
-    accountNs = makeAccountNs();
-    client = makeClient(accountNs);
-    (accountNs.feed.home as Mock).mockResolvedValue({
-      object: "feed",
-      items: [{ activity_id: "1", author_name: "Jane Doe" }],
-      cursor: null,
-    });
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it("calls feed.home with no params by default", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    await runFeedHome(client as never, { account: "acc_1", json: true } as Args, makeOut());
-    expect(accountNs.feed.home).toHaveBeenCalledWith({});
-  });
-
-  it("--json prints the full response shape", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    const out = makeOut();
-    await runFeedHome(client as never, { account: "acc_1", json: true } as Args, out);
-    const written = JSON.parse((out.stdout.write as Mock).mock.calls[0]![0] as string);
-    expect(written.items[0]).toEqual({ activity_id: "1", author_name: "Jane Doe" });
-  });
-
-  it("--sort maps to the sort param", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    await runFeedHome(client as never, { account: "acc_1", sort: "relevant", json: true } as Args, makeOut());
-    expect(accountNs.feed.home).toHaveBeenCalledWith(expect.objectContaining({ sort: "relevant" }));
-  });
-
-  it("--limit/--cursor pass through", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    await runFeedHome(client as never, { account: "acc_1", limit: "10", cursor: "cur_1", json: true } as Args, makeOut());
-    expect(accountNs.feed.home).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, cursor: "cur_1" }));
-  });
-
-  it("--all streams NDJSON across pages", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    (accountNs.feed.home as Mock)
-      .mockResolvedValueOnce({ items: [{ activity_id: "1" }], cursor: "cur_1" })
-      .mockResolvedValueOnce({ items: [{ activity_id: "2" }], cursor: null });
-    const out = makeOut();
-    await runFeedHome(client as never, { account: "acc_1", all: true } as Args, out);
-    const lines = (out.stdout.write as Mock).mock.calls.map((c) => c[0] as string).filter((l) => l.trim().startsWith("{"));
-    expect(lines).toHaveLength(2);
-  });
-
-  it("missing account → exit 2", async () => {
-    const { runFeedHome } = await import("../../src/commands/feed.js");
-    const exitSpy = mockExit();
-    try {
-      await runFeedHome(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
-  });
-});
-
-describe("feed dispatch routing", () => {
-  afterEach(() => vi.restoreAllMocks());
-
-  it("`feed home --sort relevant` resolves to the home subcommand", async () => {
-    const { leaf, leafArgs } = await resolveLeaf(feedCommand as never, ["home", "--sort", "relevant"]);
-    expect(leaf).toBeDefined();
-    expect(leafArgs).toEqual(["--sort", "relevant"]);
-  });
-
-  it("bare `feed` (no args) resolves to the group's own usage-printing run()", async () => {
-    const { leaf, leafArgs } = await resolveLeaf(feedCommand as never, []);
-    expect(leaf).toBeDefined();
-    expect(leafArgs).toEqual([]);
-  });
-});
-
-describe("feed home --help: recent carries text, counts unknown", () => {
-  it("says every post carries its text, and recent counts are null (unknown, not zero)", async () => {
-    const { feedCommand } = await import("../../src/commands/feed.js");
-    const subs = (feedCommand as Record<string, unknown>).subCommands as Record<string, { meta?: { description?: string } }>;
-    const d = subs["home"]?.meta?.description ?? "";
-    expect(d).toMatch(/carries its text/);
-    expect(d).toMatch(/null \(unknown, not zero\)/);
-    expect(d).not.toMatch(/text and every engagement count are null/);
-  });
+  calls(SHAPE, [
+    ["no params by default", runFeedHome, {}, "feed.home", [{}]],
+    ["--sort maps to sort", runFeedHome, { sort: "relevant" }, "feed.home", [expect.objectContaining({ sort: "relevant" })]],
+    ["--limit/--cursor pass through", runFeedHome, { limit: "10", cursor: "cur_1" }, "feed.home", [expect.objectContaining({ limit: 10, cursor: "cur_1" })]],
+  ]);
+  prints(SHAPE, [["--json prints the response", runFeedHome, {}, "feed.home"]]);
+  streams(SHAPE, [["feed home", runFeedHome, {}, "feed.home"]]);
+  refuses(SHAPE, [["no connected account", runFeedHome, { account: null }, 2]]);
 });

@@ -1,421 +1,133 @@
 /**
- * `--mode` / `--max-age` on the store-served reads.
- *
- * WHICH COMMANDS GET THE FLAGS IS DERIVED FROM THE SERVER, not from a list.
- * Only three served endpoints declare the pair (the schemas that spread
- * `retrievalQueryFields`), and the REST registry REFUSES it with a 400 on
- * every endpoint that does not, rather than ignoring it. So the flags belong
- * on exactly:
- *
- *   profile me     → users.get("me", …)
- *   profile <id>   → users.get(id, …)
- *   inbox messages → messaging.listMessages(chatId, …)
- *   inbox get      → messaging.getChat(chatId, …)
- *
- * and must NOT be offered on the activity/list branches of the same commands
- * (`--posts`/`--comments`/`--reactions`/`--followers`), which call different
- * endpoints that would 400. `inbox get` was the fourth from the day the
- * endpoint declared the pair; it could not be plumbed until `@curviate/sdk`
- * 0.26.0 gave `getChat` a second argument, and
- * `retrieval-sdk-surface.test.ts` asserts that argument is really forwarded.
- *
- * The exit-2 arms assert the SDK was NEVER CALLED. That is the actual
- * contract ("a misuse pre-check before any network call"); asserting only the
- * exit code would pass just as well if the CLI made the doomed request first.
+ * `--mode` / `--max-age` exist exactly on the store-served reads (profile me, profile <id>, inbox messages, inbox get):
+ * the API answers 400 on any endpoint that does not declare them, so everywhere else they are refused, not dropped.
+ * Misuse is refused before any network call.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
+import { exitCode } from "../helpers/exit-code.js";
+import { clientOf, mkOut } from "../helpers/f1-unit.js";
+import { useSink } from "../helpers/sink.js";
+import { runProfileGet, runProfileMe, profileCommand } from "../../src/commands/profile.js";
+import { runInboxGet, runInboxMessages, inboxCommand } from "../../src/commands/inbox.js";
+import { postCommand } from "../../src/commands/post.js";
 
-function makeUsersNs() {
-  return {
-    users: {
-      get: vi.fn().mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" }),
-      listPosts: vi.fn().mockResolvedValue({ items: [], cursor: null }),
-      listFollowers: vi.fn().mockResolvedValue({ items: [], cursor: null }),
-    },
+let users: Record<string, Mock>;
+let messaging: Record<string, Mock>;
+let client: ReturnType<typeof clientOf>;
+beforeEach(() => {
+  users = {
+    get: vi.fn().mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" }),
+    listPosts: vi.fn().mockResolvedValue({ items: [], cursor: null }),
+    listFollowers: vi.fn().mockResolvedValue({ items: [], cursor: null }),
   };
-}
-function makeMessagingNs() {
-  return {
-    messaging: {
-      getChat: vi.fn().mockResolvedValue({ id: "c1" }),
-      listMessages: vi.fn().mockResolvedValue({ items: [], cursor: null }),
-    },
-  };
-}
-function makeClient(ns: unknown) {
-  return { account: vi.fn().mockReturnValue(ns) };
-}
-function makeOut() {
-  return { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
-}
+  messaging = { getChat: vi.fn().mockResolvedValue({ id: "c1" }), listMessages: vi.fn().mockResolvedValue({ items: [], cursor: null }) };
+  client = clientOf({ users, messaging });
+});
 
-/** Run `fn`, capturing the exit code a `process.exit` would have produced. */
-async function captureExit(fn: () => Promise<void>): Promise<number> {
-  const spy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
-    throw new Error(`__exit__${code ?? 0}`);
-  }) as never);
-  try {
-    await fn();
-    return 0;
-  } catch (e) {
-    const m = /__exit__(\d+)/.exec((e as Error).message);
-    if (!m) throw e;
-    return Number(m[1]);
-  } finally {
-    spy.mockRestore();
-  }
-}
+type Run = (c: never, a: never, o: never) => Promise<void>;
+const base = { account: "acc_1", json: true };
+const run = (fn: unknown, flags: object) => (fn as Run)(client as never, { ...base, ...flags } as never, mkOut() as never);
+const paramsOf = (m: Mock, i = 0) => m.mock.calls[i]![1] as Record<string, unknown>;
 
-const ACC = { account: "acc_1", json: true } as never;
-
-afterEach(() => vi.restoreAllMocks());
-
-describe("profile me — the retrieval pair reaches users.get", () => {
-  let ns: ReturnType<typeof makeUsersNs>;
-  let client: ReturnType<typeof makeClient>;
-  beforeEach(() => {
-    ns = makeUsersNs();
-    client = makeClient(ns);
+describe("the pair reaches the SDK call as mode / max_age (a number; 0 survives; omitted means no key)", () => {
+  it.each(["live", "auto", "refill", "cache_only"])("profile me and inbox get forward --mode %s", async (mode) => {
+    await run(runProfileMe, { mode });
+    await run(runInboxGet, { chatId: "c1", mode });
+    expect(users["get"]).toHaveBeenCalledWith("me", expect.objectContaining({ mode }));
+    expect(messaging["getChat"]).toHaveBeenCalledWith("c1", expect.objectContaining({ mode }));
   });
 
-  it.each(["live", "auto", "refill", "cache_only"])("--mode %s is forwarded", async (mode) => {
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    await runProfileMe(client as never, { ...(ACC as object), mode } as never, makeOut());
-    expect(ns.users.get).toHaveBeenCalledWith("me", expect.objectContaining({ mode }));
+  it.each<[string, unknown, Record<string, Mock>, string, object, unknown[]]>([
+    ["profile me --max-age", runProfileMe, {}, "get", { "max-age": "300" }, ["me", expect.objectContaining({ max_age: 300 })]],
+    ["profile me with --sections", runProfileMe, {}, "get", { mode: "refill", sections: "skills" }, ["me", expect.objectContaining({ mode: "refill", linkedin_sections: ["linkedin_skills"] })]],
+    ["profile <id> mode + max-age", runProfileGet, {}, "get", { id: "ada-slug", mode: "refill", "max-age": "60" }, ["ada-slug", expect.objectContaining({ mode: "refill", max_age: 60 })]],
+    ["profile <id> --max-age 0", runProfileGet, {}, "get", { id: "ada-slug", "max-age": "0" }, ["ada-slug", expect.objectContaining({ max_age: 0 })]],
+    ["inbox messages mode", runInboxMessages, {}, "listMessages", { chatId: "c1", mode: "cache_only" }, ["c1", expect.objectContaining({ mode: "cache_only" })]],
+    ["inbox messages max-age beside paging", runInboxMessages, {}, "listMessages", { chatId: "c1", "max-age": "120", limit: "5" }, ["c1", expect.objectContaining({ max_age: 120, limit: 5 })]],
+    ["inbox get --max-age 0", runInboxGet, {}, "getChat", { chatId: "c1", "max-age": "0" }, ["c1", expect.objectContaining({ max_age: 0 })]],
+    ["inbox get omitted -> no keys", runInboxGet, {}, "getChat", { chatId: "c1" }, ["c1", {}]],
+    ["inbox get rides the normalized chat id", runInboxGet, {}, "getChat", { chatId: "https://www.linkedin.com/messaging/thread/2-AbCdEf==/", mode: "refill" }, ["2-AbCdEf==", { mode: "refill" }]],
+  ])("%s", async (_l, fn, _x, method, flags, expected) => {
+    await run(fn, flags);
+    expect((users[method] ?? messaging[method])!.mock.calls[0]).toEqual(expected);
   });
 
-  it("--max-age is forwarded as the wire's max_age, a number", async () => {
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    await runProfileMe(client as never, { ...(ACC as object), "max-age": "300" } as never, makeOut());
-    expect(ns.users.get).toHaveBeenCalledWith("me", expect.objectContaining({ max_age: 300 }));
+  it("profile me with no flags sends neither key", async () => {
+    await run(runProfileMe, {});
+    expect(Object.keys(paramsOf(users["get"]!))).not.toEqual(expect.arrayContaining(["mode"]));
+    expect(Object.keys(paramsOf(users["get"]!))).not.toContain("max_age");
   });
 
-  // EDGE: omitted flags must not become keys. A `{mode: undefined}` on the
-  // query object is a parameter the caller never asked for.
-  it("omitting both sends neither key", async () => {
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    await runProfileMe(client as never, { ...(ACC as object) } as never, makeOut());
-    const params = (ns.users.get as Mock).mock.calls[0]![1] as Record<string, unknown>;
-    expect(Object.keys(params)).not.toContain("mode");
-    expect(Object.keys(params)).not.toContain("max_age");
-  });
-
-  it("coexists with --sections rather than replacing it", async () => {
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    await runProfileMe(
-      client as never,
-      { ...(ACC as object), mode: "refill", sections: "skills" } as never,
-      makeOut(),
-    );
-    expect(ns.users.get).toHaveBeenCalledWith(
-      "me",
-      expect.objectContaining({ mode: "refill", linkedin_sections: ["linkedin_skills"] }),
-    );
+  it("profile <id> --sections: the slug-resolve pre-call carries the mode too (two calls); a provider id short-circuits (one)", async () => {
+    await run(runProfileGet, { id: "ada-slug", sections: "skills", mode: "cache_only", "max-age": undefined });
+    expect(users["get"]!.mock.calls).toHaveLength(2);
+    for (const [, p] of users["get"]!.mock.calls) expect((p as Record<string, unknown>)["mode"]).toBe("cache_only");
+    users["get"]!.mockClear();
+    await run(runProfileGet, { id: "ada-slug", sections: "skills", "max-age": "300" });
+    for (const [, p] of users["get"]!.mock.calls) expect((p as Record<string, unknown>)["max_age"]).toBe(300);
+    users["get"]!.mockClear();
+    await run(runProfileGet, { id: "ACoAAA_x", sections: "skills", mode: "cache_only" });
+    expect(users["get"]!.mock.calls).toHaveLength(1);
   });
 });
 
-describe("profile <id> — the retrieval pair reaches users.get", () => {
-  let ns: ReturnType<typeof makeUsersNs>;
-  let client: ReturnType<typeof makeClient>;
-  beforeEach(() => {
-    ns = makeUsersNs();
-    client = makeClient(ns);
+describe("misuse exits 2 and calls nothing", () => {
+  it.each<[string, unknown, object]>([
+    ["cache_only + --max-age (profile me)", runProfileMe, { mode: "cache_only", "max-age": "60" }],
+    ["cache_only + --max-age (inbox get)", runInboxGet, { chatId: "c1", mode: "cache_only", "max-age": "60" }],
+    ["unknown --mode", runProfileMe, { mode: "cached" }],
+    ["--max-age past the ceiling", runInboxMessages, { chatId: "c1", "max-age": "31536001" }],
+    ...["posts", "comments", "reactions", "followers"].map((a): [string, unknown, object] => [`profile me --${a} --mode live (endpoint would 400)`, runProfileMe, { [a]: true, mode: "live" }]),
+  ])("%s", async (_l, fn, flags) => {
+    expect(await exitCode(() => run(fn, flags))).toBe(2);
+    for (const f of [...Object.values(users), ...Object.values(messaging)]) expect(f).not.toHaveBeenCalled();
   });
 
-  it("--mode refill --max-age is rejected together only under cache_only; refill forwards both", async () => {
-    const { runProfileGet } = await import("../../src/commands/profile.js");
-    await runProfileGet(
-      client as never,
-      { ...(ACC as object), id: "ada-slug", mode: "refill", "max-age": "60" } as never,
-      makeOut(),
-    );
-    expect(ns.users.get).toHaveBeenCalledWith(
-      "ada-slug",
-      expect.objectContaining({ mode: "refill", max_age: 60 }),
-    );
-  });
-
-  it("--max-age 0 survives as 0, the value a falsy check drops", async () => {
-    const { runProfileGet } = await import("../../src/commands/profile.js");
-    await runProfileGet(
-      client as never,
-      { ...(ACC as object), id: "ada-slug", "max-age": "0" } as never,
-      makeOut(),
-    );
-    const params = (ns.users.get as Mock).mock.calls[0]![1] as Record<string, unknown>;
-    expect(params["max_age"]).toBe(0);
+  it("controls: the ceiling itself and an activity branch without the pair do run", async () => {
+    expect(await exitCode(() => run(runInboxMessages, { chatId: "c1", "max-age": "31536000" }))).toBeUndefined();
+    expect(messaging["listMessages"]).toHaveBeenCalled();
+    expect(await exitCode(() => run(runProfileMe, { followers: true }))).toBeUndefined();
+    expect(users["listFollowers"]).toHaveBeenCalled();
   });
 });
 
-describe("inbox messages — the retrieval pair reaches listMessages", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-  });
-
-  it("--mode cache_only is forwarded", async () => {
-    const { runInboxMessages } = await import("../../src/commands/inbox.js");
-    await runInboxMessages(
-      client as never,
-      { ...(ACC as object), chatId: "c1", mode: "cache_only" } as never,
-      makeOut(),
-    );
-    expect(ns.messaging.listMessages).toHaveBeenCalledWith(
-      "c1",
-      expect.objectContaining({ mode: "cache_only" }),
-    );
-  });
-
-  it("--max-age rides alongside the existing paging flags", async () => {
-    const { runInboxMessages } = await import("../../src/commands/inbox.js");
-    await runInboxMessages(
-      client as never,
-      { ...(ACC as object), chatId: "c1", "max-age": "120", limit: "5" } as never,
-      makeOut(),
-    );
-    expect(ns.messaging.listMessages).toHaveBeenCalledWith(
-      "c1",
-      expect.objectContaining({ max_age: 120, limit: 5 }),
-    );
-  });
-});
-
-describe("inbox get — the retrieval pair reaches getChat", () => {
-  let ns: ReturnType<typeof makeMessagingNs>;
-  let client: ReturnType<typeof makeClient>;
-  beforeEach(() => {
-    ns = makeMessagingNs();
-    client = makeClient(ns);
-  });
-
-  it.each(["live", "auto", "refill", "cache_only"])("--mode %s is forwarded", async (mode) => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    await runInboxGet(client as never, { ...(ACC as object), chatId: "c1", mode } as never, makeOut());
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("c1", expect.objectContaining({ mode }));
-  });
-
-  it("--max-age is forwarded as the wire's max_age, a number", async () => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    await runInboxGet(
-      client as never,
-      { ...(ACC as object), chatId: "c1", "max-age": "120" } as never,
-      makeOut(),
-    );
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("c1", expect.objectContaining({ max_age: 120 }));
-  });
-
-  // EDGE: `--max-age 0` is the value a truthiness check silently drops, and
-  // dropping it means `auto` instead of the always-fetch the caller asked for.
-  it("--max-age 0 survives as 0", async () => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    await runInboxGet(
-      client as never,
-      { ...(ACC as object), chatId: "c1", "max-age": "0" } as never,
-      makeOut(),
-    );
-    const params = (ns.messaging.getChat as Mock).mock.calls[0]![1] as Record<string, unknown>;
-    expect(params["max_age"]).toBe(0);
-  });
-
-  // EDGE: omitted flags must not become keys. `{mode: undefined}` is a
-  // parameter the caller never typed, and the URL builder would still see it.
-  it("omitting both sends neither key", async () => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    await runInboxGet(client as never, { ...(ACC as object), chatId: "c1" } as never, makeOut());
-    const params = (ns.messaging.getChat as Mock).mock.calls[0]![1] as Record<string, unknown>;
-    expect(Object.keys(params)).toEqual([]);
-  });
-
-  // The chat-id normalization still runs, so the pair rides the BARE provider
-  // id rather than resurrecting the thread URL.
-  it("the pair rides the normalized chat id, not the raw thread URL", async () => {
-    const { runInboxGet } = await import("../../src/commands/inbox.js");
-    await runInboxGet(
-      client as never,
-      {
-        ...(ACC as object),
-        chatId: "https://www.linkedin.com/messaging/thread/2-AbCdEf==/",
-        mode: "refill",
-      } as never,
-      makeOut(),
-    );
-    expect(ns.messaging.getChat).toHaveBeenCalledWith("2-AbCdEf==", { mode: "refill" });
-  });
-
-  it("cache_only + --max-age exits 2 and calls nothing", async () => {
-    const code = await captureExit(() =>
-      import("../../src/commands/inbox.js").then(({ runInboxGet }) =>
-        runInboxGet(
-          client as never,
-          { ...(ACC as object), chatId: "c1", mode: "cache_only", "max-age": "60" } as never,
-          makeOut(),
-        ),
-      ),
-    );
-    expect(code).toBe(2);
-    expect(ns.messaging.getChat).not.toHaveBeenCalled();
-  });
-});
-
-describe("validation happens before any network call (exit 2)", () => {
-  it("cache_only + --max-age exits 2 and calls nothing", async () => {
-    const ns = makeUsersNs();
-    const client = makeClient(ns);
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    const code = await captureExit(() =>
-      runProfileMe(
-        client as never,
-        { ...(ACC as object), mode: "cache_only", "max-age": "60" } as never,
-        makeOut(),
-      ),
-    );
-    expect(code).toBe(2);
-    expect(ns.users.get).not.toHaveBeenCalled();
-  });
-
-  it("an unknown --mode exits 2 and calls nothing", async () => {
-    const ns = makeUsersNs();
-    const client = makeClient(ns);
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    const code = await captureExit(() =>
-      runProfileMe(client as never, { ...(ACC as object), mode: "cached" } as never, makeOut()),
-    );
-    expect(code).toBe(2);
-    expect(ns.users.get).not.toHaveBeenCalled();
-  });
-
-  it("a --max-age past the ceiling exits 2 and calls nothing", async () => {
-    const ns = makeMessagingNs();
-    const client = makeClient(ns);
-    const { runInboxMessages } = await import("../../src/commands/inbox.js");
-    const code = await captureExit(() =>
-      runInboxMessages(
-        client as never,
-        { ...(ACC as object), chatId: "c1", "max-age": "31536001" } as never,
-        makeOut(),
-      ),
-    );
-    expect(code).toBe(2);
-    expect(ns.messaging.listMessages).not.toHaveBeenCalled();
-  });
-
-  // CONTROL on the harness: a well-formed invocation of the same runner does
-  // reach the SDK, so "not called" above is a property of the validation and
-  // not of a runner that never calls anything under this fixture.
-  it("control: the same runner with a valid mode does call the SDK", async () => {
-    const ns = makeMessagingNs();
-    const client = makeClient(ns);
-    const { runInboxMessages } = await import("../../src/commands/inbox.js");
-    const code = await captureExit(() =>
-      runInboxMessages(
-        client as never,
-        { ...(ACC as object), chatId: "c1", "max-age": "31536000" } as never,
-        makeOut(),
-      ),
-    );
-    expect(code).toBe(0);
-    expect(ns.messaging.listMessages).toHaveBeenCalled();
-  });
-});
-
-describe("the flags are refused where the endpoint would 400", () => {
-  it.each(["posts", "comments", "reactions", "followers"])(
-    "profile me --%s --mode live exits 2 rather than sending a parameter the endpoint refuses",
-    async (activity) => {
-      const ns = makeUsersNs();
-      const client = makeClient(ns);
-      const { runProfileMe } = await import("../../src/commands/profile.js");
-      const code = await captureExit(() =>
-        runProfileMe(
-          client as never,
-          { ...(ACC as object), [activity]: true, mode: "live" } as never,
-          makeOut(),
-        ),
-      );
-      expect(code).toBe(2);
-    },
-  );
-
-  // CONTROL: the activity branch itself is fine without the retrieval flags.
-  it("control: profile me --followers without --mode still runs", async () => {
-    const ns = makeUsersNs();
-    const client = makeClient(ns);
-    const { runProfileMe } = await import("../../src/commands/profile.js");
-    const code = await captureExit(() =>
-      runProfileMe(client as never, { ...(ACC as object), followers: true } as never, makeOut()),
-    );
-    expect(code).toBe(0);
-    expect(ns.users.listFollowers).toHaveBeenCalled();
-  });
-});
-
-/**
- * The id-resolution pre-call must obey the retrieval mode too.
- *
- * `profile <id> --sections` cannot send a raw slug (the sections-enriched read
- * rejects it), so the command resolves the slug to a provider id with a FIRST
- * `users.get`. That pre-call is a read like any other, and under
- * `--mode cache_only` it must not reach LinkedIn: a mode whose entire purpose
- * is "never fetch" that fetches once before the real read has broken its only
- * guarantee, and it would do so under a 200 with nothing to notice.
- *
- * Needs BOTH `--sections` and a slug to trigger: a provider id or `me`
- * short-circuits the resolve entirely.
- */
-describe("profile <id> --sections — the resolve pre-call carries the mode", () => {
-  it("sends cache_only on the resolve call, not just the enriched read", async () => {
-    const ns = makeUsersNs();
-    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
-    const client = makeClient(ns);
-    const { runProfileGet } = await import("../../src/commands/profile.js");
-
-    await runProfileGet(
-      client as never,
-      { ...(ACC as object), id: "ada-slug", sections: "skills", mode: "cache_only" } as never,
-      makeOut(),
-    );
-
-    const calls = (ns.users.get as Mock).mock.calls;
-    // Two calls: the slug resolve, then the enriched read.
-    expect(calls.length).toBe(2);
-    for (const [, params] of calls) {
-      expect((params as Record<string, unknown>)["mode"]).toBe("cache_only");
+describe("advertised on exactly the served reads, refused elsewhere", () => {
+  type Cmd = { args?: Record<string, unknown>; subCommands?: Record<string, Cmd> };
+  const has = (c: Cmd | undefined) => [c?.args?.["mode"], c?.args?.["max-age"]].map((x) => x !== undefined);
+  it("declared on profile, profile me, inbox messages, inbox get; not on inbox list or post get", () => {
+    const p = profileCommand as unknown as Cmd, i = inboxCommand as unknown as Cmd, post = postCommand as unknown as Cmd;
+    for (const c of [p, p.subCommands!["me"], i.subCommands!["messages"], i.subCommands!["get"]]) expect(has(c)).toEqual([true, true]);
+    for (const c of [i.subCommands!["list"], post.subCommands!["get"]]) {
+      expect(Object.keys(c!.args ?? {})).toContain("json");
+      expect(has(c)).toEqual([false, false]);
     }
   });
 
-  it("carries --max-age onto the resolve call as well", async () => {
-    const ns = makeUsersNs();
-    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
-    const client = makeClient(ns);
-    const { runProfileGet } = await import("../../src/commands/profile.js");
-
-    await runProfileGet(
-      client as never,
-      { ...(ACC as object), id: "ada-slug", sections: "skills", "max-age": "300" } as never,
-      makeOut(),
-    );
-    for (const [, params] of (ns.users.get as Mock).mock.calls) {
-      expect((params as Record<string, unknown>)["max_age"]).toBe(300);
-    }
+  const sink = useSink();
+  it.each([
+    [["inbox", "list", "--mode", "cache_only"], "--mode"],
+    [["profile", "followers", "ada", "--max-age", "300"], "--max-age"],
+  ])("%j is an unknown flag (exit 2), not silently dropped", async (argv, flag) => {
+    const r = await sink.run([...argv, "--account", "acc_1"]);
+    expect([r.status, r.requests]).toEqual([2, []]);
+    expect(r.stderr).toContain("unknown flag");
+    expect(r.stderr).toContain(flag);
   });
 
-  // CONTROL: a provider id needs no resolve, so exactly one call is made —
-  // proving the two-call arm above is about the resolve and not about a
-  // command that always calls twice.
-  it("control: a provider id short-circuits the resolve (one call)", async () => {
-    const ns = makeUsersNs();
-    (ns.users.get as Mock).mockResolvedValue({ id: "ACoAAA_x", first_name: "Ada" });
-    const client = makeClient(ns);
-    const { runProfileGet } = await import("../../src/commands/profile.js");
+  it("where declared, the pair is not an unknown flag and rides the wire as mode= / max_age=", async () => {
+    const r = await sink.run(["inbox", "get", "c1", "--account", "acc_1", "--mode", "refill", "--max-age", "60", "--json"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.requests[0]!.url).toMatch(/\/chats\/c1\?.*mode=refill/);
+    expect(r.requests[0]!.url).toContain("max_age=60");
+    const msgs = await sink.run(["inbox", "messages", "c1", "--account", "acc_1", "--mode", "cache_only", "--json"]);
+    expect(msgs.stderr).not.toContain("unknown flag");
+  });
 
-    await runProfileGet(
-      client as never,
-      { ...(ACC as object), id: "ACoAAA_x", sections: "skills", mode: "cache_only" } as never,
-      makeOut(),
-    );
-    expect((ns.users.get as Mock).mock.calls.length).toBe(1);
+  it("NOT_STORED (422) exits 14 on the first reply, no retry", async () => {
+    sink.reply = { status: 422, body: { code: "NOT_STORED", message: "Nothing is stored.", user_fixable: true, retry_likely_to_succeed: false } };
+    const r = await sink.run(["profile", "me", "--account", "acc_1", "--mode", "cache_only", "--json"]);
+    expect(r.status).toBe(14);
+    expect(r.requests).toHaveLength(1);
   });
 });

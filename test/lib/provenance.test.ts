@@ -19,6 +19,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { renderSuccess, renderProvenanceNote } from "../../src/lib/output.js";
+import { streamAll } from "../../src/lib/paginate.js";
 
 const OBSERVED = "2026-09-05T10:00:00.000Z";
 
@@ -239,7 +240,6 @@ describe("renderSuccess — where the note goes", () => {
  */
 describe("--all surfaces each page's provenance on stderr", () => {
   it("writes a provenance note per page, keeping stdout pure NDJSON", async () => {
-    const { streamAll } = await import("../../src/lib/paginate.js");
     const out = makeOut();
     const pages = [
       { items: [{ id: "m1" }], cursor: "c2", source: "store", observed_at: OBSERVED, withdrawn: false },
@@ -264,7 +264,6 @@ describe("--all surfaces each page's provenance on stderr", () => {
   });
 
   it("writes nothing extra for pages that carry no envelope", async () => {
-    const { streamAll } = await import("../../src/lib/paginate.js");
     const out = makeOut();
     const pages = [{ items: [{ id: "m1" }], cursor: null }];
     let i = 0;

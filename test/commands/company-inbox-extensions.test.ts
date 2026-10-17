@@ -18,6 +18,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Mock } from "vitest";
 import { noConnectedAccounts } from "../helpers/no-connected-accounts.js";
+import { runCompanyChat, runCompanyChats, runCompanyFollowers, runCompanyManaged, runCompanyMessage, runCompanyMessages, runCompanySearchChats } from "../../src/commands/company.js";
+import { exitCode } from "../helpers/exit-code.js";
 
 function makeAccountNs() {
   return {
@@ -42,12 +44,6 @@ function makeOut() {
   return { stdout: { write: vi.fn() }, stderr: { write: vi.fn() } };
 }
 
-function mockExit() {
-  return vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
-    throw new Error(`process.exit(${code})`);
-  });
-}
-
 type Args = Record<string, unknown>;
 
 describe("company managed", () => {
@@ -61,14 +57,12 @@ describe("company managed", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("calls companies.managed with no identifier", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
     await runCompanyManaged(client as never, { account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.managed).toHaveBeenCalledWith({});
     expect(accountNs.companies.get).not.toHaveBeenCalled();
   });
 
   it("--json prints the full response shape", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
     const out = makeOut();
     await runCompanyManaged(client as never, { account: "acc_1", json: true } as Args, out);
     const written = JSON.parse((out.stdout.write as Mock).mock.calls[0]![0] as string);
@@ -76,13 +70,11 @@ describe("company managed", () => {
   });
 
   it("--limit/--cursor pass through", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
     await runCompanyManaged(client as never, { account: "acc_1", limit: "5", cursor: "cur_1", json: true } as Args, makeOut());
     expect(accountNs.companies.managed).toHaveBeenCalledWith(expect.objectContaining({ limit: 5, cursor: "cur_1" }));
   });
 
   it("--all streams NDJSON", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
     (accountNs.companies.managed as Mock)
       .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
       .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
@@ -93,16 +85,7 @@ describe("company managed", () => {
   });
 
   it("missing account → exit 2", async () => {
-    const { runCompanyManaged } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyManaged(noConnectedAccounts(client) as never, { json: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+    expect(await exitCode(() => runCompanyManaged(noConnectedAccounts(client) as never, { json: true } as Args, makeOut()))).toBe(2);
   });
 });
 
@@ -117,7 +100,6 @@ describe("company followers", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("numeric id passes through with no companies.get call", async () => {
-    const { runCompanyFollowers } = await import("../../src/commands/company.js");
     await runCompanyFollowers(client as never, { id: "112013061", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.get).not.toHaveBeenCalled();
     expect(accountNs.companies.followers).toHaveBeenCalledWith("112013061", {});
@@ -125,14 +107,12 @@ describe("company followers", () => {
 
   it("slug resolves to the numeric id via companies.get first", async () => {
     (accountNs.companies.get as Mock).mockResolvedValue({ id: "112013061" });
-    const { runCompanyFollowers } = await import("../../src/commands/company.js");
     await runCompanyFollowers(client as never, { id: "t-systems", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.get).toHaveBeenCalledWith("t-systems");
     expect(accountNs.companies.followers).toHaveBeenCalledWith("112013061", {});
   });
 
   it("--all streams NDJSON", async () => {
-    const { runCompanyFollowers } = await import("../../src/commands/company.js");
     (accountNs.companies.followers as Mock)
       .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
       .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
@@ -154,13 +134,11 @@ describe("company chats", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("calls companies.chats with the resolved identifier", async () => {
-    const { runCompanyChats } = await import("../../src/commands/company.js");
     await runCompanyChats(client as never, { id: "112013061", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.chats).toHaveBeenCalledWith("112013061", {});
   });
 
   it("--all streams NDJSON", async () => {
-    const { runCompanyChats } = await import("../../src/commands/company.js");
     (accountNs.companies.chats as Mock)
       .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
       .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
@@ -182,13 +160,11 @@ describe("company chat", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("calls companies.chat with the resolved identifier and the verbatim chat id", async () => {
-    const { runCompanyChat } = await import("../../src/commands/company.js");
     await runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.chat).toHaveBeenCalledWith("112013061", "2-abc");
   });
 
   it("--json prints the full response shape", async () => {
-    const { runCompanyChat } = await import("../../src/commands/company.js");
     const out = makeOut();
     await runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", json: true } as Args, out);
     const written = JSON.parse((out.stdout.write as Mock).mock.calls[0]![0] as string);
@@ -196,16 +172,7 @@ describe("company chat", () => {
   });
 
   it("--all → usage error exit 2 (not paginated)", async () => {
-    const { runCompanyChat } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", all: true } as Args, makeOut());
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+    expect(await exitCode(() => runCompanyChat(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", all: true } as Args, makeOut()))).toBe(2);
   });
 });
 
@@ -220,13 +187,11 @@ describe("company messages", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("calls companies.messages with the resolved identifier and the verbatim chat id", async () => {
-    const { runCompanyMessages } = await import("../../src/commands/company.js");
     await runCompanyMessages(client as never, { id: "112013061", chatId: "2-abc", account: "acc_1", json: true } as Args, makeOut());
     expect(accountNs.companies.messages).toHaveBeenCalledWith("112013061", "2-abc", {});
   });
 
   it("--all streams NDJSON", async () => {
-    const { runCompanyMessages } = await import("../../src/commands/company.js");
     (accountNs.companies.messages as Mock)
       .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
       .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
@@ -248,7 +213,6 @@ describe("company message (single-message GET, distinct from company reply)", ()
   afterEach(() => vi.restoreAllMocks());
 
   it("calls companies.message with the resolved identifier, chat id, and message id", async () => {
-    const { runCompanyMessage } = await import("../../src/commands/company.js");
     await runCompanyMessage(
       client as never,
       { id: "112013061", chatId: "2-abc", messageId: "msg_1", account: "acc_1", json: true } as Args,
@@ -258,7 +222,6 @@ describe("company message (single-message GET, distinct from company reply)", ()
   });
 
   it("--json prints the full response shape", async () => {
-    const { runCompanyMessage } = await import("../../src/commands/company.js");
     const out = makeOut();
     await runCompanyMessage(
       client as never,
@@ -270,20 +233,11 @@ describe("company message (single-message GET, distinct from company reply)", ()
   });
 
   it("--all → usage error exit 2 (not paginated)", async () => {
-    const { runCompanyMessage } = await import("../../src/commands/company.js");
-    const exitSpy = mockExit();
-    try {
-      await runCompanyMessage(
+    expect(await exitCode(() => runCompanyMessage(
         client as never,
         { id: "112013061", chatId: "2-abc", messageId: "msg_1", account: "acc_1", all: true } as Args,
         makeOut(),
-      );
-      expect.fail("should have exited");
-    } catch (e) {
-      expect((e as Error).message).toContain("process.exit(2)");
-    } finally {
-      exitSpy.mockRestore();
-    }
+      ))).toBe(2);
   });
 });
 
@@ -298,7 +252,6 @@ describe("company search-chats", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("<query> maps to the query param", async () => {
-    const { runCompanySearchChats } = await import("../../src/commands/company.js");
     await runCompanySearchChats(
       client as never,
       { id: "112013061", query: "sophie", account: "acc_1", json: true } as Args,
@@ -308,7 +261,6 @@ describe("company search-chats", () => {
   });
 
   it("--topic maps to the topic param", async () => {
-    const { runCompanySearchChats } = await import("../../src/commands/company.js");
     await runCompanySearchChats(
       client as never,
       { id: "112013061", topic: "Support", account: "acc_1", json: true } as Args,
@@ -318,7 +270,6 @@ describe("company search-chats", () => {
   });
 
   it("--unread maps to the unread param", async () => {
-    const { runCompanySearchChats } = await import("../../src/commands/company.js");
     await runCompanySearchChats(
       client as never,
       { id: "112013061", unread: true, account: "acc_1", json: true } as Args,
@@ -328,7 +279,6 @@ describe("company search-chats", () => {
   });
 
   it("--all streams NDJSON", async () => {
-    const { runCompanySearchChats } = await import("../../src/commands/company.js");
     (accountNs.companies.searchChats as Mock)
       .mockResolvedValueOnce({ items: [{ id: "1" }], cursor: "cur_1" })
       .mockResolvedValueOnce({ items: [{ id: "2" }], cursor: null });
