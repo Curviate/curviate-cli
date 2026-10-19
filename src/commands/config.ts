@@ -12,6 +12,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import {
   readConfig,
   getConfigPath,
@@ -32,7 +33,7 @@ import { baseUrlProblem, withoutUserinfo } from "../lib/client.js";
 export const configCommand = defineCommand({
   meta: {
     name: "config",
-    description: "Manage CLI profiles and settings.",
+    description: DESCRIPTIONS.config,
   },
   subCommands: {
     list: defineCommand({

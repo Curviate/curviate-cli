@@ -1,5 +1,5 @@
 /**
- * `curviate feed`, the connected account's LinkedIn home feed (new
+ * `curviate core feed`, the connected account's LinkedIn home feed (new
  * namespace).
  *
  * Subcommands:
@@ -32,6 +32,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -157,9 +158,9 @@ const feedHomeCommand = defineCommand({
     name: "home",
     description: "Read the connected account's LinkedIn home feed as agent-actionable posts. Every post carries its text and created_at. On the default recent sort every engagement count is null (unknown, not zero) and only the author's name resolves; --sort relevant fills engagement and the author's ids.",
     examples: [
-      "curviate feed home",
-      "curviate feed home --sort relevant",
-      "curviate feed home --all --max-pages 3",
+      "curviate core feed home",
+      "curviate core feed home --sort relevant",
+      "curviate core feed home --all --max-pages 3",
     ],
   },
   args: FEED_ARGS,
@@ -183,13 +184,13 @@ const feedHomeCommand = defineCommand({
 });
 
 export const feedCommand = defineCommand({
-  meta: { name: "feed", description: "Read the connected account's LinkedIn home feed as agent-actionable posts." },
+  meta: { name: "feed", description: DESCRIPTIONS.feed },
   subCommands: {
     home: feedHomeCommand,
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate feed <subcommand>\n" +
+      "Usage: curviate core feed <subcommand>\n" +
       "  home [--sort recent|relevant] [--limit] [--cursor] [--all]\n",
     );
   },

@@ -146,19 +146,19 @@ describe("v2 list surface routes through the entry point", () => {
     [["browse-account-list", "L1"], "POST /v1/acc_x/sales-navigator/account-lists/L1"],
     [["browse-lead-list", "L2"], "POST /v1/acc_x/sales-navigator/lead-lists/L2"],
   ])("sales-nav %j reaches %s", async (sub, expected) => {
-    const r = await sink.run(["sales-nav", ...sub, "--account", "acc_x", "--json"]);
+    const r = await sink.run(["core", "sales-nav", ...sub, "--account", "acc_x", "--json"]);
     expect(r.status, r.stderr).toBe(0);
     expect(r.requests.map(line)).toEqual([expected]);
   });
 
   it("save-account / save-lead --preview render only their own request and send nothing; save-lead without --list exits 2", async () => {
     for (const [sub, args, method] of [["save-account", ["--list", "L1", "123"], "salesNavigator.saveAccount"], ["save-lead", ["--list", "L2", "ACw123"], "salesNavigator.saveLead"]] as const) {
-      const r = await sink.run(["sales-nav", sub, ...args, "--account", "acc_x", "--preview"]);
+      const r = await sink.run(["core", "sales-nav", sub, ...args, "--account", "acc_x", "--preview"]);
       expect([r.status, r.requests]).toEqual([0, []]);
       expect(r.stdout.trim().split("\n")).toHaveLength(1);
       expect(r.stdout).toContain(method);
     }
-    const missing = await sink.run(["sales-nav", "save-lead", "ACw123", "--account", "acc_x"]);
+    const missing = await sink.run(["core", "sales-nav", "save-lead", "ACw123", "--account", "acc_x"]);
     expect([missing.status, missing.requests]).toEqual([2, []]);
   });
 });

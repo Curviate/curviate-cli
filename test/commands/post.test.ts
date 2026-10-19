@@ -130,10 +130,10 @@ describe("post: refusals (exit code, no SDK call)", () => {
 describe("reaction signature: positional or alias, same preview body (through the entry point)", () => {
   const sink = useSink();
   it.each([
-    [["post", "react", "post_1", "like"], "posts.react", { reaction: "like" }],
-    [["post", "react", "post_1", "--reaction", "like"], "posts.react", { reaction: "like" }],
-    [["message", "react", "chat_1", "msg_1", "👍"], "messaging.addReaction", { reaction: "👍" }],
-    [["message", "react", "chat_1", "msg_1", "--emoji", "👍"], "messaging.addReaction", { reaction: "👍" }],
+    [["core", "post", "react", "post_1", "like"], "posts.react", { reaction: "like" }],
+    [["core", "post", "react", "post_1", "--reaction", "like"], "posts.react", { reaction: "like" }],
+    [["core", "message", "react", "chat_1", "msg_1", "👍"], "messaging.addReaction", { reaction: "👍" }],
+    [["core", "message", "react", "chat_1", "msg_1", "--emoji", "👍"], "messaging.addReaction", { reaction: "👍" }],
   ])("%j", async (argv, method, body) => {
     const r = await sink.run([...argv, "--preview", "--account", "acc_x"]);
     expect(r.status, r.stderr).toBe(0);
@@ -142,7 +142,7 @@ describe("reaction signature: positional or alias, same preview body (through th
   });
 
   it("an invalid positional reaction exits 2", async () => {
-    expect((await sink.run(["post", "react", "post_1", "thumbsup", "--preview", "--account", "acc_x"])).status).toBe(2);
+    expect((await sink.run(["core", "post", "react", "post_1", "thumbsup", "--preview", "--account", "acc_x"])).status).toBe(2);
   });
 
   it("message react: positional and --emoji alias reach messaging.addReaction as {reaction}; none exits 2", async () => {

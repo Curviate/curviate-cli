@@ -38,6 +38,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -1888,6 +1889,17 @@ const accountDisconnectCommand = defineCommand({
   meta: {
     name: "disconnect",
     description: "Hard-disconnect a LinkedIn account and release its seat.",
+    risk: "high",
+    rules: {
+      changes: "The Account is disconnected and deleted from Curviate, its seat is released, and its stored data goes with it.",
+      visible_to: "Everyone using this workspace's key: the Account disappears from `curviate account list`. Nothing is posted on LinkedIn.",
+      budget_rows: [],
+      retry: "A retry after success answers ACCOUNT_NOT_FOUND; read `curviate account list` first.",
+      undo: "Cannot be undone. Link the LinkedIn account again with `curviate account link`; history does not come back.",
+      blast_radius: "One Account and everything stored for it.",
+    },
+    errors: { ACCOUNT_NOT_FOUND: "no Account with this id (already disconnected, or another workspace's)." },
+    seeAlso: ["curviate account list", "curviate account link"],
     examples: [
       "curviate account disconnect acc_YOUR_ACCOUNT_ID",
     ],
@@ -2062,7 +2074,7 @@ const accountCheckpointCommand = defineCommand({
 });
 
 export const accountCommand = defineCommand({
-  meta: { name: "account", description: "LinkedIn account connection management." },
+  meta: { name: "account", description: DESCRIPTIONS.account },
   subCommands: {
     list: accountListCommand,
     get: accountGetCommand,

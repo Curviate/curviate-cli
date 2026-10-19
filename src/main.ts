@@ -3,6 +3,7 @@
  * walks it). `cli.ts` is the entry point that dispatches.
  */
 import { defineCommand } from "citty";
+import { lazy } from "./commands/descriptions.js";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -27,65 +28,32 @@ export const main = defineCommand({
     name: "curviate",
     version: pkg.version,
     description: "Official command-line interface for the Curviate API.",
+    seeAlso: [
+      "Skill plugin (judgement, playbooks): https://github.com/curviate/curviate-plugin",
+      "Reference: https://docs.curviate.com/reference/cli",
+    ],
   },
 
   // Subcommand registry, names and descriptions are static for help rendering;
   // the handler implementation is loaded lazily on first invocation.
   subCommands: {
-    setup: () =>
-      import("./commands/setup.js").then((m) => m.setupCommand),
-    doctor: () =>
-      import("./commands/doctor.js").then((m) => m.doctorCommand),
-    login: () =>
-      import("./commands/login.js").then((m) => m.loginCommand),
-    config: () =>
-      import("./commands/config.js").then((m) => m.configCommand),
+    setup: lazy("setup", () => import("./commands/setup.js").then((m) => m.setupCommand)),
+    doctor: lazy("doctor", () => import("./commands/doctor.js").then((m) => m.doctorCommand)),
+    login: lazy("login", () => import("./commands/login.js").then((m) => m.loginCommand)),
+    config: lazy("config", () => import("./commands/config.js").then((m) => m.configCommand)),
 
-    // ---------------------------------------------------------------------------
-    // Noun groups, lazy-loaded on first invocation.
-    // ---------------------------------------------------------------------------
-    profile: () =>
-      import("./commands/profile.js").then((m) => m.profileCommand),
-    company: () =>
-      import("./commands/company.js").then((m) => m.companyCommand),
-    job: () =>
-      import("./commands/job.js").then((m) => m.jobCommand),
-    connect: () =>
-      import("./commands/connect.js").then((m) => m.connectCommand),
-    search: () =>
-      import("./commands/search.js").then((m) => m.searchCommand),
-    inbox: () =>
-      import("./commands/inbox.js").then((m) => m.inboxCommand),
-    inboxes: () =>
-      import("./commands/inboxes.js").then((m) => m.inboxesCommand),
-    message: () =>
-      import("./commands/message.js").then((m) => m.messageCommand),
-    post: () =>
-      import("./commands/post.js").then((m) => m.postCommand),
-    comment: () =>
-      import("./commands/comment.js").then((m) => m.commentCommand),
-    account: () =>
-      import("./commands/account.js").then((m) => m.accountCommand),
-    webhook: () =>
-      import("./commands/webhook.js").then((m) => m.webhookCommand),
-    draft: () =>
-      import("./commands/draft.js").then((m) => m.draftCommand),
-    "sales-nav": () =>
-      import("./commands/sales-nav.js").then((m) => m.salesNavCommand),
-    recruiter: () =>
-      import("./commands/recruiter.js").then((m) => m.recruiterCommand),
-    group: () =>
-      import("./commands/group.js").then((m) => m.groupCommand),
-    feed: () =>
-      import("./commands/feed.js").then((m) => m.feedCommand),
-    notification: () =>
-      import("./commands/notification.js").then((m) => m.notificationCommand),
+    account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
+    webhook: lazy("webhook", () => import("./commands/webhook.js").then((m) => m.webhookCommand)),
+    // The LinkedIn building blocks. Reserved product groups
+    // (motion, contact, unibox, network, analytics, notification, team) land
+    // between `account` and `webhook` with their owning specs.
+    core: lazy("core", () => import("./commands/core.js").then((m) => m.coreCommand)),
   },
 
   async run() {
-    // Root invocation with no subcommand: print the top-level usage via citty.
-    // dispatch() reaches here only when no subcommand keyword was given.
-    const { runMain } = await import("citty");
-    await runMain(main, { rawArgs: ["--help"] });
+    // Root invocation with no subcommand: the root help (dispatch() reaches
+    // here only when no subcommand keyword was given).
+    const { showHelp } = await import("./lib/examples.js");
+    await showHelp(main, ["curviate"]);
   },
 });

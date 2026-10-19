@@ -1,5 +1,5 @@
 /**
- * `curviate comment`, comment-thread operations.
+ * `curviate core comment`, comment-thread operations.
  *
  * A dedicated, legible surface over the SDK `comments.*` namespace (plus
  * `posts.listComments` for reading a post's comment thread). It replaces the
@@ -29,6 +29,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -557,8 +558,8 @@ const commentListCommand = defineCommand({
     name: "list",
     description: "List the comments on a post. A very recent add/delete may take a few minutes to appear or clear here (LinkedIn-side indexing).",
     examples: [
-      "curviate comment list 7290000000000000000",
-      "curviate comment list 7290000000000000000 --all",
+      "curviate core comment list 7290000000000000000",
+      "curviate core comment list 7290000000000000000 --all",
     ],
   },
   args: {
@@ -575,8 +576,8 @@ const commentRepliesCommand = defineCommand({
     name: "replies",
     description: "List the replies to a comment.",
     examples: [
-      "curviate comment replies 7290000000000000000 COMMENT_ID",
-      "curviate comment replies 7290000000000000000 COMMENT_ID --all",
+      "curviate core comment replies 7290000000000000000 COMMENT_ID",
+      "curviate core comment replies 7290000000000000000 COMMENT_ID --all",
     ],
   },
   args: {
@@ -594,7 +595,7 @@ const commentReactionsCommand = defineCommand({
     name: "reactions",
     description: "List the reactions on a comment.",
     examples: [
-      "curviate comment reactions 7290000000000000000 COMMENT_ID",
+      "curviate core comment reactions 7290000000000000000 COMMENT_ID",
     ],
   },
   args: {
@@ -612,8 +613,8 @@ const commentUserCommand = defineCommand({
     name: "user",
     description: "List the comments authored by a user (accepts 'me').",
     examples: [
-      "curviate comment user me",
-      "curviate comment user janesmith --limit 10",
+      "curviate core comment user me",
+      "curviate core comment user janesmith --limit 10",
     ],
   },
   args: {
@@ -630,7 +631,7 @@ const commentAddCommand = defineCommand({
     name: "add",
     description: "Publish a comment on a post.",
     examples: [
-      "curviate comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\"",
+      "curviate core comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\"",
     ],
   },
   args: {
@@ -649,7 +650,7 @@ const commentReplyCommand = defineCommand({
     name: "reply",
     description: "Reply to a comment.",
     examples: [
-      "curviate comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\"",
+      "curviate core comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\"",
     ],
   },
   args: {
@@ -669,7 +670,7 @@ const commentEditCommand = defineCommand({
     name: "edit",
     description: "Edit your own comment.",
     examples: [
-      "curviate comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\"",
+      "curviate core comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\"",
     ],
   },
   args: {
@@ -688,7 +689,7 @@ const commentDeleteCommand = defineCommand({
     name: "delete",
     description: "Delete your own comment.",
     examples: [
-      "curviate comment delete 7290000000000000000 COMMENT_ID",
+      "curviate core comment delete 7290000000000000000 COMMENT_ID",
     ],
   },
   args: {
@@ -706,7 +707,7 @@ const commentReactCommand = defineCommand({
     name: "react",
     description: "React to a comment (like|celebrate|support|love|insightful|funny).",
     examples: [
-      "curviate comment react 7290000000000000000 COMMENT_ID insightful",
+      "curviate core comment react 7290000000000000000 COMMENT_ID insightful",
     ],
   },
   args: {
@@ -725,7 +726,7 @@ const commentUnreactCommand = defineCommand({
     name: "unreact",
     description: "Remove your reaction from a comment.",
     examples: [
-      "curviate comment unreact 7290000000000000000 COMMENT_ID insightful",
+      "curviate core comment unreact 7290000000000000000 COMMENT_ID insightful",
     ],
   },
   args: {
@@ -740,7 +741,7 @@ const commentUnreactCommand = defineCommand({
 });
 
 export const commentCommand = defineCommand({
-  meta: { name: "comment", description: "Comment-thread operations (list, add, reply, edit, delete, react)." },
+  meta: { name: "comment", description: DESCRIPTIONS.comment },
   args: { ...GLOBAL_FLAGS },
   subCommands: {
     list: commentListCommand,
@@ -756,16 +757,16 @@ export const commentCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate comment list <post_id>\n" +
-      "       curviate comment add <post_id> <text> [--attach <file>]\n" +
-      "       curviate comment reply <post_id> <comment_id> <text>\n" +
-      "       curviate comment edit <post_id> <comment_id> <text>\n" +
-      "       curviate comment delete <post_id> <comment_id>\n" +
-      "       curviate comment replies <post_id> <comment_id>\n" +
-      "       curviate comment react <post_id> <comment_id> <reaction>\n" +
-      "       curviate comment reactions <post_id> <comment_id>\n" +
-      "       curviate comment unreact <post_id> <comment_id> <reaction>\n" +
-      "       curviate comment user <user_id>\n",
+      "Usage: curviate core comment list <post_id>\n" +
+      "       curviate core comment add <post_id> <text> [--attach <file>]\n" +
+      "       curviate core comment reply <post_id> <comment_id> <text>\n" +
+      "       curviate core comment edit <post_id> <comment_id> <text>\n" +
+      "       curviate core comment delete <post_id> <comment_id>\n" +
+      "       curviate core comment replies <post_id> <comment_id>\n" +
+      "       curviate core comment react <post_id> <comment_id> <reaction>\n" +
+      "       curviate core comment reactions <post_id> <comment_id>\n" +
+      "       curviate core comment unreact <post_id> <comment_id> <reaction>\n" +
+      "       curviate core comment user <user_id>\n",
     );
   },
 });

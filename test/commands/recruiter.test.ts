@@ -46,14 +46,16 @@ const refused = async (fn: unknown, flags: Flags, method?: string, ...rest: unkn
   return { code, err: text(out.stderr) };
 };
 
+/** The schema's minimum description length is 200 characters. */
+const DESC = "Build agent infrastructure. ".repeat(8);
 const JOB_FLAGS = {
   "job-title-id": "title_1", "job-title": "Senior Backend Engineer", "company-id": "comp_1", "workplace-type": "REMOTE", location: "loc_1",
-  "employment-status": "FULL_TIME", "seniority-level": "MID_SENIOR_LEVEL", description: "Build agents.", industry: "ind_1,ind_2",
+  "employment-status": "FULL_TIME", "seniority-level": "MID_SENIOR_LEVEL", description: DESC, industry: "ind_1,ind_2",
   "job-function": "fn_1", "apply-method": "linkedin", "notification-email": "jobs@example.com",
 };
 const JOB_BODY = {
   job_title: { id: "title_1", name: "Senior Backend Engineer" }, company: { id: "comp_1" }, workplace_type: "REMOTE", location: "loc_1",
-  employment_status: "FULL_TIME", seniority_level: "MID_SENIOR_LEVEL", description: "Build agents.", industry: ["ind_1", "ind_2"],
+  employment_status: "FULL_TIME", seniority_level: "MID_SENIOR_LEVEL", description: DESC, industry: ["ind_1", "ind_2"],
   job_function: ["fn_1"], apply_method: { method: "linkedin", notification_email: "jobs@example.com" },
 };
 const CHAT = { to: "AEM789", text: "hello", subject: "Subj", signature: "Sig" };
@@ -107,7 +109,7 @@ describe("each command calls its SDK method with exactly these arguments", () =>
     ["project-job get", "getProjectJob", R.runRecruiterGetProjectJob, { projectId: "proj_9" }, ["proj_9"]],
     ["project-job budget", "getProjectJobBudget", R.runRecruiterGetProjectJobBudget, { projectId: "proj_9", jobId: "job_42" }, ["proj_9", "job_42"]],
     ["project-job create assembles the body from scalar flags", "createProjectJob", R.runRecruiterCreateProjectJob, { projectId: "proj_9", ...JOB_FLAGS }, ["proj_9", JOB_BODY]],
-    ["project-job update is PATCH: only supplied fields", "updateProjectJob", R.runRecruiterUpdateProjectJob, { projectId: "proj_9", jobId: "job_42", description: "New." }, ["proj_9", "job_42", { description: "New." }]],
+    ["project-job update is PATCH: only supplied fields", "updateProjectJob", R.runRecruiterUpdateProjectJob, { projectId: "proj_9", jobId: "job_42", "workplace-type": "HYBRID" }, ["proj_9", "job_42", { workplace_type: "HYBRID" }]],
     ["save-candidate", "saveCandidate", R.runRecruiterSaveCandidate, { projectId: "proj_abc", "stage-id": "stage_1", "candidate-id": "AEM123" }, ["proj_abc", { stage_id: "stage_1", candidate_id: "AEM123" }]],
     ["job publish FREE", "publishJob", R.runRecruiterPublishJob, { projectId: "proj_9", jobId: "job_42", mode: "FREE" }, ["proj_9", "job_42", expect.objectContaining({ mode: "FREE" })]],
     ["job publish PROMOTED with budget", "publishJob", R.runRecruiterPublishJob, {
@@ -175,11 +177,11 @@ describe("refusals exit 2 before any SDK call, naming the flag", () => {
     expect(err).toContain(flag);
   });
 
-  it("job create: invalid JSON in --body-file and a non-object body on stdin", async () => {
+  it("job create: invalid JSON in --file and a non-object document on stdin", async () => {
     await writeFile(join(tmp, "bad.json"), "{ not valid json ");
-    expect((await refused(R.runRecruiterCreateJob, { "body-file": join(tmp, "bad.json") }, "createJob")).code).toBe(2);
+    expect((await refused(R.runRecruiterCreateJob, { file: join(tmp, "bad.json") }, "createJob")).code).toBe(2);
     const readers = { readFile: vi.fn(), readStdin: vi.fn(async () => "[1,2,3]") };
-    expect((await refused(R.runRecruiterCreateJob, { body: "-" }, "createJob", readers)).code).toBe(2);
+    expect((await refused(R.runRecruiterCreateJob, { file: "-" }, "createJob", readers)).code).toBe(2);
   });
 
   it("resume to a TTY without -o", async () => {
@@ -229,20 +231,20 @@ describe("recruiter job create (JSON body + scalar flags)", () => {
   const FULL = { ...JOB_BODY, project_name: "Q3 Hiring" };
   const readers = (o: { stdin?: string } = {}) => ({ readFile: vi.fn(), readStdin: vi.fn(async () => o.stdin ?? "") });
 
-  it("--body-file and --body - (stdin) pass the whole JSON body through", async () => {
+  it("--file <path> and --file - (stdin) pass the whole JSON body through", async () => {
     await writeFile(join(tmp, "job.json"), JSON.stringify(FULL));
-    await go(R.runRecruiterCreateJob, { "body-file": join(tmp, "job.json") });
+    await go(R.runRecruiterCreateJob, { file: join(tmp, "job.json") });
     const r = readers({ stdin: JSON.stringify(FULL) });
-    await go(R.runRecruiterCreateJob, { body: "-" }, r);
+    await go(R.runRecruiterCreateJob, { file: "-" }, r);
     expect(r.readStdin).toHaveBeenCalled();
     expect(rec["createJob"]!.mock.calls.map((c) => c[0])).toEqual([FULL, FULL]);
   });
 
   it("scalar flags merge over the JSON body, and alone assemble the full required body", async () => {
-    const r = readers({ stdin: JSON.stringify({ ...FULL, description: "OLD", employment_status: "PART_TIME" }) });
-    await go(R.runRecruiterCreateJob, { body: "-", "job-title-id": "title_2", "job-title": "Staff Engineer", description: "NEW", "employment-status": "FULL_TIME" }, r);
+    const r = readers({ stdin: JSON.stringify({ ...FULL, description: `OLD ${DESC}`, employment_status: "PART_TIME" }) });
+    await go(R.runRecruiterCreateJob, { file: "-", "job-title-id": "title_2", "job-title": "Staff Engineer", description: `NEW ${DESC}`, "employment-status": "FULL_TIME" }, r);
     expect(arg0(rec["createJob"]!)).toMatchObject({
-      job_title: { id: "title_2", name: "Staff Engineer" }, description: "NEW", employment_status: "FULL_TIME", company: FULL.company, apply_method: FULL.apply_method,
+      job_title: { id: "title_2", name: "Staff Engineer" }, description: `NEW ${DESC}`, employment_status: "FULL_TIME", company: FULL.company, apply_method: FULL.apply_method,
     });
     await go(R.runRecruiterCreateJob, { ...JOB_FLAGS, "project-name": "Q3 Hiring" });
     expect(arg0(rec["createJob"]!, 1)).toEqual(FULL);
@@ -250,7 +252,7 @@ describe("recruiter job create (JSON body + scalar flags)", () => {
 
   it("--preview shows the assembled body (JSON + flags) without calling createJob", async () => {
     const r = readers({ stdin: JSON.stringify(FULL) });
-    const out = await go(R.runRecruiterCreateJob, { body: "-", "job-title-id": "title_9", "job-title": "Lead Engineer", preview: true, json: undefined }, r);
+    const out = await go(R.runRecruiterCreateJob, { file: "-", "job-title-id": "title_9", "job-title": "Lead Engineer", preview: true, json: undefined }, r);
     expect(rec["createJob"]).not.toHaveBeenCalled();
     expect(json(out)).toMatchObject({ method: "recruiter.createJob", body: { job_title: { id: "title_9", name: "Lead Engineer" }, company: FULL.company } });
   });

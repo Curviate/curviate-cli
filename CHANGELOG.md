@@ -6,12 +6,116 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.48.0] - 2026-10-19
 
+A breaking minor (pre-1.0): the LinkedIn commands move under `curviate core`.
 Still requires `@curviate/sdk` 0.42.0 (exact pin unchanged). The vendored OpenAPI
 fixture is re-copied from the SDK's regenerated fixture (deployed staging, server
 `3b0b7503a516f6a1f39622bd40ec6fec9c217c38`); the pin's version label stays
 `0.42.0` until the SDK release and the pin bump.
+
+### Changed (breaking)
+
+The sixteen LinkedIn groups now live under `curviate core`, the LinkedIn
+building blocks; product groups will sit at the top level beside `account` and
+`webhook`. Migrating a script is a prefix change: insert `core ` after
+`curviate`. Every subcommand, positional, flag, default projection, exit code
+and bare form (`core connect <slug>`, `core profile <url>`, `core company <id>`,
+`core message <chat_id> "<text>"`) is unchanged apart from the renames below.
+
+- `curviate profile ...` is now `curviate core profile ...`.
+- `curviate company ...` is now `curviate core company ...`.
+- `curviate job ...` is now `curviate core job ...`.
+- `curviate connect ...` is now `curviate core connect ...`.
+- `curviate search ...` is now `curviate core search ...`.
+- `curviate inbox ...` is now `curviate core inbox ...`.
+- `curviate inboxes ...` is now `curviate core inboxes ...`.
+- `curviate message ...` is now `curviate core message ...`.
+- `curviate post ...` is now `curviate core post ...`.
+- `curviate comment ...` is now `curviate core comment ...`.
+- `curviate sales-nav ...` is now `curviate core sales-nav ...`.
+- `curviate recruiter ...` is now `curviate core recruiter ...`.
+- `curviate group ...` is now `curviate core group ...`.
+- `curviate feed ...` is now `curviate core feed ...`.
+- `curviate notification ...` is now `curviate core notification ...`.
+- `curviate draft ...` is now `curviate core draft ...`.
+
+**Old paths fail.** Any old path, with or without arguments, and with or without
+`--help` or `-h`, exits 2 with the generic usage error
+(`error: unknown command at argument 1`), sends nothing, and names no
+successor: no hint, no alias, no did-you-mean. Help no longer rescues an
+unknown token either: `curviate profile --help` and `curviate core inbx --help`
+exit 2 instead of printing the nearest help.
+
+**`notification` changes meaning.** `curviate notification` is reserved for
+Curviate Notifications, which land in a later release; LinkedIn's notification
+cards are `curviate core notification`. Until then `curviate notification`
+exits 2 like every other old path.
+
+**The 0.15.0 successor hints are removed.** `post list`, `connect respond`,
+`profile connections`, `account connect-link`, `account reconnect-link`,
+`account reconnect`, `inbox sync`, `inbox sync-chat`, `recruiter add-candidate`,
+`recruiter project-jobs`, `recruiter sync`, `recruiter add-applicant`,
+`recruiter reject-applicant`, `sales-nav sync` and `webhook state-diff` now get
+the generic usage error with no hint. `core connect respond` is still refused
+(exit 2, nothing sent) instead of sending an invitation to the slug `respond`.
+
+**Document flags are renamed to `--file`.** A document is a path or `-`
+(stdin), never inline JSON on the command line:
+- `core recruiter job create`, `core recruiter project-job create` and
+  `core recruiter project-job update`: `--body-file <path>` and `--body -` are
+  now `--file <path|->`.
+- `webhook verify`: `--body <inline|path|->` is now `--file <path|->`. Inline
+  JSON is no longer accepted; pipe it with `--file -`. The bytes are verified
+  as given (trailing newlines excepted, as before).
+- `--filters-file` (search, Sales Navigator and Recruiter searches) also
+  accepts `-`.
+
+A value starting with `{` or `[` given to a file flag, a missing path, a
+directory, empty input, unparsable JSON (named by line and column), `-` while
+stdin is a terminal, and two inputs reading stdin in one call all exit 2 before
+any request.
+
+**`core connect --note` help is corrected.** It no longer claims notes raise
+acceptance, and no longer says omitting it sends "a generic note" (omitting it
+sends no note). It now reads: up to 300 characters on LinkedIn Premium, 200
+on a free account, a note on about 5 invitations a month (budget row
+`connection_requests_with_note`).
+
+### Added
+
+- **`curviate core`** prints its sixteen groups and the rules every core
+  command shares (writes are immediate and visible, a retry can repeat a write,
+  budgets are in `curviate account get`). `curviate core` alone prints the same
+  as `curviate core --help`, exit 0. Root help ends with a SEE ALSO naming the
+  skill plugin and the CLI reference.
+- **Help sections in one fixed order**: usage, DOCUMENT, RULES, REQUIRES,
+  OUTPUT, ERRORS, SEE ALSO, EXAMPLES (always last), each only when it applies.
+  `commands.json` carries the same data (`risk`, `rules`, `errors`, `seeAlso`,
+  `document`), so the docs render the same sections. `account disconnect` and
+  `webhook delete` carry them in full; the other commands follow in a later
+  release.
+- **Recruiter job documents are checked before sending.** The merged document
+  (`--file` plus named flags) is validated against the published schema; every
+  problem is listed in one run as `<path>: <rule>`, a misspelt field names its
+  closest valid name, no field value is ever echoed, nothing is sent, exit 2.
+  With `--json`, stdout carries `{"error": {"code": "INVALID_REQUEST", ...,
+  "errors": [{"path", "rule", "suggestion"?}]}}`. Help prints the field table
+  (DOCUMENT) rendered from the same schema, and the last example is a complete
+  `--file -` heredoc.
+- **A mistyped flag names the close one**: `core connect janesmith --not "x"`
+  exits 2 with `hint: did you mean --note?` when exactly one declared flag is
+  within two edits. A command name is never suggested.
+
+### Fixed
+
+- **A write the API accepted exits 0.** A 2xx answer to a write whose body is
+  empty, not JSON, or not the expected shape prints the JSON body (or `{}`),
+  warns on stderr, and exits 0, instead of exit 7 that invited a retry and a
+  duplicate. A read given such a body still exits 7. The account checkpoint
+  flow keeps exit 7: its next step depends on the body.
+- **`--help` loads only what it describes**: `curviate --help` and
+  `curviate core --help` import no command module.
 
 ### Changed
 

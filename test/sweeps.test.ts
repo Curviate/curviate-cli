@@ -6,14 +6,14 @@
  * far as sending anything. A failure lists the offending commands.
  */
 import { describe, it, expect } from "vitest";
-import { useSink, type Reply } from "./helpers/sink.js";
+import { useSink, type Reply, type ReplyFn } from "./helpers/sink.js";
 import { argvFor, discoverCursorNodes, discoverStreamingNodes, discoverSweepVariants, type Node } from "./helpers/tree.js";
 
 const PAGE: Reply = { body: { object: "list", id: "ACoAAB1234", items: [], cursor: null } };
 const JSON_RAW = (body: string, status = 200): Reply => ({ status, type: "application/json", body });
 const sink = useSink(PAGE);
 const COMMON = ["--json", "--beta", "--account", "acc_1"];
-const run = (argv: string[], reply: Reply = PAGE) => {
+const run = (argv: string[], reply: Reply | ReplyFn = PAGE) => {
   sink.reply = reply;
   return sink.run([...argv, ...COMMON]);
 };
@@ -82,11 +82,11 @@ describe("every paginated command (declares --cursor)", () => {
 describe("--cursor / --limit are refused where the endpoint takes neither", () => {
   const url = "https://h.test/x";
   it.each([
-    ["company", "1"],
-    ["company", "chat", "1", "c1"],
-    ["company", "message", "1", "c1", "m1"],
-    ["post", "get", "p1"],
-    ["profile", "endorse", "x1", "--endorsement-id", "e1"],
+    ["core", "company", "1"],
+    ["core", "company", "chat", "1", "c1"],
+    ["core", "company", "message", "1", "c1", "m1"],
+    ["core", "post", "get", "p1"],
+    ["core", "profile", "endorse", "x1", "--endorsement-id", "e1"],
     ["webhook", "get", "w1"],
     ["webhook", "delete", "w1"],
     ["webhook", "update", "w1"],
@@ -104,12 +104,12 @@ describe("--cursor / --limit are refused where the endpoint takes neither", () =
   });
 
   it("recruiter search parameters takes --limit but not --cursor; recruiter applicants takes both", async () => {
-    const params = ["recruiter", "search", "parameters", "--source", "SEARCH", "--type", "LOCATION"];
+    const params = ["core", "recruiter", "search", "parameters", "--source", "SEARCH", "--type", "LOCATION"];
     const bad = await run([...params, "--cursor", "c_1"]);
     expect([bad.status, bad.requests.length]).toEqual([2, 0]);
     expect(bad.stderr).toContain("unknown flag `--cursor`");
     expect((await run([...params, "--limit", "5"])).status).toBe(0);
-    const applicants = ["recruiter", "applicants", "x1", "--channel-id", "c1"];
+    const applicants = ["core", "recruiter", "applicants", "x1", "--channel-id", "c1"];
     for (const flag of [["--cursor", "c_1"], ["--limit", "5"]]) {
       const r = await run([...applicants, ...flag]);
       expect([r.status, r.requests.length > 0]).toEqual([0, true]);
@@ -122,7 +122,7 @@ describe("a single-object read's 2xx must be a readable object", () => {
   const bodyless = (r: Reply) => ({ ...r, body: r.status === 204 ? undefined : r.body });
 
   it("every read-only leaf exits 7 on a null, empty or {} body", { timeout: SLOW }, async () => {
-    const downloads = new Set(["job applicant resume", "message attachment", "recruiter applicant resume"]);
+    const downloads = new Set(["core job applicant resume", "core message attachment", "core recruiter applicant resume"]);
     const variants = await discoverSweepVariants();
     expect(variants.length).toBeGreaterThanOrEqual(150);
     const bad: string[] = [];
@@ -153,7 +153,7 @@ describe("a single-object read's 2xx must be a readable object", () => {
     ["account", "checkpoint", "poll", "1"],
     ["account", "checkpoint", "poll", "1", "--wait"],
     ["account", "checkpoint", "solve", "1", "--code", "x"],
-    ["recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
+    ["core", "recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
   ])("%s: a POST-shaped read exits 7 on a null, empty or {} body", async (...argv) => {
     const first = await run(argv, JSON_RAW("null"));
     expect(first.requests.some((q) => q.method !== "GET")).toBe(true);
@@ -163,12 +163,13 @@ describe("a single-object read's 2xx must be a readable object", () => {
 
   it("a genuine write still renders a null, empty or {} response (exit 0)", async () => {
     for (const body of [JSON_RAW("null"), ...EMPTY]) {
-      const r = await run(["comment", "delete", "1", "1", "--verbose"], bodyless(body));
+      const r = await run(["core", "comment", "delete", "1", "1", "--verbose"], bodyless(body));
       expect(r.status, `${body.status ?? 200} ${JSON.stringify(body.body)}`).toBe(0);
     }
   });
 
   it("control: a valid object body exits 0", async () => {
-    expect((await run(["company", "1", "--verbose"], { body: { id: "ok_1", name: "ok" } })).status).toBe(0);
+    expect((await run(["core", "company", "1", "--verbose"], { body: { id: "ok_1", name: "ok" } })).status).toBe(0);
   });
 });
+

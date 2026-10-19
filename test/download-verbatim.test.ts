@@ -23,9 +23,9 @@ const fail7 = (r: { status: number; stdout: string; stderr: string }) => {
 
 describe("download commands save any 2xx body verbatim", () => {
   const DOWNLOADS: Array<[string, string[]]> = [
-    ["message attachment", ["message", "attachment", "chat_1", "msg_1", "att_1"]],
-    ["job applicant resume", ["job", "applicant", "resume", "123", "app_1"]],
-    ["recruiter applicant resume", ["recruiter", "applicant", "resume", "proj_1", "app_1", "--beta"]],
+    ["message attachment", ["core", "message", "attachment", "chat_1", "msg_1", "att_1"]],
+    ["job applicant resume", ["core", "job", "applicant", "resume", "123", "app_1"]],
+    ["recruiter applicant resume", ["core", "recruiter", "applicant", "resume", "proj_1", "app_1", "--beta"]],
   ];
   const BODIES: Array<[string, string]> = [
     ["text/html", "<!doctype html><html><body>résumé</body></html>\n"],
@@ -49,17 +49,17 @@ describe("download commands save any 2xx body verbatim", () => {
 
   it("control: a non-download command's 200 HTML still exits 7", async () => {
     sink.reply = reply(200, "text/html", "<html>portal</html>");
-    fail7(await run(["profile", "me", "--json"]));
+    fail7(await run(["core", "profile", "me", "--json"]));
   });
 });
 
-describe("any other command: a non-empty 2xx body that is not JSON exits 7", () => {
+describe("any other read: a non-empty 2xx body that is not JSON exits 7 (a write's 2xx is accepted, examples.test.ts)", () => {
   it.each([
     ["text/plain", "hello"], ["application/octet-stream", "hello"], [null, "hello"],
     ["text/html", "<html>portal</html>"], ["application/json", "<html>portal</html>"], ["application/json", " "],
   ])("%s %j", async (type, body) => {
     sink.reply = reply(200, type, body);
-    for (const argv of [["post", "get", "p1"], ["post", "delete", "p1"], ["account", "list"]]) fail7(await run([...argv, "--json"]));
+    for (const argv of [["core", "post", "get", "p1"], ["account", "list"]]) fail7(await run([...argv, "--json"]));
   });
 
   it.each([
@@ -67,7 +67,7 @@ describe("any other command: a non-empty 2xx body that is not JSON exits 7", () 
     [200, "application/json", "{}"], [201, "application/json; charset=utf-8", '{"ok":true}'],
   ])("post delete: %i %s %j is exit 0", async (status, type, body) => {
     sink.reply = reply(status, type, body);
-    const r = await run(["post", "delete", "p1", "--json"]);
+    const r = await run(["core", "post", "delete", "p1", "--json"]);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).not.toContain("PLATFORM_ERROR");
   });
@@ -81,9 +81,9 @@ describe("a 2xx that is not a list page", () => {
     [200, "application/json", '{"items":{},"cursor":null}'], [200, "application/json", '{"items":null,"data":[],"cursor":null}'],
   ];
   const ALL: string[][] = [
-    ["account", "list", "--all"], ["webhook", "list", "--all"], ["connect", "sent", "--all"], ["inbox", "list", "--all"],
-    ["job", "list", "--state", "OPEN", "--all"], ["job", "list", "--state", "ALL", "--all"],
-    ["job", "list", "--state", "OPEN"], ["job", "list", "--state", "ALL"],
+    ["account", "list", "--all"], ["webhook", "list", "--all"], ["core", "connect", "sent", "--all"], ["core", "inbox", "list", "--all"],
+    ["core", "job", "list", "--state", "OPEN", "--all"], ["core", "job", "list", "--state", "ALL", "--all"],
+    ["core", "job", "list", "--state", "OPEN"], ["core", "job", "list", "--state", "ALL"],
   ];
 
   it.each(NOT_A_PAGE)("%i %s %j: doctor is 'not verified' (exit 7) and every list read exits 7 without crashing", async (status, type, body) => {
@@ -102,7 +102,7 @@ describe("a 2xx that is not a list page", () => {
 
   it("controls: a page carried as `data` streams; a real empty page is verified and every list streams", async () => {
     sink.reply = reply(200, "application/json", JSON.stringify({ object: "list", data: [{ id: "proj_1" }], cursor: null }));
-    const rec = await run(["recruiter", "projects", "--all", "--json", "--page-delay", "0", "--beta"]);
+    const rec = await run(["core", "recruiter", "projects", "--all", "--json", "--page-delay", "0", "--beta"]);
     expect([rec.status, rec.stdout.includes("proj_1")]).toEqual([0, true]);
     sink.reply = reply(200, "application/json", JSON.stringify({ object: "list", items: [], cursor: null }));
     const doc = await run(["doctor", "--json"], false);
@@ -113,10 +113,10 @@ describe("a 2xx that is not a list page", () => {
 
 describe("a name or slug lookup whose answer is unreadable", () => {
   const SLUG: string[][] = [
-    ["company", "posts", "acme"], ["company", "employees", "acme"], ["post", "user-posts", "john-doe"], ["comment", "user", "john-doe"],
-    ["profile", "john-doe", "--sections", "skills"], ["profile", "someco", "--posts", "--is-company"],
-    ["profile", "endorse", "john-doe", "--endorsement-id", "e1"], ["profile", "follow", "john-doe"],
-    ["message", "new", "--to", "john-doe", "hello"], ["message", "inmail", "--to", "john-doe", "--subject", "Hi", "hello"],
+    ["core", "company", "posts", "acme"], ["core", "company", "employees", "acme"], ["core", "post", "user-posts", "john-doe"], ["core", "comment", "user", "john-doe"],
+    ["core", "profile", "john-doe", "--sections", "skills"], ["core", "profile", "someco", "--posts", "--is-company"],
+    ["core", "profile", "endorse", "john-doe", "--endorsement-id", "e1"], ["core", "profile", "follow", "john-doe"],
+    ["core", "message", "new", "--to", "john-doe", "hello"], ["core", "message", "inmail", "--to", "john-doe", "--subject", "Hi", "hello"],
   ];
 
   it.each(["null", "{}", '{"items":{}}', "[]", '{"id":null}', '{"id":""}'])("slug lookup answered %s: exit 7 and no request path carries undefined", async (body) => {
@@ -131,17 +131,17 @@ describe("a name or slug lookup whose answer is unreadable", () => {
 
   it.each(["null", "{}", '{"items":{}}', '{"items":null}', "[]"])('--account "Ralf Fischer" resolved against %s: exit 7', async (body) => {
     sink.reply = reply(200, "application/json", body);
-    const r = await sink.run(["profile", "me", "--json", "--account", "Ralf Fischer"], { xdg: dir });
+    const r = await sink.run(["core", "profile", "me", "--json", "--account", "Ralf Fischer"], { xdg: dir });
     expect(r.status, r.stdout + r.stderr).toBe(7);
     expect(r.requests.map((q) => q.url).join(" ")).not.toMatch(/undefined/);
   });
 
   it("control: a readable lookup resolves and proceeds", async () => {
     sink.reply = reply(200, "application/json", '{"id":"ACoAAB1234","object":"list","items":[{"account_id":"acc_9","full_name":"Ralf Fischer"}],"cursor":null}');
-    const r = await run(["post", "user-posts", "john-doe", "--json"]);
+    const r = await run(["core", "post", "user-posts", "john-doe", "--json"]);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.requests.some((q) => q.url.includes("/users/ACoAAB1234/"))).toBe(true);
-    const acc = await sink.run(["profile", "me", "--json", "--account", "Ralf Fischer"], { xdg: dir });
+    const acc = await sink.run(["core", "profile", "me", "--json", "--account", "Ralf Fischer"], { xdg: dir });
     expect([acc.status, acc.requests.some((q) => q.url.startsWith("/v1/acc_9/"))]).toEqual([0, true]);
   });
 });

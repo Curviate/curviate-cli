@@ -221,3 +221,13 @@ export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "pr
   delete rest.preview;
   return rest;
 }
+
+/**
+ * Whether the running command is a write: it declares `--preview` (every
+ * write does, through WRITE_FLAGS / WRITE_SINGLE_FLAGS). Set once by the
+ * dispatcher for the resolved leaf; read by the transport, which treats a
+ * write's 2xx as accepted whatever its body (lib/client.ts).
+ */
+let writeCommand = false;
+export const setWriteCommand = (v: boolean): void => void (writeCommand = v);
+export const isWriteCommand = (): boolean => writeCommand;

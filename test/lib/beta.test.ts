@@ -33,11 +33,11 @@ afterEach(() => {
 
 describe("parseBetaFlag — three states", () => {
   it("absent leaves the value undefined and the arguments untouched", () => {
-    const r = parseBetaFlag(["sales-nav", "search", "people", "--json"]);
+    const r = parseBetaFlag(["core", "sales-nav", "search", "people", "--json"]);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.value).toBeUndefined();
-    expect(r.rest).toEqual(["sales-nav", "search", "people", "--json"]);
+    expect(r.rest).toEqual(["core", "sales-nav", "search", "people", "--json"]);
   });
 
   it("bare --beta is true", () => {
@@ -110,11 +110,11 @@ describe("parseBetaFlag — an invalid value is a usage error, never an opt-in",
     // A message body can legitimately contain the text `--beta=maybe`. Past the
     // end-of-flags marker it is data, and refusing it would make a valid
     // message unsendable.
-    const r = parseBetaFlag(["message", "chat_1", "--", "--beta=maybe"]);
+    const r = parseBetaFlag(["core", "message", "chat_1", "--", "--beta=maybe"]);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.value).toBeUndefined();
-    expect(r.rest).toEqual(["message", "chat_1", "--", "--beta=maybe"]);
+    expect(r.rest).toEqual(["core", "message", "chat_1", "--", "--beta=maybe"]);
   });
 });
 

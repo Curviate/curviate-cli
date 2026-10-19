@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { INTERACTIVE_ONLY, readManifest, useExamples } from "./helpers/examples.js";
+import { INTERACTIVE_ONLY, readManifest, useExamples, withArgs } from "./helpers/examples.js";
 import { pkgRoot } from "./helpers/pkg.js";
 import { runCli } from "./helpers/run-inproc.js";
 
@@ -16,6 +16,10 @@ const manifest = readManifest();
 const runnable = manifest.filter((c) => !c.usageOnly && c.examples[0] && !INTERACTIVE_ONLY.has(c.examples[0]));
 const BAD_STUB = "The API returned an unreadable response"; // a read the stub's shape cannot satisfy: the API's answer, not a usage error
 const SLOW = 300_000;
+/** The checkpoint flow reads its next step from the body: an unreadable one stays exit 7 (the account is mid-login, not written). */
+/** The SDK method returns nothing (a documented 204), so any body prints as {}. */
+const VOID_RESULT = new Set(["core draft delete"]);
+const CHECKPOINT_FLOW = new Set(["account checkpoint solve", "account checkpoint poll", "account checkpoint request", "account connect-session poll"]);
 
 describe("meta.examples", () => {
   it("no example is a usage error or a crash", { timeout: SLOW }, async () => {
@@ -40,7 +44,7 @@ describe("meta.examples", () => {
         let last = "";
         let ok = false;
         for (const line of c.examples.filter((l) => !INTERACTIVE_ONLY.has(l))) {
-          const r = await ex.run(`${line} --${flag}${value[flag] !== undefined ? ` ${value[flag]}` : ""}`, { fresh: true });
+          const r = await ex.run(withArgs(line, `--${flag}${value[flag] !== undefined ? ` ${value[flag]}` : ""}`), { fresh: true });
           if (r.status !== 2) {
             ok = true;
             break;
@@ -80,7 +84,7 @@ describe("--help prints a command's examples and requirements", () => {
   const helpOf = (path: string) => runCli([...path.split(" "), "--help"]);
   const examplesOf = (path: string) => manifest.find((c) => c.path.join(" ") === path)!.examples;
 
-  it.each(["post get", "recruiter job create", "connect", "doctor"])("%s", async (path) => {
+  it.each(["core post get", "core recruiter job create", "core connect", "doctor"])("%s", async (path) => {
     const expected = examplesOf(path);
     expect(expected.length).toBeGreaterThan(0);
     const r = await helpOf(path);
@@ -92,20 +96,20 @@ describe("--help prints a command's examples and requirements", () => {
     expect(examplesOf("account")).toEqual([]);
     expect((await helpOf("account list")).stdout).toContain("EXAMPLES");
     expect((await helpOf("account")).stdout).not.toContain("EXAMPLES");
-    const requires = manifest.find((c) => c.path.join(" ") === "job create")!.requires;
+    const requires = manifest.find((c) => c.path.join(" ") === "core job create")!.requires;
     expect(requires.length).toBeGreaterThan(0);
-    expect((await helpOf("job create")).stdout).toContain(`REQUIRES\n\n${requires.map((l) => `  ${l}`).join("\n")}\n\nEXAMPLES`);
+    expect((await helpOf("core job create")).stdout).toContain(`REQUIRES\n\n${requires.map((l) => `  ${l}`).join("\n")}\n\nEXAMPLES`);
   });
 });
 
 describe("--preview on a command that does not declare it", () => {
   it("is refused with exit 2 on every such command (write-only message on API reads)", async () => {
     const without = runnable.filter((c) => !c.globals.includes("preview"));
-    expect(runnable.some((c) => c.path.join(" ") === "post create" && c.globals.includes("preview"))).toBe(true);
-    expect(without.map((c) => c.path.join(" "))).toEqual(expect.arrayContaining(["post get", "account list", "feed home"]));
+    expect(runnable.some((c) => c.path.join(" ") === "core post create" && c.globals.includes("preview"))).toBe(true);
+    expect(without.map((c) => c.path.join(" "))).toEqual(expect.arrayContaining(["core post get", "account list", "core feed home"]));
     const wrong: string[] = [];
     for (const c of without) {
-      const r = await ex.run(`${c.examples[0]} --preview`, { fresh: true });
+      const r = await ex.run(withArgs(c.examples[0]!, "--preview"), { fresh: true });
       const message = c.globals.includes("beta") ? "--preview is only valid on write commands" : "unknown flag `--preview`";
       if (r.status !== 2 || !r.stderr.includes(message)) wrong.push(`${c.path.join(" ")}: exit ${r.status}, ${r.stderr.trim().split("\n")[0]}`);
     }
@@ -118,7 +122,7 @@ describe("--preview on a command that does not declare it", () => {
   });
 
   it.each(["false", "FALSE", "0", "no", "true", "TRUE", "1", "yes"])("--preview=%s: the read and the write agree", async (v) => {
-    const write = await ex.run(`curviate post delete 7290000000000000000 --account acc_1 --json --preview=${v}`, { fresh: true });
+    const write = await ex.run(`curviate core post delete 7290000000000000000 --account acc_1 --json --preview=${v}`, { fresh: true });
     const read = await ex.run(`curviate account list --preview=${v}`, { fresh: true });
     const previewed = write.stdout.includes('"method":"posts.delete"');
     expect(write.status, write.stderr).toBe(0);
@@ -126,7 +130,7 @@ describe("--preview on a command that does not declare it", () => {
   });
 
   it("a write still takes --no-preview and sends", async () => {
-    const r = await ex.run("curviate post delete 7290000000000000000 --no-preview", { fresh: true });
+    const r = await ex.run("curviate core post delete 7290000000000000000 --no-preview", { fresh: true });
     expect(r.status, r.stderr).toBe(0);
   });
 });
@@ -149,5 +153,42 @@ describe("README.md", () => {
       if (!(r.status === 1 && r.stderr.includes(BAD_STUB)) && (r.status === 1 || r.status === 2)) bad.push(`${line}\n  exit ${r.status}: ${r.stderr.trim().split("\n")[0]}`);
     }
     expect(bad).toEqual([]);
+  });
+});
+
+describe("a write the API accepted exits 0 whatever its body", () => {
+  it("every write example (declares --preview) answered 2xx empty, unexpected or non-JSON: exit 0, the JSON body or {} on stdout, a warning on stderr; a read given the non-JSON body still exits 7", { timeout: SLOW }, async () => {
+    const OK = ex.sink.reply;
+    const bodies: Array<[{ status: number; type: string; body: string }, string]> = [
+      [{ status: 200, type: "application/json", body: "" }, "{}"],
+      [{ status: 201, type: "application/json", body: '{"unexpected": true}' }, '{"unexpected":true}'],
+      [{ status: 200, type: "text/html", body: "<html>ok</html>" }, "{}"],
+      [{ status: 200, type: "application/json", body: "null" }, "{}"],
+    ];
+    const bad: string[] = [];
+    let swept = 0;
+    try {
+      for (const c of runnable.filter((x) => x.globals.includes("preview") && !CHECKPOINT_FLOW.has(x.path.join(" ")))) {
+        for (const lineOf of c.examples.filter((l) => !/--preview\b/.test(l))) {
+          ex.sink.reply = OK;
+          if (!(await ex.run(lineOf, { fresh: true })).requests.some((q) => q.method !== "GET")) continue;
+          swept++;
+          for (const [reply, printed] of bodies) {
+            ex.sink.reply = (h) => (h.method === "GET" ? (typeof OK === "function" ? OK(h) : OK) : reply);
+            const r = await ex.run(lineOf, { fresh: true });
+            const out = r.stdout.trim().split("\n").pop() ?? "";
+            const expected = VOID_RESULT.has(c.path.join(" ")) ? "{}" : printed;
+            if (r.status !== 0 || out !== expected || !r.stderr.includes("The write happened: do not retry it.")) bad.push(`${lineOf.split("\n")[0]} ${reply.body}: exit ${r.status} ${out.slice(0, 50)} ${r.stderr.trim().split("\n")[0]}`);
+          }
+          break;
+        }
+      }
+      expect(swept, "the sweep reaches the writes").toBeGreaterThan(50);
+      expect(bad).toEqual([]);
+      ex.sink.reply = { status: 200, type: "text/html", body: "<html>ok</html>" };
+      expect((await ex.run("curviate core company 1035 --account acc_1", { fresh: true })).status).toBe(7);
+    } finally {
+      ex.sink.reply = OK;
+    }
   });
 });

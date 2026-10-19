@@ -16,14 +16,15 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
-import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
-import { readFileSync } from "node:fs";
+import { defaultReadStdin } from "../lib/stdin.js";
+import { readFileFlag } from "../lib/document.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
 /**
@@ -61,7 +62,7 @@ type WebhookFlags = {
   // webhook verify flags
   secret?: string;
   header?: string;
-  body?: string;
+  file?: string;
   "max-age-secs"?: string;
   "api-key"?: string;
   "base-url"?: string;
@@ -380,60 +381,23 @@ function stripTrailingNewlines(s: string): string {
 }
 
 /**
- * Resolve `--body` into the exact bytes to verify. Three forms are accepted:
- *
- *   - inline JSON: the raw body pasted straight onto the command line. A caller
- *     debugging a live delivery already holds the body as a string in the
- *     handler; making them write a temp file first is a pointless round trip on
- *     the one path this command exists for.
- *   - a file path: the raw body saved from the incoming request.
- *   - `-`: the raw body piped on stdin.
- *
- * Inline JSON and a path cannot be confused: a delivery body is always a JSON
- * object, so it starts with `{`, and no path names a file that starts with `{`.
- *
- * `-` arrives here as STDIN_SENTINEL, not as a dash. The dispatcher substitutes
- * the sentinel for a bare dash before citty parses argv (mri swallows a lone
- * dash), so both spellings must be recognised; treating the sentinel as a
- * filename is what made `--body -` fail.
- *
- * Anything unusable exits 2 (a usage error the caller can fix), never 1, and
- * never as a signature verdict: reporting bad input as a verification failure is
- * what sends someone off rotating a secret that was never wrong.
+ * Resolve `--file <path|->` into the exact bytes to verify (renamed from `--body`; inline JSON is refused, a document never travels in
+ * argv). Bytes are kept verbatim except trailing newlines, which a capture
+ * adds and the signer never produces (stripTrailingNewlines). Anything
+ * unusable exits 2, never as a signature verdict: reporting bad input as a
+ * verification failure sends someone off rotating a secret that was never
+ * wrong.
  */
 export async function resolveWebhookBody(
   raw: string | undefined,
-  out: OutputStreams,
   readStdin: () => Promise<string> = defaultReadStdin,
+  others: Record<string, unknown> = {},
 ): Promise<string> {
   if (raw === undefined || raw === "") {
-    out.stderr.write(
-      "error: --body is required: pass the raw webhook body as inline JSON, as a path to a file containing it, or as - to read it from stdin.\n",
-    );
+    process.stderr.write("error: --file is required: a path to the raw webhook body, or - to read it from stdin.\n");
     process.exit(2);
   }
-
-  if (isStdinToken(raw)) {
-    const piped = stripTrailingNewlines(await readStdin());
-    if (!piped) {
-      out.stderr.write("error: --body -: stdin: empty input\n");
-      process.exit(2);
-    }
-    return piped;
-  }
-
-  if (raw.trimStart().startsWith("{")) return raw;
-
-  try {
-    return stripTrailingNewlines(readFileSync(raw, "utf8"));
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    out.stderr.write(
-      `error: --body: could not read ${raw}: ${reason}\n` +
-        "  --body accepts inline JSON, a path to a file containing the raw body, or - to read it from stdin.\n",
-    );
-    process.exit(2);
-  }
+  return stripTrailingNewlines(await readFileFlag("file", raw, { readStdin, others }));
 }
 
 /**
@@ -649,6 +613,17 @@ const webhookDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Permanently remove a webhook subscription.",
+    risk: "high",
+    rules: {
+      changes: "The webhook is deleted: no further event is delivered to its URL.",
+      visible_to: "Your endpoint, which stops receiving deliveries. Nothing reaches LinkedIn.",
+      budget_rows: [],
+      retry: "A retry after success answers RESOURCE_NOT_FOUND; read `curviate webhook list` first.",
+      undo: "Cannot be undone. Register a new one with `curviate webhook create`; it gets a new id and secret.",
+      blast_radius: "One webhook and every event it would have delivered.",
+    },
+    errors: { RESOURCE_NOT_FOUND: "no webhook with this id." },
+    seeAlso: ["curviate webhook list", "curviate webhook create"],
     examples: [
       "curviate webhook delete wh_YOUR_WEBHOOK_ID",
     ],
@@ -680,7 +655,7 @@ const webhookVerifyCommand = defineCommand({
     name: "verify",
     description: "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
     examples: [
-      "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --body payload.json",
+      "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --file payload.json",
     ],
   },
   // Offline: no profile, credential, transport or pagination flag applies.
@@ -696,10 +671,10 @@ const webhookVerifyCommand = defineCommand({
       description: "The full Curviate-Signature header value from the delivery (t=...,v1=...).",
       required: true,
     },
-    body: {
+    file: {
       type: "string",
       stdinArg: true,
-      description: "The raw webhook body: inline JSON, a path to a file containing it, or - to read it from stdin.",
+      description: "The raw webhook body, byte for byte: a path to a file holding it, or - to read it from stdin.",
       required: true,
     },
     "max-age-secs": {
@@ -711,7 +686,7 @@ const webhookVerifyCommand = defineCommand({
     const flags = args as WebhookFlags;
     const out = buildOutputStreams();
 
-    const rawBody = await resolveWebhookBody(flags.body, out);
+    const rawBody = await resolveWebhookBody(flags.file, defaultReadStdin, flags);
 
     const signatureHeader = flags.header ?? "";
     const secret = flags.secret ?? "";
@@ -722,7 +697,7 @@ const webhookVerifyCommand = defineCommand({
 });
 
 export const webhookCommand = defineCommand({
-  meta: { name: "webhook", description: "Webhook management and signature verification." },
+  meta: { name: "webhook", description: DESCRIPTIONS.webhook },
   subCommands: {
     create: webhookCreateCommand,
     list: webhookListCommand,

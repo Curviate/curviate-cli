@@ -43,9 +43,11 @@ describe("every flag, repeated", () => {
     const dir = resolve(pkgRoot, "src", "commands");
     const described = new Map<string, Set<string>>();
     for (const { path, defs } of leaves) {
-      const set = described.get(path[0]!) ?? new Set<string>();
+      const file = path[0] === "core" ? path[1] : path[0];
+      if (!file) continue;
+      const set = described.get(file) ?? new Set<string>();
       for (const [flag, def] of Object.entries(defs)) if (saysRepeatable(def.description)) set.add(flag);
-      described.set(path[0]!, set);
+      described.set(file, set);
     }
     let files = 0;
     for (const f of readdirSync(dir)) {
@@ -69,16 +71,16 @@ describe("through the entry point", () => {
   };
 
   it("--account a --account b and the alias pair -o x --output y are repeats", async () => {
-    await refused(["profile", "me", "--account", "a", "--account", "b"], /--account was given more than once/);
-    await refused(["job", "applicant", "resume", "a", "b", "-o", "x", "--output", "y", ...A], /--output was given more than once/);
+    await refused(["core", "profile", "me", "--account", "a", "--account", "b"], /--account was given more than once/);
+    await refused(["core", "job", "applicant", "resume", "a", "b", "-o", "x", "--output", "y", ...A], /--output was given more than once/);
   });
 
-  it.each([["comment", "add", "p1", "hi"], ["comment", "reply", "p1", "c1", "hi"]])("%s --attach a --attach b: at most one", async (...argv) => {
+  it.each([["core", "comment", "add", "p1", "hi"], ["core", "comment", "reply", "p1", "c1", "hi"]])("%s --attach a --attach b: at most one", async (...argv) => {
     await refused([...argv, "--attach", "a.png", "--attach", "b.png", ...A], /--attach was given more than once/);
   });
 
   it("message send --attach a --attach b is accepted (it is repeatable); --json --json is a repeat and --json once works", async () => {
-    const r = await sink.run(["message", "send", "chat_1", "hi", "--attach", "a.png", "--attach", "b.png", "--preview", ...A]);
+    const r = await sink.run(["core", "message", "send", "chat_1", "hi", "--attach", "a.png", "--attach", "b.png", "--preview", ...A]);
     expect(r.stderr).not.toMatch(/was given more than once/);
     expect(r.stderr).toMatch(/Cannot read attachment/);
     await refused(["config", "list", "--json", "--json"], /more than once/);

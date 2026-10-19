@@ -1,5 +1,5 @@
 /**
- * `curviate connect`, connection invitation operations.
+ * `curviate core connect`, connection invitation operations.
  *
  * Subcommands:
  *   connect <id> [--note <text>]: send invitation (write, --preview OK)
@@ -22,6 +22,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { nearestSubcommand } from "../lib/bare-form-guard.js";
 import { slimInviteSent, slimInviteReceived, slimInviteSentItem, slimInviteReceivedItem } from "../lib/slim.js";
@@ -374,8 +375,8 @@ const connectSentCommand = defineCommand({
       "No total count is available; use `connect sent --all` and count client-side. " +
       "A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
     examples: [
-      "curviate connect sent",
-      "curviate connect sent --all",
+      "curviate core connect sent",
+      "curviate core connect sent --all",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -407,8 +408,8 @@ const connectReceivedCommand = defineCommand({
       "Use the `id` field with `connect accept` or `connect decline`. " +
       "A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
     examples: [
-      "curviate connect received",
-      "curviate connect received --json",
+      "curviate core connect received",
+      "curviate core connect received --json",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -436,7 +437,7 @@ const connectAcceptCommand = defineCommand({
     name: "accept",
     description: "Accept a received invitation.",
     examples: [
-      "curviate connect accept INVITATION_ID",
+      "curviate core connect accept INVITATION_ID",
     ],
   },
   args: {
@@ -470,7 +471,7 @@ const connectDeclineCommand = defineCommand({
     name: "decline",
     description: "Decline a received invitation.",
     examples: [
-      "curviate connect decline INVITATION_ID",
+      "curviate core connect decline INVITATION_ID",
     ],
   },
   args: {
@@ -504,7 +505,7 @@ const connectCancelCommand = defineCommand({
     name: "cancel",
     description: "Cancel a sent invitation.",
     examples: [
-      "curviate connect cancel INVITATION_ID",
+      "curviate core connect cancel INVITATION_ID",
     ],
   },
   args: {
@@ -534,12 +535,12 @@ const connectCancelCommand = defineCommand({
 const CONNECT_SUBCOMMANDS = ["sent", "received", "accept", "decline", "cancel"] as const;
 
 const CONNECT_USAGE =
-  "Usage: curviate connect <id> [--note <text>]\n" +
-  "       curviate connect sent\n" +
-  "       curviate connect received\n" +
-  "       curviate connect accept <invitation_id>\n" +
-  "       curviate connect decline <invitation_id>\n" +
-  "       curviate connect cancel <invitation_id>\n";
+  "Usage: curviate core connect <id> [--note <text>]\n" +
+  "       curviate core connect sent\n" +
+  "       curviate core connect received\n" +
+  "       curviate core connect accept <invitation_id>\n" +
+  "       curviate core connect decline <invitation_id>\n" +
+  "       curviate core connect cancel <invitation_id>\n";
 
 /**
  * Refuse a bare `<id>` that is almost certainly a mistyped subcommand.
@@ -562,10 +563,10 @@ export function guardBareConnectForm(id: string, out: OutputStreams): void {
   if (suggestion === null) return;
 
   out.stderr.write(
-    `error: \`${id}\` looks like a mistyped \`${suggestion}\` subcommand, and \`curviate connect <id>\` ` +
+    `error: \`${id}\` looks like a mistyped \`${suggestion}\` subcommand, and \`curviate core connect <id>\` ` +
       `SENDS a connection invitation, so this is refused rather than guessed.\n`,
   );
-  out.stderr.write(`hint: did you mean \`curviate connect ${suggestion}\`?\n`);
+  out.stderr.write(`hint: did you mean \`curviate core connect ${suggestion}\`?\n`);
   out.stderr.write(
     `hint: if \`${id}\` really is the profile you meant, pass the full profile URL ` +
       `(https://www.linkedin.com/in/${id}) or the provider id instead.\n`,
@@ -577,12 +578,10 @@ export function guardBareConnectForm(id: string, out: OutputStreams): void {
 export const connectCommand = defineCommand({
   meta: {
     name: "connect",
-    description:
-      "Send or manage connection invitations. " +
-      "Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
+    description: DESCRIPTIONS.connect,
     examples: [
-      "curviate connect janesmith",
-      "curviate connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\"",
+      "curviate core connect janesmith",
+      "curviate core connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\"",
     ],
   },
   args: {
@@ -590,15 +589,15 @@ export const connectCommand = defineCommand({
     id: {
       type: "positional",
       description:
-        "Recipient's LinkedIn URL, public slug, or provider_id (ACoAAA... from `curviate profile`). " +
+        "Recipient's LinkedIn URL, public slug, or provider_id (ACoAAA... from `curviate core profile`). " +
         "LinkedIn URN (`urn:li:member:N`) also accepted but the numeric member ID is not exposed by this API.",
       required: false,
     },
     note: {
       type: "string",
       description:
-        "Personalized message shown to the recipient alongside the connection request (<=300 chars; LinkedIn cap). " +
-        "Omit to send a generic note. Personalized messages increase acceptance rates.",
+        "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account and a note on about 5 invitations a month " +
+        "(budget row `connection_requests_with_note`, see `curviate account get`). Omit it to send the invitation without a note.",
     },
   },
   subCommands: {

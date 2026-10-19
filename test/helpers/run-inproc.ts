@@ -30,6 +30,8 @@ export interface RunOpts {
   env?: Record<string, string | undefined>;
   /** Piped to stdin (default: empty, already ended). */
   stdin?: string;
+  /** Stdin is an interactive terminal (nothing piped). */
+  stdinTTY?: boolean;
   /** A config home to use; default: a fresh empty one per run. */
   xdg?: string;
 }
@@ -76,7 +78,7 @@ export async function runCli(args: string[], opts: RunOpts = {}): Promise<RunRes
   }) as never);
   const stdinDesc = Object.getOwnPropertyDescriptor(process, "stdin");
   Object.defineProperty(process, "stdin", {
-    value: Readable.from(opts.stdin ? [Buffer.from(opts.stdin)] : []),
+    value: Object.assign(Readable.from(opts.stdin ? [Buffer.from(opts.stdin)] : []), opts.stdinTTY ? { isTTY: true } : {}),
     configurable: true,
   });
 

@@ -280,10 +280,10 @@ describe("draft list / get / delete / publish", () => {
   });
 });
 
-describe("curviate draft through the CLI entry point (recording sink)", () => {
+describe("curviate core draft through the CLI entry point (recording sink)", () => {
   const draft = { object: "draft", id: "drf_1", status: "draft", attachments: [] };
   const sink = useSink({ status: 201, body: draft });
-  const run = (args: string[], opts: Parameters<typeof sink.run>[1] = {}) => sink.run(["draft", ...args, "--json"], opts);
+  const run = (args: string[], opts: Parameters<typeof sink.run>[1] = {}) => sink.run(["core", "draft", ...args, "--json"], opts);
 
   it("create: no account defaulted (even with CURVIATE_ACCOUNT set), --schedule-at unchanged, JSON body to POST /v1/drafts", async () => {
     const at = "2026-10-12T09:00:00+02:00";

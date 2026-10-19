@@ -1,5 +1,5 @@
 /**
- * `curviate recruiter`, LinkedIn Recruiter operations (beta).
+ * `curviate core recruiter`, LinkedIn Recruiter operations (beta).
  *
  * Subcommands:
  *   recruiter message new --to <id> "<text>" [--attach <f>...] [--voice <f>] [--video <f>], start chat (write, multipart)
@@ -10,7 +10,7 @@
  *   recruiter project <project_id>: get project (read, verbatim id)
  *   recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>: save candidate to pipeline (write)
  *   recruiter jobs [--all] [--limit] [--cursor]: list jobs (read)
- *   recruiter job create [--body-file <path> | --body -] [--job-title <t>] [--description <d>] [--employment-type <e>], create job draft (write; JSON body + scalar flags)
+ *   recruiter job create [--file <path|->] [--job-title <t>] [--description <d>] [--employment-type <e>], create job draft (write; JSON body + scalar flags)
  *   recruiter job publish <project_id> <job_id> [--mode <m>]: publish job (write)
  *   recruiter applicants <project_id> --channel-id <id>: list applicants (read)
  *   recruiter job get <url|id>: get a job posting via the Recruiter lens (read, any public job)
@@ -33,11 +33,12 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
-import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
+import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJsonMode } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimJob } from "../lib/slim.js";
@@ -49,8 +50,7 @@ import {
   DEFAULT_FILTER_READERS,
   type FilterReaders,
 } from "../lib/search-filters.js";
-import { isStdinToken } from "../lib/stdin.js";
-import { readFile } from "node:fs/promises";
+import { documentSchema, parseDocument, readFileFlag, reportIssues, validate } from "../lib/document.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
 /**
@@ -130,8 +130,7 @@ type RecruiterFlags = {
   input?: string;
   output?: string;
   // job create
-  body?: string;
-  "body-file"?: string;
+  file?: string;
   "job-title"?: string;
   "project-name"?: string;
   description?: string;
@@ -211,7 +210,7 @@ function buildRecruiterRef(idValue: string | undefined, nameValue: string | unde
   return undefined;
 }
 
-/** Read all of stdin as a UTF-8 string. Used for `--body -`. */
+/** Read all of stdin as a UTF-8 string. Used for `--file -`. */
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
@@ -225,19 +224,15 @@ async function readStdin(): Promise<string> {
  * (file / stdin) can be exercised in tests without real process.stdin I/O.
  */
 export type JobCreateReaders = {
-  readFile: (path: string) => Promise<string>;
   readStdin: () => Promise<string>;
 };
 
-const DEFAULT_JOB_CREATE_READERS: JobCreateReaders = {
-  readFile: (path) => readFile(path, "utf8"),
-  readStdin,
-};
+const DEFAULT_JOB_CREATE_READERS: JobCreateReaders = { readStdin };
 
 /**
  * Assemble a recruiter job-posting body (shared by `recruiter job create`,
  * `recruiter project-job create`, and `recruiter project-job update`) from a
- * JSON source (--body-file / --body -) plus top-level scalar convenience
+ * document (--file <path|->) plus top-level scalar convenience
  * flags that merge OVER the JSON.
  *
  * v2 shape: job_title is `{id?,name?}` (built from --job-title-id +
@@ -247,12 +242,10 @@ const DEFAULT_JOB_CREATE_READERS: JobCreateReaders = {
  * which remains a separate `recruiter search people` filter flag); industry
  * and job_function are arrays (comma-separated flag values).
  *
- * Returns the assembled body, or an `error` string when the JSON source is
- * present but does not parse / is not a JSON object. The caller handles the
- * error (exit 2). Deep shape validation (e.g. apply_method's companion
- * field) is left to the API; presence of each top-level required key is
- * validated separately by `requireRecruiterJobFields` where relevant
- * (create only, a PATCH-style update has no required fields).
+ * Returns the assembled body, or an `error` string when the document is not
+ * a JSON object (exit 2; unreadable or unparsable input exits inside
+ * lib/document.ts). The caller validates the merged body against the
+ * command's schema (`validateRecruiterJob`).
  */
 async function assembleRecruiterJobBody(
   flags: RecruiterFlags,
@@ -260,33 +253,12 @@ async function assembleRecruiterJobBody(
 ): Promise<{ body: Record<string, unknown> } | { error: string }> {
   let base: Record<string, unknown> = {};
 
-  // 1. JSON source: --body-file <path>, or --body - (stdin). --body-file wins
-  //    if both are given.
-  let raw: string | undefined;
-  let source: string | undefined;
-  if (flags["body-file"] !== undefined) {
-    source = `--body-file ${flags["body-file"]}`;
-    try {
-      raw = await readers.readFile(flags["body-file"]);
-    } catch {
-      return { error: `cannot read ${source}` };
-    }
-  } else if (isStdinToken(flags.body)) {
-    source = "--body - (stdin)";
-    raw = await readers.readStdin();
-  } else if (flags.body !== undefined) {
-    return { error: "--body only accepts '-' (read JSON from stdin); use --body-file <path> for a file." };
-  }
-
-  if (raw !== undefined) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return { error: `${source} is not valid JSON` };
-    }
+  // 1. The document: --file <path|->. Read and parsed here;
+  //    validated against the schema after the named flags merge into it.
+  if (flags.file !== undefined) {
+    const parsed = parseDocument("file", await readFileFlag("file", flags.file, { readStdin: readers.readStdin, others: flags }));
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return { error: `${source} must be a JSON object` };
+      return { error: "--file must hold a JSON object" };
     }
     base = parsed as Record<string, unknown>;
   }
@@ -323,39 +295,33 @@ async function assembleRecruiterJobBody(
   return { body: base };
 }
 
-/** The recruiter job-posting body's required top-level keys (create only), each paired with the flag(s) that populate it, for a naming exit-2 message. */
-const RECRUITER_JOB_REQUIRED_FIELDS: ReadonlyArray<readonly [string, string]> = [
-  ["job_title", "--job-title-id (paired with --job-title)"],
-  ["company", "--company-id or --company-name"],
-  ["workplace_type", "--workplace-type"],
-  ["location", "--location"],
-  ["employment_status", "--employment-status"],
-  ["seniority_level", "--seniority-level"],
-  ["description", "--description"],
-  ["industry", "--industry"],
-  ["job_function", "--job-function"],
-  ["apply_method", "--apply-method"],
-];
+/** The flag(s) that populate each top-level job field, named on a `required` issue. */
+const RECRUITER_JOB_FIELD_FLAGS: Record<string, string> = {
+  job_title: "--job-title-id with --job-title",
+  company: "--company-id or --company-name",
+  workplace_type: "--workplace-type",
+  location: "--location",
+  employment_status: "--employment-status",
+  seniority_level: "--seniority-level",
+  description: "--description",
+  industry: "--industry",
+  job_function: "--job-function",
+  apply_method: "--apply-method",
+  project_name: "--project-name",
+};
 
 /**
- * Exit 2, naming the flag, when a required recruiter job-body field is
- * absent from the assembled body (from neither the JSON source nor a
- * scalar flag), before any SDK call. `extra` appends command-specific
- * required fields (e.g. `recruiter job create`'s --project-name).
+ * Validate the assembled job body (document + named flags) against the
+ * command's published schema: every issue listed, exit 2,
+ * nothing sent. A missing top-level field names the flag that sets it.
  */
-function requireRecruiterJobFields(
-  body: Record<string, unknown>,
-  extra: ReadonlyArray<readonly [string, string]>,
-  out: OutputStreams,
-): void {
-  for (const [key, flagDesc] of [...RECRUITER_JOB_REQUIRED_FIELDS, ...extra]) {
-    const value = body[key];
-    const missing = value === undefined || value === null || (Array.isArray(value) && value.length === 0);
-    if (missing) {
-      out.stderr.write(`error: ${flagDesc} is required (or ${key} in --body-file/--body -).\n`);
-      process.exit(2);
-    }
-  }
+function validateRecruiterJob(command: string, body: Record<string, unknown>, flags: RecruiterFlags, out: OutputStreams): void {
+  // An empty list is as missing as an absent one (the server needs 1-3 ids).
+  const empty = Object.keys(RECRUITER_JOB_FIELD_FLAGS).filter((k) => Array.isArray(body[k]) && (body[k] as unknown[]).length === 0);
+  const issues = [...validate(documentSchema(command), body), ...empty.map((path) => ({ path, rule: "required" }))].map((i) =>
+    i.rule === "required" && RECRUITER_JOB_FIELD_FLAGS[i.path] ? { ...i, rule: `required (${RECRUITER_JOB_FIELD_FLAGS[i.path]}, or ${i.path} in --file)` } : i,
+  );
+  if (issues.length) reportIssues(issues, isJsonMode(resolveOutputOpts(flags)), out);
 }
 
 // ---------------------------------------------------------------------------
@@ -974,22 +940,19 @@ export async function runRecruiterListJobs(
 }
 
 /**
- * Run `recruiter job create [--body-file <path> | --body -] [scalar flags...]`.
+ * Run `recruiter job create [--file <path|->] [scalar flags...]`.
  * Write command, supports --preview. Opens a brand-new project, --project-name
  * is required in addition to the full recruiter-job-body required set.
  *
  * The job-create body is deeply nested (job_title, company, apply_method,
  * several of which are objects). Rather than enumerate a flag per nested
- * field, the body is supplied as JSON via --body-file <path> or --body -
- * (stdin), with top-level scalar convenience flags (--job-title-id,
+ * field, the body is supplied as a JSON document via --file <path|->, with top-level scalar convenience flags (--job-title-id,
  * --job-title, --company-id, --workplace-type, --employment-status,
  * --seniority-level, --industry, --job-function, --apply-method, ...) merging
  * OVER the JSON, see assembleRecruiterJobBody.
  *
- * The CLI validates that the JSON parses AND that every required top-level
- * key is present in the assembled body (naming the flag, exit 2, before any
- * SDK call); deep shape validation within a field (e.g. apply_method's
- * companion field) is left to the API's 400.
+ * The merged body is validated against the published schema before any
+ * request: every issue listed, exit 2.
  */
 export async function runRecruiterCreateJob(
   client: Curviate,
@@ -997,7 +960,6 @@ export async function runRecruiterCreateJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags, out);
   const outOpts = resolveOutputOpts(flags);
 
   const assembled = await assembleRecruiterJobBody(flags, readers);
@@ -1010,7 +972,9 @@ export async function runRecruiterCreateJob(
   // project_name is a new v2 top-level requirement (createJob always opens a
   // brand-new project), folded into the shared required-fields check
   // alongside the rest of the recruiter job body.
-  requireRecruiterJobFields(body, [["project_name", "--project-name"]], out);
+  validateRecruiterJob("core recruiter job create", body, flags, out);
+  // The account resolves only once the document is valid: a refusal sends nothing.
+  const accountId = await requireAccount(client, flags, out);
 
   if (flags.preview) {
     const preview = buildPreviewOutput({
@@ -1026,8 +990,7 @@ export async function runRecruiterCreateJob(
   const ns = client.account(accountId);
 
   try {
-    // Narrow cast: the body is assembled from free-form JSON (--body-file/
-    // --body -) merged with scalar convenience flags; deep structural
+    // Narrow cast: the body is the --file document merged with scalar convenience flags; deep structural
     // validation within a field (apply_method's companion, enum values) is
     // left to the API's 400, as documented on assembleRecruiterJobBody.
     const result = await ns.recruiter.createJob(body as RecruiterCreateJobBody);
@@ -1038,7 +1001,7 @@ export async function runRecruiterCreateJob(
 }
 
 /**
- * Run `recruiter project-job create <project_id> [--body-file <path> | --body -] [scalar flags...]`.
+ * Run `recruiter project-job create <project_id> [--file <path|->] [scalar flags...]`.
  * Write command, supports --preview. project_id passes verbatim.
  * v2: createProjectJob attaches a job draft to an EXISTING project, same
  * body shape as `recruiter job create` minus project_name (the project comes
@@ -1050,7 +1013,6 @@ export async function runRecruiterCreateProjectJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const outOpts = resolveOutputOpts(flags);
 
@@ -1060,7 +1022,9 @@ export async function runRecruiterCreateProjectJob(
     process.exit(2);
   }
   const body = assembled.body;
-  requireRecruiterJobFields(body, [], out);
+  validateRecruiterJob("core recruiter project-job create", body, flags, out);
+  // The account resolves only once the document is valid: a refusal sends nothing.
+  const accountId = await requireAccount(client, flags, out);
 
   if (flags.preview) {
     const preview = buildPreviewOutput({
@@ -1084,7 +1048,7 @@ export async function runRecruiterCreateProjectJob(
 }
 
 /**
- * Run `recruiter project-job update <project_id> <job_id> [--body-file <path> | --body -] [scalar flags...]`.
+ * Run `recruiter project-job update <project_id> <job_id> [--file <path|->] [scalar flags...]`.
  * Write command, supports --preview. project_id/job_id pass verbatim.
  * v2: PATCH semantics, every field is optional; only supplied fields
  * change. MONEY WARNING (updateProjectJob): editing an already-published
@@ -1096,7 +1060,6 @@ export async function runRecruiterUpdateProjectJob(
   out: OutputStreams,
   readers: JobCreateReaders = DEFAULT_JOB_CREATE_READERS,
 ): Promise<void> {
-  const accountId = await requireAccount(client, flags, out);
   const projectId = flags.projectId ?? "";
   const jobId = flags.jobId ?? "";
   const outOpts = resolveOutputOpts(flags);
@@ -1107,6 +1070,9 @@ export async function runRecruiterUpdateProjectJob(
     process.exit(2);
   }
   const body = assembled.body;
+  validateRecruiterJob("core recruiter project-job update", body, flags, out);
+  // The account resolves only once the document is valid: a refusal sends nothing.
+  const accountId = await requireAccount(client, flags, out);
 
   if (flags.preview) {
     const preview = buildPreviewOutput({
@@ -1453,7 +1419,7 @@ const recruiterMessageNewCommand = defineCommand({
     name: "new",
     description: "Start a new Recruiter chat with a member.",
     examples: [
-      "curviate recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\"",
+      "curviate core recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\"",
     ],
   },
   args: {
@@ -1498,7 +1464,7 @@ const recruiterMessageCommand = defineCommand({
     new: recruiterMessageNewCommand,
   },
   async run() {
-    process.stderr.write("Usage: curviate recruiter message new --to <id> \"<text>\" [--attach <file>...]\n");
+    process.stderr.write("Usage: curviate core recruiter message new --to <id> \"<text>\" [--attach <file>...]\n");
   },
 });
 
@@ -1507,7 +1473,7 @@ const recruiterProfileCommand = defineCommand({
     name: "profile",
     description: "Get a Recruiter enriched member profile.",
     examples: [
-      "curviate recruiter profile https://www.linkedin.com/in/janesmith",
+      "curviate core recruiter profile https://www.linkedin.com/in/janesmith",
     ],
   },
   args: {
@@ -1539,15 +1505,15 @@ const recruiterSearchPeopleCommand = defineCommand({
     name: "people",
     description: "Search Recruiter member profiles.",
     examples: [
-      "curviate recruiter search people --keywords \"staff engineer\"",
-      "curviate recruiter search people --filters-file filters.json",
+      "curviate core recruiter search people --keywords \"staff engineer\"",
+      "curviate core recruiter search people --filters-file filters.json",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
-    "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
+    "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
     "employment-type": { type: "string", description: "Employment type ids (comma-separated)." },
     function: { type: "string", description: "Job function ids (comma-separated); maps to the API's job_function." },
     "profile-language": { type: "string", description: "Profile language codes (comma-separated)." },
@@ -1576,7 +1542,7 @@ const recruiterSearchParametersCommand = defineCommand({
     name: "parameters",
     description: "Resolve Recruiter filter parameter IDs (POST, source-scoped).",
     examples: [
-      "curviate recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin",
+      "curviate core recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin",
     ],
     requires: [
       "--project-id with --source APPLICANTS or PIPELINE.",
@@ -1629,7 +1595,7 @@ const recruiterSearchCommand = defineCommand({
     name: "search",
     description: "Recruiter search operations. Also runs a pasted Recruiter search/talent-pool/applicant URL directly.",
     examples: [
-      "curviate recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\"",
+      "curviate core recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\"",
     ],
   },
   args: {
@@ -1650,9 +1616,9 @@ const recruiterSearchCommand = defineCommand({
     // Bare form: `recruiter search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
-        "Usage: curviate recruiter search <url>\n" +
-        "       curviate recruiter search people [--keywords <k>]\n" +
-        "       curviate recruiter search parameters --source <s> --type <t>\n",
+        "Usage: curviate core recruiter search <url>\n" +
+        "       curviate core recruiter search people [--keywords <k>]\n" +
+        "       curviate core recruiter search parameters --source <s> --type <t>\n",
       );
       return;
     }
@@ -1679,8 +1645,8 @@ const recruiterProjectsCommand = defineCommand({
     name: "projects",
     description: "List Recruiter hiring projects.",
     examples: [
-      "curviate recruiter projects",
-      "curviate recruiter projects --all",
+      "curviate core recruiter projects",
+      "curviate core recruiter projects --all",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1708,8 +1674,8 @@ const recruiterProjectUpdateCommand = defineCommand({
     name: "update",
     description: "Edit a Recruiter project's config. All fields optional; omitted fields are left unchanged.",
     examples: [
-      "curviate recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
-      "curviate recruiter project update PROJECT_ID --visibility PRIVATE",
+      "curviate core recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
+      "curviate core recruiter project update PROJECT_ID --visibility PRIVATE",
     ],
   },
   args: {
@@ -1750,7 +1716,7 @@ const recruiterProjectCommand = defineCommand({
     name: "project",
     description: "Get a Recruiter hiring project by ID.",
     examples: [
-      "curviate recruiter project PROJECT_ID",
+      "curviate core recruiter project PROJECT_ID",
     ],
   },
   args: {
@@ -1765,8 +1731,8 @@ const recruiterProjectCommand = defineCommand({
     const flags = args as RecruiterFlags;
     if (!flags.projectId) {
       process.stderr.write(
-        "Usage: curviate recruiter project <project_id>\n" +
-        "       curviate recruiter project update <project_id> [flags...]\n",
+        "Usage: curviate core recruiter project <project_id>\n" +
+        "       curviate core recruiter project update <project_id> [flags...]\n",
       );
       return;
     }
@@ -1792,8 +1758,8 @@ const recruiterPipelineCommand = defineCommand({
     name: "pipeline",
     description: "List candidates in a project's pipeline (POST-as-list).",
     examples: [
-      "curviate recruiter pipeline PROJECT_ID",
-      "curviate recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED",
+      "curviate core recruiter pipeline PROJECT_ID",
+      "curviate core recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED",
     ],
   },
   args: {
@@ -1828,7 +1794,7 @@ const recruiterSaveCandidateCommand = defineCommand({
     name: "save-candidate",
     description: "Save a candidate to a project's pipeline at a given stage.",
     examples: [
-      "curviate recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID",
+      "curviate core recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID",
     ],
   },
   args: {
@@ -1862,8 +1828,8 @@ const recruiterJobsCommand = defineCommand({
     name: "jobs",
     description: "List Recruiter job postings.",
     examples: [
-      "curviate recruiter jobs",
-      "curviate recruiter jobs --all",
+      "curviate core recruiter jobs",
+      "curviate core recruiter jobs --all",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1888,10 +1854,9 @@ const recruiterJobsCommand = defineCommand({
 
 // Shared body flags for recruiter job create / project-job create / update
 // (kebab -> snake_case body keys via assembleRecruiterJobBody). All fields
-// are also reachable via --body-file/--body - JSON.
+// are also reachable via --file JSON.
 const RECRUITER_JOB_BODY_FLAGS = {
-  "body-file": { type: "string" as const, description: "Path to a JSON file with the full job body." },
-  body: { type: "string" as const, stdinArg: true, description: "Read the JSON job body from stdin (pass '-')." },
+  file: { type: "string" as const, stdinArg: true, description: "The job document: a path to a JSON file, or - to read it from stdin. Named flags merge over it." },
   "job-title-id": { type: "string" as const, description: "Resolved job-title parameter id (merged with --job-title into job_title:{id,name})." },
   "job-title": { type: "string" as const, description: "Job title display name (merged with --job-title-id into job_title:{id,name})." },
   "company-id": { type: "string" as const, description: "Resolved company id (or use --company-name for free text)." },
@@ -1913,11 +1878,18 @@ const recruiterJobCreateCommand = defineCommand({
     name: "create",
     description: "Create a Recruiter job posting draft, opening a brand-new hiring project.",
     examples: [
-      "curviate recruiter job create --project-name \"Staff Engineer 2026\" --body-file job.json",
+      "curviate core recruiter job create --project-name \"Staff Engineer 2026\" --file job.json",
+      "curviate core recruiter job create --project-name \"Staff Engineer 2026\" --file - <<'EOF'\n" +
+        "{\"job_title\": {\"id\": \"9\", \"name\": \"Staff Engineer\"}, \"company\": {\"name\": \"Acme\"},\n" +
+        " \"workplace_type\": \"REMOTE\", \"location\": \"106967730\", \"employment_status\": \"FULL_TIME\", \"seniority_level\": \"MID_SENIOR_LEVEL\",\n" +
+        " \"description\": \"Acme is hiring a staff engineer to build the agent infrastructure our customers run in production: queues, schedulers, observability and the APIs on top. You will own design reviews, mentor two engineers and ship weekly.\",\n" +
+        " \"industry\": [\"4\"], \"job_function\": [\"8\"], \"apply_method\": {\"method\": \"external\", \"website_url\": \"https://acme.example/jobs/1\"}}\n" +
+        "EOF",
     ],
     requires: [
-      "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
+      "Each job field from its flag or from --file: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
     ],
+    document: "core recruiter job create",
   },
   args: {
     // Write command: WRITE_FLAGS omits pagination/projection flags
@@ -1949,7 +1921,7 @@ const recruiterJobPublishCommand = defineCommand({
     name: "publish",
     description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
     examples: [
-      "curviate recruiter job publish PROJECT_ID JOB_ID --mode FREE",
+      "curviate core recruiter job publish PROJECT_ID JOB_ID --mode FREE",
     ],
     requires: [
       "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS.",
@@ -1989,7 +1961,7 @@ const recruiterApplicantsCommand = defineCommand({
     name: "applicants",
     description: "List applicants in a Recruiter project's talent pool.",
     examples: [
-      "curviate recruiter applicants PROJECT_ID --channel-id CHANNEL_ID",
+      "curviate core recruiter applicants PROJECT_ID --channel-id CHANNEL_ID",
     ],
   },
   args: {
@@ -2023,8 +1995,8 @@ const recruiterJobGetCommand = defineCommand({
     name: "get",
     description: "Get a job posting via the Recruiter lens (any public posting, not only your own).",
     examples: [
-      "curviate recruiter job get 4100000000",
-      "curviate recruiter job get https://www.linkedin.com/jobs/view/4100000000",
+      "curviate core recruiter job get 4100000000",
+      "curviate core recruiter job get https://www.linkedin.com/jobs/view/4100000000",
     ],
   },
   args: {
@@ -2055,7 +2027,7 @@ const recruiterJobCloseCommand = defineCommand({
     name: "close",
     description: "Stop a project's job posting from accepting applications (irreversible once LISTED).",
     examples: [
-      "curviate recruiter job close PROJECT_ID JOB_ID",
+      "curviate core recruiter job close PROJECT_ID JOB_ID",
     ],
   },
   args: {
@@ -2094,10 +2066,10 @@ const recruiterJobCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate recruiter job create [flags...]\n" +
-      "       curviate recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
-      "       curviate recruiter job close <project_id> <job_id>\n" +
-      "       curviate recruiter job get <url|id>\n",
+      "Usage: curviate core recruiter job create [flags...]\n" +
+      "       curviate core recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
+      "       curviate core recruiter job close <project_id> <job_id>\n" +
+      "       curviate core recruiter job get <url|id>\n",
     );
   },
 });
@@ -2107,7 +2079,7 @@ const recruiterProjectJobGetCommand = defineCommand({
     name: "get",
     description: "Get the single job posting attached to a project (404 when none is attached).",
     examples: [
-      "curviate recruiter project-job get PROJECT_ID",
+      "curviate core recruiter project-job get PROJECT_ID",
     ],
   },
   args: {
@@ -2139,11 +2111,18 @@ const recruiterProjectJobCreateCommand = defineCommand({
     name: "create",
     description: "Create a job-posting draft attached to an existing project.",
     examples: [
-      "curviate recruiter project-job create PROJECT_ID --body-file job.json",
+      "curviate core recruiter project-job create PROJECT_ID --file job.json",
+      "curviate core recruiter project-job create PROJECT_ID --file - <<'EOF'\n" +
+        "{\"job_title\": {\"id\": \"9\", \"name\": \"Staff Engineer\"}, \"company\": {\"name\": \"Acme\"},\n" +
+        " \"workplace_type\": \"REMOTE\", \"location\": \"106967730\", \"employment_status\": \"FULL_TIME\", \"seniority_level\": \"MID_SENIOR_LEVEL\",\n" +
+        " \"description\": \"Acme is hiring a staff engineer to build the agent infrastructure our customers run in production: queues, schedulers, observability and the APIs on top. You will own design reviews, mentor two engineers and ship weekly.\",\n" +
+        " \"industry\": [\"4\"], \"job_function\": [\"8\"], \"apply_method\": {\"method\": \"external\", \"website_url\": \"https://acme.example/jobs/1\"}}\n" +
+        "EOF",
     ],
     requires: [
-      "Each job field from its flag or from --body-file / --body -: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
+      "Each job field from its flag or from --file: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method.",
     ],
+    document: "core recruiter project-job create",
   },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
@@ -2175,7 +2154,7 @@ const recruiterProjectJobBudgetCommand = defineCommand({
     name: "budget",
     description: "Get pricing to publish a project's job posting.",
     examples: [
-      "curviate recruiter project-job budget PROJECT_ID JOB_ID",
+      "curviate core recruiter project-job budget PROJECT_ID JOB_ID",
     ],
   },
   args: {
@@ -2208,8 +2187,12 @@ const recruiterProjectJobUpdateCommand = defineCommand({
     name: "update",
     description: "Apply a partial update to a project's job posting.",
     examples: [
-      "curviate recruiter project-job update PROJECT_ID JOB_ID --workplace-type HYBRID",
+      "curviate core recruiter project-job update PROJECT_ID JOB_ID --workplace-type HYBRID",
+      "curviate core recruiter project-job update PROJECT_ID JOB_ID --file - <<'EOF'\n" +
+        "{\"workplace_type\": \"HYBRID\", \"salary\": {\"currency\": \"EUR\", \"pay_frequency\": \"YEARLY\", \"min\": 90000, \"max\": 120000}}\n" +
+        "EOF",
     ],
+    document: "core recruiter project-job update",
   },
   args: {
     // Write command: WRITE_SINGLE_FLAGS omits pagination flags, keeps --fields
@@ -2242,7 +2225,7 @@ const recruiterProjectJobCommand = defineCommand({
     name: "project-job",
     description: "The single job posting attached to a Recruiter project.",
     examples: [
-      "curviate recruiter project-job PROJECT_ID",
+      "curviate core recruiter project-job PROJECT_ID",
     ],
   },
   args: {
@@ -2259,10 +2242,10 @@ const recruiterProjectJobCommand = defineCommand({
     const flags = args as RecruiterFlags;
     if (!flags.projectId) {
       process.stderr.write(
-        "Usage: curviate recruiter project-job get <project_id>\n" +
-        "       curviate recruiter project-job create <project_id> [flags...]\n" +
-        "       curviate recruiter project-job budget <project_id> <job_id>\n" +
-        "       curviate recruiter project-job update <project_id> <job_id> [flags...]\n",
+        "Usage: curviate core recruiter project-job get <project_id>\n" +
+        "       curviate core recruiter project-job create <project_id> [flags...]\n" +
+        "       curviate core recruiter project-job budget <project_id> <job_id>\n" +
+        "       curviate core recruiter project-job update <project_id> <job_id> [flags...]\n",
       );
       return;
     }
@@ -2288,8 +2271,8 @@ const recruiterTalentSearchCommand = defineCommand({
     name: "talent-search",
     description: "Search a project's talent pool.",
     examples: [
-      "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
-      "curviate recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript",
+      "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
+      "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript",
     ],
   },
   args: {
@@ -2298,7 +2281,7 @@ const recruiterTalentSearchCommand = defineCommand({
     "channel-id": { type: "string", description: "The project's RECRUITER_SEARCH talent-pool channel ID (required).", required: true },
     keywords: { type: "string", description: "Free-text keyword search." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
-    "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
+    "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
   },
   async run({ args }) {
     const flags = args as RecruiterFlags;
@@ -2324,7 +2307,7 @@ const recruiterApplicantResumeCommand = defineCommand({
     name: "resume",
     description: "Download a job applicant's resume.",
     examples: [
-      "curviate recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf",
+      "curviate core recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf",
     ],
   },
   args: {
@@ -2363,7 +2346,7 @@ const recruiterApplicantCommand = defineCommand({
     name: "applicant",
     description: "Recruiter job applicant operations.",
     examples: [
-      "curviate recruiter applicant PROJECT_ID APPLICANT_ID",
+      "curviate core recruiter applicant PROJECT_ID APPLICANT_ID",
     ],
   },
   args: {
@@ -2379,8 +2362,8 @@ const recruiterApplicantCommand = defineCommand({
     const flags = args as RecruiterFlags;
     if (!flags.projectId || !flags.applicantId) {
       process.stderr.write(
-        "Usage: curviate recruiter applicant <project_id> <applicant_id>\n" +
-        "       curviate recruiter applicant resume <project_id> <applicant_id> -o <file>\n",
+        "Usage: curviate core recruiter applicant <project_id> <applicant_id>\n" +
+        "       curviate core recruiter applicant resume <project_id> <applicant_id> -o <file>\n",
       );
       return;
     }
@@ -2404,8 +2387,7 @@ const recruiterApplicantCommand = defineCommand({
 export const recruiterCommand = defineCommand({
   meta: {
       name: "recruiter",
-      description:
-        "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+      description: DESCRIPTIONS.recruiter,
     },
   args: { ...GLOBAL_FLAGS },
   subCommands: {
@@ -2425,29 +2407,29 @@ export const recruiterCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate recruiter message new --to <id> \"<text>\"\n" +
-      "       curviate recruiter profile <identifier>\n" +
-      "       curviate recruiter search people [--keywords <k>]\n" +
-      "       curviate recruiter search parameters --source <s> --type <t>\n" +
-      "       curviate recruiter search <url>\n" +
-      "       curviate recruiter projects\n" +
-      "       curviate recruiter project <project_id>\n" +
-      "       curviate recruiter project update <project_id> [flags...]\n" +
-      "       curviate recruiter pipeline <project_id>\n" +
-      "       curviate recruiter project-job get <project_id>\n" +
-      "       curviate recruiter project-job create <project_id> [flags...]\n" +
-      "       curviate recruiter project-job budget <project_id> <job_id>\n" +
-      "       curviate recruiter project-job update <project_id> <job_id> [flags...]\n" +
-      "       curviate recruiter talent-search <project_id> --channel-id <id>\n" +
-      "       curviate recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>\n" +
-      "       curviate recruiter applicants <project_id> --channel-id <id>\n" +
-      "       curviate recruiter jobs\n" +
-      "       curviate recruiter job create [flags...]\n" +
-      "       curviate recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
-      "       curviate recruiter job close <project_id> <job_id>\n" +
-      "       curviate recruiter job get <url|id>\n" +
-      "       curviate recruiter applicant <project_id> <applicant_id>\n" +
-      "       curviate recruiter applicant resume <project_id> <applicant_id> -o <file>\n",
+      "Usage: curviate core recruiter message new --to <id> \"<text>\"\n" +
+      "       curviate core recruiter profile <identifier>\n" +
+      "       curviate core recruiter search people [--keywords <k>]\n" +
+      "       curviate core recruiter search parameters --source <s> --type <t>\n" +
+      "       curviate core recruiter search <url>\n" +
+      "       curviate core recruiter projects\n" +
+      "       curviate core recruiter project <project_id>\n" +
+      "       curviate core recruiter project update <project_id> [flags...]\n" +
+      "       curviate core recruiter pipeline <project_id>\n" +
+      "       curviate core recruiter project-job get <project_id>\n" +
+      "       curviate core recruiter project-job create <project_id> [flags...]\n" +
+      "       curviate core recruiter project-job budget <project_id> <job_id>\n" +
+      "       curviate core recruiter project-job update <project_id> <job_id> [flags...]\n" +
+      "       curviate core recruiter talent-search <project_id> --channel-id <id>\n" +
+      "       curviate core recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>\n" +
+      "       curviate core recruiter applicants <project_id> --channel-id <id>\n" +
+      "       curviate core recruiter jobs\n" +
+      "       curviate core recruiter job create [flags...]\n" +
+      "       curviate core recruiter job publish <project_id> <job_id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
+      "       curviate core recruiter job close <project_id> <job_id>\n" +
+      "       curviate core recruiter job get <url|id>\n" +
+      "       curviate core recruiter applicant <project_id> <applicant_id>\n" +
+      "       curviate core recruiter applicant resume <project_id> <applicant_id> -o <file>\n",
     );
   },
 });

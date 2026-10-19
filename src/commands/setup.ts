@@ -33,6 +33,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getConfigPath, writeProfile } from "../lib/config.js";
@@ -634,8 +635,7 @@ async function finishExchange(
 export const setupCommand = defineCommand({
   meta: {
     name: "setup",
-    description:
-      "Connect this machine to your workspace: opens the dashboard, takes the code it shows you, and saves an API key.",
+    description: DESCRIPTIONS.setup,
     examples: [
       "curviate setup",
       "curviate setup --json",

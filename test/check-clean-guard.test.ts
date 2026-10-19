@@ -575,7 +575,7 @@ describe("check:clean guard — PUBLIC_DOC_PATTERNS (whole-tree-public scan)", (
 
   it("passes ordinary published skill prose", async () => {
     const dir = await makeFixtureDir({
-      "skills/x/SKILL.md": "# curviate-profile\n\nRun `curviate profile me --mode live --json`.\n",
+      "skills/x/SKILL.md": "# curviate-profile\n\nRun `curviate core profile me --mode live --json`.\n",
     });
     const result = await scanDirectory(dir, { patterns: PUBLIC_DOC_PATTERNS });
     expect(result.findings).toEqual([]);

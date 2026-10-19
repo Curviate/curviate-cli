@@ -15,6 +15,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -293,8 +294,7 @@ function renderHuman(report: DoctorReport, io: DoctorIO): void {
 export const doctorCommand = defineCommand({
   meta: {
     name: "doctor",
-    description:
-      "Check that this machine can call the API: config, credential source, workspace, reachability and connected accounts.",
+    description: DESCRIPTIONS.doctor,
     examples: [
       "curviate doctor",
       "curviate doctor --json",

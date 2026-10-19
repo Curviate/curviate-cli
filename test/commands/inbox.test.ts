@@ -241,7 +241,7 @@ describe("inbox messages under --mode cache_only: exit 14 and the walk hint", ()
 
 describe("inbox search <query>: the 3-character floor is enforced before any request", () => {
   const sink = useSink((h) => ({ body: h.url.startsWith("/v1/accounts") ? { items: [{ account_id: "acc_01SEARCH", full_name: "Ada" }], cursor: null } : page() }));
-  const search = (q: string) => sink.run(["inbox", "search", q, "--json"], { env: { CURVIATE_ACCOUNT: "acc_01SEARCH" } });
+  const search = (q: string) => sink.run(["core", "inbox", "search", q, "--json"], { env: { CURVIATE_ACCOUNT: "acc_01SEARCH" } });
 
   it("1- and 2-character terms exit 2 naming the minimum with an empty request set; 3 characters reaches /chats/search", async () => {
     for (const q of ["a", "ab"]) {

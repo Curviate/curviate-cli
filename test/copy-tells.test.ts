@@ -9,10 +9,10 @@
  * tells: one is functional, the other documents `message react`.
  */
 import { describe, it, expect } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
-import ts from "typescript";
+import { readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { pkgRoot } from "./helpers/pkg.js";
+import { literals, walkTs as walk } from "./helpers/literals.js";
 
 const TELLS: Array<[string, RegExp, string]> = [
   ["em dash", /—/, "—"],
@@ -30,21 +30,6 @@ const TELLS: Array<[string, RegExp, string]> = [
   ["prime", /[′″]/, "′"],
   ["check or cross glyph", /[✓✗✅❌]/, "✅"],
 ];
-
-function literals(file: string, content: string): Array<{ line: number; text: string }> {
-  const sf = ts.createSourceFile(file, content, ts.ScriptTarget.ESNext, true);
-  const out: Array<{ line: number; text: string }> = [];
-  const visit = (n: ts.Node): void => {
-    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n)) {
-      out.push({ line: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1, text: n.text });
-    }
-    ts.forEachChild(n, visit);
-  };
-  visit(sf);
-  return out;
-}
-
-const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith(".ts") ? [join(dir, e.name)] : []));
 
 describe("customer-facing copy has no typographic tells", () => {
   it("no string or template literal under src/ contains one", () => {

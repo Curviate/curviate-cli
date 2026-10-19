@@ -17,9 +17,14 @@ const cli = resolve(pkgRoot, "dist", "cli.js");
 const newest = (d: string): number => Math.max(0, ...readdirSync(d, { withFileTypes: true }).map((e) => (e.isDirectory() ? newest(join(d, e.name)) : statSync(join(d, e.name)).mtimeMs)));
 const sink = useSink({ body: { object: "account_list", items: [{ account_id: "acc_1" }], cursor: null } });
 
-function bin(args: string[], env: Record<string, string>): Promise<{ status: number | null; stdout: string; stderr: string }> {
+/** Logs every dist module the process loads to stderr as `LOADED <file>`. */
+const TRACE = `data:text/javascript,${encodeURIComponent(
+  'import { registerHooks } from "node:module"; registerHooks({ load(url, ctx, next) { if (url.includes("/dist/")) process.stderr.write("LOADED " + url.split("/").pop() + "\\n"); return next(url, ctx); } });',
+)}`;
+
+function bin(args: string[], env: Record<string, string>, node: string[] = []): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((done, reject) => {
-    const child = spawn(process.execPath, [cli, ...args], { env: { PATH: process.env["PATH"] ?? "", NODE_ENV: "production", XDG_CONFIG_HOME: configHome(), ...env } });
+    const child = spawn(process.execPath, [...node, cli, ...args], { env: { PATH: process.env["PATH"] ?? "", NODE_ENV: "production", XDG_CONFIG_HOME: configHome(), ...env } });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (c: Buffer) => (stdout += c));
@@ -44,5 +49,14 @@ describe("built binary", () => {
     sink.reply = { status: 401, body: { code: "UNAUTHORIZED", message: "bad key", user_fixable: true, retry_likely_to_succeed: false } };
     expect((await bin(["account", "list", "--json"], env)).status).toBe(3);
     expect((await bin(["no-such-command"], env)).status).toBe(2);
+
+    // Cold start: help loads no command module; a core command loads only `core` and its own group.
+    const COMMANDS = readdirSync(resolve(pkgRoot, "src", "commands")).map((f) => f.replace(/\.ts$/, ""));
+    const loaded = async (args: string[]) =>
+      [...(await bin(args, env, ["--import", TRACE])).stderr.matchAll(/^LOADED ([a-z-]+)-[A-Z0-9]+\.js$/gm)].map((m) => m[1]!).filter((n) => COMMANDS.includes(n)).sort();
+    expect(COMMANDS).toEqual(expect.arrayContaining(["core", "profile", "account"]));
+    expect(await loaded(["--help"])).toEqual([]);
+    expect(await loaded(["core", "--help"])).toEqual(["core"]);
+    expect(await loaded(["core", "profile", "me", "--json", "--account", "acc_1"])).toEqual(["core", "profile"]);
   });
 });

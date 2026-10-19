@@ -105,7 +105,7 @@ describe("webhook verify (run-function seam)", () => {
   });
 });
 
-describe("webhook verify --body: every documented form verifies a real captured delivery (through the CLI entry point)", () => {
+describe("webhook verify --file: every form verifies a real captured delivery (through the CLI entry point)", () => {
   const capture = JSON.parse(readFileSync(join(__dirname, "..", "fixtures", "webhook-delivery.capture.json"), "utf8")) as { secret: string; signatureHeader: string; rawBody: string; eventName: string };
   const WIDE = "999999999"; // the capture's timestamp is fixed in time: widen the window, never re-sign
   const dir = mkdtempSync(join(tmpdir(), "curviate-webhook-verify-"));
@@ -114,14 +114,13 @@ describe("webhook verify --body: every documented form verifies a real captured 
   writeFileSync(file, capture.rawBody);
   writeFileSync(fileNl, capture.rawBody + "\n");
   // CURVIATE_API_KEY present on purpose: verify is offline and must never read it
-  const cli = (body: string, stdin = "", extra: string[] = ["--max-age-secs", WIDE]) =>
-    runCli(["webhook", "verify", "--secret", capture.secret, "--header", capture.signatureHeader, ...(body === "" ? [] : ["--body", body]), ...extra], { stdin, env: { CURVIATE_API_KEY: "cvt_live_bin_test_stub" } });
+  const cli = (body: string, stdin = "", extra: string[] = ["--max-age-secs", WIDE], flag = "--file") =>
+    runCli(["webhook", "verify", "--secret", capture.secret, "--header", capture.signatureHeader, ...(body === "" ? [] : [flag, body]), ...extra], { stdin, env: { CURVIATE_API_KEY: "cvt_live_bin_test_stub" } });
 
   it.each([
-    ["inline JSON", () => cli(capture.rawBody)],
     ["a file path", () => cli(file)],
     ["a file with the trailing newline a shell redirect adds", () => cli(fileNl)],
-    ["stdin (--body -)", () => cli("-", capture.rawBody)],
+    ["stdin (--file -)", () => cli("-", capture.rawBody)],
     ["stdin with the trailing newline a pipe adds", () => cli("-", capture.rawBody + "\n")],
   ])("%s", async (_l, go) => {
     const r = await go();
@@ -133,24 +132,26 @@ describe("webhook verify --body: every documented form verifies a real captured 
     expect(r.stdout + r.stderr).not.toContain(capture.secret);
   });
 
-  it("the verdict is unchanged by how the body arrived: a tampered inline or piped body is invalid_signature, the aged capture is replay_detected under the default window; all exit 2", async () => {
+  it("the verdict is unchanged by how the body arrived: a tampered piped body is invalid_signature, the aged capture is replay_detected under the default window; all exit 2", async () => {
     const reason = (r: { status: number; stdout: string }) => (r.status === 2 ? (JSON.parse(r.stdout.trim()) as { error: { reason: string } }).error.reason : `exit ${r.status}`);
-    expect(reason(await cli(capture.rawBody.replace("message.received", "message.deleted")))).toBe("invalid_signature");
     expect(reason(await cli("-", capture.rawBody.replace("acc_capture", "acc_attacker")))).toBe("invalid_signature");
     expect(reason(await cli(file, "", []))).toBe("replay_detected");
   });
 
-  it("unusable input is a usage error (exit 2) that never masquerades as a signature verdict: a missing file names all three forms, an omitted --body, empty stdin", async () => {
+  it("unusable input is a usage error (exit 2), never a signature verdict: inline JSON names --file -, the old --body is an unknown flag, a missing file, an omitted --file, empty stdin", async () => {
+    const inline = await cli(capture.rawBody);
+    expect([inline.status, inline.stderr]).toEqual([2, expect.stringContaining("--file -")]);
+    expect(inline.stderr).not.toContain("acc_capture");
+    const old = await cli(file, "", [], "--body");
+    expect([old.status, old.stderr]).toEqual([2, expect.stringContaining("unknown flag `--body`")]);
     const missing = await cli(join(dir, "no-such-file.json"), "", []);
-    expect(missing.status).toBe(2);
-    for (const re of [/--body/, /inline JSON/i, /file/i, /stdin/i]) expect(missing.stderr).toMatch(re);
-    expect(missing.stdout.trim()).toBe("");
+    expect([missing.status, missing.stderr]).toEqual([2, expect.stringContaining("--file: no such file")]);
     const omitted = await cli("", "", []);
     const empty = await cli("-", "", []);
     expect([omitted.status, empty.status]).toEqual([2, 2]);
-    expect(omitted.stderr).toContain("--body");
-    expect(empty.stderr).toMatch(/stdin/i);
-    expect(omitted.stdout + empty.stdout).not.toContain("WebhookSignatureError");
+    expect(omitted.stderr).toContain("--file");
+    expect(empty.stderr).toMatch(/empty input/i);
+    expect(inline.stdout + old.stdout + missing.stdout + omitted.stdout + empty.stdout).not.toContain("WebhookSignatureError");
   });
 });
 
@@ -158,29 +159,16 @@ describe("resolveWebhookBody (byte-exactness the HMAC depends on)", () => {
   const BODY = '{"id":"wdl_1","event":"message.received","data":{"account_id":"acc_1"}}';
   const dir = mkdtempSync(join(tmpdir(), "curviate-webhook-body-"));
   const fileWith = (name: string, content: string) => (writeFileSync(join(dir, name), content), join(dir, name));
-  const resolve = (v: string | undefined, stdin = vi.fn()) => resolveWebhookBody(v, out, stdin);
+  const resolve = (v: string | undefined, stdin = vi.fn()) => resolveWebhookBody(v, stdin);
 
-  it("inline JSON (even with leading whitespace) is returned verbatim and never opened as a file; a file loses only its trailing LF/CRLF, keeping newlines inside", async () => {
-    const stdin = vi.fn();
-    expect(await resolve(BODY, stdin)).toBe(BODY);
-    expect(await resolve(`  ${BODY}`, stdin)).toBe(`  ${BODY}`);
-    expect(stdin).not.toHaveBeenCalled();
+  it("a file loses only its trailing LF/CRLF, keeping newlines inside; a bare dash and the dispatcher's stdin sentinel both read stdin", async () => {
     expect(await resolve(fileWith("a.json", BODY))).toBe(BODY);
     expect(await resolve(fileWith("b.json", `${BODY}\r\n`))).toBe(BODY);
     expect(await resolve(fileWith("c.json", '{\n  "id": "wdl_1"\n}\n'))).toBe('{\n  "id": "wdl_1"\n}');
-    expect(text(out.stdout) + text(out.stderr)).toBe("");
-  });
-
-  it("a bare dash and the dispatcher's stdin sentinel both read stdin", async () => {
     for (const spelling of ["-", STDIN_SENTINEL]) {
       const stdin = vi.fn().mockResolvedValue(BODY);
       expect(await resolve(spelling, stdin)).toBe(BODY);
       expect(stdin).toHaveBeenCalledTimes(1);
     }
-  });
-
-  it.each([["empty stdin", "-"], ["an omitted --body", undefined], ["an empty --body", ""], ["a missing file", "/nonexistent/absent.json"]])("%s is a usage error (exit 2) naming --body", async (_l, v) => {
-    expect(await exitCode(() => resolve(v, vi.fn().mockResolvedValue("")))).toBe(2);
-    expect(text(out.stderr)).toMatch(v === "-" ? /stdin/i : /--body/);
   });
 });

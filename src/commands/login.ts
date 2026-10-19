@@ -16,6 +16,7 @@
 
 import { baseUrlProblem } from "../lib/client.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { writeProfile } from "../lib/config.js";
 import type { ProfileEntry } from "../lib/config.js";
 import { GLOBAL_FLAGS } from "../lib/global-flags.js";
@@ -83,15 +84,14 @@ export async function runLogin(
   await writeProfile(profileName, entry);
 
   out.stderr.write(
-    `Saved to profile "${profileName}". Run \`curviate profile me\` to verify.\n`,
+    `Saved to profile "${profileName}". Run \`curviate core profile me\` to verify.\n`,
   );
 }
 
 export const loginCommand = defineCommand({
   meta: {
     name: "login",
-    description:
-      "Save an API key to a local profile. Run `curviate profile me` to verify.",
+    description: DESCRIPTIONS.login,
     examples: [
       "curviate login",
       "curviate login --api-key - --profile work",
