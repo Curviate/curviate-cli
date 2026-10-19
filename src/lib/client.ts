@@ -12,7 +12,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
-import { isWriteCommand } from "./global-flags.js";
+import { getWriteKind, type WriteKind } from "./global-flags.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -63,7 +63,7 @@ const guardedFetch: typeof fetch = async (input, init) => {
   ]);
   const res = await fetch(input, merged);
   const method = (merged?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
-  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res, method !== "GET" && isWriteCommand());
+  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res, method === "GET" ? "read" : getWriteKind());
 };
 
 const downloading = new AsyncLocalStorage<true>();
@@ -97,7 +97,7 @@ function asOpaqueBytes(res: Response): Response {
  * SDK reads it the way it reads a 204. A 2xx inside `downloadBinary` never
  * reaches here, and a write's 2xx is accepted instead (`acceptedWrite`).
  */
-async function platformFaultIfUnreadable(res: Response, write: boolean): Promise<Response> {
+async function platformFaultIfUnreadable(res: Response, kind: WriteKind): Promise<Response> {
   const text = res.status === 204 ? "" : await res.clone().text();
   let parsed = true;
   let env: { code?: unknown } | null = null;
@@ -106,7 +106,10 @@ async function platformFaultIfUnreadable(res: Response, write: boolean): Promise
   } catch {
     parsed = false;
   }
-  if (res.ok && write) return acceptedWrite(res, text, parsed ? env : undefined);
+  if (res.ok && kind === "write") return acceptedWrite(res, text, parsed ? env : undefined);
+  if (res.ok && kind === "state" && !(env !== null && typeof env === "object" && !Array.isArray(env) && Object.keys(env).length > 0)) {
+    return fault(res, `The API answered ${res.status} without a readable body. The request may have been applied: read the checkpoint state with \`curviate account checkpoint poll <account_id>\` before sending it again.`, false);
+  }
   if (res.status >= 500) {
     if (typeof env?.code === "string") return res;
   } else if (!res.ok || parsed) {
@@ -116,17 +119,17 @@ async function platformFaultIfUnreadable(res: Response, write: boolean): Promise
     headers.delete("content-type");
     return new Response(null, { status: res.status, statusText: res.statusText, headers });
   }
+  return fault(res, `The API answered ${res.status} without a readable body.`, true);
+}
+
+/** A synthesized PLATFORM_ERROR in place of `res` (exit 7). */
+function fault(res: Response, message: string, retryLikely: boolean): Response {
   const headers = new Headers(res.headers);
   headers.set("content-type", "application/json");
   headers.delete("content-length");
   headers.delete("content-encoding");
   return new Response(
-    JSON.stringify({
-      code: "PLATFORM_ERROR",
-      message: `The API answered ${res.status} without a readable body.`,
-      user_fixable: false,
-      retry_likely_to_succeed: true,
-    }),
+    JSON.stringify({ code: "PLATFORM_ERROR", message, user_fixable: false, retry_likely_to_succeed: retryLikely }),
     // A 2xx has to become an error status for the SDK to decode it as one.
     { status: res.status >= 500 ? res.status : 502, statusText: res.statusText, headers },
   );
@@ -135,7 +138,7 @@ async function platformFaultIfUnreadable(res: Response, write: boolean): Promise
 /**
  * A write the API accepted (2xx) exits 0 whatever its body: retrying a
  * success would repeat it, and requests carry no idempotency key. A JSON body
- * object or array passes through verbatim; anything else becomes `{}`. An empty, unreadable
+ * passes through verbatim; a non-JSON one becomes `{}`. An empty, unreadable
  * or unexpected body (not an API object) also warns on stderr. A 204 is the
  * documented bodyless success and passes silently.
  * ponytail: "expected" = a JSON object carrying `object`, upgrade to the
@@ -153,8 +156,8 @@ function acceptedWrite(res: Response, text: string, body: unknown): Response {
     const what = body === undefined ? "a body that is not JSON" : "a body of an unexpected shape";
     process.stderr.write(`warning: the API accepted this write (HTTP ${res.status}) with ${what}. The write happened: do not retry it.\n`);
   }
-  // A JSON object or array passes verbatim; null or a bare scalar becomes {} like any unreadable body.
-  if (body !== null && typeof body === "object") return res;
+  // Any JSON body passes verbatim (null and scalars too); only a non-JSON body becomes {}.
+  if (body !== undefined) return res;
   const headers = new Headers(res.headers);
   headers.set("content-type", "application/json");
   headers.delete("content-length");

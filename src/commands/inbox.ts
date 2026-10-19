@@ -541,7 +541,7 @@ const inboxMarkReadCommand = defineCommand({
 const inboxMessagesCommand = defineCommand({
   meta: {
     name: "messages",
-    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
     examples: [
       "curviate core inbox messages 2-YTQ3ODU3Njgt",
       "curviate core inbox messages 2-YTQ3ODU3Njgt --limit 20",

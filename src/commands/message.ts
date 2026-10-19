@@ -524,7 +524,7 @@ export async function runMessageReact(
   // positional is optional to allow the flag alias), a missing value is a
   // usage error, not a silent empty-body reaction.
   if (!reaction) {
-    out.stderr.write("error: a reaction is required. Pass it as `message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
+    out.stderr.write("error: a reaction is required. Pass it as `curviate core message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
     process.exit(2);
     return;
   }
@@ -980,10 +980,10 @@ const messageSendCommand = defineCommand({
   meta: {
     name: "send",
     description:
-      "Send a message to an existing chat. Pass a COMPANY_ chat id (from `inboxes chats`) to send " +
+      "Send a message to an existing chat. Pass a COMPANY_ chat id (from `curviate core inboxes chats`) to send " +
       "as that company page instead of yourself, no separate flag needed. The output shows the acting " +
       "identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints " +
-      "nothing new. See also: `inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
+      "nothing new. See also: `curviate core inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
       "page guide.",
     examples: [
       "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",

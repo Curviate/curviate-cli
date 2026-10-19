@@ -256,7 +256,7 @@ async function assembleRecruiterJobBody(
   // 1. The document: --file <path|->. Read and parsed here;
   //    validated against the schema after the named flags merge into it.
   if (flags.file !== undefined) {
-    const parsed = parseDocument("file", await readFileFlag("file", flags.file, { readStdin: readers.readStdin, others: flags }));
+    const parsed = parseDocument("file", await readFileFlag("file", flags.file, { readStdin: readers === DEFAULT_JOB_CREATE_READERS ? undefined : readers.readStdin, others: flags }));
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
       return { error: "--file must hold a JSON object" };
     }

@@ -110,10 +110,19 @@ on a free account, a note on about 5 invitations a month (budget row
 ### Fixed
 
 - **A write the API accepted exits 0.** A 2xx answer to a write whose body is
-  empty, not JSON, or not the expected shape prints the JSON body (or `{}`),
-  warns on stderr, and exits 0, instead of exit 7 that invited a retry and a
-  duplicate. A read given such a body still exits 7. The account checkpoint
-  flow keeps exit 7: its next step depends on the body.
+  empty, not JSON, or not the expected shape prints the JSON body verbatim (or
+  `{}` when it is not JSON), warns on stderr, and exits 0, instead of exit 7
+  that invited a retry and a duplicate. A read given such a body still exits 7.
+  The account checkpoint flow (`account checkpoint solve|poll|request`,
+  `account connect-session poll`) keeps exit 7, because its next step is read
+  from the body, but now says the request may have been applied
+  (`retryLikelyToSucceed: false`): read the state with
+  `curviate account checkpoint poll` instead of sending it again.
+- **A document is at most 5 MiB.** A larger `--file`, `--filters-file` or
+  `webhook verify --file` input (a file, a device such as `/dev/zero`, or stdin)
+  exits 2 instead of exhausting memory.
+- **Help names every command by its full path** (`curviate core company chats`,
+  not `company chats`).
 - **`--help` loads only what it describes**: `curviate --help` and
   `curviate core --help` import no command module.
 

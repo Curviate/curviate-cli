@@ -39,7 +39,7 @@ import {
   restoreLiteralDashes,
   type RestorableArgDef,
 } from "./lib/stdin.js";
-import { GLOBAL_FLAGS, setWriteCommand } from "./lib/global-flags.js";
+import { GLOBAL_FLAGS, STATE_WRITES, setWriteKind } from "./lib/global-flags.js";
 import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 import { editDistance } from "./lib/bare-form-guard.js";
@@ -760,7 +760,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // The resolved leaf, kept for the missing-argument hint below.
   let hintLeaf: AnyCommand | undefined;
   try {
-    const { leaf, leafArgs: resolvedArgs } = await resolveLeaf(root, argsAfterBeta);
+    const { leaf, leafArgs: resolvedArgs, path: leafPath } = await resolveLeaf(root, argsAfterBeta);
     hintLeaf = leaf;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
@@ -773,7 +773,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // happens to be a global flag elsewhere in the tree.
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
-    setWriteCommand(declared.has("preview"));
+    setWriteKind(!declared.has("preview") ? "read" : STATE_WRITES.has(renderPath(leafPath)) ? "state" : "write");
     const leafArgs = dropFalsePreview(resolvedArgs, walkTokens(resolvedArgs, booleanFlags, declared), declared);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const flagOnly = new Set(Object.entries((await resolveValue(leaf.args ?? {})) as Record<string, { type?: string }>).filter(([, d]) => d?.type !== "positional").map(([n]) => n));

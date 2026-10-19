@@ -1125,7 +1125,7 @@ const salesNavBrowseAccountListCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    listId: { type: "positional", description: "The account-list id (from `sales-nav account-lists`)." },
+    listId: { type: "positional", description: "The account-list id (from `curviate core sales-nav account-lists`)." },
     filter: { type: "string", description: "Restrict to a saved-account subset: STARRED, GROWTH_ALERTS, or RISK_ALERTS." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED or NAME. Defaults to NAME." },
     "sort-order": { type: "string", description: "Sort direction: ASCENDING or DESCENDING. Defaults to ASCENDING." },
@@ -1160,7 +1160,7 @@ const salesNavBrowseLeadListCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    listId: { type: "positional", description: "The lead-list id (from `sales-nav lead-lists`)." },
+    listId: { type: "positional", description: "The lead-list id (from `curviate core sales-nav lead-lists`)." },
     spotlight: { type: "string", description: "Restrict to a spotlighted lead subset: RECENT_POSITION_CHANGE, RECENTLY_POSTED_ON_LINKEDIN, FOLLOW_YOUR_COMPANY, or SHARE_EXPERIENCE." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED, ACCOUNT, NAME, or OUTREACH_ACTIVITY. Defaults to DATE_ADDED." },
     "sort-order": { type: "string", description: "Sort direction: ASCENDING or DESCENDING. Defaults to DESCENDING." },

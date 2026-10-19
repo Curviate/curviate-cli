@@ -144,10 +144,13 @@ function resolves(words: string[]): boolean {
   }
   return here.length > 0 || words.length === 0 || !/^[a-z]/.test(words[0]!);
 }
+/** A backticked command named without `curviate` (`notification list`): a relative form, never allowed. */
+const GROUP_NAMES = [...new Set([...ROOT, ...CORE])].sort((a, b) => b.length - a.length);
+const relativeNames = (text: string) => [...text.matchAll(new RegExp(`\`(?:${GROUP_NAMES.join("|")})(?: [a-z<[-][^\`]*)?\``, "g"))].map((m) => m[0]);
 const mentions = (text: string) => [...text.matchAll(/(?<![\w/.@-])curviate((?: [a-z][a-z0-9-]*)*)/g)].map((m) => m[1]!.trim().split(" ").filter(Boolean));
 
 describe("every command named in copy is a full, live path", () => {
-  it("in src string literals, commands.json and README.md", () => {
+  it("in src string literals, commands.json and README.md: every `curviate ...` resolves, and no command is named relatively", () => {
     const sources: Array<[string, string]> = [
       ...walkTs(resolve(pkgRoot, "src")).flatMap((f) => literals(f, readFileSync(f, "utf8")).map((l): [string, string] => [`${relative(pkgRoot, f)}:${l.line}`, l.text])),
       ["commands.json", readFileSync(join(pkgRoot, "commands.json"), "utf8")],
@@ -156,6 +159,8 @@ describe("every command named in copy is a full, live path", () => {
     const dead = sources.flatMap(([where, text]) => mentions(text).filter((w) => !resolves(w)).map((w) => `${where}: curviate ${w.join(" ")}`));
     expect(sources.flatMap(([, t]) => mentions(t)).length).toBeGreaterThan(400);
     expect(dead).toEqual([]);
+    expect(sources.flatMap(([where, text]) => relativeNames(text).map((r) => `${where}: ${r}`))).toEqual([]);
+    expect([relativeNames("The card_urn of a `notification list` item."), relativeNames("Use `company chats` or `core`."), relativeNames("`curviate core company chats` and `--company`")]).toEqual([["`notification list`"], ["`company chats`", "`core`"], []]);
     // Controls: an old path and an unknown subcommand under a pure group are dead; a positional after a bare form is not.
     expect([["profile", "me"], ["core", "inbox", "sync"], ["account", "bogus"]].map(resolves)).toEqual([false, false, false]);
     expect([["core", "profile", "me"], ["core", "connect", "janesmith"], ["account", "get"]].map(resolves)).toEqual([true, true, true]);

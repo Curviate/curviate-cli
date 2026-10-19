@@ -154,11 +154,19 @@ describe("a single-object read's 2xx must be a readable object", () => {
     ["account", "checkpoint", "poll", "1", "--wait"],
     ["account", "checkpoint", "solve", "1", "--code", "x"],
     ["core", "recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
-  ])("%s: a POST-shaped read exits 7 on a null, empty or {} body", async (...argv) => {
+  ])("%s: a POST-shaped read exits 7 on a null, empty, {} or non-JSON body", { timeout: 60_000 }, async (...argv) => {
     const first = await run(argv, JSON_RAW("null"));
     expect(first.requests.some((q) => q.method !== "GET")).toBe(true);
     expect(first.status).toBe(7);
-    for (const body of EMPTY) expect((await run(argv, bodyless(body))).status).toBe(7);
+    for (const body of [...EMPTY, { status: 200, type: "text/html", body: "<html>" }]) {
+      const r = await run(argv, bodyless(body));
+      expect(r.status).toBe(7);
+      // The checkpoint flow is a write whose answer is unreadable: it may have been applied, so never "retry".
+      if (argv[0] === "account") {
+        expect(JSON.parse(r.stdout).error).toMatchObject({ code: "PLATFORM_ERROR", retryLikelyToSucceed: false, message: expect.stringContaining("may have been applied") });
+        expect(r.stderr).not.toContain("do not retry");
+      }
+    }
   });
 
   it("a genuine write still renders a null, empty or {} response (exit 0)", async () => {

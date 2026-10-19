@@ -882,7 +882,7 @@ const postUnsaveCommand = defineCommand({
 const postUserPostsCommand = defineCommand({
   meta: {
     name: "user-posts",
-    description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately.",
+    description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core post get <post_id>` reflects it immediately.",
     examples: [
       "curviate core post user-posts me",
       "curviate core post user-posts janesmith --limit 10",
@@ -944,7 +944,7 @@ export const postCommand = defineCommand({
       "  unsave <post_id>\n" +
       "  user-posts <user_id>\n" +
       "  user-reactions <user_id>\n" +
-      "\nComment operations moved to the `comment` command group.\n",
+      "\nComment operations moved to the `curviate core comment` command group.\n",
     );
   },
 });

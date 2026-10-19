@@ -241,7 +241,7 @@ const inboxesChatsCommand = defineCommand({
   meta: {
     name: "chats",
     description:
-      "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. " +
+      "List an inbox's conversations. Each chat id is send-ready: reply with `curviate core message send <chat_id> \"<text>\"`. " +
       "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
     examples: [
@@ -252,7 +252,7 @@ const inboxesChatsCommand = defineCommand({
   args: {
     ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
-    inboxId: { type: "positional", description: "Inbox id from `inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)." },
+    inboxId: { type: "positional", description: "Inbox id from `curviate core inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)." },
   },
   async run({ args }) {
     const flags = args as InboxesFlags;

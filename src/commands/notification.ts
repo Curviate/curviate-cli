@@ -238,7 +238,7 @@ const notificationDeleteCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    cardUrn: { type: "positional", description: "The card_urn field of a `notification list` item (not object_urn)." },
+    cardUrn: { type: "positional", description: "The card_urn field of a `curviate core notification list` item (not object_urn)." },
   },
   async run({ args }) {
     const flags = args as NotificationFlags;
@@ -271,7 +271,7 @@ const notificationShowLessCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    cardUrn: { type: "positional", description: "The card_urn field of a `notification list` item (not object_urn)." },
+    cardUrn: { type: "positional", description: "The card_urn field of a `curviate core notification list` item (not object_urn)." },
   },
   async run({ args }) {
     const flags = args as NotificationFlags;

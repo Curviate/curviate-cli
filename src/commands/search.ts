@@ -367,7 +367,7 @@ export async function runSearchPeople(
   for (const f of PEOPLE_INVALID_FLAGS) {
     if (flags[f as keyof SearchFlags]) {
       out.stderr.write(
-        `error: --${f} is not valid for \`search people\` (classic LinkedIn search). Use \`search jobs\` or \`sales-nav search people\` for this filter.\n`,
+        `error: --${f} is not valid for \`curviate core search people\` (classic LinkedIn search). Use \`curviate core search jobs\` or \`curviate core sales-nav search people\` for this filter.\n`,
       );
       process.exit(2);
     }

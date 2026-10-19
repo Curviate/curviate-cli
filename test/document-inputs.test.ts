@@ -71,6 +71,12 @@ describe("document schemas", () => {
     expect(validate(schema, { kind: "A", zzzzzz: 1 })).toEqual([{ path: "zzzzzz", rule: "unknown field" }, { path: "name", rule: "required" }]);
     expect(validate(schema, { name: "ab", kind: "A", apply: { method: "q" } })).toEqual([{ path: "name", rule: "must be at least 3 characters" }, { path: "apply.method", rule: "must be one of x, y" }]);
     expect(validate(schema, [])).toEqual([{ path: "(document)", rule: "must be an object" }]);
+    // Inherited member names are not fields, at the root or nested; the required check reads own keys too.
+    for (const k of ["toString", "constructor", "hasOwnProperty", "valueOf", "isPrototypeOf", "__proto__"]) {
+      const doc = JSON.parse(`{"name": "abc", "kind": "A", "ref": {"id": "1", "${k}": 1}, "${k}": 1}`) as unknown;
+      expect(validate(schema, doc).map((i) => [i.path, i.rule]), k).toEqual([["ref", "must match one of: {id} | {name}"], [k, "unknown field"]]);
+      expect(validate({ ...schema, required: [k] }, { name: "abc", kind: "A" }).map((i) => [i.path, i.rule]), k).toEqual([[k, "required"]]);
+    }
   });
 });
 
@@ -103,6 +109,9 @@ describe("--file through the entry point (core recruiter job create)", () => {
     ["invalid JSON, named by line and column", () => job(put("bad.json", '{\n  "a": 1,\n  oops\n}')), /not valid JSON at line 3, column 3/],
     ["inline JSON", () => job('{"a":1}'), /--file - <<'EOF'/],
     ["inline JSON array", () => job("[1]"), /--file - <<'EOF'/],
+    ["a file past the 5 MiB cap", () => job(put("big.json", `{"a":"${"x".repeat(5 * 1024 * 1024)}"}`)), /--file: larger than 5 MiB/],
+    ["an endless device", () => job("/dev/zero"), /--file: larger than 5 MiB/],
+    ["stdin past the cap", () => job("-", { stdin: "x".repeat(5 * 1024 * 1024 + 1) }), /--file: larger than 5 MiB/],
     ["an unreadable file", () => { const f = put("locked.json", "{}"); chmodSync(f, 0); return job(f); }, /--file: cannot read .*EACCES/],
     ["- while stdin is a terminal", () => job("-", { stdinTTY: true }), /stdin is a terminal/],
     ["the old --body-file", () => sink.run(["core", "recruiter", "job", "create", "--body-file", put("ok2.json", JSON.stringify(DOC)), ...A]), /unknown flag `--body-file`/],
@@ -112,6 +121,13 @@ describe("--file through the entry point (core recruiter job create)", () => {
     const r = await go();
     expect([r.status, r.requests.length, r.stdout]).toEqual([2, 0, ""]);
     expect(r.stderr).toMatch(message);
+  });
+
+  it("inherited member names as fields (toString, constructor, __proto__), nested too, are unknown fields: exit 2, nothing sent", async () => {
+    const raw = JSON.stringify(DOC).replace('"company":{', '"company":{"constructor":1,').replace('{"project_name"', '{"toString":1,"__proto__":{"x":1},"project_name"');
+    const r = await job(put("proto.json", raw), { extra: ["--json"] });
+    expect([r.status, r.requests.length]).toEqual([2, 0]);
+    expect((JSON.parse(r.stdout) as { error: { errors: Array<{ path: string }> } }).error.errors.map((e) => e.path)).toEqual(["toString", "__proto__", "company"]);
   });
 
   it("--filters-file - reads the filter document from stdin into the request", async () => {

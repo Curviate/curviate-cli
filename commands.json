@@ -472,7 +472,7 @@
         {
           "name": "external-id",
           "type": "string",
-          "description": "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `account list --external-id`. Use an opaque id, not an email."
+          "description": "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `curviate account list --external-id`. Use an opaque id, not an email."
         },
         {
           "name": "timezone",
@@ -532,7 +532,7 @@
         "connect-session",
         "poll"
       ],
-      "description": "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. With --wait: block on the same adaptive cadence as `account link` until a terminal state.",
+      "description": "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. With --wait: block on the same adaptive cadence as `curviate account link` until a terminal state.",
       "usageOnly": false,
       "args": [
         {
@@ -543,7 +543,7 @@
         {
           "name": "session",
           "type": "string",
-          "description": "The account's acc_... id, returned by `account link` or a checkpoint response.",
+          "description": "The account's acc_... id, returned by `curviate account link` or a checkpoint response.",
           "required": true
         },
         {
@@ -1860,7 +1860,7 @@
         "company",
         "invitable-followers"
       ],
-      "description": "List the account's 1st-degree connections who are eligible to be invited to follow the company page. This is the read that seeds `company follow-invite`. Items carry no name or headline (a wire limitation), so hydrate a candidate via `profile <id>` before deciding who to invite. `invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
+      "description": "List the account's 1st-degree connections who are eligible to be invited to follow the company page. This is the read that seeds `curviate core company follow-invite`. Items carry no name or headline (a wire limitation), so hydrate a candidate via `curviate core profile <id>` before deciding who to invite. `invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
       "usageOnly": false,
       "args": [
         {
@@ -1896,7 +1896,7 @@
         "company",
         "follow-invite"
       ],
-      "description": "Invite the account's 1st-degree connections to follow the administered company page. Write, admin-gated (the account must administer the page with invite rights). Pass the AC... member ids from `company invitable-followers`, one --invitee per invitee. All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
+      "description": "Invite the account's 1st-degree connections to follow the administered company page. Write, admin-gated (the account must administer the page with invite rights). Pass the AC... member ids from `curviate core company invitable-followers`, one --invitee per invitee. All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
       "usageOnly": false,
       "args": [
         {
@@ -1907,7 +1907,7 @@
         {
           "name": "invitee",
           "type": "string",
-          "description": "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+          "description": "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required, max 50 per request.",
           "required": true
         }
       ],
@@ -1933,7 +1933,7 @@
         "company",
         "reply"
       ],
-      "description": "Reply to a company-inbox conversation, as the page (write, admin-gated: the account must administer the page). Takes the normal 2-... chat id from `company chats`; the endpoint resolves the page mailbox internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. See also: `company chats` (the read that returns the chat id) and `message send` (the personal equivalent).",
+      "description": "Reply to a company-inbox conversation, as the page (write, admin-gated: the account must administer the page). Takes the normal 2-... chat id from `curviate core company chats`; the endpoint resolves the page mailbox internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. See also: `curviate core company chats` (the read that returns the chat id) and `curviate core message send` (the personal equivalent).",
       "usageOnly": false,
       "args": [
         {
@@ -1944,7 +1944,7 @@
         {
           "name": "chatId",
           "type": "positional",
-          "description": "The 2-... chat id from `company chats`, passed through verbatim (no client-side check)."
+          "description": "The 2-... chat id from `curviate core company chats`, passed through verbatim (no client-side check)."
         },
         {
           "name": "text",
@@ -2010,7 +2010,7 @@
         "company",
         "followers"
       ],
-      "description": "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`).",
+      "description": "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `curviate core company managed`).",
       "usageOnly": false,
       "args": [
         {
@@ -2094,7 +2094,7 @@
         {
           "name": "chatId",
           "type": "positional",
-          "description": "The 2-... chat id from `company chats`, passed through verbatim."
+          "description": "The 2-... chat id from `curviate core company chats`, passed through verbatim."
         }
       ],
       "globals": [
@@ -2130,7 +2130,7 @@
         {
           "name": "chatId",
           "type": "positional",
-          "description": "The 2-... chat id from `company chats`, passed through verbatim."
+          "description": "The 2-... chat id from `curviate core company chats`, passed through verbatim."
         }
       ],
       "globals": [
@@ -2160,7 +2160,7 @@
         "company",
         "message"
       ],
-      "description": "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
+      "description": "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `curviate core company reply` (send).",
       "usageOnly": false,
       "args": [
         {
@@ -2171,12 +2171,12 @@
         {
           "name": "chatId",
           "type": "positional",
-          "description": "The 2-... chat id from `company chats`, passed through verbatim."
+          "description": "The 2-... chat id from `curviate core company chats`, passed through verbatim."
         },
         {
           "name": "messageId",
           "type": "positional",
-          "description": "The message id from `company messages`, passed through verbatim."
+          "description": "The message id from `curviate core company messages`, passed through verbatim."
         }
       ],
       "globals": [
@@ -2841,7 +2841,7 @@
         "connect",
         "sent"
       ],
-      "description": "Returns pending sent invitations only. Accepted and declined invitations are not returned (LinkedIn API limitation). Use `id` with `connect cancel`; use `user.id` (native member URN; the sent-variant carries no public slug) to identify the recipient. `created_at` is the platform's own ISO-8601 timestamp (not an approximation). No total count is available; use `connect sent --all` and count client-side. A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+      "description": "Returns pending sent invitations only. Accepted and declined invitations are not returned (LinkedIn API limitation). Use `id` with `curviate core connect cancel`; use `user.id` (native member URN; the sent-variant carries no public slug) to identify the recipient. `created_at` is the platform's own ISO-8601 timestamp (not an approximation). No total count is available; use `curviate core connect sent --all` and count client-side. A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -2872,7 +2872,7 @@
         "connect",
         "received"
       ],
-      "description": "Returns pending received invitations only. Already-handled invitations are not returned. The `user.*` fields (`public_identifier`, `display_name`, `first_name`, `last_name`) identify who sent the request. Use the `id` field with `connect accept` or `connect decline`. A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+      "description": "Returns pending received invitations only. Already-handled invitations are not returned. The `user.*` fields (`public_identifier`, `display_name`, `first_name`, `last_name`) identify who sent the request. Use the `id` field with `curviate core connect accept` or `curviate core connect decline`. A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -2909,7 +2909,7 @@
         {
           "name": "id",
           "type": "positional",
-          "description": "Invitation id to accept. Use the `id` field from `connect received`."
+          "description": "Invitation id to accept. Use the `id` field from `curviate core connect received`."
         }
       ],
       "globals": [
@@ -2940,7 +2940,7 @@
         {
           "name": "id",
           "type": "positional",
-          "description": "Invitation id to decline. Use the `id` field from `connect received`."
+          "description": "Invitation id to decline. Use the `id` field from `curviate core connect received`."
         }
       ],
       "globals": [
@@ -3757,7 +3757,7 @@
         "inbox",
         "messages"
       ],
-      "description": "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+      "description": "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
       "usageOnly": false,
       "args": [
         {
@@ -3858,7 +3858,7 @@
         "core",
         "inboxes"
       ],
-      "description": "Discover LinkedIn inboxes (personal + company pages) and list their conversations. Beta. See also: `inbox` (the account's own message-thread inbox), `message send` (reply to a chat).",
+      "description": "Discover LinkedIn inboxes (personal + company pages) and list their conversations. Beta. See also: `curviate core inbox` (the account's own message-thread inbox), `curviate core message send` (reply to a chat).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -3908,7 +3908,7 @@
         "inboxes",
         "chats"
       ],
-      "description": "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. Company inboxes are reply-only and cannot start a new conversation.",
+      "description": "List an inbox's conversations. Each chat id is send-ready: reply with `curviate core message send <chat_id> \"<text>\"`. A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. Company inboxes are reply-only and cannot start a new conversation.",
       "usageOnly": false,
       "args": [
         {
@@ -3919,7 +3919,7 @@
         {
           "name": "inboxId",
           "type": "positional",
-          "description": "Inbox id from `inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)."
+          "description": "Inbox id from `curviate core inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)."
         }
       ],
       "globals": [
@@ -3948,7 +3948,7 @@
         "core",
         "message"
       ],
-      "description": "Send and manage LinkedIn messages. A COMPANY_ chat id (from `inboxes chats`) sends as that company page instead of yourself; see `message send --help`.",
+      "description": "Send and manage LinkedIn messages. A COMPANY_ chat id (from `curviate core inboxes chats`) sends as that company page instead of yourself; see `curviate core message send --help`.",
       "usageOnly": false,
       "args": [
         {
@@ -4041,7 +4041,7 @@
         "message",
         "send"
       ],
-      "description": "Send a message to an existing chat. Pass a COMPANY_ chat id (from `inboxes chats`) to send as that company page instead of yourself, no separate flag needed. The output shows the acting identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints nothing new. See also: `inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company page guide.",
+      "description": "Send a message to an existing chat. Pass a COMPANY_ chat id (from `curviate core inboxes chats`) to send as that company page instead of yourself, no separate flag needed. The output shows the acting identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints nothing new. See also: `curviate core inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company page guide.",
       "usageOnly": false,
       "args": [
         {
@@ -4694,7 +4694,7 @@
         "post",
         "user-posts"
       ],
-      "description": "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately.",
+      "description": "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core post get <post_id>` reflects it immediately.",
       "usageOnly": false,
       "args": [
         {
@@ -5657,7 +5657,7 @@
         {
           "name": "listId",
           "type": "positional",
-          "description": "The account-list id (from `sales-nav account-lists`)."
+          "description": "The account-list id (from `curviate core sales-nav account-lists`)."
         },
         {
           "name": "filter",
@@ -5709,7 +5709,7 @@
         {
           "name": "listId",
           "type": "positional",
-          "description": "The lead-list id (from `sales-nav lead-lists`)."
+          "description": "The lead-list id (from `curviate core sales-nav lead-lists`)."
         },
         {
           "name": "spotlight",
@@ -7387,7 +7387,7 @@
         {
           "name": "cardUrn",
           "type": "positional",
-          "description": "The card_urn field of a `notification list` item (not object_urn)."
+          "description": "The card_urn field of a `curviate core notification list` item (not object_urn)."
         }
       ],
       "globals": [
@@ -7419,7 +7419,7 @@
         {
           "name": "cardUrn",
           "type": "positional",
-          "description": "The card_urn field of a `notification list` item (not object_urn)."
+          "description": "The card_urn field of a `curviate core notification list` item (not object_urn)."
         }
       ],
       "globals": [
@@ -7686,7 +7686,7 @@
         "draft",
         "publish"
       ],
-      "description": "Publish a Draft now, under the same rules and safety limits as `post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
+      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
       "usageOnly": false,
       "args": [
         {

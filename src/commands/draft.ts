@@ -288,7 +288,7 @@ export async function runDraftCreate(
 ): Promise<void> {
   const body: Record<string, unknown> = {};
   if (flags.unschedule) {
-    out.stderr.write("error: --unschedule applies to `draft update`; a new Draft is unscheduled unless you pass --schedule-at.\n");
+    out.stderr.write("error: --unschedule applies to `curviate core draft update`; a new Draft is unscheduled unless you pass --schedule-at.\n");
     process.exit(2);
   }
   const account = readAccount(flags, out);
@@ -541,7 +541,7 @@ const draftPublishCommand = defineCommand({
   meta: {
     name: "publish",
     description:
-      "Publish a Draft now, under the same rules and safety limits as `post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
+      "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
       "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
     examples: ["curviate core draft publish drf_YOUR_DRAFT_ID"],
   },

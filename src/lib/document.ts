@@ -10,9 +10,9 @@
  * before any request. Values are never echoed: an issue names a path and a
  * rule.
  */
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { editDistance } from "./bare-form-guard.js";
-import { defaultReadStdin, isStdinToken } from "./stdin.js";
+import { isStdinToken } from "./stdin.js";
 import SCHEMAS from "../schemas/documents.json";
 
 export type Schema = { [k: string]: unknown };
@@ -27,6 +27,45 @@ export function documentSchema(key: string): Schema {
   const s = (SCHEMAS as Record<string, Schema>)[key];
   if (!s) throw new Error(`no document schema for ${key}`);
   return s;
+}
+
+/** The largest document a file flag reads; past it, exit 2 instead of reading on (`--file /dev/zero`). */
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+const TOO_LARGE = (flag: string) => `--${flag}: larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MiB, the most a document may be.`;
+
+/** Read fd to EOF, or null past MAX_DOCUMENT_BYTES. */
+function readCapped(fd: number): Buffer | null {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  const buf = Buffer.alloc(64 * 1024);
+  for (;;) {
+    let n: number;
+    try {
+      n = readSync(fd, buf, 0, buf.length, null);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "EAGAIN") continue;
+      if ((err as NodeJS.ErrnoException).code === "EOF") break;
+      throw err;
+    }
+    if (n === 0) break;
+    total += n;
+    if (total > MAX_DOCUMENT_BYTES) return null;
+    chunks.push(Buffer.from(buf.subarray(0, n)));
+  }
+  return Buffer.concat(chunks);
+}
+
+/** All of stdin, trailing newlines stripped, capped at MAX_DOCUMENT_BYTES (exit 2 past it). */
+export async function readStdinCapped(flag = "file"): Promise<string> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of process.stdin) {
+    const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+    total += b.length;
+    if (total > MAX_DOCUMENT_BYTES) usage(TOO_LARGE(flag));
+    chunks.push(b);
+  }
+  return Buffer.concat(chunks).toString("utf8").replace(/\n+$/, "");
 }
 
 function usage(message: string): never {
@@ -57,7 +96,8 @@ export async function readFileFlag(flag: string, value: string, io: FileFlagIo =
     const second = Object.entries(io.others ?? {}).find(([k, o]) => k !== flag && k !== "_" && isStdinToken(o));
     if (second) usage(`--${flag} - and --${second[0]} - both read stdin. Only one input can come from stdin.`);
     if (io.stdinIsTTY ?? process.stdin.isTTY) usage(`--${flag} -: stdin is a terminal. Pipe the document in or use a heredoc: --${flag} - <<'EOF' ... EOF`);
-    text = await (io.readStdin ?? defaultReadStdin)();
+    text = await (io.readStdin ?? (() => readStdinCapped(flag)))();
+    if (Buffer.byteLength(text) > MAX_DOCUMENT_BYTES) usage(TOO_LARGE(flag));
   } else {
     let isDir = false;
     try {
@@ -66,11 +106,19 @@ export async function readFileFlag(flag: string, value: string, io: FileFlagIo =
       usage(`--${flag}: no such file: ${value}`);
     }
     if (isDir) usage(`--${flag}: ${value} is a directory, not a file.`);
+    let bytes: Buffer | null;
     try {
-      text = readFileSync(value, "utf8");
+      const fd = openSync(value, "r");
+      try {
+        bytes = readCapped(fd);
+      } finally {
+        closeSync(fd);
+      }
     } catch (err) {
       usage(`--${flag}: cannot read ${value}: ${(err as NodeJS.ErrnoException).code ?? "read error"}.`);
     }
+    if (bytes === null) usage(TOO_LARGE(flag));
+    text = bytes.toString("utf8");
   }
   if (text.trim() === "") usage(`--${flag}: empty input.`);
   return text;
@@ -94,6 +142,8 @@ export function parseDocument(flag: string, text: string): unknown {
   }
 }
 
+/** Own keys only: `toString`, `constructor`, `__proto__` are not fields. */
+const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 const typeOf = (v: unknown) => (v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 const isType = (v: unknown, t: string) => (t === "integer" ? Number.isInteger(v) : t === "number" ? typeof v === "number" : typeOf(v) === t);
 const join = (path: string, key: string | number) => (path ? `${path}.${key}` : String(key));
@@ -112,7 +162,7 @@ export function validate(schema: Schema, value: unknown, path = ""): Issue[] {
   if (Array.isArray(schema["oneOf"])) {
     const branches = schema["oneOf"] as Schema[];
     const disc = (schema["discriminator"] as { propertyName?: string } | undefined)?.propertyName;
-    if (disc && value && typeof value === "object" && disc in value) {
+    if (disc && value && typeof value === "object" && own(value, disc)) {
       const tag = (value as Record<string, unknown>)[disc];
       const hit = branches.find((b) => ((b["properties"] as Record<string, Schema>)?.[disc]?.["const"]) === tag);
       if (hit) return validate(hit, value, path);
@@ -144,7 +194,7 @@ export function validate(schema: Schema, value: unknown, path = ""): Issue[] {
     const props = (schema["properties"] ?? {}) as Record<string, Schema>;
     const obj = value as Record<string, unknown>;
     for (const key of Object.keys(obj)) {
-      if (key in props) out.push(...validate(props[key]!, obj[key], join(path, key)));
+      if (own(props, key)) out.push(...validate(props[key]!, obj[key], join(path, key)));
       else if (schema["additionalProperties"] === false) {
         const near = Object.keys(props).filter((p) => editDistance(key, p) <= 2).sort((a, b) => editDistance(key, a) - editDistance(key, b))[0];
         // The key is the caller's field name, not a value: naming it is the point.
@@ -152,7 +202,7 @@ export function validate(schema: Schema, value: unknown, path = ""): Issue[] {
       }
     }
     for (const req of (schema["required"] as string[] | undefined) ?? []) {
-      if (!(req in obj)) out.push({ path: join(path, req), rule: "required" });
+      if (!own(obj, req)) out.push({ path: join(path, req), rule: "required" });
     }
   }
   return out;

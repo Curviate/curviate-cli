@@ -23,7 +23,6 @@ import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
-import { defaultReadStdin } from "../lib/stdin.js";
 import { readFileFlag } from "../lib/document.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
@@ -390,7 +389,7 @@ function stripTrailingNewlines(s: string): string {
  */
 export async function resolveWebhookBody(
   raw: string | undefined,
-  readStdin: () => Promise<string> = defaultReadStdin,
+  readStdin?: () => Promise<string>,
   others: Record<string, unknown> = {},
 ): Promise<string> {
   if (raw === undefined || raw === "") {
@@ -686,7 +685,7 @@ const webhookVerifyCommand = defineCommand({
     const flags = args as WebhookFlags;
     const out = buildOutputStreams();
 
-    const rawBody = await resolveWebhookBody(flags.file, defaultReadStdin, flags);
+    const rawBody = await resolveWebhookBody(flags.file, undefined, flags);
 
     const signatureHeader = flags.header ?? "";
     const secret = flags.secret ?? "";

@@ -16,7 +16,7 @@ const manifest = readManifest();
 const runnable = manifest.filter((c) => !c.usageOnly && c.examples[0] && !INTERACTIVE_ONLY.has(c.examples[0]));
 const BAD_STUB = "The API returned an unreadable response"; // a read the stub's shape cannot satisfy: the API's answer, not a usage error
 const SLOW = 300_000;
-/** The checkpoint flow reads its next step from the body: an unreadable one stays exit 7 (the account is mid-login, not written). */
+/** The checkpoint flow reads its next step from the body: an unreadable one stays exit 7, saying the request may have been applied (sweeps.test.ts). */
 /** The SDK method returns nothing (a documented 204), so any body prints as {}. */
 const VOID_RESULT = new Set(["core draft delete"]);
 const CHECKPOINT_FLOW = new Set(["account checkpoint solve", "account checkpoint poll", "account checkpoint request", "account connect-session poll"]);
@@ -163,7 +163,8 @@ describe("a write the API accepted exits 0 whatever its body", () => {
       [{ status: 200, type: "application/json", body: "" }, "{}"],
       [{ status: 201, type: "application/json", body: '{"unexpected": true}' }, '{"unexpected":true}'],
       [{ status: 200, type: "text/html", body: "<html>ok</html>" }, "{}"],
-      [{ status: 200, type: "application/json", body: "null" }, "{}"],
+      [{ status: 200, type: "application/json", body: "null" }, "null"],
+      [{ status: 200, type: "application/json", body: "42" }, "42"],
     ];
     const bad: string[] = [];
     let swept = 0;

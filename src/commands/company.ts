@@ -936,8 +936,8 @@ const companyInvitableFollowersCommand = defineCommand({
     name: "invitable-followers",
     description:
       "List the account's 1st-degree connections who are eligible to be invited to follow the company page. " +
-      "This is the read that seeds `company follow-invite`. Items carry no name or headline (a wire limitation), " +
-      "so hydrate a candidate via `profile <id>` before deciding who to invite. " +
+      "This is the read that seeds `curviate core company follow-invite`. Items carry no name or headline (a wire limitation), " +
+      "so hydrate a candidate via `curviate core profile <id>` before deciding who to invite. " +
       "`invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
     examples: [
       "curviate core company invitable-followers 1234567",
@@ -972,7 +972,7 @@ const companyFollowInviteCommand = defineCommand({
     description:
       "Invite the account's 1st-degree connections to follow the administered company page. " +
       "Write, admin-gated (the account must administer the page with invite rights). " +
-      "Pass the AC... member ids from `company invitable-followers`, one --invitee per invitee. " +
+      "Pass the AC... member ids from `curviate core company invitable-followers`, one --invitee per invitee. " +
       "All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. " +
       "Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
     examples: [
@@ -984,7 +984,7 @@ const companyFollowInviteCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     invitee: {
       type: "string",
-      description: "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      description: "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required, max 50 per request.",
       required: true,
     },
   },
@@ -1038,7 +1038,7 @@ const companyManagedCommand = defineCommand({
 const companyFollowersCommand = defineCommand({
   meta: {
     name: "followers",
-    description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`).",
+    description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `curviate core company managed`).",
     examples: [
       "curviate core company followers 1234567",
       "curviate core company followers 1234567 --all",
@@ -1110,7 +1110,7 @@ const companyChatCommand = defineCommand({
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1142,7 +1142,7 @@ const companyMessagesCommand = defineCommand({
   args: {
     ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1166,7 +1166,7 @@ const companyMessagesCommand = defineCommand({
 const companyMessageCommand = defineCommand({
   meta: {
     name: "message",
-    description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
+    description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `curviate core company reply` (send).",
     examples: [
       "curviate core company message 1234567 2-YTQ3ODU3Njgt MSG_ID",
     ],
@@ -1174,8 +1174,8 @@ const companyMessageCommand = defineCommand({
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
-    messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
+    messageId: { type: "positional", description: "The message id from `curviate core company messages`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1238,9 +1238,9 @@ const companyReplyCommand = defineCommand({
     name: "reply",
     description:
       "Reply to a company-inbox conversation, as the page (write, admin-gated: the account must administer " +
-      "the page). Takes the normal 2-... chat id from `company chats`; the endpoint resolves the page mailbox " +
+      "the page). Takes the normal 2-... chat id from `curviate core company chats`; the endpoint resolves the page mailbox " +
       "internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. " +
-      "See also: `company chats` (the read that returns the chat id) and `message send` (the personal equivalent).",
+      "See also: `curviate core company chats` (the read that returns the chat id) and `curviate core message send` (the personal equivalent).",
     examples: [
       "curviate core company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\"",
     ],
@@ -1250,7 +1250,7 @@ const companyReplyCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     chatId: {
       type: "positional",
-      description: "The 2-... chat id from `company chats`, passed through verbatim (no client-side check).",
+      description: "The 2-... chat id from `curviate core company chats`, passed through verbatim (no client-side check).",
     },
     text: { type: "positional", stdinArg: true, description: "Reply text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },

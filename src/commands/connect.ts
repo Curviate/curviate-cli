@@ -370,9 +370,9 @@ const connectSentCommand = defineCommand({
     name: "sent",
     description:
       "Returns pending sent invitations only. Accepted and declined invitations are not returned (LinkedIn API limitation). " +
-      "Use `id` with `connect cancel`; use `user.id` (native member URN; the sent-variant carries no public slug) to identify the recipient. " +
+      "Use `id` with `curviate core connect cancel`; use `user.id` (native member URN; the sent-variant carries no public slug) to identify the recipient. " +
       "`created_at` is the platform's own ISO-8601 timestamp (not an approximation). " +
-      "No total count is available; use `connect sent --all` and count client-side. " +
+      "No total count is available; use `curviate core connect sent --all` and count client-side. " +
       "A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
     examples: [
       "curviate core connect sent",
@@ -405,7 +405,7 @@ const connectReceivedCommand = defineCommand({
     description:
       "Returns pending received invitations only. Already-handled invitations are not returned. " +
       "The `user.*` fields (`public_identifier`, `display_name`, `first_name`, `last_name`) identify who sent the request. " +
-      "Use the `id` field with `connect accept` or `connect decline`. " +
+      "Use the `id` field with `curviate core connect accept` or `curviate core connect decline`. " +
       "A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
     examples: [
       "curviate core connect received",
@@ -444,7 +444,7 @@ const connectAcceptCommand = defineCommand({
     ...WRITE_FLAGS,
     id: {
       type: "positional",
-      description: "Invitation id to accept. Use the `id` field from `connect received`.",
+      description: "Invitation id to accept. Use the `id` field from `curviate core connect received`.",
     },
   },
   async run({ args }) {
@@ -478,7 +478,7 @@ const connectDeclineCommand = defineCommand({
     ...WRITE_FLAGS,
     id: {
       type: "positional",
-      description: "Invitation id to decline. Use the `id` field from `connect received`.",
+      description: "Invitation id to decline. Use the `id` field from `curviate core connect received`.",
     },
   },
   async run({ args }) {

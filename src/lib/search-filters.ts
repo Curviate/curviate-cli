@@ -64,7 +64,7 @@ export async function assembleFilters(
   // over --filters when both are given; both reading stdin is refused.
   if (flags["filters-file"] !== undefined) {
     source = "--filters-file";
-    raw = await readFileFlag("filters-file", flags["filters-file"], { readStdin: readers.readStdin, others: { filters: flags.filters } });
+    raw = await readFileFlag("filters-file", flags["filters-file"], { readStdin: readers === DEFAULT_FILTER_READERS ? undefined : readers.readStdin, others: { filters: flags.filters } });
   } else if (isStdinToken(flags.filters)) {
     source = "--filters - (stdin)";
     raw = await readers.readStdin();
