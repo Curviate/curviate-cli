@@ -1,6 +1,8 @@
 /** `job` group: get (slim/verbose), list (+ re-filter, ALL union), create/update/publish/close, applicants, resume, flag hygiene. */
 import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CurviateError } from "@curviate/sdk";
 import {
   jobCommand, runJobApplicantGet, runJobApplicantResume, runJobApplicants, runJobBudget, runJobClose, runJobCreate,
@@ -187,7 +189,8 @@ describe("job applicants and resume", () => {
   ]);
 
   it("resume writes the bytes to -o <file>; on a TTY without -o it refuses (exit 2)", async () => {
-    const tmp = "/tmp/claude-1000/job-resume-test.pdf";
+    const dir = mkdtempSync(join(tmpdir(), "job-resume-"));
+    const tmp = join(dir, "resume.pdf");
     try {
       const e = mkEnv(SHAPE);
       await runJobApplicantResume(e.client as never, { id: "job_1", applicantId: "app_1", output: tmp, account: "acc_1" }, e.out as never, false);
@@ -195,7 +198,7 @@ describe("job applicants and resume", () => {
       expect(readFileSync(tmp).toString()).toBe("%PDF-bytes");
       expect(await exitCode(() => runJobApplicantResume(e.client as never, { id: "job_1", applicantId: "app_1", account: "acc_1" }, e.out as never, true))).toBe(2);
     } finally {
-      if (existsSync(tmp)) rmSync(tmp);
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });
