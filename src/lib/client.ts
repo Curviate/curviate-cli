@@ -12,7 +12,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
-import { getWriteKind, type WriteKind } from "./global-flags.js";
+import { getRecheck, getWriteKind, type WriteKind } from "./global-flags.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -63,7 +63,7 @@ const guardedFetch: typeof fetch = async (input, init) => {
   ]);
   const res = await fetch(input, merged);
   const method = (merged?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
-  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res, method === "GET" ? "read" : getWriteKind());
+  return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res, getWriteKind() === "state" ? "state" : method === "GET" ? "read" : getWriteKind());
 };
 
 const downloading = new AsyncLocalStorage<true>();
@@ -108,7 +108,7 @@ async function platformFaultIfUnreadable(res: Response, kind: WriteKind): Promis
   }
   if (res.ok && kind === "write") return acceptedWrite(res, text, parsed ? env : undefined);
   if (res.ok && kind === "state" && !(env !== null && typeof env === "object" && !Array.isArray(env) && Object.keys(env).length > 0)) {
-    return fault(res, `The API answered ${res.status} without a readable body. The request may have been applied: read the checkpoint state with \`curviate account checkpoint poll <account_id>\` before sending it again.`, false);
+    return fault(res, `The API answered ${res.status} without a readable body. The request may have been applied: check with \`${getRecheck()}\` before sending it again.`, false);
   }
   if (res.status >= 500) {
     if (typeof env?.code === "string") return res;

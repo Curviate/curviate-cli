@@ -144,9 +144,15 @@ function resolves(words: string[]): boolean {
   }
   return here.length > 0 || words.length === 0 || !/^[a-z]/.test(words[0]!);
 }
-/** A backticked command named without `curviate` (`notification list`): a relative form, never allowed. */
-const GROUP_NAMES = [...new Set([...ROOT, ...CORE])].sort((a, b) => b.length - a.length);
-const relativeNames = (text: string) => [...text.matchAll(new RegExp(`\`(?:${GROUP_NAMES.join("|")})(?: [a-z<[-][^\`]*)?\``, "g"))].map((m) => m[0]);
+/**
+ * A backticked span that starts with any command name in the tree (a group, a
+ * subcommand or a leaf: `notification list`, `checkpoint solve`, `save-lead`)
+ * without `curviate`: a relative form, never allowed. The name set is derived
+ * from the registry, so a new command is covered the day it lands.
+ */
+const COMMAND_NAMES = [...new Set(manifest.flatMap((c) => c.path))].sort((a, b) => b.length - a.length);
+const relativeNames = (text: string, names = COMMAND_NAMES) =>
+  [...text.matchAll(new RegExp(`\`(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")})(?: [^\`]*)?\``, "g"))].map((m) => m[0]);
 const mentions = (text: string) => [...text.matchAll(/(?<![\w/.@-])curviate((?: [a-z][a-z0-9-]*)*)/g)].map((m) => m[1]!.trim().split(" ").filter(Boolean));
 
 describe("every command named in copy is a full, live path", () => {
@@ -160,7 +166,12 @@ describe("every command named in copy is a full, live path", () => {
     expect(sources.flatMap(([, t]) => mentions(t)).length).toBeGreaterThan(400);
     expect(dead).toEqual([]);
     expect(sources.flatMap(([where, text]) => relativeNames(text).map((r) => `${where}: ${r}`))).toEqual([]);
-    expect([relativeNames("The card_urn of a `notification list` item."), relativeNames("Use `company chats` or `core`."), relativeNames("`curviate core company chats` and `--company`")]).toEqual([["`notification list`"], ["`company chats`", "`core`"], []]);
+    expect(COMMAND_NAMES).toEqual(expect.arrayContaining(["checkpoint", "save-candidate", "project-job", "show-less", "solve"]));
+    expect([
+      relativeNames("The card_urn of a `notification list` item."),
+      relativeNames("Solve it with `checkpoint solve`; write commands (`save-lead`, `project-job create`/`update`)."),
+      relativeNames("`curviate core company chats`, `--company`, `primary`, `company_id`, `saved-leads`"),
+    ]).toEqual([["`notification list`"], ["`checkpoint solve`", "`save-lead`", "`project-job create`", "`update`"], []]);
     // Controls: an old path and an unknown subcommand under a pure group are dead; a positional after a bare form is not.
     expect([["profile", "me"], ["core", "inbox", "sync"], ["account", "bogus"]].map(resolves)).toEqual([false, false, false]);
     expect([["core", "profile", "me"], ["core", "connect", "janesmith"], ["account", "get"]].map(resolves)).toEqual([true, true, true]);

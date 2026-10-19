@@ -773,7 +773,8 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // happens to be a global flag elsewhere in the tree.
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
-    setWriteKind(!declared.has("preview") ? "read" : STATE_WRITES.has(renderPath(leafPath)) ? "state" : "write");
+    const stateRecheck = STATE_WRITES[renderPath(leafPath)];
+    setWriteKind(stateRecheck ? "state" : declared.has("preview") ? "write" : "read", stateRecheck);
     const leafArgs = dropFalsePreview(resolvedArgs, walkTokens(resolvedArgs, booleanFlags, declared), declared);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
     const flagOnly = new Set(Object.entries((await resolveValue(leaf.args ?? {})) as Record<string, { type?: string }>).filter(([, d]) => d?.type !== "positional").map(([n]) => n));

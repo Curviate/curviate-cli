@@ -2037,7 +2037,7 @@ const accountCheckpointRequestCommand = defineCommand({
     },
     challenge: {
       type: "string",
-      description: "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `checkpoint solve`. Omit to re-send the current code.",
+      description: "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `curviate account checkpoint solve`. Omit to re-send the current code.",
     },
   },
   async run({ args }) {

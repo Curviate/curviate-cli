@@ -232,13 +232,16 @@ export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "pr
  */
 export type WriteKind = "read" | "write" | "state";
 let writeKind: WriteKind = "read";
-export const setWriteKind = (v: WriteKind): void => void (writeKind = v);
+let recheck = "";
+export const setWriteKind = (v: WriteKind, recheckWith = ""): void => void ((writeKind = v), (recheck = recheckWith));
 export const getWriteKind = (): WriteKind => writeKind;
+/** For a `state` command: the command that reads the state back. */
+export const getRecheck = (): string => recheck;
 
-/** Writes whose answer carries the next step: `state`, not `write`. */
-export const STATE_WRITES: ReadonlySet<string> = new Set([
-  "curviate account checkpoint solve",
-  "curviate account checkpoint poll",
-  "curviate account checkpoint request",
-  "curviate account connect-session poll",
-]);
+/** Writes whose answer carries the next step (`state`), each with the command that re-reads that state. */
+export const STATE_WRITES: Readonly<Record<string, string>> = {
+  "curviate account checkpoint solve": "curviate account checkpoint poll <account_id>",
+  "curviate account checkpoint poll": "curviate account checkpoint poll <account_id>",
+  "curviate account checkpoint request": "curviate account checkpoint poll <account_id>",
+  "curviate account connect-session poll": "curviate account connect-session poll --session <session_id>",
+};

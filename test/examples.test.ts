@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { INTERACTIVE_ONLY, readManifest, useExamples, withArgs } from "./helpers/examples.js";
 import { pkgRoot } from "./helpers/pkg.js";
 import { runCli } from "./helpers/run-inproc.js";
+import { STATE_WRITES } from "../src/lib/global-flags.js";
 
 const ex = useExamples();
 const manifest = readManifest();
@@ -19,7 +20,7 @@ const SLOW = 300_000;
 /** The checkpoint flow reads its next step from the body: an unreadable one stays exit 7, saying the request may have been applied (sweeps.test.ts). */
 /** The SDK method returns nothing (a documented 204), so any body prints as {}. */
 const VOID_RESULT = new Set(["core draft delete"]);
-const CHECKPOINT_FLOW = new Set(["account checkpoint solve", "account checkpoint poll", "account checkpoint request", "account connect-session poll"]);
+const CHECKPOINT_FLOW = new Set(Object.keys(STATE_WRITES).map((p) => p.replace(/^curviate /, "")));
 
 describe("meta.examples", () => {
   it("no example is a usage error or a crash", { timeout: SLOW }, async () => {

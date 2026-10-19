@@ -231,7 +231,7 @@ const notificationListCommand = defineCommand({
 const notificationDeleteCommand = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `show-less` is the reliable way to suppress those.",
+    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `curviate core notification show-less` is the reliable way to suppress those.",
     examples: [
       "curviate core notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],

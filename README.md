@@ -170,9 +170,9 @@ curviate core inbox list --json --all --account acc_1 \
 
 `curviate core inbox list` reads one folder per call, `primary` by default. An archived chat never appears
 in a `primary` walk, no matter the `--limit` or how far `--cursor`/`--all` page through it;
-pass `--inbox archived` to reach it. `inmail` and `starred` are alternate views over chats
+pass `--inbox archived` to reach it. `--inbox inmail` and `--inbox starred` are alternate views over chats
 `primary` already returns, useful as a narrower filter rather than for reachability. All six
-values: `primary`, `inmail`, `archived`, `spam`, `jobs`, `starred`.
+values: `--inbox primary|inmail|archived|spam|jobs|starred`.
 
 ```bash
 curviate core inbox list --json --all --account acc_1 --inbox archived
@@ -321,7 +321,7 @@ the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in 
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
 LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
 call). Branch on the exit code the same way as example 4 above, and read the code for the
-remedy. Write commands (`save-lead`, `save-account`, `curviate core message new`) accept `--preview` to
+remedy. Write commands (`curviate core sales-nav save-lead`, `curviate core sales-nav save-account`, `curviate core sales-nav message new`) accept `--preview` to
 render the request without sending it.
 
 ### 1. Search Sales Navigator profiles, then get one full profile
@@ -421,8 +421,9 @@ subscription. A refusal is **exit code `5`** with one of three codes in the JSON
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
 LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
 call). The surface is project-centric: most
-operations are scoped to a hiring project id. Write commands (`save-candidate`, `project update`,
-`project-job create`/`update`, `curviate core job create`/`publish`/`close`, `curviate core message new`) accept `--preview`
+operations are scoped to a hiring project id. Write commands (`curviate core recruiter save-candidate`, `curviate core recruiter project update`,
+`curviate core recruiter project-job create`, `curviate core recruiter project-job update`, `curviate core recruiter job create`,
+`curviate core recruiter job publish`, `curviate core recruiter job close`, `curviate core recruiter message new`) accept `--preview`
 to render the request without sending it.
 
 ### 1. List hiring projects
