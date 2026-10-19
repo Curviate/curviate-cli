@@ -53,7 +53,7 @@ describe("a profile field of the wrong type", () => {
   };
   const TAKES: Array<[string[], string[]]> = [
     [["account", "list", "--json"], ["apiKey", "baseUrl", "timeout"]],
-    [["profile", "me", "--json"], ["apiKey", "baseUrl", "timeout", "account"]],
+    [["core", "profile", "me", "--json"], ["apiKey", "baseUrl", "timeout", "account"]],
     [["doctor", "--json"], ["apiKey", "baseUrl", "timeout", "tenant"]],
   ];
 
@@ -88,7 +88,7 @@ describe("a profile field of the wrong type", () => {
   ])("a broken %s is bypassed by %j %j: profile me exits 0", async (field, flags, env) => {
     writeConfig({ default: { ...good(), [field]: { x: MARK } } });
     const fill = (v: string) => (v === "BASE" ? sink.url : v);
-    const r = await run(["profile", "me", "--json", ...flags.map(fill)], Object.fromEntries(Object.entries(env).map(([k, v]) => [k, fill(v)])));
+    const r = await run(["core", "profile", "me", "--json", ...flags.map(fill)], Object.fromEntries(Object.entries(env).map(([k, v]) => [k, fill(v)])));
     expect([r.status, r.out.includes(MARK)], r.out).toEqual([0, false]);
   });
 
@@ -130,7 +130,7 @@ describe("a malformed config file structure", () => {
   ];
 
   it.each(STRUCTURE)("%s: commands and writers exit 2 without echoing or crashing; config list exits 0 as <invalid>", async (_l, root) => {
-    for (const argv of [["account", "list", "--json"], ["profile", "me", "--json"], ["doctor", "--json"]]) {
+    for (const argv of [["account", "list", "--json"], ["core", "profile", "me", "--json"], ["doctor", "--json"]]) {
       writeRaw(root);
       const r = await run(argv);
       expect(r.status, `${argv.join(" ")}: ${r.out}`).toBe(2);
@@ -218,7 +218,7 @@ describe("a writer repairs a non-object profile", () => {
 describe("a config file that is not valid JSON", () => {
   const BROKEN = [["garbage", `{not json ${MARK}`], ["empty file", ""], ["truncated", `{"active":"default","profiles":{"default":{"apiKey":"cvt_live_${MARK}`]];
   const COMMANDS = [
-    ["account", "list", "--json"], ["profile", "me", "--json"], ["doctor", "--json"], ["config", "list"], ["config", "list", "--json"],
+    ["account", "list", "--json"], ["core", "profile", "me", "--json"], ["doctor", "--json"], ["config", "list"], ["config", "list", "--json"],
     ["login", "--api-key", KEY], ["config", "set-account", "acc_9"], ["config", "set-base-url", "https://custom.test"], ["config", "set-base-url", "--reset"],
     ["config", "use", "default"], ["config", "rename", "default", "other"], ["config", "reset", "--profile", "default", "--yes"],
   ];
@@ -237,8 +237,8 @@ describe("a config file that is not valid JSON", () => {
     const flags = ["--api-key", KEY, "--base-url", sink.url, "--timeout", "5000"];
     const env = { CURVIATE_API_KEY: KEY, CURVIATE_BASE_URL: sink.url, CURVIATE_ACCOUNT: "acc_1" };
     for (const [argv, e] of [
-      [["account", "list", "--json", ...flags], {}], [["profile", "me", "--json", "--account", "acc_1", ...flags], {}], [["doctor", "--json", ...flags], {}],
-      [["profile", "me", "--json", "--timeout", "5000"], env],
+      [["account", "list", "--json", ...flags], {}], [["core", "profile", "me", "--json", "--account", "acc_1", ...flags], {}], [["doctor", "--json", ...flags], {}],
+      [["core", "profile", "me", "--json", "--timeout", "5000"], env],
     ] as Array<[string[], Record<string, string>]>) {
       const r = await run(argv, e);
       expect(r.status, `${argv.join(" ")}: ${r.out}`).toBe(0);
@@ -288,7 +288,7 @@ describe("env-only CI: key and base URL from the environment, timeout falls back
     setup();
     const env = { CURVIATE_API_KEY: KEY, CURVIATE_BASE_URL: sink.url };
     const list = await run(["account", "list", "--json"], env);
-    const me = await run(["profile", "me", "--json"], { ...env, CURVIATE_ACCOUNT: "acc_1" });
+    const me = await run(["core", "profile", "me", "--json"], { ...env, CURVIATE_ACCOUNT: "acc_1" });
     expect([list.status, me.status], list.out + me.out).toEqual([0, 0]);
     expect(list.out + me.out).not.toContain(MARK);
   });

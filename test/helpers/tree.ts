@@ -58,14 +58,14 @@ export const FLAG_VALUES: Record<string, string> = {
 
 /** Where the default argv would not reach the request: a URL-only form, a query minimum, a flag that selects the list. */
 export const OVERRIDES: Record<string, string[]> = {
-  search: ["search", "https://www.linkedin.com/search/results/people/?keywords=x"],
-  "recruiter search": ["recruiter", "search", "https://www.linkedin.com/talent/search?searchContextId=1"],
-  "sales-nav search": ["sales-nav", "search", "https://www.linkedin.com/sales/search/people?query=x"],
-  "inbox search": ["inbox", "search", "hello"],
-  "search groups": ["search", "groups", "hello"],
-  "company search-chats": ["company", "search-chats", "1", "hello"],
-  profile: ["profile", "1", "--posts"],
-  "profile me": ["profile", "me", "--posts"],
+  "core search": ["core", "search", "https://www.linkedin.com/search/results/people/?keywords=x"],
+  "core recruiter search": ["core", "recruiter", "search", "https://www.linkedin.com/talent/search?searchContextId=1"],
+  "core sales-nav search": ["core", "sales-nav", "search", "https://www.linkedin.com/sales/search/people?query=x"],
+  "core inbox search": ["core", "inbox", "search", "hello"],
+  "core search groups": ["core", "search", "groups", "hello"],
+  "core company search-chats": ["core", "company", "search-chats", "1", "hello"],
+  "core profile": ["core", "profile", "1", "--posts"],
+  "core profile me": ["core", "profile", "me", "--posts"],
 };
 
 const isUrlShaped = (name: string) => name === "url" || name.endsWith("-url");
@@ -109,10 +109,10 @@ const GLOBAL_FLAG_NAMES = new Set(Object.keys(GLOBAL_FLAGS));
 const firstEnumValue = (d?: string) => d?.match(/\b([A-Za-z][\w-]*)\s*\|\s*[A-Za-z]/)?.[1] ?? null;
 
 const SWEEP_OVERRIDES: Record<string, string[]> = {
-  profile: ["profile", "1"],
-  "profile me": ["profile", "me"],
-  "recruiter project-job": ["recruiter", "project-job", "1"],
-  "recruiter applicant": ["recruiter", "applicant", "1", "1"],
+  "core profile": ["core", "profile", "1"],
+  "core profile me": ["core", "profile", "me"],
+  "core recruiter project-job": ["core", "recruiter", "project-job", "1"],
+  "core recruiter applicant": ["core", "recruiter", "applicant", "1", "1"],
   "webhook create": ["webhook", "create", "--source", "account_status", "--request-url", "https://h.test/x"],
 };
 

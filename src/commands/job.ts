@@ -1,5 +1,5 @@
 /**
- * `curviate job`, classic job-posting operations (own postings + public read).
+ * `curviate core job`, classic job-posting operations (own postings + public read).
  *
  * Subcommands:
  *   job get <url|id>: retrieve one public job posting (read)
@@ -28,6 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -739,8 +740,8 @@ const jobGetCommand = defineCommand({
     name: "get",
     description: "Retrieve one public LinkedIn job posting's full detail.",
     examples: [
-      "curviate job get 4100000000",
-      "curviate job get https://www.linkedin.com/jobs/view/4100000000",
+      "curviate core job get 4100000000",
+      "curviate core job get https://www.linkedin.com/jobs/view/4100000000",
     ],
   },
   args: {
@@ -757,8 +758,8 @@ const jobListCommand = defineCommand({
     name: "list",
     description: "List your own classic job postings by state.",
     examples: [
-      "curviate job list --state OPEN",
-      "curviate job list --state DRAFT --all",
+      "curviate core job list --state OPEN",
+      "curviate core job list --state DRAFT --all",
     ],
     requires: [
       "--max-pages and --page-delay only with --all.",
@@ -778,7 +779,7 @@ const jobCreateCommand = defineCommand({
     name: "create",
     description: "Create a classic job-posting draft (never publishes, never spends).",
     examples: [
-      "curviate job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
+      "curviate core job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
     ],
     requires: [
       "--job-title or --job-title-id.",
@@ -807,8 +808,8 @@ const jobUpdateCommand = defineCommand({
     name: "update",
     description: "Apply a partial update to a job posting you own.",
     examples: [
-      "curviate job update 4100000000 --workplace-type HYBRID",
-      "curviate job update 4100000000 --description \"$(cat description.txt)\"",
+      "curviate core job update 4100000000 --workplace-type HYBRID",
+      "curviate core job update 4100000000 --description \"$(cat description.txt)\"",
     ],
     requires: [
       "--notification-email with --apply-method linkedin; --website-url with --apply-method external.",
@@ -829,7 +830,7 @@ const jobBudgetCommand = defineCommand({
     name: "budget",
     description: "Price a publish before committing any money.",
     examples: [
-      "curviate job budget 4100000000",
+      "curviate core job budget 4100000000",
     ],
   },
   args: {
@@ -846,7 +847,7 @@ const jobPublishCommand = defineCommand({
     name: "publish",
     description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
     examples: [
-      "curviate job publish 4100000000 --mode FREE",
+      "curviate core job publish 4100000000 --mode FREE",
     ],
     requires: [
       "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS.",
@@ -870,7 +871,7 @@ const jobCloseCommand = defineCommand({
     name: "close",
     description: "Stop a posting from accepting applications (irreversible once LISTED).",
     examples: [
-      "curviate job close 4100000000",
+      "curviate core job close 4100000000",
     ],
   },
   args: {
@@ -887,8 +888,8 @@ const jobApplicantsCommand = defineCommand({
     name: "applicants",
     description: "List applicants to a posting you own (POST-as-search).",
     examples: [
-      "curviate job applicants 4100000000",
-      "curviate job applicants 4100000000 --ratings GOOD_FIT,MAYBE",
+      "curviate core job applicants 4100000000",
+      "curviate core job applicants 4100000000 --ratings GOOD_FIT,MAYBE",
     ],
   },
   args: {
@@ -906,7 +907,7 @@ const jobApplicantGetCommand = defineCommand({
     name: "get",
     description: "Get one applicant's full detail, including contact info.",
     examples: [
-      "curviate job applicant get 4100000000 APPLICANT_ID",
+      "curviate core job applicant get 4100000000 APPLICANT_ID",
     ],
   },
   args: {
@@ -924,7 +925,7 @@ const jobApplicantResumeCommand = defineCommand({
     name: "resume",
     description: "Download an applicant's résumé (binary).",
     examples: [
-      "curviate job applicant resume 4100000000 APPLICANT_ID -o resume.pdf",
+      "curviate core job applicant resume 4100000000 APPLICANT_ID -o resume.pdf",
     ],
   },
   args: {
@@ -947,14 +948,14 @@ const jobApplicantCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate job applicant get <job_id> <applicant_id>\n" +
-      "       curviate job applicant resume <job_id> <applicant_id> -o <file>\n",
+      "Usage: curviate core job applicant get <job_id> <applicant_id>\n" +
+      "       curviate core job applicant resume <job_id> <applicant_id> -o <file>\n",
     );
   },
 });
 
 export const jobCommand = defineCommand({
-  meta: { name: "job", description: "Classic LinkedIn job-posting operations." },
+  meta: { name: "job", description: DESCRIPTIONS.job },
   args: { ...READ_SINGLE_FLAGS },
   subCommands: {
     get: jobGetCommand,
@@ -969,16 +970,16 @@ export const jobCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate job get <url|id>\n" +
-      "       curviate job list --state <DRAFT|OPEN|CLOSED|REVIEW|SUSPENDED|ALL>\n" +
-      "       curviate job create --job-title <t> --company <c> --workplace-type <w> --location <id> --employment-status <e> --description <d> --apply-method <linkedin|external>\n" +
-      "       curviate job update <id> [<flags>]\n" +
-      "       curviate job budget <id>\n" +
-      "       curviate job publish <id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
-      "       curviate job close <id>\n" +
-      "       curviate job applicants <id>\n" +
-      "       curviate job applicant get <id> <applicant_id>\n" +
-      "       curviate job applicant resume <id> <applicant_id> -o <file>\n",
+      "Usage: curviate core job get <url|id>\n" +
+      "       curviate core job list --state <DRAFT|OPEN|CLOSED|REVIEW|SUSPENDED|ALL>\n" +
+      "       curviate core job create --job-title <t> --company <c> --workplace-type <w> --location <id> --employment-status <e> --description <d> --apply-method <linkedin|external>\n" +
+      "       curviate core job update <id> [<flags>]\n" +
+      "       curviate core job budget <id>\n" +
+      "       curviate core job publish <id> --mode <FREE|PROMOTED|PROMOTED_PLUS>\n" +
+      "       curviate core job close <id>\n" +
+      "       curviate core job applicants <id>\n" +
+      "       curviate core job applicant get <id> <applicant_id>\n" +
+      "       curviate core job applicant resume <id> <applicant_id> -o <file>\n",
     );
   },
 });

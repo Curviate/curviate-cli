@@ -1,5 +1,5 @@
 /**
- * `curviate company`, company profile + sub-resource reads + follow-invite write.
+ * `curviate core company`, company profile + sub-resource reads + follow-invite write.
  *
  * Subcommands:
  *   company <id>: retrieve (routes to companies.get)
@@ -55,6 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { resolveIdentifier } from "../lib/identifier.js";
@@ -836,15 +837,15 @@ const companyEmployeesCommand = defineCommand({
     name: "employees",
     description: "List people who currently work at the company.",
     examples: [
-      "curviate company employees acmecorp",
-      "curviate company employees 1234567 --keywords \"machine learning\"",
+      "curviate core company employees acmecorp",
+      "curviate core company employees 1234567 --keywords \"machine learning\"",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
     keywords: { type: "string", description: "Free-text keyword filter across employee profile fields." },
-    location: { type: "string", description: "Opaque location id from `curviate search parameters --type LOCATION`." },
+    location: { type: "string", description: "Opaque location id from `curviate core search parameters --type LOCATION`." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -870,8 +871,8 @@ const companyPostsCommand = defineCommand({
     name: "posts",
     description: "List the company's posts.",
     examples: [
-      "curviate company posts acmecorp",
-      "curviate company posts 1234567 --limit 5",
+      "curviate core company posts acmecorp",
+      "curviate core company posts 1234567 --limit 5",
     ],
   },
   args: {
@@ -902,8 +903,8 @@ const companyJobsCommand = defineCommand({
     name: "jobs",
     description: "List the company's open job postings.",
     examples: [
-      "curviate company jobs acmecorp",
-      "curviate company jobs 1234567 --keywords engineer",
+      "curviate core company jobs acmecorp",
+      "curviate core company jobs 1234567 --keywords engineer",
     ],
   },
   args: {
@@ -935,11 +936,11 @@ const companyInvitableFollowersCommand = defineCommand({
     name: "invitable-followers",
     description:
       "List the account's 1st-degree connections who are eligible to be invited to follow the company page. " +
-      "This is the read that seeds `company follow-invite`. Items carry no name or headline (a wire limitation), " +
-      "so hydrate a candidate via `profile <id>` before deciding who to invite. " +
+      "This is the read that seeds `curviate core company follow-invite`. Items carry no name or headline (a wire limitation), " +
+      "so hydrate a candidate via `curviate core profile <id>` before deciding who to invite. " +
       "`invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
     examples: [
-      "curviate company invitable-followers 1234567",
+      "curviate core company invitable-followers 1234567",
     ],
   },
   args: {
@@ -971,11 +972,11 @@ const companyFollowInviteCommand = defineCommand({
     description:
       "Invite the account's 1st-degree connections to follow the administered company page. " +
       "Write, admin-gated (the account must administer the page with invite rights). " +
-      "Pass the AC... member ids from `company invitable-followers`, one --invitee per invitee. " +
+      "Pass the AC... member ids from `curviate core company invitable-followers`, one --invitee per invitee. " +
       "All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. " +
       "Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
     examples: [
-      "curviate company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP",
+      "curviate core company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP",
     ],
   },
   args: {
@@ -983,7 +984,7 @@ const companyFollowInviteCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     invitee: {
       type: "string",
-      description: "AC... member id to invite (from `company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      description: "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required, max 50 per request.",
       required: true,
     },
   },
@@ -1011,7 +1012,7 @@ const companyManagedCommand = defineCommand({
     name: "managed",
     description: "List the company pages the connected account administers. An empty result is valid, the account administers no pages.",
     examples: [
-      "curviate company managed",
+      "curviate core company managed",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1037,10 +1038,10 @@ const companyManagedCommand = defineCommand({
 const companyFollowersCommand = defineCommand({
   meta: {
     name: "followers",
-    description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `company managed`).",
+    description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `curviate core company managed`).",
     examples: [
-      "curviate company followers 1234567",
-      "curviate company followers 1234567 --all",
+      "curviate core company followers 1234567",
+      "curviate core company followers 1234567 --all",
     ],
   },
   args: {
@@ -1072,7 +1073,7 @@ const companyChatsCommand = defineCommand({
     description:
       "List the conversations in a company page's admin message inbox, newest-activity-first. Admin-gated. Beta.",
     examples: [
-      "curviate company chats 1234567",
+      "curviate core company chats 1234567",
     ],
   },
   args: {
@@ -1103,13 +1104,13 @@ const companyChatCommand = defineCommand({
     name: "chat",
     description: "Retrieve one conversation from a company page's admin inbox. Admin-gated.",
     examples: [
-      "curviate company chat 1234567 2-YTQ3ODU3Njgt",
+      "curviate core company chat 1234567 2-YTQ3ODU3Njgt",
     ],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1135,13 +1136,13 @@ const companyMessagesCommand = defineCommand({
     name: "messages",
     description: "List a company-inbox conversation's messages, newest first. Admin-gated.",
     examples: [
-      "curviate company messages 1234567 2-YTQ3ODU3Njgt",
+      "curviate core company messages 1234567 2-YTQ3ODU3Njgt",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1165,16 +1166,16 @@ const companyMessagesCommand = defineCommand({
 const companyMessageCommand = defineCommand({
   meta: {
     name: "message",
-    description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `company reply` (send).",
+    description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `curviate core company reply` (send).",
     examples: [
-      "curviate company message 1234567 2-YTQ3ODU3Njgt MSG_ID",
+      "curviate core company message 1234567 2-YTQ3ODU3Njgt MSG_ID",
     ],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), a slug/URL is resolved to the numeric id first." },
-    chatId: { type: "positional", description: "The 2-... chat id from `company chats`, passed through verbatim." },
-    messageId: { type: "positional", description: "The message id from `company messages`, passed through verbatim." },
+    chatId: { type: "positional", description: "The 2-... chat id from `curviate core company chats`, passed through verbatim." },
+    messageId: { type: "positional", description: "The message id from `curviate core company messages`, passed through verbatim." },
   },
   async run({ args }) {
     const flags = args as CompanyFlags;
@@ -1202,8 +1203,8 @@ const companySearchChatsCommand = defineCommand({
       "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
       "or --unread; mutually exclusive, enforced server-side. Admin-gated. Beta.",
     examples: [
-      "curviate company search-chats 1234567 sophie",
-      "curviate company search-chats 1234567 sophie --unread",
+      "curviate core company search-chats 1234567 sophie",
+      "curviate core company search-chats 1234567 sophie --unread",
     ],
   },
   args: {
@@ -1237,11 +1238,11 @@ const companyReplyCommand = defineCommand({
     name: "reply",
     description:
       "Reply to a company-inbox conversation, as the page (write, admin-gated: the account must administer " +
-      "the page). Takes the normal 2-... chat id from `company chats`; the endpoint resolves the page mailbox " +
+      "the page). Takes the normal 2-... chat id from `curviate core company chats`; the endpoint resolves the page mailbox " +
       "internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. " +
-      "See also: `company chats` (the read that returns the chat id) and `message send` (the personal equivalent).",
+      "See also: `curviate core company chats` (the read that returns the chat id) and `curviate core message send` (the personal equivalent).",
     examples: [
-      "curviate company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\"",
+      "curviate core company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\"",
     ],
   },
   args: {
@@ -1249,7 +1250,7 @@ const companyReplyCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     chatId: {
       type: "positional",
-      description: "The 2-... chat id from `company chats`, passed through verbatim (no client-side check).",
+      description: "The 2-... chat id from `curviate core company chats`, passed through verbatim (no client-side check).",
     },
     text: { type: "positional", stdinArg: true, description: "Reply text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     attach: { type: "string", description: "File to attach (repeatable)." },
@@ -1276,10 +1277,10 @@ const companyReplyCommand = defineCommand({
 export const companyCommand = defineCommand({
   meta: {
     name: "company",
-    description: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources.",
+    description: DESCRIPTIONS.company,
     examples: [
-      "curviate company acmecorp",
-      "curviate company https://www.linkedin.com/company/acmecorp",
+      "curviate core company acmecorp",
+      "curviate core company https://www.linkedin.com/company/acmecorp",
     ],
   },
   args: {

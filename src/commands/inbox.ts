@@ -1,5 +1,5 @@
 /**
- * `curviate inbox`, messaging inbox operations.
+ * `curviate core inbox`, messaging inbox operations.
  *
  * Subcommands:
  *   inbox list: list chats (paginated, --all/--limit/--cursor, --inbox <folder>
@@ -19,6 +19,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { normalizeChatId } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -357,7 +358,7 @@ export async function runInboxMessages(
       if (servable) {
         out.stderr.write(
           "hint: a stored listing is served only after a walk of the whole chat, which any unfiltered page fetch " +
-            "restarts. Run `curviate inbox messages <chat_id> --all` without `--mode cache_only` to walk it to the " +
+            "restarts. Run `curviate core inbox messages <chat_id> --all` without `--mode cache_only` to walk it to the " +
             "end. A chat whose messages do not fit one page (`--limit`, at most 25) is not served from the store at all.\n",
         );
       }
@@ -434,9 +435,9 @@ const inboxListCommand = defineCommand({
     name: "list",
     description: "List inbox chats.",
     examples: [
-      "curviate inbox list",
-      "curviate inbox list --unread",
-      "curviate inbox list --inbox archived --all",
+      "curviate core inbox list",
+      "curviate core inbox list --unread",
+      "curviate core inbox list --inbox archived --all",
     ],
   },
   args: {
@@ -477,7 +478,7 @@ const inboxGetCommand = defineCommand({
     name: "get",
     description: "Get details of a single chat.",
     examples: [
-      "curviate inbox get 2-YTQ3ODU3Njgt",
+      "curviate core inbox get 2-YTQ3ODU3Njgt",
     ],
   },
   args: {
@@ -510,7 +511,7 @@ const inboxMarkReadCommand = defineCommand({
     name: "mark-read",
     description: "Mark a chat as read.",
     examples: [
-      "curviate inbox mark-read 2-YTQ3ODU3Njgt",
+      "curviate core inbox mark-read 2-YTQ3ODU3Njgt",
     ],
   },
   args: {
@@ -540,11 +541,11 @@ const inboxMarkReadCommand = defineCommand({
 const inboxMessagesCommand = defineCommand({
   meta: {
     name: "messages",
-    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
     examples: [
-      "curviate inbox messages 2-YTQ3ODU3Njgt",
-      "curviate inbox messages 2-YTQ3ODU3Njgt --limit 20",
-      "curviate inbox messages 2-YTQ3ODU3Njgt --after 2026-06-01T00:00:00Z",
+      "curviate core inbox messages 2-YTQ3ODU3Njgt",
+      "curviate core inbox messages 2-YTQ3ODU3Njgt --limit 20",
+      "curviate core inbox messages 2-YTQ3ODU3Njgt --after 2026-06-01T00:00:00Z",
     ],
   },
   args: {
@@ -587,7 +588,7 @@ const inboxSearchCommand = defineCommand({
     name: "search",
     description: "Free-text search the account's own inbox (matches participant names and message content).",
     examples: [
-      "curviate inbox search sophie",
+      "curviate core inbox search sophie",
     ],
   },
   args: {
@@ -615,7 +616,7 @@ const inboxSearchCommand = defineCommand({
 });
 
 export const inboxCommand = defineCommand({
-  meta: { name: "inbox", description: "Read LinkedIn message inbox." },
+  meta: { name: "inbox", description: DESCRIPTIONS.inbox },
   subCommands: {
     list: inboxListCommand,
     get: inboxGetCommand,
@@ -625,7 +626,7 @@ export const inboxCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate inbox <subcommand>\n" +
+      "Usage: curviate core inbox <subcommand>\n" +
       "  list\n" +
       "  get <chat_id>\n" +
       "  mark-read <chat_id>\n" +

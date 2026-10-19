@@ -5,7 +5,8 @@
  * asserted absent from BOTH streams, next to a control that proves it could show.
  */
 import { describe, it, expect } from "vitest";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderUsage, type CommandDef } from "citty";
 import { SECRET_FLAGS } from "../src/dispatch.js";
@@ -16,6 +17,8 @@ import { useSink } from "./helpers/sink.js";
 
 const sink = useSink({ body: { object: "account_list", items: [], cursor: null } });
 const K = "SENTINELkey7Q3Z9";
+const BODY_FILE = join(mkdtempSync(join(tmpdir(), "curviate-gf-")), "body.json");
+writeFileSync(BODY_FILE, "{}");
 const cfg = (xdg: string) => join(xdg, "curviate", "config.json");
 
 describe("--beta", () => {
@@ -70,7 +73,7 @@ describe("credential flags", () => {
   });
 
   it("a repeated secret flag is a usage error naming the flag, not a crash", async () => {
-    for (const args of [["login", `--api-key=${K}`, `--api-key=${K}`], ["profile", "me", "--api-key", K, "--api-key", K, "--account", "acc_1"]]) {
+    for (const args of [["login", `--api-key=${K}`, `--api-key=${K}`], ["core", "profile", "me", "--api-key", K, "--api-key", K, "--account", "acc_1"]]) {
       expect((await refused(args)).stderr).toMatch(/--api-key.*more than once/);
     }
   });
@@ -110,12 +113,12 @@ describe("credential flags", () => {
   });
 
   it.each(["abc", "10abc", "0", "-5", "1.5", "0x10", "1e3", " 5", "2147483648", "05"])("--timeout=%j exits 2 naming --timeout", async (bad) => {
-    expect((await refused(["profile", "me", "--api-key", K, "--account", "acc_1", `--timeout=${bad}`])).stderr).toMatch(/timeout/i);
+    expect((await refused(["core", "profile", "me", "--api-key", K, "--account", "acc_1", `--timeout=${bad}`])).stderr).toMatch(/timeout/i);
   });
 
   it("--timeout accepts the upper bound and a small value", async () => {
     for (const t of ["2147483647", "50"]) {
-      const r = await sink.run(["profile", "me", "--api-key", K, "--account", "acc_1", "--timeout", t]);
+      const r = await sink.run(["core", "profile", "me", "--api-key", K, "--account", "acc_1", "--timeout", t]);
       expect([r.status, r.requests.length]).toEqual([0, 1]);
     }
   });
@@ -123,7 +126,7 @@ describe("credential flags", () => {
   it.each([
     ["config", "list", "--json", "--no-json"],
     ["config", "list", "--no-json", "--no-json"],
-    ["profile", "me", "--account", "acc_1", "--verbose", "--no-verbose"],
+    ["core", "profile", "me", "--account", "acc_1", "--verbose", "--no-verbose"],
     ["account", "list", "--all", "--no-all"],
     ["webhook", "create", "--enabled", "--no-enabled"],
     ["--beta", "--beta", "config", "list"],
@@ -172,7 +175,7 @@ describe("--preview masks every secret flag's value", () => {
   });
 
   it("--signature is message content, not a secret: shown", async () => {
-    const r = await sink.run(["recruiter", "message", "new", "--to", "ACoAAB", "--subject", "Hello", "--signature", "Best, Sam", "hi there", "--beta", "--account", "acc_1", ...common]);
+    const r = await sink.run(["core", "recruiter", "message", "new", "--to", "ACoAAB", "--subject", "Hello", "--signature", "Best, Sam", "hi there", "--beta", "--account", "acc_1", ...common]);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toContain("Best, Sam");
     expect(SECRET_FLAGS).not.toContain("signature");
@@ -213,7 +216,7 @@ describe("local commands (no API request) declare and accept only the flags they
   });
 
   it("webhook verify (offline): its flags reach verification; the inert and API-bound ones are refused before it", async () => {
-    const base = ["webhook", "verify", "--secret", "whsec_x", "--header", "t=1,v1=00", "--body", "{}", "--json"];
+    const base = ["webhook", "verify", "--secret", "whsec_x", "--header", "t=1,v1=00", "--file", BODY_FILE, "--json"];
     const xdg = configHome();
     const ok = await run([...base, "--max-age-secs", "300"], xdg);
     expect(ok.stderr).not.toContain("unknown flag");
@@ -229,8 +232,8 @@ describe("local commands (no API request) declare and accept only the flags they
     [["config", "list", "--api-key=SECRETVAL"], "--api-key"],
     [["config", "list", "--api-key", "SECRETVAL"], "--api-key"],
     [["login", "--api-key", "cvt_test_key", "--timeout=SECRETVAL"], "--timeout"],
-    [["webhook", "verify", "--secret", "s", "--header", "t=1,v1=0", "--body", "{}", "--api-key=SECRETVAL"], "--api-key"],
-    [["profile", "me", "--no-such-flag=SECRETVAL"], "--no-such-flag"],
+    [["webhook", "verify", "--secret", "s", "--header", "t=1,v1=0", "--file", BODY_FILE, "--api-key=SECRETVAL"], "--api-key"],
+    [["core", "profile", "me", "--no-such-flag=SECRETVAL"], "--no-such-flag"],
   ])("an unknown flag's value is never echoed: %j", async (args, flag) => {
     const r = await run(args, configHome());
     unknown(r, flag);

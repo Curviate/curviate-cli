@@ -158,7 +158,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
 }
 
 // ---------------------------------------------------------------------------
-// 5. webhook verify — every documented --body form verifies a REAL delivery.
+// 5. webhook verify — every documented --file form verifies a REAL delivery.
 //
 // The payload is a capture, not a hand-written body: the exact POST bytes and
 // the exact signature header the platform's dispatch worker put on the wire.
@@ -192,17 +192,21 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
     assertLeakFree(result.stdout + result.stderr, `webhook verify (${label})`);
   };
 
-  // Form 1: inline JSON on the command line.
-  assertVerified(
-    run([
+  // Inline JSON is refused: a document never travels in argv. Exit 2, naming
+  // the stdin form, and never a signature verdict.
+  {
+    const result = run([
       "webhook", "verify",
       "--secret", capture.secret,
       "--header", capture.signatureHeader,
-      "--body", capture.rawBody,
+      "--file", capture.rawBody,
       "--max-age-secs", WIDE_WINDOW,
-    ]),
-    "inline JSON"
-  );
+    ]);
+    assert(
+      result.status === 2 && result.stderr.includes("--file -") && !result.stdout.includes("WebhookSignatureError"),
+      `webhook verify (inline JSON) is refused with exit 2 naming --file - (got ${result.status}: ${result.stderr.slice(0, 200)})`
+    );
+  }
 
   // Form 2: a path to a file holding the raw body.
   withTempFile(capture.rawBody, (tmpFile) => {
@@ -211,7 +215,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
         "webhook", "verify",
         "--secret", capture.secret,
         "--header", capture.signatureHeader,
-        "--body", tmpFile,
+        "--file", tmpFile,
         "--max-age-secs", WIDE_WINDOW,
       ]),
       "file path"
@@ -225,7 +229,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
         "webhook", "verify",
         "--secret", capture.secret,
         "--header", capture.signatureHeader,
-        "--body", "-",
+        "--file", "-",
         "--max-age-secs", WIDE_WINDOW,
       ],
       { input: capture.rawBody }
@@ -238,16 +242,19 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
   {
     const tampered = capture.rawBody.replace("acc_capture", "acc_attacker");
     assert(tampered !== capture.rawBody, "tamper control actually modified the body");
-    const result = run([
-      "webhook", "verify",
-      "--secret", capture.secret,
-      "--header", capture.signatureHeader,
-      "--body", tampered,
-      "--max-age-secs", WIDE_WINDOW,
-    ]);
+    const result = run(
+      [
+        "webhook", "verify",
+        "--secret", capture.secret,
+        "--header", capture.signatureHeader,
+        "--file", "-",
+        "--max-age-secs", WIDE_WINDOW,
+      ],
+      { input: tampered }
+    );
     assert(
       result.status === 2 && result.stdout.includes("invalid_signature"),
-      `webhook verify (tampered inline body) exits 2 with invalid_signature (got ${result.status}: ${result.stdout.slice(0, 200)})`
+      `webhook verify (tampered piped body) exits 2 with invalid_signature (got ${result.status}: ${result.stdout.slice(0, 200)})`
     );
   }
 
@@ -259,15 +266,15 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
       "webhook", "verify",
       "--secret", capture.secret,
       "--header", capture.signatureHeader,
-      "--body", join(tmpdir(), "curviate-verify-dist-no-such-file.json"),
+      "--file", join(tmpdir(), "curviate-verify-dist-no-such-file.json"),
     ]);
     assert(
       result.status === 2,
-      `webhook verify (unreadable --body path) exits 2 (got ${result.status})`
+      `webhook verify (unreadable --file path) exits 2 (got ${result.status})`
     );
     assert(
       !result.stdout.includes("WebhookSignatureError"),
-      "webhook verify (unreadable --body path) does not report a signature verdict"
+      "webhook verify (unreadable --file path) does not report a signature verdict"
     );
   }
 }
@@ -287,7 +294,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
       "webhook", "verify",
       "--secret", secret,
       "--header", badHeader,
-      "--body", tmpFile,
+      "--file", tmpFile,
     ]);
     assert(
       result.status === 2,
@@ -311,7 +318,7 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
       "webhook", "verify",
       "--secret", secret,
       "--header", staleHeader,
-      "--body", tmpFile,
+      "--file", tmpFile,
     ]);
     assert(
       result.status === 2,
@@ -341,11 +348,12 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
 // ---------------------------------------------------------------------------
 {
   const spotChecks = [
-    ["profile", "--help"],
+    ["core", "--help"],
+    ["core", "profile", "--help"],
     ["account", "list", "--help"],
     ["webhook", "verify", "--help"],
-    ["sales-nav", "--help"],
-    ["recruiter", "search", "--help"],
+    ["core", "sales-nav", "--help"],
+    ["core", "recruiter", "search", "--help"],
   ];
 
   for (const args of spotChecks) {
@@ -374,8 +382,8 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
     "webhook verify --help names the signature header the platform sends, unprefixed"
   );
   assert(
-    /inline JSON/i.test(helpText) && /stdin/i.test(helpText) && /file/i.test(helpText),
-    "webhook verify --help documents all three accepted --body forms"
+    /--file/.test(helpText) && /stdin/i.test(helpText) && /path/i.test(helpText),
+    "webhook verify --help documents both accepted --file forms"
   );
 
   // No em dash in customer-facing copy.
@@ -392,15 +400,28 @@ console.log("=== verify-dist: CLI binary smoke gate ===\n");
   const surfaces = [
     ["--help"],
     ["webhook", "--help"],
-    ["message", "--help"],
+    ["core", "message", "--help"],
     ["account", "--help"],
-    ["connect", "--help"],
+    ["core", "connect", "--help"],
   ];
   for (const args of surfaces) {
     const result = run(args);
     assert(
       !(result.stdout + result.stderr).includes("—"),
       `${args.join(" ")} output contains no em dash`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 12. An old path is gone: exit 2, the generic usage error, help included.
+// ---------------------------------------------------------------------------
+{
+  for (const args of [["profile", "me"], ["profile", "--help"]]) {
+    const result = run(args);
+    assert(
+      result.status === 2 && result.stderr.startsWith("error: unknown command") && !result.stderr.includes("hint:"),
+      `${args.join(" ")} exits 2 with the generic usage error (got ${result.status}: ${result.stderr.slice(0, 120)})`
     );
   }
 }

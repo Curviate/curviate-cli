@@ -18,11 +18,11 @@ const previewOf = async (args: string[], stdin?: string) => {
 
 describe("a bare '-' text binds to the text positional and reads stdin", () => {
   it.each([
-    [["message", "chat_9", "-"], "messaging.sendMessage"],
-    [["message", "send", "chat_9", "-"], "messaging.sendMessage"],
-    [["message", "new", "--to", "ACoAAA123", "-"], "messaging.startChat"],
-    [["message", "edit", "chat_9", "msg_abc", "-"], "messaging.editMessage"],
-    [["message", "inmail", "--to", "ACoAAA123", "--subject", "Hi", "-"], "messaging.sendInMail"],
+    [["core", "message", "chat_9", "-"], "messaging.sendMessage"],
+    [["core", "message", "send", "chat_9", "-"], "messaging.sendMessage"],
+    [["core", "message", "new", "--to", "ACoAAA123", "-"], "messaging.startChat"],
+    [["core", "message", "edit", "chat_9", "msg_abc", "-"], "messaging.editMessage"],
+    [["core", "message", "inmail", "--to", "ACoAAA123", "--subject", "Hi", "-"], "messaging.sendInMail"],
   ])("%j -> %s with the trailing newline stripped and inner newlines kept", async (argv, method) => {
     const { r, p } = await previewOf(argv, "Line 1\nLine 2\n");
     expect(r.status, r.stderr).toBe(0);
@@ -32,10 +32,10 @@ describe("a bare '-' text binds to the text positional and reads stdin", () => {
   });
 
   it.each([
-    ["message", "chat_9", "-"],
-    ["message", "new", "--to", "ACoAAA123", "-"],
-    ["message", "edit", "chat_9", "msg_abc", "-"],
-    ["message", "inmail", "--to", "ACoAAA123", "--subject", "Hi", "-"],
+    ["core", "message", "chat_9", "-"],
+    ["core", "message", "new", "--to", "ACoAAA123", "-"],
+    ["core", "message", "edit", "chat_9", "msg_abc", "-"],
+    ["core", "message", "inmail", "--to", "ACoAAA123", "--subject", "Hi", "-"],
   ])("%j with empty stdin: exit 2, 'stdin: empty input', no preview, no request", async (...argv) => {
     const { r } = await previewOf(argv, "");
     expect([r.status, r.stdout.trim(), r.requests]).toEqual([2, "", []]);
@@ -43,9 +43,9 @@ describe("a bare '-' text binds to the text positional and reads stdin", () => {
   });
 
   it("`message send <chat> <text>` targets the chat, not 'send'; `message new` stays a startChat, one line", async () => {
-    const { p } = await previewOf(["message", "send", "chat_correct_123", "hi"]);
+    const { p } = await previewOf(["core", "message", "send", "chat_correct_123", "hi"]);
     expect(p!.args!["chat_id"]).toBe("chat_correct_123");
-    const { r, p: n } = await previewOf(["message", "new", "--to", "ACoAAA123", "hello text"]);
+    const { r, p: n } = await previewOf(["core", "message", "new", "--to", "ACoAAA123", "hello text"]);
     expect(n!.method).toBe("messaging.startChat");
     expect(r.stdout.trim().split("\n")).toHaveLength(1);
   });
@@ -55,7 +55,7 @@ describe("message: an unknown subcommand must not send", () => {
   it.each(["search", "list", "find", "history", "read", "sned", "inmail-balence", "reply"])(
     "`message %s \"<text>\"` issues NO request and exits non-zero, naming the real subcommands",
     async (token) => {
-      const r = await sink.run(["message", token, "hello there", ...A]);
+      const r = await sink.run(["core", "message", token, "hello there", ...A]);
       expect(r.requests).toEqual([]);
       expect(r.status).not.toBe(0);
       expect(r.stderr).toMatch(/message/i);
@@ -65,16 +65,16 @@ describe("message: an unknown subcommand must not send", () => {
   );
 
   it("an unknown token alone, or with a message-looking text, still sends nothing", async () => {
-    for (const args of [["message", "search"], ["message", "list", "Hi Sophie, following up on our conversation."]]) {
+    for (const args of [["core", "message", "search"], ["core", "message", "list", "Hi Sophie, following up on our conversation."]]) {
       const r = await sink.run([...args, ...A]);
       expect([r.requests, r.status === 0]).toEqual([[], false]);
     }
   });
 
   it.each([
-    [["message", REAL_CHAT_ID, "hello there"]],
-    [["message", `https://www.linkedin.com/messaging/thread/${REAL_CHAT_ID}/`, "hello there"]],
-    [["message", "send", REAL_CHAT_ID, "hello there"]],
+    [["core", "message", REAL_CHAT_ID, "hello there"]],
+    [["core", "message", `https://www.linkedin.com/messaging/thread/${REAL_CHAT_ID}/`, "hello there"]],
+    [["core", "message", "send", REAL_CHAT_ID, "hello there"]],
   ])("%j issues exactly one send on the one-segment chat path", async (argv) => {
     const r = await sink.run([...argv, "--account", "acc_x"]);
     expect(r.status, r.stderr).toBe(0);
@@ -85,7 +85,7 @@ describe("message: an unknown subcommand must not send", () => {
   });
 
   it("a COMPANY_ chat id sends; `message send` is the escape hatch for an unfamiliar chat id", async () => {
-    for (const argv of [["message", "COMPANY_83734124_PRIMARY", "hi"], ["message", "send", "an-unusual-chat-id", "hi"]]) {
+    for (const argv of [["core", "message", "COMPANY_83734124_PRIMARY", "hi"], ["core", "message", "send", "an-unusual-chat-id", "hi"]]) {
       const r = await sink.run([...argv, "--account", "acc_x"]);
       expect([r.status, r.requests.map(line)]).toEqual([0, [expect.stringMatching(/^POST /)]]);
     }
@@ -97,7 +97,7 @@ describe("connect: a mistyped subcommand must not send an invitation", () => {
     ["snet", "sent"], ["sen", "sent"], ["recieved", "received"], ["acept", "accept"],
     ["accpet", "accept"], ["cancle", "cancel"], ["declien", "decline"],
   ])("`connect %s` issues NO request and points at `%s`", async (typo, intended) => {
-    const r = await sink.run(["connect", typo, "--account", "acc_x"]);
+    const r = await sink.run(["core", "connect", typo, "--account", "acc_x"]);
     expect(r.requests).toEqual([]);
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain(intended);
@@ -106,7 +106,7 @@ describe("connect: a mistyped subcommand must not send an invitation", () => {
   it.each(["raphael-redmer-123", "ACoAAABcDeFgHiJkLm", "https://www.linkedin.com/in/cancle/"])(
     "`connect %s` (a real slug, a provider id, a profile URL for a slug the guard flags) sends one invitation",
     async (id) => {
-      const r = await sink.run(["connect", id, "--account", "acc_x"]);
+      const r = await sink.run(["core", "connect", id, "--account", "acc_x"]);
       expect([r.status, r.requests.length, r.requests[0]?.method]).toEqual([0, 1, "POST"]);
     },
   );

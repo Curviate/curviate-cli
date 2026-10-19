@@ -24,7 +24,7 @@ const sink = useSink((h) => {
   return { body: { object: "account_list", items: connected, cursor: null } };
 });
 const markRead = (account?: string, ...more: string[]) =>
-  sink.run(["inbox", "mark-read", "chat_1", ...(account === undefined ? [] : ["--account", account]), "--json", ...more]);
+  sink.run(["core", "inbox", "mark-read", "chat_1", ...(account === undefined ? [] : ["--account", account]), "--json", ...more]);
 const nonLookup = (r: { requests: Hit[] }) => r.requests.filter((q) => !q.url.startsWith("/v1/accounts"));
 const codeOf = (s: string) => /\[([A-Z_]+)\]/.exec(s)?.[1] ?? "";
 const reset = () => {
@@ -49,9 +49,9 @@ describe("a path-unsafe --account never reaches the wire", () => {
   });
 
   it("the same guard holds for CURVIATE_ACCOUNT and for a read", async () => {
-    const env = await sink.run(["inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: "x/../../../v1/accounts" } });
+    const env = await sink.run(["core", "inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: "x/../../../v1/accounts" } });
     expect([env.status, env.requests]).toEqual([2, []]);
-    const read = await sink.run(["inbox", "list", "--account", "x/../../../v1/accounts", "--json"]);
+    const read = await sink.run(["core", "inbox", "list", "--account", "x/../../../v1/accounts", "--json"]);
     expect([read.status, read.requests]).toEqual([2, []]);
   });
 
@@ -66,7 +66,7 @@ describe("a path-unsafe --account never reaches the wire", () => {
   });
 
   it("the stdin placeholder is refused before the lookup, in the env and embedded in a selector", async () => {
-    const env = await sink.run(["inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: STDIN_SENTINEL } });
+    const env = await sink.run(["core", "inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: STDIN_SENTINEL } });
     expect(env.requests).toEqual([]);
     expect(env.stderr.toLowerCase()).toMatch(/stdin/);
     const embedded = await markRead(`Ralf ${STDIN_SENTINEL}`);
@@ -135,16 +135,16 @@ describe("an id is used as is; a name is resolved", () => {
 
   it("--preview echoes the selector and calls nothing; a redirecting value is still refused", async () => {
     reset();
-    const p = await sink.run(["inbox", "mark-read", "chat_1", "--account", "Sophie Ahmed", "--preview", "--json"]);
+    const p = await sink.run(["core", "inbox", "mark-read", "chat_1", "--account", "Sophie Ahmed", "--preview", "--json"]);
     expect([p.status, p.requests]).toEqual([0, []]);
     const preview = JSON.parse(p.stdout.trim()) as Record<string, unknown>;
     expect([preview["method"], preview["account"]]).toEqual(["messaging.markChatRead", "Sophie Ahmed"]);
     expect(p.stderr).toMatch(/resolve/i);
-    const ambiguous = await sink.run(["connect", "some-slug", "--account", "Ralf", "--preview"]);
+    const ambiguous = await sink.run(["core", "connect", "some-slug", "--account", "Ralf", "--preview"]);
     expect([ambiguous.status, ambiguous.requests]).toEqual([0, []]);
-    const id = await sink.run(["inbox", "mark-read", "chat_1", "--account", "acc_01SOPH", "--preview", "--json"]);
+    const id = await sink.run(["core", "inbox", "mark-read", "chat_1", "--account", "acc_01SOPH", "--preview", "--json"]);
     expect([id.status, id.requests, id.stderr.trim()]).toEqual([0, [], ""]);
-    const bad = await sink.run(["inbox", "mark-read", "chat_1", "--account", "x/../../../v1/accounts", "--preview", "--json"]);
+    const bad = await sink.run(["core", "inbox", "mark-read", "chat_1", "--account", "x/../../../v1/accounts", "--preview", "--json"]);
     expect([bad.status, bad.requests, bad.stdout.trim()]).toEqual([2, [], ""]);
   });
 });
@@ -156,7 +156,7 @@ describe("no account given: auto-resolve the only connected one", () => {
     const w = await markRead();
     expect(w.status, w.stderr).toBe(0);
     expect(w.requests.map(line)).toEqual(["GET /v1/accounts", "PATCH /v1/acc_01ONLY/chats/chat_1"]);
-    const rd = await sink.run(["profile", "me", "--json"]);
+    const rd = await sink.run(["core", "profile", "me", "--json"]);
     expect(rd.requests.map((q) => q.url.split("?")[0])).toEqual(["/v1/accounts", "/v1/acc_01ONLY/users/me"]);
   });
 
@@ -184,7 +184,7 @@ describe("no account given: auto-resolve the only connected one", () => {
 
   it("--preview issues no lookup, so it still needs --account", async () => {
     connected = [ONLY];
-    const r = await sink.run(["inbox", "mark-read", "chat_1", "--json", "--preview"]);
+    const r = await sink.run(["core", "inbox", "mark-read", "chat_1", "--json", "--preview"]);
     expect([r.status, r.requests]).toEqual([2, []]);
   });
 
@@ -192,12 +192,12 @@ describe("no account given: auto-resolve the only connected one", () => {
     connected = [ONLY];
     for (const opts of [{}, { env: { CURVIATE_ACCOUNT: "" } }, { env: { CURVIATE_ACCOUNT: "  " } }]) {
       const args = Object.keys(opts).length ? [] : ["--account", ""];
-      const r = await sink.run(["inbox", "mark-read", "chat_1", "--json", ...args], opts);
+      const r = await sink.run(["core", "inbox", "mark-read", "chat_1", "--json", ...args], opts);
       expect([r.status, r.requests]).toEqual([2, []]);
     }
     const blankFlag = await markRead("   ");
     expect([blankFlag.status, blankFlag.requests]).toEqual([2, []]);
-    const withProfile = await sink.run(["inbox", "mark-read", "chat_1", "--json"], {
+    const withProfile = await sink.run(["core", "inbox", "mark-read", "chat_1", "--json"], {
       env: { CURVIATE_ACCOUNT: "" },
       xdg: configHome({ account: "acc_02B" }),
     });
@@ -207,9 +207,9 @@ describe("no account given: auto-resolve the only connected one", () => {
   it("an explicit account (flag, env, profile) wins with no lookup", async () => {
     connected = [RALF, SOPH];
     for (const mk of [
-      () => sink.run(["inbox", "mark-read", "chat_1", "--json", "--account", "acc_01FLAG"]),
-      () => sink.run(["inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: "acc_01FLAG" } }),
-      () => sink.run(["inbox", "mark-read", "chat_1", "--json"], { xdg: configHome({ account: "acc_01FLAG" }) }),
+      () => sink.run(["core", "inbox", "mark-read", "chat_1", "--json", "--account", "acc_01FLAG"]),
+      () => sink.run(["core", "inbox", "mark-read", "chat_1", "--json"], { env: { CURVIATE_ACCOUNT: "acc_01FLAG" } }),
+      () => sink.run(["core", "inbox", "mark-read", "chat_1", "--json"], { xdg: configHome({ account: "acc_01FLAG" }) }),
     ]) {
       const r = await mk();
       expect(r.status, r.stderr).toBe(0);
@@ -270,8 +270,8 @@ describe("a blank account_id positional is refused before any request", () => {
 });
 
 describe("--subject / --signature are checked before the account lookup (no --account)", () => {
-  const sn = ["sales-nav", "message", "new", "--to", "ACoAAA123"];
-  const rc = ["recruiter", "message", "new", "--to", "AEMAAA1"];
+  const sn = ["core", "sales-nav", "message", "new", "--to", "ACoAAA123"];
+  const rc = ["core", "recruiter", "message", "new", "--to", "AEMAAA1"];
   it.each([
     [[...sn, "--subject", "", "hello"], "--subject", [...sn, "--subject", "Hi", "hello"]],
     [[...sn, "hello"], "--subject", [...sn, "--subject", "Hi", "hello"]],

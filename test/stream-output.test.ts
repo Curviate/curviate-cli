@@ -28,18 +28,18 @@ describe("--all is declared exactly where it streams", () => {
   });
 
   it.each([
-    ["recruiter", "applicants", "x1", "--channel-id", "c1"],
-    ["recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
+    ["core", "recruiter", "applicants", "x1", "--channel-id", "c1"],
+    ["core", "recruiter", "search", "parameters", "--source", "messaging", "--type", "LOCATION"],
     ["webhook", "get", "w1"],
     ["webhook", "delete", "w1"],
     ["webhook", "update", "w1"],
     ["webhook", "create", "--source", "messaging", "--request-url", "https://h.test/x", "--account-ids", "acc_1"],
     ["webhook", "events"],
-    ["profile", "endorse", "x1", "--endorsement-id", "e1"],
-    ["company", "x1"],
-    ["company", "chat", "x1", "c1"],
-    ["company", "message", "x1", "c1", "m1"],
-    ["post", "get", "p1"],
+    ["core", "profile", "endorse", "x1", "--endorsement-id", "e1"],
+    ["core", "company", "x1"],
+    ["core", "company", "chat", "x1", "c1"],
+    ["core", "company", "message", "x1", "c1", "m1"],
+    ["core", "post", "get", "p1"],
   ])("%j refuses --all, --max-pages and --page-delay as unknown flags with zero requests; the bare call sends", async (...argv) => {
     for (const flag of [["--all"], ["--max-pages", "2"], ["--page-delay", "0"]]) {
       const r = await sink.run([...argv, ...flag, "--json", "--beta", "--account", "acc_1"]);

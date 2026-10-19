@@ -221,3 +221,27 @@ export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "pr
   delete rest.preview;
   return rest;
 }
+
+/**
+ * What the running command's non-GET request is, for the transport
+ * (lib/client.ts): `write` (the leaf declares `--preview`, as every write
+ * does) has its 2xx accepted whatever the body; `state` is a write whose
+ * next step is read from the answer (the account checkpoint flow), so an
+ * unreadable 2xx stays a fault, but one that says the request may have been
+ * applied. Set once by the dispatcher for the resolved leaf.
+ */
+export type WriteKind = "read" | "write" | "state";
+let writeKind: WriteKind = "read";
+let recheck = "";
+export const setWriteKind = (v: WriteKind, recheckWith = ""): void => void ((writeKind = v), (recheck = recheckWith));
+export const getWriteKind = (): WriteKind => writeKind;
+/** For a `state` command: the command that reads the state back. */
+export const getRecheck = (): string => recheck;
+
+/** Writes whose answer carries the next step (`state`), each with the command that re-reads that state. */
+export const STATE_WRITES: Readonly<Record<string, string>> = {
+  "curviate account checkpoint solve": "curviate account checkpoint poll <account_id>",
+  "curviate account checkpoint poll": "curviate account checkpoint poll <account_id>",
+  "curviate account checkpoint request": "curviate account checkpoint poll <account_id>",
+  "curviate account connect-session poll": "curviate account connect-session poll --session <session_id>",
+};

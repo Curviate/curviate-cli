@@ -6,8 +6,9 @@
  * the registry declares. Regenerate with `pnpm manifest`.
  *
  * Also the examples rule: every command a user can run (a leaf, or a group
- * with its own positional, e.g. `connect <id>`) carries 1-3 one-line
- * examples that invoke exactly that command.
+ * with its own positional, e.g. `core connect <id>`) carries 1-3 one-line
+ * examples that invoke exactly that command; a document command's last one
+ * may be a `--file -` heredoc.
  */
 
 import { describe, it, expect } from "vitest";
@@ -17,6 +18,7 @@ import type { CommandDef } from "citty";
 import { main } from "../src/main.js";
 import { GLOBAL_FLAGS } from "../src/lib/global-flags.js";
 import { pkgRoot } from "./helpers/pkg.js";
+import { HEREDOC } from "./helpers/examples.js";
 
 type Def = { type?: string; required?: boolean; default?: unknown; description?: string; alias?: string | string[]; valueHint?: string };
 
@@ -30,6 +32,13 @@ export type ManifestCommand = {
   examples: string[];
   /** Conditional requirements, one line each (see src/lib/examples.ts). */
   requires: string[];
+  /** Help-contract meta, so the docs site renders the same sections in the same order. */
+  risk?: string;
+  rules?: Record<string, unknown>;
+  output?: string[];
+  errors?: Record<string, string>;
+  seeAlso?: string[];
+  document?: string;
 };
 
 async function value<T>(v: T | (() => T) | (() => Promise<T>)): Promise<T> {
@@ -37,7 +46,7 @@ async function value<T>(v: T | (() => T) | (() => Promise<T>)): Promise<T> {
 }
 
 async function walk(cmd: CommandDef, path: string[], out: ManifestCommand[]): Promise<void> {
-  const meta = (await value(cmd.meta ?? {})) as { description?: string; examples?: string[]; requires?: string[] };
+  const meta = (await value(cmd.meta ?? {})) as Omit<ManifestCommand, "path" | "usageOnly" | "args" | "globals">;
   const defs = (await value(cmd.args ?? {})) as Record<string, Def>;
   const subs = (await value(cmd.subCommands ?? {})) as Record<string, unknown>;
   const own = Object.entries(defs).filter(([n, d]) => d !== (GLOBAL_FLAGS as Record<string, unknown>)[n]);
@@ -50,6 +59,7 @@ async function walk(cmd: CommandDef, path: string[], out: ManifestCommand[]): Pr
       globals: Object.keys(defs).filter((n) => !own.some(([o]) => o === n)),
       examples: meta.examples ?? [],
       requires: meta.requires ?? [],
+      ...Object.fromEntries((["risk", "rules", "output", "errors", "seeAlso", "document"] as const).filter((k) => meta[k] !== undefined).map((k) => [k, meta[k]])),
     });
   }
   for (const [name, sub] of Object.entries(subs)) {
@@ -76,14 +86,18 @@ describe("commands.json", () => {
     const { commands } = await buildManifest();
     const runnable = commands.filter((c) => !c.usageOnly);
     // Positive control: the walk reached the registry, top-level leaves included.
-    expect(runnable.map((c) => c.path.join(" "))).toEqual(expect.arrayContaining(["doctor", "post get", "recruiter job create"]));
+    expect(runnable.map((c) => c.path.join(" "))).toEqual(expect.arrayContaining(["doctor", "core post get", "core recruiter job create"]));
     const bad = runnable
       .filter((c) => {
         const prefix = `curviate ${c.path.join(" ")}`;
         return (
           c.examples.length < 1 ||
           c.examples.length > 3 ||
-          c.examples.some((e) => e.includes("\n") || !(e === prefix || e.startsWith(prefix + " ")))
+          c.examples.some((e, i) => {
+            // The one multi-line form: a document command's last example, a `--file -` heredoc.
+            const heredoc = i === c.examples.length - 1 && c.document !== undefined && HEREDOC.test(e) && e.includes(" --file - <<'EOF'");
+            return (e.includes("\n") && !heredoc) || !(e === prefix || e.startsWith(prefix + " "));
+          })
         );
       })
       .map((c) => `${c.path.join(" ")}: ${JSON.stringify(c.examples)}`);

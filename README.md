@@ -54,7 +54,7 @@ active profile, base URL, which precedence tier the credential came from
 connected accounts with their status. It exits `0` when every check passes and
 with the first failing check's code otherwise.
 
-`doctor` also names the workspace the credential belongs to, but only when the
+`curviate doctor` also names the workspace the credential belongs to, but only when the
 key it resolved is one `curviate setup` wrote to a profile. A key from
 `CURVIATE_API_KEY` or `--api-key` may belong to another workspace entirely, so
 it is reported as unknown rather than guessed at.
@@ -110,6 +110,15 @@ Global flags available on every command:
   --timeout      Request timeout in milliseconds (default: 30000)
 ```
 
+Every LinkedIn action (profiles, companies, jobs, invitations, search, inboxes,
+messages, posts, comments, Sales Navigator, Recruiter, groups, feed, LinkedIn
+notification cards, drafts) is under `curviate core`: one action now, from one
+account. `curviate core` lists them. Setup, accounts and webhooks stay at the top
+level. Pre-0.48.0 paths without `curviate core` exit 2 and send nothing.
+
+Documents go in files, never on the command line: `--file <path>`, or `--file -`
+with a heredoc or a pipe.
+
 For full command reference see [docs.curviate.com](https://docs.curviate.com).
 
 ## Examples
@@ -119,15 +128,15 @@ These examples show how coding agents compose the CLI in real workflows.
 ### 1. Find people and send connection requests
 
 Search for matching profiles, preview the invitations, then send them once satisfied.
-`--location` on `search people` takes location **ids**, not free text; resolve a
-human-readable place name to an id first with `curviate search parameters --type LOCATION`:
+`--location` on `curviate core search people` takes location **ids**, not free text; resolve a
+human-readable place name to an id first with `curviate core search parameters --type LOCATION`:
 
 ```bash
-curviate search parameters --type LOCATION --keywords "Berlin" --account acc_1 --json
+curviate core search parameters --type LOCATION --keywords "Berlin" --account acc_1 --json
 # {"items":[{"id":"103035651","name":"Berlin, Germany"}, {"id":"106967730","name":"Berlin, Berlin, Germany"}, ...]}
 
 # Look first, a search is a read, so it just runs (no --preview on reads)
-curviate search people \
+curviate core search people \
   --keywords "AI engineer" \
   --location 103035651 \
   --account acc_1 \
@@ -135,12 +144,12 @@ curviate search people \
   --json
 
 # Preview a single write before sending, then pipe IDs into connect, one request per person
-curviate connect "$SOME_ID" --account acc_1 --note "Hi, I'd love to connect." --preview
+curviate core connect "$SOME_ID" --account acc_1 --note "Hi, I'd love to connect." --preview
 
-curviate search people --keywords "AI engineer" --location 103035651 --account acc_1 --all \
+curviate core search people --keywords "AI engineer" --location 103035651 --account acc_1 --all \
   | jq -r '.id' \
   | head -5 \
-  | xargs -I{} curviate connect {} --account acc_1 --note "Hi, I'd love to connect."
+  | xargs -I{} curviate core connect {} --account acc_1 --note "Hi, I'd love to connect."
 ```
 
 ### 2. Triage the inbox and extract unread threads
@@ -155,18 +164,18 @@ human-readable sender comes from the chat's own `user.display_name` instead (pre
 1:1 chats):
 
 ```bash
-curviate inbox list --json --all --account acc_1 \
+curviate core inbox list --json --all --account acc_1 \
   | jq -c 'select(.unread_count > 0) | {chat_id: .id, sender: (.user.display_name // .last_message.sender_id), preview: .last_message.text[0:80]}'
 ```
 
-`inbox list` reads one folder per call, `primary` by default. An archived chat never appears
+`curviate core inbox list` reads one folder per call, `primary` by default. An archived chat never appears
 in a `primary` walk, no matter the `--limit` or how far `--cursor`/`--all` page through it;
-pass `--inbox archived` to reach it. `inmail` and `starred` are alternate views over chats
+pass `--inbox archived` to reach it. `--inbox inmail` and `--inbox starred` are alternate views over chats
 `primary` already returns, useful as a narrower filter rather than for reachability. All six
-values: `primary`, `inmail`, `archived`, `spam`, `jobs`, `starred`.
+values: `--inbox primary|inmail|archived|spam|jobs|starred`.
 
 ```bash
-curviate inbox list --json --all --account acc_1 --inbox archived
+curviate core inbox list --json --all --account acc_1 --inbox archived
 ```
 
 ### 3. Warm up a prospect by reacting to their recent posts
@@ -178,9 +187,9 @@ envelope, not a bare array:
 ```bash
 PROFILE_URL="https://www.linkedin.com/in/example"
 
-curviate profile "$PROFILE_URL" --posts --fields id --account acc_1 --json \
+curviate core profile "$PROFILE_URL" --posts --fields id --account acc_1 --json \
   | jq -r '.items[].id' \
-  | xargs -I{} curviate post react {} --account acc_1 --reaction like
+  | xargs -I{} curviate core post react {} --account acc_1 --reaction like
 ```
 
 ### 4. Check entitlement before a Sales Navigator sweep
@@ -192,7 +201,7 @@ Navigator subscription) or `BETA_NOT_ENABLED` (the workspace has not opted into 
 Branch on the exit code for the retry decision and read the code for the remedy:
 
 ```bash
-curviate sales-nav search people --keywords "VP Engineering" --account acc_1 --json \
+curviate core sales-nav search people --keywords "VP Engineering" --account acc_1 --json \
   || {
     code=$?
     if [ "$code" -eq 5 ]; then
@@ -214,7 +223,7 @@ cat webhook-payload.json \
   | curviate webhook verify \
       --secret "$CURVIATE_WEBHOOK_SECRET" \
       --header "$CURVIATE_SIG_HEADER" \
-      --body -
+      --file -
 ```
 
 Exit `0` means the signature is valid and the parsed event is written to stdout as JSON.
@@ -234,49 +243,49 @@ curviate account list --all --json \
 
 ### 7. Search jobs, then fetch full detail on the top result
 
-`job get` accepts either a job URL or the bare numeric id, including the `job_urn` field a
+`curviate core job get` accepts either a job URL or the bare numeric id, including the `job_urn` field a
 job-search result already returns:
 
 ```bash
-curviate search jobs --keywords "founding engineer" --location "Berlin" --account acc_1 --json \
+curviate core search jobs --keywords "founding engineer" --location "Berlin" --account acc_1 --json \
   | jq -r '.items[0].job_urn' \
-  | xargs -I{} curviate job get {} --account acc_1 --json
+  | xargs -I{} curviate core job get {} --account acc_1 --json
 
 # A pasted job URL works identically:
-curviate job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
+curviate core job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
 ```
 
 ## Company
 
-Company commands (`curviate company ...`) are Core-tier reads. `company <id>` accepts a public
+Company commands (`curviate core company ...`) are Core-tier reads. `curviate core company <id>` accepts a public
 handle (the slug in `linkedin.com/company/<handle>`) or a numeric id; the four sub-resource
-commands require the company's **numeric provider id**, the `id` field `company <id>` returns.
+commands require the company's **numeric provider id**, the `id` field `curviate core company <id>` returns.
 `--account` (or a configured default account) is required on all of them, unless exactly one account is connected.
 
 ### 1. Retrieve a company, then list its employees
 
 ```bash
-curviate company t-systems --account acc_1 --json | jq -r '.id' \
-  | xargs -I{} curviate company employees {} --keywords "engineer" --limit 10 --account acc_1 --json
+curviate core company t-systems --account acc_1 --json | jq -r '.id' \
+  | xargs -I{} curviate core company employees {} --keywords "engineer" --limit 10 --account acc_1 --json
 ```
 
 ### 2. Page through a company's posts and jobs
 
 ```bash
-curviate company posts 112013061 --limit 5 --account acc_1 --json
-curviate company jobs 112013061 --all --account acc_1 --json   # streams every page
+curviate core company posts 112013061 --limit 5 --account acc_1 --json
+curviate core company jobs 112013061 --all --account acc_1 --json   # streams every page
 ```
 
 ## Drafts and scheduled posts
 
-A Draft is a stored, editable, unpublished post. Give it an account and `--schedule-at` and Curviate publishes it at that time. Drafts are tenant-wide: `--account` is optional and is never defaulted from your config, so a Draft you create without it has no account yet. `curviate post create` still publishes immediately and does not schedule.
+A Draft is a stored, editable, unpublished post. Give it an account and `--schedule-at` and Curviate publishes it at that time. Drafts are tenant-wide: `--account` is optional and is never defaulted from your config, so a Draft you create without it has no account yet. `curviate core post create` still publishes immediately and does not schedule.
 
 ### 1. Draft a post, schedule it, change your mind
 
 ```bash
-curviate draft create "Three things we learned shipping our first agent integration." --account acc_1 --schedule-at 2026-10-12T09:00:00+02:00 --json
-curviate draft update drf_1 --unschedule --json            # back to a plain Draft
-curviate draft publish drf_1 --json                        # or publish now: prints the post id
+curviate core draft create "Three things we learned shipping our first agent integration." --account acc_1 --schedule-at 2026-10-12T09:00:00+02:00 --json
+curviate core draft update drf_1 --unschedule --json            # back to a plain Draft
+curviate core draft publish drf_1 --json                        # or publish now: prints the post id
 ```
 
 `--schedule-at` is an ISO 8601 time with an offset, 5 minutes to 365 days ahead, passed to the API unchanged. Two scheduled Drafts on one account must be at least 5 minutes apart.
@@ -284,8 +293,8 @@ curviate draft publish drf_1 --json                        # or publish now: pri
 ### 2. Attach media
 
 ```sh
-curviate draft create "Launch day." --account acc_1 --attach shot1.png --attach shot2.png --json
-curviate draft update drf_1 --attach demo.pdf --json       # appends; existing files stay
+curviate core draft create "Launch day." --account acc_1 --attach shot1.png --attach shot2.png --json
+curviate core draft update drf_1 --attach demo.pdf --json       # appends; existing files stay
 ```
 
 Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed. An image over 5 MiB is refused before anything is sent. Files up to 5 MiB go inline in the request; larger ones are uploaded separately, in the order you gave them.
@@ -293,16 +302,16 @@ Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or o
 ### 3. List what is queued, and what went out
 
 ```bash
-curviate draft list --status scheduled --account acc_1 --order asc --json
-curviate draft list --status published --from 2026-10-01T00:00:00Z --json   # publish records, not Drafts
-curviate draft list --account none --all --json                              # Drafts with no account, every page
+curviate core draft list --status scheduled --account acc_1 --order asc --json
+curviate core draft list --status published --from 2026-10-01T00:00:00Z --json   # publish records, not Drafts
+curviate core draft list --account none --all --json                              # Drafts with no account, every page
 ```
 
-A scheduled post that fails to publish becomes a `failed` Draft with a `failure` code; any `draft update` on it clears the failure. Failed `outcome_unknown` means the post may be live: check the account's posts before retrying.
+A scheduled post that fails to publish becomes a `failed` Draft with a `failure` code; any `curviate core draft update` on it clears the failure. Failed `outcome_unknown` means the post may be live: check the account's posts before retrying.
 
 ## Sales Navigator
 
-Sales Navigator commands (`curviate sales-nav ...`) are **beta**: this surface has not been
+Sales Navigator commands (`curviate core sales-nav ...`) are **beta**: this surface has not been
 exercised against a real Sales Navigator subscription yet, so its responses may still move.
 
 There is no Sales Navigator add-on to buy from Curviate and no tier on a seat: one ordinary
@@ -312,18 +321,18 @@ the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in 
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
 LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
 call). Branch on the exit code the same way as example 4 above, and read the code for the
-remedy. Write commands (`save-lead`, `save-account`, `message new`) accept `--preview` to
+remedy. Write commands (`curviate core sales-nav save-lead`, `curviate core sales-nav save-account`, `curviate core sales-nav message new`) accept `--preview` to
 render the request without sending it.
 
 ### 1. Search Sales Navigator profiles, then get one full profile
 
 ```bash
-curviate sales-nav search people \
+curviate core sales-nav search people \
   --keywords "VP Engineering" \
   --account acc_1 \
   --limit 5 \
   | jq -r '.items[0].id' \
-  | xargs -I{} curviate sales-nav profile {} --account acc_1
+  | xargs -I{} curviate core sales-nav profile {} --account acc_1
 ```
 
 ### 2. Save a lead to a specific lead list
@@ -331,12 +340,12 @@ curviate sales-nav search people \
 Preview first, then send. `--list` is required; the save always targets a specific list.
 
 ```bash
-curviate sales-nav save-lead ACwAAA1234567 \
+curviate core sales-nav save-lead ACwAAA1234567 \
   --account acc_1 \
   --list 987654 \
   --preview
 
-curviate sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
+curviate core sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
 ```
 
 ### 3. Start a new Sales Navigator chat
@@ -344,7 +353,7 @@ curviate sales-nav save-lead ACwAAA1234567 --account acc_1 --list 987654
 `--subject` is required for Sales Navigator messaging.
 
 ```bash
-curviate sales-nav message new \
+curviate core sales-nav message new \
   --to ACwAAA1234567 \
   --account acc_1 \
   --subject "An opportunity at our company" \
@@ -354,7 +363,7 @@ curviate sales-nav message new \
 ### 4. Search Sales Navigator companies
 
 ```bash
-curviate sales-nav search companies \
+curviate core sales-nav search companies \
   --keywords "series B fintech" \
   --account acc_1 \
   --limit 5 --json \
@@ -364,14 +373,14 @@ curviate sales-nav search companies \
 ### 5. List saved-account and saved-lead lists
 
 ```bash
-curviate sales-nav account-lists --account acc_1
-curviate sales-nav lead-lists --account acc_1
+curviate core sales-nav account-lists --account acc_1
+curviate core sales-nav lead-lists --account acc_1
 ```
 
 ### 6. Browse a saved-account list, filtered to starred accounts
 
 ```bash
-curviate sales-nav browse-account-list 987654 \
+curviate core sales-nav browse-account-list 987654 \
   --account acc_1 \
   --filter STARRED \
   --sort-by NAME \
@@ -382,7 +391,7 @@ curviate sales-nav browse-account-list 987654 \
 ### 7. Browse a saved-lead list, spotlighting recent job changes
 
 ```bash
-curviate sales-nav browse-lead-list 456789 \
+curviate core sales-nav browse-lead-list 456789 \
   --account acc_1 \
   --spotlight RECENT_POSITION_CHANGE \
   --json \
@@ -392,17 +401,17 @@ curviate sales-nav browse-lead-list 456789 \
 ### 8. Save a company into an account list
 
 ```bash
-curviate sales-nav save-account 112013061 \
+curviate core sales-nav save-account 112013061 \
   --account acc_1 \
   --list 987654 \
   --preview
 
-curviate sales-nav save-account 112013061 --account acc_1 --list 987654
+curviate core sales-nav save-account 112013061 --account acc_1 --list 987654
 ```
 
 ## Recruiter
 
-Recruiter commands (`curviate recruiter ...`) are **beta**: this surface has not been exercised
+Recruiter commands (`curviate core recruiter ...`) are **beta**: this surface has not been exercised
 against a real Recruiter subscription yet, so its responses may still move.
 
 There is no Recruiter add-on to buy from Curviate and no tier on a seat: one ordinary paid seat
@@ -412,42 +421,46 @@ subscription. A refusal is **exit code `5`** with one of three codes in the JSON
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
 LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
 call). The surface is project-centric: most
-operations are scoped to a hiring project id. Write commands (`save-candidate`, `project update`,
-`project-job create`/`update`, `job create`/`publish`/`close`, `message new`) accept `--preview`
+operations are scoped to a hiring project id. Write commands (`curviate core recruiter save-candidate`, `curviate core recruiter project update`,
+`curviate core recruiter project-job create`, `curviate core recruiter project-job update`, `curviate core recruiter job create`,
+`curviate core recruiter job publish`, `curviate core recruiter job close`, `curviate core recruiter message new`) accept `--preview`
 to render the request without sending it.
 
 ### 1. List hiring projects
 
 ```bash
-curviate recruiter projects --account acc_1 --limit 20 --json \
+curviate core recruiter projects --account acc_1 --limit 20 --json \
   | jq -r '.items[] | "\(.id)\t\(.name)"'
 ```
 
 ### 2. Inspect a project, its pipeline, and its attached job posting
 
-`recruiter project-job get` returns the single job posting attached to a project (a
+`curviate core recruiter project-job get` returns the single job posting attached to a project (a
 `RESOURCE_NOT_FOUND` / exit `4` when none is attached).
 
 ```bash
-curviate recruiter project "$PROJECT_ID" --account acc_1 --json
-curviate recruiter pipeline "$PROJECT_ID" --account acc_1 --json
-curviate recruiter project-job get "$PROJECT_ID" --account acc_1 --json
+curviate core recruiter project "$PROJECT_ID" --account acc_1 --json
+curviate core recruiter pipeline "$PROJECT_ID" --account acc_1 --json
+curviate core recruiter project-job get "$PROJECT_ID" --account acc_1 --json
 ```
 
 ### 3. Create a job posting draft, then publish it
 
-`recruiter job create` requires `--project-name` (the hiring project the posting opens) plus the
-full v2 job body: `--job-title`, `--company-id`/`--company-name`, `--workplace-type`, `--location`,
+`curviate core recruiter job create` requires `--project-name` (the hiring project the posting opens) plus the
+full v2 job body: `--job-title-id` with `--job-title`, `--company-id`/`--company-name`, `--workplace-type`, `--location`,
 `--employment-status`, `--seniority-level`, `--description` (200 characters minimum), `--industry`,
-`--job-function`, and `--apply-method`. `--location`/`--industry`/`--job-function` take resolved
-parameter ids, the same `search parameters --type LOCATION`/`--type INDUSTRY`/`--type JOB_FUNCTION`
-resolution from example 1 above. `recruiter job publish` is project-scoped and requires `--mode`
+`--job-function`, and `--apply-method` (with `--notification-email` or `--website-url`), from flags or a
+`--file <path|->` JSON document; the CLI checks the merged body against the published schema before
+sending and lists every problem at once. `--location`/`--industry`/`--job-function` take resolved
+parameter ids, the same `curviate core search parameters --type LOCATION`/`--type INDUSTRY`/`--type JOB_FUNCTION`
+resolution from example 1 above. `curviate core recruiter job publish` is project-scoped and requires `--mode`
 (`FREE | PROMOTED | PROMOTED_PLUS`); the paid modes also require the full `--budget-*` triple.
 
 ```bash
-curviate recruiter job create \
+curviate core recruiter job create \
   --account acc_1 \
   --project-name "Backend Hiring 2026" \
+  --job-title-id 9 \
   --job-title "Senior Backend Engineer" \
   --company-name "Curviate GmbH" \
   --workplace-type REMOTE \
@@ -458,32 +471,33 @@ curviate recruiter job create \
   --industry 96 \
   --job-function 15 \
   --apply-method linkedin \
+  --notification-email jobs@example.com \
   --json
 
-curviate recruiter job publish "$PROJECT_ID" "$JOB_ID" --account acc_1 --mode FREE --json
+curviate core recruiter job publish "$PROJECT_ID" "$JOB_ID" --account acc_1 --mode FREE --json
 ```
 
 ### 4. List applicants in a project, then get one applicant's detail
 
-`recruiter applicants` is project-scoped and requires `--channel-id` (the project's own
+`curviate core recruiter applicants` is project-scoped and requires `--channel-id` (the project's own
 JOB_POSTING talent-pool channel). Applicant detail and résumé are also project-scoped.
 
 ```bash
-curviate recruiter applicants "$PROJECT_ID" --channel-id "$CHANNEL_ID" --account acc_1 --limit 10 --json \
+curviate core recruiter applicants "$PROJECT_ID" --channel-id "$CHANNEL_ID" --account acc_1 --limit 10 --json \
   | jq -r '.items[0].id' \
-  | xargs -I{} curviate recruiter applicant "$PROJECT_ID" {} --account acc_1
+  | xargs -I{} curviate core recruiter applicant "$PROJECT_ID" {} --account acc_1
 ```
 
 ### 5. Download an applicant's resume
 
 ```bash
-curviate recruiter applicant resume "$PROJECT_ID" APPLICANT_ID --account acc_1 -o resume.pdf
+curviate core recruiter applicant resume "$PROJECT_ID" APPLICANT_ID --account acc_1 -o resume.pdf
 ```
 
 ### 6. Save a candidate to a project pipeline stage
 
 ```bash
-curviate recruiter save-candidate "$PROJECT_ID" \
+curviate core recruiter save-candidate "$PROJECT_ID" \
   --account acc_1 \
   --stage-id "$STAGE_ID" \
   --candidate-id AEM789
@@ -492,24 +506,24 @@ curviate recruiter save-candidate "$PROJECT_ID" \
 ### 7. Search Recruiter people
 
 ```bash
-curviate recruiter search people \
+curviate core recruiter search people \
   --keywords "senior backend engineer" \
   --account acc_1 \
   --limit 5 --json \
   | jq -r '.items[] | "\(.id)\t\(.full_name // .headline)"'
 
 # A pasted Recruiter search / talent-pool URL runs directly:
-curviate recruiter search "https://www.linkedin.com/talent/search?..." --account acc_1 --json
+curviate core recruiter search "https://www.linkedin.com/talent/search?..." --account acc_1 --json
 ```
 
 ### 8. Get a Recruiter-enriched profile, then start a chat with them
 
-`recruiter message new` is JSON-only and requires `--subject` and `--signature`.
+`curviate core recruiter message new` is JSON-only and requires `--subject` and `--signature`.
 
 ```bash
-curviate recruiter profile "https://www.linkedin.com/in/example" --account acc_1 --json
+curviate core recruiter profile "https://www.linkedin.com/in/example" --account acc_1 --json
 
-curviate recruiter message new \
+curviate core recruiter message new \
   --to AEM789 \
   --account acc_1 \
   --subject "A role you'd be a great fit for" \
@@ -519,15 +533,15 @@ curviate recruiter message new \
 
 ### 9. List your postings, and get any public job posting through the Recruiter lens
 
-Unlike `recruiter jobs` (which lists postings you manage), `recruiter job get` retrieves the full
+Unlike `curviate core recruiter jobs` (which lists postings you manage), `curviate core recruiter job get` retrieves the full
 detail of *any* public LinkedIn job posting, the Recruiter-seated counterpart to the top-level
-`job get` command:
+`curviate core job get` command:
 
 ```bash
-curviate recruiter jobs --account acc_1 --limit 10 --json \
+curviate core recruiter jobs --account acc_1 --limit 10 --json \
   | jq -r '.items[] | "\(.id)\t\(.title)\t\(.state)"'
 
-curviate recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1 --json
+curviate core recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1 --json
 ```
 
 ## Retrieval modes
@@ -550,7 +564,7 @@ threshold: that combination is a usage error (exit `2`) before any request is
 sent.
 
 Available on the four reads that can be served from a stored copy:
-`profile <id>`, `profile me`, `inbox get` and `inbox messages`. The activity
+`curviate core profile <id>`, `curviate core profile me`, `curviate core inbox get` and `curviate core inbox messages`. The activity
 listings on the profile commands (`--posts`, `--comments`, `--reactions`,
 `--followers`) do not accept them and reject them with exit `2`.
 
@@ -573,28 +587,28 @@ this API simply holds no copy, so re-checking the id is the wrong move. It is
 not a failure either. The fix is another mode, and it is never worth retrying
 as sent, because the answer cannot change until you change the mode.
 
-`inbox messages` is the strictest case. The store answers it only for an
+`curviate core inbox messages` is the strictest case. The store answers it only for an
 unfiltered, uncursored first page, only after a walk of the whole chat reached
 its end, and only when the chat's whole message set fits in that one page
 (`--limit`, at most 25). Any unfiltered page fetched from LinkedIn (such as
 `--mode live` without `--all`) restarts the walk, and
-`inbox messages <chat_id> --all` walks to the end and closes it. A read
+`curviate core inbox messages <chat_id> --all` walks to the end and closes it. A read
 carrying `--before`, `--after` or `--cursor` is never served from the store and
 `--all` does not change that, so a chat with more messages than one page holds
 exits `14` under `--mode cache_only` however it is walked.
 
 ```bash
 # The default: a fresh stored copy if there is one, otherwise fetch
-curviate profile me --account acc_1 --json
+curviate core profile me --account acc_1 --json
 
 # Serve whatever is stored at any age, and fetch only if nothing is
-curviate profile me --account acc_1 --mode refill --json
+curviate core profile me --account acc_1 --mode refill --json
 
 # Accept a stored copy up to five minutes old, otherwise fetch
-curviate profile me --account acc_1 --max-age 300 --fields first_name,source,observed_at --json
+curviate core profile me --account acc_1 --max-age 300 --fields first_name,source,observed_at --json
 
 # A single chat from the store, never LinkedIn. Exit 14 if nothing is stored.
-curviate inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
+curviate core inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 ```
 
 ## Exit codes

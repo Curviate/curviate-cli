@@ -106,8 +106,8 @@ describe("advertised on exactly the served reads, refused elsewhere", () => {
 
   const sink = useSink();
   it.each([
-    [["inbox", "list", "--mode", "cache_only"], "--mode"],
-    [["profile", "followers", "ada", "--max-age", "300"], "--max-age"],
+    [["core", "inbox", "list", "--mode", "cache_only"], "--mode"],
+    [["core", "profile", "followers", "ada", "--max-age", "300"], "--max-age"],
   ])("%j is an unknown flag (exit 2), not silently dropped", async (argv, flag) => {
     const r = await sink.run([...argv, "--account", "acc_1"]);
     expect([r.status, r.requests]).toEqual([2, []]);
@@ -116,17 +116,17 @@ describe("advertised on exactly the served reads, refused elsewhere", () => {
   });
 
   it("where declared, the pair is not an unknown flag and rides the wire as mode= / max_age=", async () => {
-    const r = await sink.run(["inbox", "get", "c1", "--account", "acc_1", "--mode", "refill", "--max-age", "60", "--json"]);
+    const r = await sink.run(["core", "inbox", "get", "c1", "--account", "acc_1", "--mode", "refill", "--max-age", "60", "--json"]);
     expect(r.status, r.stderr).toBe(0);
     expect(r.requests[0]!.url).toMatch(/\/chats\/c1\?.*mode=refill/);
     expect(r.requests[0]!.url).toContain("max_age=60");
-    const msgs = await sink.run(["inbox", "messages", "c1", "--account", "acc_1", "--mode", "cache_only", "--json"]);
+    const msgs = await sink.run(["core", "inbox", "messages", "c1", "--account", "acc_1", "--mode", "cache_only", "--json"]);
     expect(msgs.stderr).not.toContain("unknown flag");
   });
 
   it("NOT_STORED (422) exits 14 on the first reply, no retry", async () => {
     sink.reply = { status: 422, body: { code: "NOT_STORED", message: "Nothing is stored.", user_fixable: true, retry_likely_to_succeed: false } };
-    const r = await sink.run(["profile", "me", "--account", "acc_1", "--mode", "cache_only", "--json"]);
+    const r = await sink.run(["core", "profile", "me", "--account", "acc_1", "--mode", "cache_only", "--json"]);
     expect(r.status).toBe(14);
     expect(r.requests).toHaveLength(1);
   });

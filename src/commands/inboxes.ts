@@ -1,5 +1,5 @@
 /**
- * `curviate inboxes`, inbox discovery + per-inbox conversation listing (Beta).
+ * `curviate core inboxes`, inbox discovery + per-inbox conversation listing (Beta).
  *
  * Subcommands:
  *   inboxes list [--kind personal|company] [--company-id <id>]: discover inboxes
@@ -24,6 +24,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -200,8 +201,8 @@ const inboxesListCommand = defineCommand({
     name: "list",
     description: "Discover the account's inboxes (personal + company pages).",
     examples: [
-      "curviate inboxes list",
-      "curviate inboxes list --kind company",
+      "curviate core inboxes list",
+      "curviate core inboxes list --kind company",
     ],
   },
   args: {
@@ -240,18 +241,18 @@ const inboxesChatsCommand = defineCommand({
   meta: {
     name: "chats",
     description:
-      "List an inbox's conversations. Each chat id is send-ready: reply with `message send <chat_id> \"<text>\"`. " +
+      "List an inbox's conversations. Each chat id is send-ready: reply with `curviate core message send <chat_id> \"<text>\"`. " +
       "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
     examples: [
-      "curviate inboxes chats CLASSIC_PRIMARY",
-      "curviate inboxes chats COMPANY_1234567_PRIMARY --limit 10",
+      "curviate core inboxes chats CLASSIC_PRIMARY",
+      "curviate core inboxes chats COMPANY_1234567_PRIMARY --limit 10",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     limit: { type: "string" as const, description: "Number of items to return per page (1-25, default 20)." },
-    inboxId: { type: "positional", description: "Inbox id from `inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)." },
+    inboxId: { type: "positional", description: "Inbox id from `curviate core inboxes list` (e.g. CLASSIC_PRIMARY or COMPANY_83734124_PRIMARY)." },
   },
   async run({ args }) {
     const flags = args as InboxesFlags;
@@ -275,9 +276,7 @@ const inboxesChatsCommand = defineCommand({
 export const inboxesCommand = defineCommand({
   meta: {
     name: "inboxes",
-    description:
-      "Discover LinkedIn inboxes (personal + company pages) and list their conversations. Beta. " +
-      "See also: `inbox` (the account's own message-thread inbox), `message send` (reply to a chat).",
+    description: DESCRIPTIONS.inboxes,
   },
   subCommands: {
     list: inboxesListCommand,
@@ -285,7 +284,7 @@ export const inboxesCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate inboxes <subcommand>\n" +
+      "Usage: curviate core inboxes <subcommand>\n" +
       "  list [--kind personal|company] [--company-id <id>]\n" +
       "  chats <inbox_id> [--limit] [--cursor] [--all]\n",
     );

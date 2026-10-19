@@ -1,0 +1,886 @@
+{
+  "core recruiter job create": {
+    "type": "object",
+    "properties": {
+      "job_title": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "company": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "workplace_type": {
+        "type": "string",
+        "enum": [
+          "ON_SITE",
+          "HYBRID",
+          "REMOTE"
+        ]
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "employment_status": {
+        "type": "string",
+        "enum": [
+          "FULL_TIME",
+          "PART_TIME",
+          "CONTRACT",
+          "TEMPORARY",
+          "OTHER",
+          "VOLUNTEER",
+          "INTERNSHIP"
+        ]
+      },
+      "seniority_level": {
+        "type": "string",
+        "enum": [
+          "INTERNSHIP",
+          "ENTRY_LEVEL",
+          "ASSOCIATE",
+          "MID_SENIOR_LEVEL",
+          "DIRECTOR",
+          "EXECUTIVE",
+          "NOT_APPLICABLE"
+        ]
+      },
+      "description": {
+        "type": "string",
+        "minLength": 200
+      },
+      "industry": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "job_function": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "apply_method": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "linkedin"
+              },
+              "notification_email": {
+                "type": "string"
+              },
+              "resume_required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "method",
+              "notification_email"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "external"
+              },
+              "website_url": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "website_url"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "discriminator": {
+          "propertyName": "method",
+          "mapping": {
+            "linkedin": "#/oneOf/0",
+            "external": "#/oneOf/1"
+          }
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "include_poster_info": {
+        "type": "boolean"
+      },
+      "tracking_pixel_url": {
+        "type": "string",
+        "minLength": 1
+      },
+      "company_job_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "screening_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "answer_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "qualification_required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question",
+            "answer_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "salary": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "additional_compensation": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "rejection_settings": {
+        "type": "object",
+        "properties": {
+          "send_rejection_notification": {
+            "type": "boolean"
+          },
+          "rejection_template": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reject_unqualified_applicants": {
+            "type": "boolean"
+          },
+          "reject_out_of_country_applicants": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "send_rejection_notification"
+        ],
+        "additionalProperties": false
+      },
+      "project_name": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "job_title",
+      "company",
+      "workplace_type",
+      "location",
+      "employment_status",
+      "seniority_level",
+      "description",
+      "industry",
+      "job_function",
+      "apply_method",
+      "project_name"
+    ],
+    "additionalProperties": false
+  },
+  "core recruiter project-job create": {
+    "type": "object",
+    "properties": {
+      "job_title": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "company": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "workplace_type": {
+        "type": "string",
+        "enum": [
+          "ON_SITE",
+          "HYBRID",
+          "REMOTE"
+        ]
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "employment_status": {
+        "type": "string",
+        "enum": [
+          "FULL_TIME",
+          "PART_TIME",
+          "CONTRACT",
+          "TEMPORARY",
+          "OTHER",
+          "VOLUNTEER",
+          "INTERNSHIP"
+        ]
+      },
+      "seniority_level": {
+        "type": "string",
+        "enum": [
+          "INTERNSHIP",
+          "ENTRY_LEVEL",
+          "ASSOCIATE",
+          "MID_SENIOR_LEVEL",
+          "DIRECTOR",
+          "EXECUTIVE",
+          "NOT_APPLICABLE"
+        ]
+      },
+      "description": {
+        "type": "string",
+        "minLength": 200
+      },
+      "industry": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "job_function": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "apply_method": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "linkedin"
+              },
+              "notification_email": {
+                "type": "string"
+              },
+              "resume_required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "method",
+              "notification_email"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "external"
+              },
+              "website_url": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "website_url"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "discriminator": {
+          "propertyName": "method",
+          "mapping": {
+            "linkedin": "#/oneOf/0",
+            "external": "#/oneOf/1"
+          }
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "include_poster_info": {
+        "type": "boolean"
+      },
+      "tracking_pixel_url": {
+        "type": "string",
+        "minLength": 1
+      },
+      "company_job_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "screening_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "answer_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "qualification_required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question",
+            "answer_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "salary": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "additional_compensation": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "rejection_settings": {
+        "type": "object",
+        "properties": {
+          "send_rejection_notification": {
+            "type": "boolean"
+          },
+          "rejection_template": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reject_unqualified_applicants": {
+            "type": "boolean"
+          },
+          "reject_out_of_country_applicants": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "send_rejection_notification"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "job_title",
+      "company",
+      "workplace_type",
+      "location",
+      "employment_status",
+      "seniority_level",
+      "description",
+      "industry",
+      "job_function",
+      "apply_method"
+    ],
+    "additionalProperties": false
+  },
+  "core recruiter project-job update": {
+    "type": "object",
+    "properties": {
+      "job_title": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "company": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "workplace_type": {
+        "type": "string",
+        "enum": [
+          "ON_SITE",
+          "HYBRID",
+          "REMOTE"
+        ]
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "employment_status": {
+        "type": "string",
+        "enum": [
+          "FULL_TIME",
+          "PART_TIME",
+          "CONTRACT",
+          "TEMPORARY",
+          "OTHER",
+          "VOLUNTEER",
+          "INTERNSHIP"
+        ]
+      },
+      "seniority_level": {
+        "type": "string",
+        "enum": [
+          "INTERNSHIP",
+          "ENTRY_LEVEL",
+          "ASSOCIATE",
+          "MID_SENIOR_LEVEL",
+          "DIRECTOR",
+          "EXECUTIVE",
+          "NOT_APPLICABLE"
+        ]
+      },
+      "description": {
+        "type": "string",
+        "minLength": 200
+      },
+      "industry": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "job_function": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "apply_method": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "linkedin"
+              },
+              "notification_email": {
+                "type": "string"
+              },
+              "resume_required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "method",
+              "notification_email"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "external"
+              },
+              "website_url": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "website_url"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "discriminator": {
+          "propertyName": "method",
+          "mapping": {
+            "linkedin": "#/oneOf/0",
+            "external": "#/oneOf/1"
+          }
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "include_poster_info": {
+        "type": "boolean"
+      },
+      "tracking_pixel_url": {
+        "type": "string",
+        "minLength": 1
+      },
+      "company_job_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "screening_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "answer_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "qualification_required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question",
+            "answer_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "salary": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "additional_compensation": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pay_frequency": {
+            "type": "string",
+            "enum": [
+              "YEARLY",
+              "MONTHLY",
+              "HOURLY"
+            ]
+          },
+          "min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "currency",
+          "pay_frequency",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "rejection_settings": {
+        "type": "object",
+        "properties": {
+          "send_rejection_notification": {
+            "type": "boolean"
+          },
+          "rejection_template": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reject_unqualified_applicants": {
+            "type": "boolean"
+          },
+          "reject_out_of_country_applicants": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "send_rejection_notification"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+}

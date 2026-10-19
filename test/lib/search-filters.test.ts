@@ -8,16 +8,21 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { assembleFilters, splitCsv, splitCsvNumbers } from "../../src/lib/search-filters.js";
+import { exitCode } from "../helpers/exit-code.js";
 
-function makeReaders(opts: { file?: string; stdin?: string } = {}) {
-  return {
-    readFile: vi.fn(async () => {
-      if (opts.file === undefined) throw new Error("no file");
-      return opts.file;
-    }),
-    readStdin: vi.fn(async () => opts.stdin ?? ""),
-  };
+const dir = mkdtempSync(join(tmpdir(), "curviate-filters-"));
+const fileWith = (content: string) => {
+  const p = join(dir, `f${Math.random().toString(36).slice(2)}.json`);
+  writeFileSync(p, content);
+  return p;
+};
+
+function makeReaders(opts: { stdin?: string } = {}) {
+  return { readStdin: vi.fn(async () => opts.stdin ?? "") };
 }
 
 describe("assembleFilters — JSON escape hatch", () => {
@@ -34,11 +39,11 @@ describe("assembleFilters — JSON escape hatch", () => {
     expect(r).toEqual({ body: { industry: ["96"], network_distance: [1, 2] } });
   });
 
-  it("--filters-file <path> → reads the file and merges the parsed object", async () => {
-    const readers = makeReaders({ file: '{"location":["103644278"]}' });
-    const r = await assembleFilters({ "filters-file": "/some/path.json" }, readers);
-    expect(readers.readFile).toHaveBeenCalledWith("/some/path.json");
-    expect(r).toEqual({ body: { location: ["103644278"] } });
+  it("--filters-file <path> and --filters-file - (stdin) read the document", async () => {
+    expect(await assembleFilters({ "filters-file": fileWith('{"location":["103644278"]}') }, makeReaders())).toEqual({ body: { location: ["103644278"] } });
+    const readers = makeReaders({ stdin: '{"company":["1441"]}' });
+    expect(await assembleFilters({ "filters-file": "-" }, readers)).toEqual({ body: { company: ["1441"] } });
+    expect(readers.readStdin).toHaveBeenCalledTimes(1);
   });
 
   it("--filters - → reads JSON from stdin and merges", async () => {
@@ -65,16 +70,16 @@ describe("assembleFilters — JSON escape hatch", () => {
     expect(r).toHaveProperty("error");
   });
 
-  it("unreadable --filters-file → returns an error", async () => {
-    const readers = makeReaders(); // readFile throws
-    const r = await assembleFilters({ "filters-file": "/missing.json" }, readers);
-    expect(r).toHaveProperty("error");
-    expect("error" in r && r.error).toMatch(/cannot read/i);
+  it("a missing --filters-file, and --filters-file - with --filters -, exit 2 without reading stdin", async () => {
+    const readers = makeReaders({ stdin: "{}" });
+    expect(await exitCode(() => assembleFilters({ "filters-file": join(dir, "missing.json") }, readers))).toBe(2);
+    expect(await exitCode(() => assembleFilters({ "filters-file": "-", filters: "-" }, readers))).toBe(2);
+    expect(readers.readStdin).not.toHaveBeenCalled();
   });
 
   it("--filters-file wins when both --filters-file and --filters - are given", async () => {
-    const readers = makeReaders({ file: '{"from":"file"}', stdin: '{"from":"stdin"}' });
-    const r = await assembleFilters({ "filters-file": "/p.json", filters: "-" }, readers);
+    const readers = makeReaders({ stdin: '{"from":"stdin"}' });
+    const r = await assembleFilters({ "filters-file": fileWith('{"from":"file"}'), filters: "-" }, readers);
     expect(r).toEqual({ body: { from: "file" } });
     expect(readers.readStdin).not.toHaveBeenCalled();
   });

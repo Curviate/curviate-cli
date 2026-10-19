@@ -1,5 +1,5 @@
 /**
- * `curviate profile`, member profile operations.
+ * `curviate core profile`, member profile operations.
  *
  * Subcommands:
  *   profile me: own profile
@@ -37,6 +37,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveMemberProviderId, resolveMemberOrMeProviderId } from "../lib/member-id.js";
@@ -973,8 +974,8 @@ const profileMeCommand = defineCommand({
     name: "me",
     description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers.",
     examples: [
-      "curviate profile me",
-      "curviate profile me --posts",
+      "curviate core profile me",
+      "curviate core profile me --posts",
     ],
     requires: [
       "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers.",
@@ -1037,8 +1038,8 @@ const profileRelationsCommand = defineCommand({
     name: "relations",
     description: "List your 1st-degree connections.",
     examples: [
-      "curviate profile relations",
-      "curviate profile relations --all",
+      "curviate core profile relations",
+      "curviate core profile relations --all",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1066,7 +1067,7 @@ const profileEndorseCommand = defineCommand({
     name: "endorse",
     description: "Endorse a skill on a member's profile.",
     examples: [
-      "curviate profile endorse janesmith --endorsement-id 12345",
+      "curviate core profile endorse janesmith --endorsement-id 12345",
     ],
   },
   args: {
@@ -1074,7 +1075,7 @@ const profileEndorseCommand = defineCommand({
     id: { type: "positional", description: "Member identifier (URL, slug, or provider id). A URL/slug is resolved to the provider id automatically (a slug is not accepted directly by the endorse endpoint)." },
     "endorsement-id": {
       type: "string",
-      description: "Endorsement ID to endorse. Get it from the target's skills section via `curviate profile <id> --sections linkedin_skills`.",
+      description: "Endorsement ID to endorse. Get it from the target's skills section via `curviate core profile <id> --sections linkedin_skills`.",
       required: true,
     },
   },
@@ -1123,8 +1124,8 @@ const profileUpdateCommand = defineCommand({
     name: "update",
     description: "Update your own profile (headline, bio, name, skills, photos).",
     examples: [
-      "curviate profile update --headline \"Building agent infrastructure\"",
-      "curviate profile update --skills \"TypeScript,Agents\"",
+      "curviate core profile update --headline \"Building agent infrastructure\"",
+      "curviate core profile update --skills \"TypeScript,Agents\"",
     ],
     requires: [
       "At least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture.",
@@ -1150,7 +1151,7 @@ const profileFollowCommand = defineCommand({
     name: "follow",
     description: "Follow a member (sends a connect request if their profile is private).",
     examples: [
-      "curviate profile follow janesmith",
+      "curviate core profile follow janesmith",
     ],
   },
   args: {
@@ -1167,7 +1168,7 @@ const profileUnfollowCommand = defineCommand({
     name: "unfollow",
     description: "Unfollow a member. Unfollowing someone you do not follow changes nothing.",
     examples: [
-      "curviate profile unfollow janesmith",
+      "curviate core profile unfollow janesmith",
     ],
   },
   args: {
@@ -1184,8 +1185,8 @@ const profileFollowersCommand = defineCommand({
     name: "followers",
     description: "List a member's followers (accepts 'me').",
     examples: [
-      "curviate profile followers me",
-      "curviate profile followers janesmith --limit 20",
+      "curviate core profile followers me",
+      "curviate core profile followers janesmith --limit 20",
     ],
   },
   args: {
@@ -1202,8 +1203,8 @@ const profileFollowingCommand = defineCommand({
     name: "following",
     description: "List who a member follows (accepts 'me').",
     examples: [
-      "curviate profile following me",
-      "curviate profile following me --all",
+      "curviate core profile following me",
+      "curviate core profile following me --all",
     ],
   },
   args: {
@@ -1220,7 +1221,7 @@ const profileSubscriptionCommand = defineCommand({
     name: "subscription",
     description: "Read your premium subscription: entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false).",
     examples: [
-      "curviate profile subscription",
+      "curviate core profile subscription",
     ],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS) },
@@ -1234,7 +1235,7 @@ const profileAnalyticsCommand = defineCommand({
     name: "analytics",
     description: "Read your performance headline metrics: profile viewers, followers, post impressions, and search appearances (fixed LinkedIn reporting windows, no window selector).",
     examples: [
-      "curviate profile analytics",
+      "curviate core profile analytics",
     ],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS) },
@@ -1248,8 +1249,8 @@ const profileVisitorsCommand = defineCommand({
     name: "visitors",
     description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate; Premium sees more identified viewers).",
     examples: [
-      "curviate profile visitors",
-      "curviate profile visitors --limit 20",
+      "curviate core profile visitors",
+      "curviate core profile visitors --limit 20",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1263,7 +1264,7 @@ const profileSsiCommand = defineCommand({
     name: "ssi",
     description: "Read your Social Selling Index: the overall score, its four pillar breakdowns, and industry/network percentile ranks.",
     examples: [
-      "curviate profile ssi",
+      "curviate core profile ssi",
     ],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS) },
@@ -1275,11 +1276,11 @@ const profileSsiCommand = defineCommand({
 export const profileCommand = defineCommand({
   meta: {
     name: "profile",
-    description: "LinkedIn profile operations.",
+    description: DESCRIPTIONS.profile,
     examples: [
-      "curviate profile janesmith",
-      "curviate profile https://www.linkedin.com/in/janesmith --posts",
-      "curviate profile janesmith --sections experience,skills",
+      "curviate core profile janesmith",
+      "curviate core profile https://www.linkedin.com/in/janesmith --posts",
+      "curviate core profile janesmith --sections experience,skills",
     ],
     requires: [
       "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers.",
@@ -1323,13 +1324,13 @@ export const profileCommand = defineCommand({
     // If an <id> positional was given, we treat this as `profile <id> [flags]`.
     if (!flags.id) {
       process.stderr.write(
-        "Usage: curviate profile <id> [--posts|--comments|--reactions|--followers]\n" +
-        "       curviate profile me\n" +
-        "       curviate profile relations\n" +
-        "       curviate profile followers <id> | following <id>\n" +
-        "       curviate profile follow <id> | unfollow <id>\n" +
-        "       curviate profile update [--headline|--bio|--first-name|--last-name|--skills|--picture]\n" +
-        "       curviate profile endorse <id> --endorsement-id <id>\n",
+        "Usage: curviate core profile <id> [--posts|--comments|--reactions|--followers]\n" +
+        "       curviate core profile me\n" +
+        "       curviate core profile relations\n" +
+        "       curviate core profile followers <id> | following <id>\n" +
+        "       curviate core profile follow <id> | unfollow <id>\n" +
+        "       curviate core profile update [--headline|--bio|--first-name|--last-name|--skills|--picture]\n" +
+        "       curviate core profile endorse <id> --endorsement-id <id>\n",
       );
       // <id> is functionally required for the bare form, a missing required
       // positional is a usage error (exit 2), not a silent success.

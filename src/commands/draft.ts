@@ -1,5 +1,5 @@
 /**
- * `curviate draft`: stored, editable, unpublished posts, optionally scheduled
+ * `curviate core draft`: stored, editable, unpublished posts, optionally scheduled
  * (root-scoped; methods live on `curviate.drafts.*`).
  *
  * Subcommands:
@@ -17,6 +17,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -205,7 +206,7 @@ async function uploadAll(
         contentType: guessContentType(f.path) as DraftAttachmentContentType,
       });
     } catch (err) {
-      out.stderr.write(`error: uploading ${basename(f.path)} to draft ${draftId} failed; the Draft exists with the files before it. Fix the cause and add the rest with \`curviate draft update ${draftId} --attach <file>\`.\n`);
+      out.stderr.write(`error: uploading ${basename(f.path)} to draft ${draftId} failed; the Draft exists with the files before it. Fix the cause and add the rest with \`curviate core draft update ${draftId} --attach <file>\`.\n`);
       throw err; // the caller's catch renders it
     }
   }
@@ -287,7 +288,7 @@ export async function runDraftCreate(
 ): Promise<void> {
   const body: Record<string, unknown> = {};
   if (flags.unschedule) {
-    out.stderr.write("error: --unschedule applies to `draft update`; a new Draft is unscheduled unless you pass --schedule-at.\n");
+    out.stderr.write("error: --unschedule applies to `curviate core draft update`; a new Draft is unscheduled unless you pass --schedule-at.\n");
     process.exit(2);
   }
   const account = readAccount(flags, out);
@@ -438,9 +439,9 @@ const draftListCommand = defineCommand({
     description:
       "List Drafts, newest first. With --status published it lists publish records instead (post id, account, time; never Drafts).",
     examples: [
-      "curviate draft list",
-      "curviate draft list --status scheduled --account acc_YOUR_ACCOUNT_ID --order asc",
-      "curviate draft list --status scheduled,published --from 2026-10-01T00:00:00Z --to 2026-11-01T00:00:00Z",
+      "curviate core draft list",
+      "curviate core draft list --status scheduled --account acc_YOUR_ACCOUNT_ID --order asc",
+      "curviate core draft list --status scheduled,published --from 2026-10-01T00:00:00Z --to 2026-11-01T00:00:00Z",
     ],
   },
   args: {
@@ -460,7 +461,7 @@ const draftGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get one Draft, with a fresh signed link (valid 1 hour) for each attachment.",
-    examples: ["curviate draft get drf_YOUR_DRAFT_ID"],
+    examples: ["curviate core draft get drf_YOUR_DRAFT_ID"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
@@ -478,9 +479,9 @@ const draftCreateCommand = defineCommand({
       "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. " +
       "Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft.",
     examples: [
-      "curviate draft create \"Three things we learned shipping our first agent integration.\"",
-      "curviate draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
-      "curviate draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png",
+      "curviate core draft create \"Three things we learned shipping our first agent integration.\"",
+      "curviate core draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
+      "curviate core draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png",
     ],
   },
   args: {
@@ -502,9 +503,9 @@ const draftUpdateCommand = defineCommand({
       "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. " +
       "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds.",
     examples: [
-      "curviate draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
-      "curviate draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
-      "curviate draft update drf_YOUR_DRAFT_ID --unschedule",
+      "curviate core draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
+      "curviate core draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
+      "curviate core draft update drf_YOUR_DRAFT_ID --unschedule",
     ],
   },
   args: {
@@ -525,7 +526,7 @@ const draftDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete a Draft and its stored media.",
-    examples: ["curviate draft delete drf_YOUR_DRAFT_ID"],
+    examples: ["curviate core draft delete drf_YOUR_DRAFT_ID"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -540,9 +541,9 @@ const draftPublishCommand = defineCommand({
   meta: {
     name: "publish",
     description:
-      "Publish a Draft now, under the same rules and safety limits as `post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
+      "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
       "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
-    examples: ["curviate draft publish drf_YOUR_DRAFT_ID"],
+    examples: ["curviate core draft publish drf_YOUR_DRAFT_ID"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -554,7 +555,7 @@ const draftPublishCommand = defineCommand({
 });
 
 export const draftCommand = defineCommand({
-  meta: { name: "draft", description: "Drafts and scheduled posts." },
+  meta: { name: "draft", description: DESCRIPTIONS.draft },
   subCommands: {
     list: draftListCommand,
     get: draftGetCommand,
@@ -565,7 +566,7 @@ export const draftCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate draft <subcommand>\n" +
+      "Usage: curviate core draft <subcommand>\n" +
         "  list | get <id> | create [\"<text>\"] | update <id> | delete <id> | publish <id>\n",
     );
   },

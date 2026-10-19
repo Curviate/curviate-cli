@@ -1,5 +1,5 @@
 /**
- * `curviate message`, LinkedIn message operations.
+ * `curviate core message`, LinkedIn message operations.
  *
  * Subcommands:
  *   message new --to <url|slug|provider_id> "<text>" [--subject <s>] [--attach <file>...]: start new chat (write)
@@ -30,6 +30,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
 import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
@@ -523,7 +524,7 @@ export async function runMessageReact(
   // positional is optional to allow the flag alias), a missing value is a
   // usage error, not a silent empty-body reaction.
   if (!reaction) {
-    out.stderr.write("error: a reaction is required. Pass it as `message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
+    out.stderr.write("error: a reaction is required. Pass it as `curviate core message react <chat_id> <message_id> <emoji>` (or --emoji <e>).\n");
     process.exit(2);
     return;
   }
@@ -706,7 +707,7 @@ const messageNewCommand = defineCommand({
     name: "new",
     description: "Start a new chat with one or more members.",
     examples: [
-      "curviate message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
+      "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
     ],
   },
   args: {
@@ -750,7 +751,7 @@ const messageGetCommand = defineCommand({
     name: "get",
     description: "Get a message by ID.",
     examples: [
-      "curviate message get 2-YTQ3ODU3Njgt MSG_ID",
+      "curviate core message get 2-YTQ3ODU3Njgt MSG_ID",
     ],
   },
   args: {
@@ -783,7 +784,7 @@ const messageEditCommand = defineCommand({
     name: "edit",
     description: "Edit a message (within the allowed window).",
     examples: [
-      "curviate message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\"",
+      "curviate core message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\"",
     ],
   },
   args: {
@@ -817,7 +818,7 @@ const messageDeleteCommand = defineCommand({
     name: "delete",
     description: "Delete a message.",
     examples: [
-      "curviate message delete 2-YTQ3ODU3Njgt MSG_ID",
+      "curviate core message delete 2-YTQ3ODU3Njgt MSG_ID",
     ],
   },
   args: {
@@ -850,7 +851,7 @@ const messageReactCommand = defineCommand({
     name: "react",
     description: "Add an emoji reaction to a message.",
     examples: [
-      "curviate message react 2-YTQ3ODU3Njgt MSG_ID 👍",
+      "curviate core message react 2-YTQ3ODU3Njgt MSG_ID 👍",
     ],
     requires: [
       "The reaction: the <emoji> argument or --emoji.",
@@ -892,7 +893,7 @@ const messageAttachmentCommand = defineCommand({
     name: "attachment",
     description: "Download a message attachment.",
     examples: [
-      "curviate message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf",
+      "curviate core message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf",
     ],
   },
   args: {
@@ -932,7 +933,7 @@ const messageInMailCommand = defineCommand({
     name: "inmail",
     description: "Send an InMail to a member.",
     examples: [
-      "curviate message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\"",
+      "curviate core message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\"",
     ],
   },
   args: {
@@ -979,13 +980,13 @@ const messageSendCommand = defineCommand({
   meta: {
     name: "send",
     description:
-      "Send a message to an existing chat. Pass a COMPANY_ chat id (from `inboxes chats`) to send " +
+      "Send a message to an existing chat. Pass a COMPANY_ chat id (from `curviate core inboxes chats`) to send " +
       "as that company page instead of yourself, no separate flag needed. The output shows the acting " +
       "identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints " +
-      "nothing new. See also: `inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
+      "nothing new. See also: `curviate core inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
       "page guide.",
     examples: [
-      "curviate message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+      "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
     ],
   },
   args: {
@@ -1024,7 +1025,7 @@ const messageInMailBalanceCommand = defineCommand({
     name: "inmail-balance",
     description: "Get InMail credit balance.",
     examples: [
-      "curviate message inmail-balance",
+      "curviate core message inmail-balance",
     ],
   },
   args: {
@@ -1068,16 +1069,16 @@ const MESSAGE_SUBCOMMANDS = [
 ] as const;
 
 const MESSAGE_USAGE =
-  "Usage: curviate message new --to <attendee> \"<text>\" [--subject <s>] [--attach <file>...]\n" +
-  "       curviate message send <chat_id> \"<text>\" [--attach <file>...]\n" +
-  "       curviate message <chat_id> \"<text>\" [--attach <file>...]\n" +
-  "       curviate message get <chat_id> <message_id>\n" +
-  "       curviate message edit <chat_id> <message_id> \"<text>\"\n" +
-  "       curviate message delete <chat_id> <message_id>\n" +
-  "       curviate message react <chat_id> <message_id> <emoji>\n" +
-  "       curviate message attachment <chat_id> <message_id> <attachment_id> [-o <file>]\n" +
-  "       curviate message inmail --to <id> --subject <s> \"<text>\"\n" +
-  "       curviate message inmail-balance\n";
+  "Usage: curviate core message new --to <attendee> \"<text>\" [--subject <s>] [--attach <file>...]\n" +
+  "       curviate core message send <chat_id> \"<text>\" [--attach <file>...]\n" +
+  "       curviate core message <chat_id> \"<text>\" [--attach <file>...]\n" +
+  "       curviate core message get <chat_id> <message_id>\n" +
+  "       curviate core message edit <chat_id> <message_id> \"<text>\"\n" +
+  "       curviate core message delete <chat_id> <message_id>\n" +
+  "       curviate core message react <chat_id> <message_id> <emoji>\n" +
+  "       curviate core message attachment <chat_id> <message_id> <attachment_id> [-o <file>]\n" +
+  "       curviate core message inmail --to <id> --subject <s> \"<text>\"\n" +
+  "       curviate core message inmail-balance\n";
 
 /**
  * Refuse to treat a command-shaped first positional as a chat id.
@@ -1101,17 +1102,17 @@ export function guardBareMessageForm(
 
   const suggestion = nearestSubcommand(chatId, [...MESSAGE_SUBCOMMANDS]);
   out.stderr.write(
-    `error: \`${chatId}\` is not a curviate message subcommand, and it is not a chat id ` +
+    `error: \`${chatId}\` is not a curviate core message subcommand, and it is not a chat id ` +
       `(a chat id looks like 2-... or COMPANY_..., or a linkedin.com/messaging/thread/... URL).\n`,
   );
   if (suggestion) {
-    out.stderr.write(`hint: did you mean \`curviate message ${suggestion}\`?\n`);
+    out.stderr.write(`hint: did you mean \`curviate core message ${suggestion}\`?\n`);
   } else if (chatId === "search") {
-    out.stderr.write("hint: to search your messages, use `curviate inbox search`.\n");
+    out.stderr.write("hint: to search your messages, use `curviate core inbox search`.\n");
   }
   out.stderr.write(
     `hint: to send to a chat id this check does not recognise, name the action explicitly: ` +
-      `curviate message send <chat_id> "<text>".\n`,
+      `curviate core message send <chat_id> "<text>".\n`,
   );
   out.stderr.write(MESSAGE_USAGE);
   // Refusing is the point: nothing was sent.
@@ -1121,12 +1122,10 @@ export function guardBareMessageForm(
 export const messageCommand = defineCommand({
   meta: {
     name: "message",
-    description:
-      "Send and manage LinkedIn messages. A COMPANY_ chat id (from `inboxes chats`) sends as that " +
-      "company page instead of yourself; see `message send --help`.",
+    description: DESCRIPTIONS.message,
     examples: [
-      "curviate message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
-      "curviate message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf",
+      "curviate core message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+      "curviate core message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf",
     ],
   },
   args: {

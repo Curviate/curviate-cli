@@ -143,11 +143,11 @@ describe("every dash-accepting argument reads stdin", () => {
 describe("no placeholder reaches the wire for any argument shape", () => {
   const CASES: Array<[string, string[], ((b: Record<string, unknown>) => void)?]> = [
     ["flag: account link --password -", ["account", "link", "--seat-id", "seat_probe", "--auth-method", "credentials", "--country", "US", "--email", "probe@example.com", "--password", "-"]],
-    ["flag: search people --keywords -", ["search", "people", "--keywords", "-"]],
-    ["positional: message send - hello", ["message", "send", "-", "hello"]],
-    ["flag: connect <id> --note -", ["connect", "probe-person", "--note", "-"]],
-    ["flag: search people --location - (a literal dash)", ["search", "people", "--location", "-"], (b) => expect(b["location"]).toEqual(["-"])],
-    ["array element: company follow-invite --invitee x --invitee -", ["company", "follow-invite", "12345", "--invitee", "x", "--invitee", "-"], (b) => expect(b["invitee_ids"]).toEqual(["x", "-"])],
+    ["flag: search people --keywords -", ["core", "search", "people", "--keywords", "-"]],
+    ["positional: message send - hello", ["core", "message", "send", "-", "hello"]],
+    ["flag: connect <id> --note -", ["core", "connect", "probe-person", "--note", "-"]],
+    ["flag: search people --location - (a literal dash)", ["core", "search", "people", "--location", "-"], (b) => expect(b["location"]).toEqual(["-"])],
+    ["array element: company follow-invite --invitee x --invitee -", ["core", "company", "follow-invite", "12345", "--invitee", "x", "--invitee", "-"], (b) => expect(b["invitee_ids"]).toEqual(["x", "-"])],
   ];
 
   it.each(CASES)("%s reaches the wire with a literal dash, never the placeholder", async (_label, argv, assertBody) => {
@@ -161,11 +161,11 @@ describe("no placeholder reaches the wire for any argument shape", () => {
   });
 
   it("the egress backstop refuses a placeholder the dispatcher never saw, and normal traffic passes without it", async () => {
-    const bad = await sink.run(["inbox", "list"], { env: { CURVIATE_ACCOUNT: STDIN_SENTINEL } });
+    const bad = await sink.run(["core", "inbox", "list"], { env: { CURVIATE_ACCOUNT: STDIN_SENTINEL } });
     expect(bad.requests).toEqual([]);
     expect(bad.status).not.toBe(0);
     expect(bad.stderr.toLowerCase()).toMatch(/stdin/);
-    const ok = await sink.run(["inbox", "list"], { env: { CURVIATE_ACCOUNT: "acc_probe" } });
+    const ok = await sink.run(["core", "inbox", "list"], { env: { CURVIATE_ACCOUNT: "acc_probe" } });
     expect(ok.requests.length).toBeGreaterThan(0);
     expect(JSON.stringify(ok.requests)).not.toContain(STDIN_SENTINEL);
   });

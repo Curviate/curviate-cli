@@ -22,6 +22,15 @@ export function readManifest(): ManifestCommand[] {
 /** Prompts on a TTY for a masked key: no pty here. */
 export const INTERACTIVE_ONLY = new Set(["curviate login"]);
 
+/** A `--file -` heredoc example: the command line and the document it pipes. */
+export const HEREDOC = /^([^\n]*?) <<'EOF'\n([\s\S]*)\nEOF$/;
+
+/** Append to an example's command line, before its heredoc if it has one. */
+export const withArgs = (line: string, extra: string) => {
+  const h = HEREDOC.exec(line);
+  return h ? `${h[1]} ${extra} <<'EOF'\n${h[2]}\nEOF` : `${line} ${extra}`;
+};
+
 export function shellWords(line: string, vars: Record<string, string>, cwd: string): string[] {
   const words: string[] = [];
   let cur: string | null = null;
@@ -106,6 +115,8 @@ export function useExamples() {
     /** One example line; `fresh`: its own copy of the seeded config, so earlier runs cannot change what it sees. */
     setVar: (k: string, v: string) => void (vars[k] = v),
     async run(line: string, opts: { fresh?: boolean; stdin?: string } = {}) {
+      const here = HEREDOC.exec(line);
+      if (here) [line, opts] = [here[1]!, { ...opts, stdin: here[2]! + "\n" }];
       const xdg = opts.fresh ? mkdtempSync(join(tmpdir(), "curviate-examples-xdg-")) : xdgDir;
       if (opts.fresh) cpSync(seedDir, xdg, { recursive: true });
       const words = shellWords(line.replace(/<your-api-key>/g, vars["CURVIATE_API_KEY"]!), vars, workDir);

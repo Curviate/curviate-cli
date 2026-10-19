@@ -39,9 +39,10 @@ import {
   restoreLiteralDashes,
   type RestorableArgDef,
 } from "./lib/stdin.js";
-import { GLOBAL_FLAGS } from "./lib/global-flags.js";
+import { GLOBAL_FLAGS, STATE_WRITES, setWriteKind } from "./lib/global-flags.js";
 import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
+import { editDistance } from "./lib/bare-form-guard.js";
 
 type AnyCommand = CommandDef;
 
@@ -129,79 +130,15 @@ function shownFlag(flag: string, index: number): string {
 }
 
 /**
- * Removed/renamed commands -> a one-line "did you mean" successor hint.
- *
- * Keyed by `<group>` -> `<removed subcommand token>` -> hint text. Consulted at
- * the dispatcher's unknown-command path so an agent that reaches for the old
- * grammar is pointed at the replacement instead of getting a bare "unknown
- * command" (pure groups) or a confusing downstream error from the removed
- * keyword being swallowed as a bare id (the bare-positional groups: connect,
- * profile, company). Exit stays 2; this only enriches the diagnostic.
- *
- * The tokens here are the exact removed/renamed keywords from the 0.15.0
- * release; none is a current subcommand, and none is a plausible bare
- * identifier (a member slug, company id, or invitation id is never literally
- * "respond"/"connections"/"followers"), so intercepting them is safe.
+ * Tokens refused under a write-bearing bare group, with the generic usage
+ * error and no hint. `core connect respond` is a 0.15.0
+ * subcommand, not a near-miss of any current one, so without this it would
+ * send an invitation to whoever owns the slug `respond`. Keyed by rendered
+ * path. No successor is ever named: the 0.15.0 successor map is gone.
  */
-const REMOVED_COMMANDS: Record<string, Record<string, string>> = {
-  post: {
-    list: "`post list` was removed. Use `post user-posts <user_id>` (accepts `me`).",
-    comment: "post comments are their own group now. Use `comment add <post_id> <text>`.",
-    comments: "post comments are their own group now. Use `comment list <post_id>`.",
-  },
-  connect: {
-    respond: "`connect respond` was split. Use `connect accept <id>` or `connect decline <id>`.",
-  },
-  profile: {
-    connections: "`profile connections` was renamed. Use `profile relations`.",
-  },
-  account: {
-    "connect-link": "`account connect-link` was removed. Use `account link [--account-id <id>]`.",
-    "reconnect-link": "`account reconnect-link` was removed. Use `account link [--account-id <id>]`.",
-    reconnect: "`account reconnect` was removed. Use `account link [--account-id <id>]`.",
-  },
-  inbox: {
-    sync: "`inbox sync` was removed. History syncs automatically; just read `inbox messages <chat_id>`.",
-    "sync-chat": "`inbox sync-chat` was removed. History syncs automatically; just read `inbox messages <chat_id>`.",
-  },
-  recruiter: {
-    "add-candidate": "`recruiter add-candidate` was renamed. Use `recruiter save-candidate <project_id> --stage-id <id> --candidate-id <id>`.",
-    "project-jobs": "`recruiter project-jobs` was renamed. Use `recruiter project-job get <project_id>`.",
-    sync: "`recruiter sync` was removed. Recruiter data syncs automatically now.",
-    "add-applicant": "`recruiter add-applicant` was removed with no replacement.",
-    "reject-applicant": "`recruiter reject-applicant` was removed with no replacement.",
-  },
-  "sales-nav": {
-    sync: "`sales-nav sync` was removed. Sales Navigator data syncs automatically now.",
-  },
-  webhook: {
-    "state-diff": "`webhook state-diff` was removed with no replacement.",
-  },
+const REFUSED_TOKENS: Record<string, ReadonlySet<string>> = {
+  "curviate core connect": new Set(["respond"]),
 };
-
-// `company followers` was removed in the 0.15.0 v2 migration (the v1 endpoint
-// it wrapped no longer existed) and re-added as a real subcommand once the SDK
-// shipped a new v2 `companies.followers` method, so it is no longer in the map
-// above. See CHANGELOG.md 0.15.0 "Removed" and the current entry under
-// "Added" for both halves of this history.
-
-/**
- * The successor hint for a removed/renamed `<group> <token>`, or null when the
- * token is a current command or a plausible identifier. Exported for direct
- * unit coverage of the map.
- *
- * `token` is a value the user typed on the command line. `REMOVED_COMMANDS[group]`
- * is a plain object literal, so an inherited Object.prototype member name
- * (`constructor`, `toString`, ...) as `token` would otherwise resolve to that
- * inherited function instead of `null` -- the `??` guard only catches
- * null/undefined, not a truthy non-string. `hasOwnProperty.call` makes this
- * safe by construction regardless of what `token` is.
- */
-export function successorHint(group: string, token: string): string | null {
-  const groupMap = REMOVED_COMMANDS[group];
-  if (!groupMap || !Object.prototype.hasOwnProperty.call(groupMap, token)) return null;
-  return groupMap[token] ?? null;
-}
 
 /** Resolve a possibly-lazy citty value (subCommands entry, args, meta). */
 async function resolveValue<T>(input: T | (() => T) | (() => Promise<T>)): Promise<T> {
@@ -557,7 +494,9 @@ function findUnknownFlag(
   flags: TokenWalk["flags"],
   declared: Set<string>,
   booleans: Set<string>,
-): string | null {
+  /** Hint candidates: declared flag names, positionals excluded. */
+  flagNames: Set<string>,
+): { shown: string; hint: string | null } | null {
   for (const { token, name, index } of flags) {
     // Exactly `--name`, or `-x` for a one-letter alias. `stripFlagName` strips
     // every dash, so without this `---api-key=K` and `-api-key=K` bound as
@@ -574,9 +513,20 @@ function findUnknownFlag(
       if (name.startsWith("no-") && booleans.has(name.slice(3))) continue;
     }
     // The name only: an inline `=value` may be a credential (`--api-key=...`).
-    return shownFlag(token.split("=")[0]!, index);
+    const shown = shownFlag(token.split("=")[0]!, index);
+    return { shown, hint: shown.startsWith("`") ? nearestFlag(name.split("=")[0]!, flagNames) : null };
   }
   return null;
+}
+
+/**
+ * The one declared flag within edit distance 2 of an unknown flag's name, or
+ * null when none or several are. One-letter aliases are not
+ * candidates. Flags only: a command name is never suggested.
+ */
+function nearestFlag(name: string, declared: Set<string>): string | null {
+  const near = [...declared].filter((d) => d.length > 1 && editDistance(name, d) <= 2);
+  return near.length === 1 ? near[0]! : null;
 }
 
 /** Whether `--fields ""` (empty projection) was passed, a usage error. */
@@ -660,7 +610,7 @@ export async function resolveLeaf(
   cmd: AnyCommand,
   rawArgs: string[],
   descent?: Descent,
-): Promise<{ leaf: AnyCommand; leafArgs: string[] }> {
+): Promise<{ leaf: AnyCommand; leafArgs: string[]; path: string[] }> {
   const here: Descent = descent ?? { path: [await nodeName(cmd)] };
   const subCommands = (await resolveValue(cmd.subCommands)) as
     | Record<string, unknown>
@@ -702,15 +652,10 @@ export async function resolveLeaf(
       });
     }
 
-    // Removed/renamed command -> point at the successor BEFORE the token is
-    // either swallowed as a bare positional (connect/profile/company) or
-    // reported as a generic unknown command (pure groups). A current
-    // subcommand always won above, so this only ever fires on a stale token.
-    if (token !== undefined) {
-      const hint = successorHint(await nodeName(cmd), token);
-      if (hint) {
-        usageError(`unknown command at ${argumentAt(idx)}`, hint);
-      }
+    // A refused token is never swallowed as a bare positional. A current
+    // subcommand always won above, so this only fires on a stale token.
+    if (token !== undefined && REFUSED_TOKENS[renderPath(here.path)]?.has(token)) {
+      usageError(`unknown command at ${argumentAt(idx)}`);
     }
 
     if (token !== undefined && hasBarePositional) {
@@ -740,15 +685,15 @@ export async function resolveLeaf(
         }
         // Otherwise it cannot be a valid reroute -> actionable usage error, never
         // a silent swallow of the extra token.
-        const name = await nodeName(cmd);
+        const form = renderPath(here.path);
         usageError(
-          `unexpected ${argumentAt(first.index)} after \`${name}\`. ` +
-            `It is neither a positional \`${name}\` accepts nor one of its subcommands. ` +
-            `Run \`curviate ${name} --help\` for the available subcommands.`,
+          `unexpected ${argumentAt(first.index)} after \`${form}\`. ` +
+            `It is neither a positional \`${form}\` accepts nor one of its subcommands. ` +
+            `Run \`${form} --help\` for the available subcommands.`,
         );
       }
       // No keyword match but the node accepts a bare positional -> run it.
-      return { leaf: cmd, leafArgs: rawArgs };
+      return { leaf: cmd, leafArgs: rawArgs, path: here.path };
     }
 
     // No bare-positional intent. A token here is an unknown subcommand keyword.
@@ -758,13 +703,13 @@ export async function resolveLeaf(
     // No token at all -> no subcommand specified. Run the node's handler (group
     // nodes print their usage block; the root's no-op falls through to help).
     // There is no positional here by definition, so nothing to reject.
-    return { leaf: cmd, leafArgs: rawArgs };
+    return { leaf: cmd, leafArgs: rawArgs, path: here.path };
   }
 
   // Leaf node (no subcommands) — the convergence point of every reach path
   // that is not the bare form guarded above.
   await assertLeafConsumesPositionals(cmd, rawArgs, here.path, here.siblings);
-  return { leaf: cmd, leafArgs: rawArgs };
+  return { leaf: cmd, leafArgs: rawArgs, path: here.path };
 }
 
 /**
@@ -773,15 +718,16 @@ export async function resolveLeaf(
  * fast-paths, then routes through `resolveLeaf`.
  */
 export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<void> {
-  // --help / -h : delegate to citty's renderer (exit 0). Resolve the deepest
-  // matching node so `curviate profile me --help` shows the right usage.
+  // --help / -h: routing is ours, rendering is lib/examples.ts. A token that
+  // does not resolve exits 2 exactly as it would without --help: help never rescues an old or mistyped path. A bindable
+  // positional keeps its help (`core profile janesmith --help`).
   if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
-    const { runMain } = await import("citty");
-    const { showUsageWithExamples } = await import("./lib/examples.js");
-    // runMain handles --help by resolving the subcommand and printing usage.
-    // We only borrow its help path; routing is ours.
-    await runMain(root, { rawArgs, showUsage: showUsageWithExamples });
-    return;
+    const { leaf, path } = await resolveLeaf(root, rawArgs.filter((a) => a !== "--help" && a !== "-h"));
+    const { showHelp } = await import("./lib/examples.js");
+    await showHelp(leaf, path);
+    // Exit once stdout has drained: long help on an async pipe must not be cut off.
+    await new Promise<void>((done) => process.stdout.write("", () => done()));
+    process.exit(0);
   }
 
   // Read AFTER the beta strip, so `curviate --beta --version` still prints the
@@ -814,7 +760,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   // The resolved leaf, kept for the missing-argument hint below.
   let hintLeaf: AnyCommand | undefined;
   try {
-    const { leaf, leafArgs: resolvedArgs } = await resolveLeaf(root, argsAfterBeta);
+    const { leaf, leafArgs: resolvedArgs, path: leafPath } = await resolveLeaf(root, argsAfterBeta);
     hintLeaf = leaf;
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
@@ -827,18 +773,20 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
     // happens to be a global flag elsewhere in the tree.
     const booleanFlags = await booleanFlagNames(leaf);
     const declared = await declaredArgNames(leaf);
+    const stateRecheck = STATE_WRITES[renderPath(leafPath)];
+    setWriteKind(stateRecheck ? "state" : declared.has("preview") ? "write" : "read", stateRecheck);
     const leafArgs = dropFalsePreview(resolvedArgs, walkTokens(resolvedArgs, booleanFlags, declared), declared);
     const walk = walkTokens(leafArgs, booleanFlags, declared);
-    const unknown = findUnknownFlag(walk.flags, declared, booleanFlags);
+    const flagOnly = new Set(Object.entries((await resolveValue(leaf.args ?? {})) as Record<string, { type?: string }>).filter(([, d]) => d?.type !== "positional").map(([n]) => n));
+    const unknown = findUnknownFlag(walk.flags, declared, booleanFlags, flagOnly);
     if (unknown !== null) {
       // An API read does not declare --preview (lib/global-flags.ts readOnly),
       // so this is where it refuses it; say why. A local command (declares no
       // --beta: login, config, webhook verify) keeps the plain message.
-      usageError(
-        unknown === "`--preview`" && declared.has("beta")
-          ? "--preview is only valid on write commands (mutations). Reads just run."
-          : `unknown flag ${unknown}.`,
-      );
+      if (unknown.shown === "`--preview`" && declared.has("beta")) {
+        usageError("--preview is only valid on write commands (mutations). Reads just run.");
+      }
+      usageError(`unknown flag ${unknown.shown}.`, unknown.hint ? `did you mean --${unknown.hint}?` : undefined);
     }
     // Refused by name, never by value: the value may be a secret.
     const repeated = await repeatedFlag(leaf, walk.flags);

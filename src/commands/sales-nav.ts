@@ -1,5 +1,5 @@
 /**
- * `curviate sales-nav`, Sales Navigator operations (beta).
+ * `curviate core sales-nav`, Sales Navigator operations (beta).
  *
  * Subcommands:
  *   sales-nav search people [--keywords <k>] [--all] [--limit] [--cursor]: search people (POST)
@@ -34,6 +34,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -779,7 +780,7 @@ const salesNavMessageNewCommand = defineCommand({
     name: "new",
     description: "Start a new Sales Navigator chat.",
     examples: [
-      "curviate sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\"",
+      "curviate core sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\"",
     ],
   },
   args: {
@@ -823,7 +824,7 @@ const salesNavMessageCommand = defineCommand({
     new: salesNavMessageNewCommand,
   },
   async run() {
-    process.stderr.write("Usage: curviate sales-nav message new --to <id> \"<text>\" [--attach <file>...]\n");
+    process.stderr.write("Usage: curviate core sales-nav message new --to <id> \"<text>\" [--attach <file>...]\n");
   },
 });
 
@@ -832,15 +833,15 @@ const salesNavSearchPeopleCommand = defineCommand({
     name: "people",
     description: "Search Sales Navigator member profiles.",
     examples: [
-      "curviate sales-nav search people --keywords \"head of data\"",
-      "curviate sales-nav search people --filters-file filters.json",
+      "curviate core sales-nav search people --keywords \"head of data\"",
+      "curviate core sales-nav search people --filters-file filters.json",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
-    "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
+    "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
     "first-name": { type: "string", description: "First name to match." },
     "last-name": { type: "string", description: "Last name to match." },
     groups: { type: "string", description: "Group ids (comma-separated)." },
@@ -870,14 +871,14 @@ const salesNavSearchCompaniesCommand = defineCommand({
     name: "companies",
     description: "Search Sales Navigator companies.",
     examples: [
-      "curviate sales-nav search companies --keywords fintech",
+      "curviate core sales-nav search companies --keywords fintech",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
-    "filters-file": { type: "string", description: "Path to a JSON file with the filter body." },
+    "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
   },
   async run({ args }) {
     const flags = args as SalesNavFlags;
@@ -904,7 +905,7 @@ const salesNavSearchParametersCommand = defineCommand({
     description:
       "Resolve Sales Navigator filter parameter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
     examples: [
-      "curviate sales-nav search parameters --type REGION --keywords Berlin",
+      "curviate core sales-nav search parameters --type REGION --keywords Berlin",
     ],
   },
   args: {
@@ -941,7 +942,7 @@ const salesNavSearchCommand = defineCommand({
     name: "search",
     description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly.",
     examples: [
-      "curviate sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
+      "curviate core sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
     ],
   },
   args: {
@@ -963,10 +964,10 @@ const salesNavSearchCommand = defineCommand({
     // Bare form: `sales-nav search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
-        "Usage: curviate sales-nav search <url>\n" +
-        "       curviate sales-nav search people [--keywords <k>]\n" +
-        "       curviate sales-nav search companies [--keywords <k>]\n" +
-        "       curviate sales-nav search parameters --type <t>\n",
+        "Usage: curviate core sales-nav search <url>\n" +
+        "       curviate core sales-nav search people [--keywords <k>]\n" +
+        "       curviate core sales-nav search companies [--keywords <k>]\n" +
+        "       curviate core sales-nav search parameters --type <t>\n",
       );
       return;
     }
@@ -993,7 +994,7 @@ const salesNavProfileCommand = defineCommand({
     name: "profile",
     description: "Get a Sales Navigator enriched member profile.",
     examples: [
-      "curviate sales-nav profile https://www.linkedin.com/in/janesmith",
+      "curviate core sales-nav profile https://www.linkedin.com/in/janesmith",
     ],
   },
   args: {
@@ -1025,7 +1026,7 @@ const salesNavSaveLeadCommand = defineCommand({
     name: "save-lead",
     description: "Save a Sales Navigator member into a lead list.",
     examples: [
-      "curviate sales-nav save-lead ACwAAA1234567 --list 987654",
+      "curviate core sales-nav save-lead ACwAAA1234567 --list 987654",
     ],
   },
   args: {
@@ -1062,7 +1063,7 @@ const salesNavAccountListsCommand = defineCommand({
     name: "account-lists",
     description: "List the saved-account (company) lists on the operator's Sales Navigator seat.",
     examples: [
-      "curviate sales-nav account-lists",
+      "curviate core sales-nav account-lists",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1090,7 +1091,7 @@ const salesNavLeadListsCommand = defineCommand({
     name: "lead-lists",
     description: "List the saved-lead (member) lists on the operator's Sales Navigator seat.",
     examples: [
-      "curviate sales-nav lead-lists",
+      "curviate core sales-nav lead-lists",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -1118,13 +1119,13 @@ const salesNavBrowseAccountListCommand = defineCommand({
     name: "browse-account-list",
     description: "Browse the saved accounts (companies) in one account list.",
     examples: [
-      "curviate sales-nav browse-account-list 987654",
-      "curviate sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING",
+      "curviate core sales-nav browse-account-list 987654",
+      "curviate core sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    listId: { type: "positional", description: "The account-list id (from `sales-nav account-lists`)." },
+    listId: { type: "positional", description: "The account-list id (from `curviate core sales-nav account-lists`)." },
     filter: { type: "string", description: "Restrict to a saved-account subset: STARRED, GROWTH_ALERTS, or RISK_ALERTS." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED or NAME. Defaults to NAME." },
     "sort-order": { type: "string", description: "Sort direction: ASCENDING or DESCENDING. Defaults to ASCENDING." },
@@ -1153,13 +1154,13 @@ const salesNavBrowseLeadListCommand = defineCommand({
     name: "browse-lead-list",
     description: "Browse the saved leads (members) in one lead list.",
     examples: [
-      "curviate sales-nav browse-lead-list 987654",
-      "curviate sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE",
+      "curviate core sales-nav browse-lead-list 987654",
+      "curviate core sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    listId: { type: "positional", description: "The lead-list id (from `sales-nav lead-lists`)." },
+    listId: { type: "positional", description: "The lead-list id (from `curviate core sales-nav lead-lists`)." },
     spotlight: { type: "string", description: "Restrict to a spotlighted lead subset: RECENT_POSITION_CHANGE, RECENTLY_POSTED_ON_LINKEDIN, FOLLOW_YOUR_COMPANY, or SHARE_EXPERIENCE." },
     "sort-by": { type: "string", description: "Sort field: DATE_ADDED, ACCOUNT, NAME, or OUTREACH_ACTIVITY. Defaults to DATE_ADDED." },
     "sort-order": { type: "string", description: "Sort direction: ASCENDING or DESCENDING. Defaults to DESCENDING." },
@@ -1188,7 +1189,7 @@ const salesNavSaveAccountCommand = defineCommand({
     name: "save-account",
     description: "Save a LinkedIn company into an account list.",
     examples: [
-      "curviate sales-nav save-account 1234567 --list 987654",
+      "curviate core sales-nav save-account 1234567 --list 987654",
     ],
   },
   args: {
@@ -1219,8 +1220,7 @@ const salesNavSaveAccountCommand = defineCommand({
 export const salesNavCommand = defineCommand({
   meta: {
       name: "sales-nav",
-      description:
-        "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+      description: DESCRIPTIONS["sales-nav"],
     },
   args: { ...GLOBAL_FLAGS },
   subCommands: {
@@ -1236,18 +1236,18 @@ export const salesNavCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate sales-nav search people [--keywords <k>]\n" +
-      "       curviate sales-nav search companies [--keywords <k>]\n" +
-      "       curviate sales-nav search parameters --type <t>\n" +
-      "       curviate sales-nav search <url>\n" +
-      "       curviate sales-nav message new --to <id> \"<text>\"\n" +
-      "       curviate sales-nav profile <identifier>\n" +
-      "       curviate sales-nav save-lead --list <id> <user_id>\n" +
-      "       curviate sales-nav account-lists --account <id>\n" +
-      "       curviate sales-nav lead-lists --account <id>\n" +
-      "       curviate sales-nav browse-account-list <list_id> --account <id>\n" +
-      "       curviate sales-nav browse-lead-list <list_id> --account <id>\n" +
-      "       curviate sales-nav save-account --list <id> <company_id> --account <id>\n",
+      "Usage: curviate core sales-nav search people [--keywords <k>]\n" +
+      "       curviate core sales-nav search companies [--keywords <k>]\n" +
+      "       curviate core sales-nav search parameters --type <t>\n" +
+      "       curviate core sales-nav search <url>\n" +
+      "       curviate core sales-nav message new --to <id> \"<text>\"\n" +
+      "       curviate core sales-nav profile <identifier>\n" +
+      "       curviate core sales-nav save-lead --list <id> <user_id>\n" +
+      "       curviate core sales-nav account-lists --account <id>\n" +
+      "       curviate core sales-nav lead-lists --account <id>\n" +
+      "       curviate core sales-nav browse-account-list <list_id> --account <id>\n" +
+      "       curviate core sales-nav browse-lead-list <list_id> --account <id>\n" +
+      "       curviate core sales-nav save-account --list <id> <company_id> --account <id>\n",
     );
   },
 });

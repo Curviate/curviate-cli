@@ -21,11 +21,10 @@
  */
 
 import { isStdinToken } from "./stdin.js";
-import { readFile } from "node:fs/promises";
+import { readFileFlag } from "./document.js";
 
-/** Reader injection point, file + stdin sources for --filters. */
+/** Reader injection point, the stdin source for --filters / --filters-file. */
 export type FilterReaders = {
-  readFile: (path: string) => Promise<string>;
   readStdin: () => Promise<string>;
 };
 
@@ -38,10 +37,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export const DEFAULT_FILTER_READERS: FilterReaders = {
-  readFile: (path) => readFile(path, "utf8"),
-  readStdin,
-};
+export const DEFAULT_FILTER_READERS: FilterReaders = { readStdin };
 
 /** The subset of flags that supply the JSON filter source. */
 export type FilterSourceFlags = {
@@ -64,14 +60,11 @@ export async function assembleFilters(
   let raw: string | undefined;
   let source: string | undefined;
 
-  // --filters-file wins over --filters - when both are given.
+  // --filters-file <path|-> (a file flag accepts -) wins
+  // over --filters when both are given; both reading stdin is refused.
   if (flags["filters-file"] !== undefined) {
-    source = `--filters-file ${flags["filters-file"]}`;
-    try {
-      raw = await readers.readFile(flags["filters-file"]);
-    } catch {
-      return { error: `cannot read ${source}` };
-    }
+    source = "--filters-file";
+    raw = await readFileFlag("filters-file", flags["filters-file"], { readStdin: readers === DEFAULT_FILTER_READERS ? undefined : readers.readStdin, others: { filters: flags.filters } });
   } else if (isStdinToken(flags.filters)) {
     source = "--filters - (stdin)";
     raw = await readers.readStdin();

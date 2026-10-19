@@ -1,5 +1,5 @@
 /**
- * `curviate group`, LinkedIn group operations (new namespace).
+ * `curviate core group`, LinkedIn group operations (new namespace).
  *
  * Subcommands:
  *   group list [--target <slug>] [--limit] [--cursor] [--all]: list groups (own by default)
@@ -29,6 +29,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { normalizeGroupId } from "../lib/identifier.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -229,8 +230,8 @@ const groupListCommand = defineCommand({
     name: "list",
     description: "List the groups the connected account belongs to. Pass --target to enumerate another member's groups instead (a partial, interests-only read).",
     examples: [
-      "curviate group list",
-      "curviate group list --target janesmith",
+      "curviate core group list",
+      "curviate core group list --target janesmith",
     ],
   },
   args: {
@@ -264,7 +265,7 @@ const groupGetCommand = defineCommand({
     name: "get",
     description: "Get one LinkedIn group's full detail: name, member count, description, admin contact, and write-feasibility gates.",
     examples: [
-      "curviate group get 12345678",
+      "curviate core group get 12345678",
     ],
   },
   args: {
@@ -295,8 +296,8 @@ const groupMembersCommand = defineCommand({
     name: "members",
     description: "List (or search by name) a group's members: id, profile URL, name, headline, and relationship signal. Requires the connected account be a member of the group.",
     examples: [
-      "curviate group members 12345678",
-      "curviate group members 12345678 --name sophie",
+      "curviate core group members 12345678",
+      "curviate core group members 12345678 --name sophie",
     ],
   },
   args: {
@@ -327,7 +328,7 @@ const groupMembersCommand = defineCommand({
 });
 
 export const groupCommand = defineCommand({
-  meta: { name: "group", description: "Read LinkedIn groups: your own membership list, one group's detail, and its member roster." },
+  meta: { name: "group", description: DESCRIPTIONS.group },
   subCommands: {
     list: groupListCommand,
     get: groupGetCommand,
@@ -335,7 +336,7 @@ export const groupCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate group <subcommand>\n" +
+      "Usage: curviate core group <subcommand>\n" +
       "  list [--target <slug>]\n" +
       "  get <group_id>\n" +
       "  members <group_id> [--name <filter>]\n",

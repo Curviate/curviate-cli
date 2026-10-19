@@ -14,7 +14,7 @@ import { pkgRoot } from "./helpers/pkg.js";
 import { useSink, type Reply } from "./helpers/sink.js";
 
 const sink = useSink();
-const ME = ["profile", "me", "--json", "--account", "acc_1"];
+const ME = ["core", "profile", "me", "--json", "--account", "acc_1"];
 const LIST = ["account", "list", "--json"];
 const envelope = (code: string, status: number, retry = false): Reply => ({ status, body: { code, message: "boom", user_fixable: false, retry_likely_to_succeed: retry } });
 const both = (r: { stdout: string; stderr: string }) => r.stdout + r.stderr;
@@ -136,7 +136,7 @@ describe("a response that is not an API answer", () => {
     await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
     const dead = `http://127.0.0.1:${(srv.address() as { port: number }).port}`;
     await new Promise<void>((r) => srv.close(() => r()));
-    for (const args of [["doctor", "--json"], ME, LIST, ["webhook", "list", "--all", "--json"], ["profile", "me", "--json", "--account", "Some Person"]]) {
+    for (const args of [["doctor", "--json"], ME, LIST, ["webhook", "list", "--all", "--json"], ["core", "profile", "me", "--json", "--account", "Some Person"]]) {
       const r = await sink.run(args, { env: { CURVIATE_BASE_URL: dead } });
       expect(r.status, args.join(" ") + both(r)).toBe(7);
     }

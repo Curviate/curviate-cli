@@ -230,7 +230,7 @@ const SET_ACCOUNT = "Pass --account, set CURVIATE_ACCOUNT, or run `curviate conf
  * No account from flag, env or profile: use the only connected account.
  *
  * With exactly one there is nothing to choose between, so asking for it only
- * blocks a new user (`curviate login` points at `curviate profile me`). This
+ * blocks a new user (`curviate login` points at `curviate core profile me`). This
  * holds for writes too: the unrecoverable failure is acting as an account the
  * caller did not mean, and that needs a second account to exist, which is the
  * case refused here. Same contract as the MCP surface, where the account may

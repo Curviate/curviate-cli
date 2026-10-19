@@ -38,6 +38,7 @@
  */
 
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -820,9 +821,9 @@ async function handleAccountConnectResult(
     successVerb: "linked" | "reconnected";
   },
 ): Promise<void> {
-  const envelope = result as CheckpointEnvelope;
+  const envelope = result as CheckpointEnvelope | null;
 
-  if (envelope.status !== "checkpoint_required") {
+  if (envelope?.status !== "checkpoint_required") {
     renderSuccess(result, ctx.outOpts, ctx.out);
     return;
   }
@@ -1164,7 +1165,7 @@ export async function runAccountConnectSessionPoll(
   io: CredentialIO = {},
 ): Promise<void> {
   if (!flags.session) {
-    out.stderr.write("error: --session is required (the account's acc_... id from `account link` or a checkpoint response).\n");
+    out.stderr.write("error: --session is required (the account's acc_... id from `curviate account link` or a checkpoint response).\n");
     process.exit(2);
   }
 
@@ -1753,7 +1754,7 @@ const accountLinkCommand = defineCommand({
     "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
     "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
     products: { type: "string", description: "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included." },
-    "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `account list --external-id`. Use an opaque id, not an email." },
+    "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `curviate account list --external-id`. Use an opaque id, not an email." },
     timezone: { type: "string", description: "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
@@ -1786,7 +1787,7 @@ const accountConnectSessionPollCommand = defineCommand({
     description:
       "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single " +
       "poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
-      "With --wait: block on the same adaptive cadence as `account link` until a terminal state.",
+      "With --wait: block on the same adaptive cadence as `curviate account link` until a terminal state.",
     examples: [
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait",
@@ -1796,7 +1797,7 @@ const accountConnectSessionPollCommand = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     session: {
       type: "string",
-      description: "The account's acc_... id, returned by `account link` or a checkpoint response.",
+      description: "The account's acc_... id, returned by `curviate account link` or a checkpoint response.",
       required: true,
     },
     wait: {
@@ -1888,6 +1889,17 @@ const accountDisconnectCommand = defineCommand({
   meta: {
     name: "disconnect",
     description: "Hard-disconnect a LinkedIn account and release its seat.",
+    risk: "high",
+    rules: {
+      changes: "The Account is disconnected and deleted from Curviate, its seat is released, and its stored data goes with it.",
+      visible_to: "Everyone using this workspace's key: the Account disappears from `curviate account list`. Nothing is posted on LinkedIn.",
+      budget_rows: [],
+      retry: "A retry after success answers ACCOUNT_NOT_FOUND; read `curviate account list` first.",
+      undo: "Cannot be undone. Link the LinkedIn account again with `curviate account link`; history does not come back.",
+      blast_radius: "One Account and everything stored for it.",
+    },
+    errors: { ACCOUNT_NOT_FOUND: "no Account with this id (already disconnected, or another workspace's)." },
+    seeAlso: ["curviate account list", "curviate account link"],
     examples: [
       "curviate account disconnect acc_YOUR_ACCOUNT_ID",
     ],
@@ -2025,7 +2037,7 @@ const accountCheckpointRequestCommand = defineCommand({
     },
     challenge: {
       type: "string",
-      description: "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `checkpoint solve`. Omit to re-send the current code.",
+      description: "Answer a challenge_selection checkpoint: an id from its challenges list (email | sms | whatsapp). Prints the next checkpoint and exits 12; solve it with `curviate account checkpoint solve`. Omit to re-send the current code.",
     },
   },
   async run({ args }) {
@@ -2062,7 +2074,7 @@ const accountCheckpointCommand = defineCommand({
 });
 
 export const accountCommand = defineCommand({
-  meta: { name: "account", description: "LinkedIn account connection management." },
+  meta: { name: "account", description: DESCRIPTIONS.account },
   subCommands: {
     list: accountListCommand,
     get: accountGetCommand,

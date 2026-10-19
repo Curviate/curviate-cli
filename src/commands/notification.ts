@@ -1,5 +1,5 @@
 /**
- * `curviate notification`, LinkedIn notification operations (new namespace).
+ * `curviate core notification`, LinkedIn notification operations (new namespace).
  *
  * Subcommands:
  *   notification list [--filter <f>] [--limit] [--cursor] [--all]: list notification cards
@@ -21,6 +21,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -197,8 +198,8 @@ const notificationListCommand = defineCommand({
     name: "list",
     description: "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark.",
     examples: [
-      "curviate notification list",
-      "curviate notification list --filter mentions",
+      "curviate core notification list",
+      "curviate core notification list --filter mentions",
     ],
   },
   args: {
@@ -230,14 +231,14 @@ const notificationListCommand = defineCommand({
 const notificationDeleteCommand = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `show-less` is the reliable way to suppress those.",
+    description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `curviate core notification show-less` is the reliable way to suppress those.",
     examples: [
-      "curviate notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
+      "curviate core notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    cardUrn: { type: "positional", description: "The card_urn field of a `notification list` item (not object_urn)." },
+    cardUrn: { type: "positional", description: "The card_urn field of a `curviate core notification list` item (not object_urn)." },
   },
   async run({ args }) {
     const flags = args as NotificationFlags;
@@ -265,12 +266,12 @@ const notificationShowLessCommand = defineCommand({
       "Apply 'show less like this' to the source of one of your notification cards. For network-activity cards " +
       "this removes the card, same as delete. Self-action, safe to repeat, cannot be undone.",
     examples: [
-      "curviate notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
+      "curviate core notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    cardUrn: { type: "positional", description: "The card_urn field of a `notification list` item (not object_urn)." },
+    cardUrn: { type: "positional", description: "The card_urn field of a `curviate core notification list` item (not object_urn)." },
   },
   async run({ args }) {
     const flags = args as NotificationFlags;
@@ -292,7 +293,7 @@ const notificationShowLessCommand = defineCommand({
 });
 
 export const notificationCommand = defineCommand({
-  meta: { name: "notification", description: "Read and act on LinkedIn notification cards." },
+  meta: { name: "notification", description: DESCRIPTIONS.notification },
   subCommands: {
     list: notificationListCommand,
     delete: notificationDeleteCommand,
@@ -300,7 +301,7 @@ export const notificationCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate notification <subcommand>\n" +
+      "Usage: curviate core notification <subcommand>\n" +
       "  list [--filter <f>]\n" +
       "  delete <card_urn>\n" +
       "  show-less <card_urn>\n",

@@ -1,5 +1,5 @@
 /**
- * `curviate search`, LinkedIn search operations.
+ * `curviate core search`, LinkedIn search operations.
  *
  * Subcommands:
  *   search <url>: run a pasted search URL (search.fromUrl)
@@ -28,6 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -160,7 +161,8 @@ const FILTER_FLAGS = {
   },
   "filters-file": {
     type: "string" as const,
-    description: "Path to a JSON file with the filter body (named flags win on conflict).",
+    stdinArg: true,
+    description: "The filter body as a JSON file: a path, or - to read it from stdin (named flags win on conflict).",
   },
 };
 
@@ -365,7 +367,7 @@ export async function runSearchPeople(
   for (const f of PEOPLE_INVALID_FLAGS) {
     if (flags[f as keyof SearchFlags]) {
       out.stderr.write(
-        `error: --${f} is not valid for \`search people\` (classic LinkedIn search). Use \`search jobs\` or \`sales-nav search people\` for this filter.\n`,
+        `error: --${f} is not valid for \`curviate core search people\` (classic LinkedIn search). Use \`curviate core search jobs\` or \`curviate core sales-nav search people\` for this filter.\n`,
       );
       process.exit(2);
     }
@@ -890,9 +892,9 @@ const searchPeopleCommand = defineCommand({
     name: "people",
     description: "Search members with structured filters.",
     examples: [
-      "curviate search people --keywords \"AI engineer\"",
-      "curviate search people --keywords \"AI engineer\" --location 106967730",
-      "curviate search people --filters-file filters.json",
+      "curviate core search people --keywords \"AI engineer\"",
+      "curviate core search people --keywords \"AI engineer\" --location 106967730",
+      "curviate core search people --filters-file filters.json",
     ],
   },
   args: {
@@ -905,8 +907,8 @@ const searchPeopleCommand = defineCommand({
     "past-company": { type: "string", description: "Past company ids (comma-separated)." },
     school: { type: "string", description: "School ids (comma-separated)." },
     "network-distance": { type: "string", description: "Network distance, 1-3 (comma-separated)." },
-    "connections-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type RELATION --keywords \"<name>\"`)" },
-    "followers-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type PEOPLE --keywords \"<name>\"`)" },
+    "connections-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate core search parameters --type RELATION --keywords \"<name>\"`)" },
+    "followers-of": { type: "string", description: "member id(s), comma-separated (resolve: `curviate core search parameters --type PEOPLE --keywords \"<name>\"`)" },
     // People-specific filter flags
     title: { type: "string", description: "Job title keyword filter (maps to advanced_keywords.title)." },
     "profile-language": { type: "string", description: "Profile language codes (comma-separated, e.g. en,de)." },
@@ -935,8 +937,8 @@ const searchCompaniesCommand = defineCommand({
     name: "companies",
     description: "Search companies.",
     examples: [
-      "curviate search companies --keywords \"developer tools\"",
-      "curviate search companies --keywords robotics --headcount 11-50,51-200",
+      "curviate core search companies --keywords \"developer tools\"",
+      "curviate core search companies --keywords robotics --headcount 11-50,51-200",
     ],
   },
   args: {
@@ -975,10 +977,10 @@ const searchPostsCommand = defineCommand({
   meta: {
     name: "posts",
     description:
-      "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate post get <id>` for the clean body.",
+      "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate core post get <id>` for the clean body.",
     examples: [
-      "curviate search posts --keywords \"agent infrastructure\"",
-      "curviate search posts --keywords \"agent infrastructure\" --date-posted past_week",
+      "curviate core search posts --keywords \"agent infrastructure\"",
+      "curviate core search posts --keywords \"agent infrastructure\" --date-posted past_week",
     ],
   },
   args: {
@@ -988,13 +990,13 @@ const searchPostsCommand = defineCommand({
     "sort-by": { type: "string", description: "Sort order (e.g. relevance, date)." },
     "date-posted": { type: "string", description: "time window: past_day, past_week, or past_month (hyphens also accepted: past-day, past-week, past-month)" },
     "content-type": { type: "string", description: "content type: videos, images, live_videos, collaborative_articles, documents" },
-    "posted-by-member": { type: "string", description: "member id(s), comma-separated (resolve: `curviate search parameters --type PEOPLE`); merges into posted_by" },
-    "posted-by-company": { type: "string", description: "company id(s), comma-separated (resolve: `curviate search parameters --type COMPANY`); merges into posted_by" },
+    "posted-by-member": { type: "string", description: "member id(s), comma-separated (resolve: `curviate core search parameters --type PEOPLE`); merges into posted_by" },
+    "posted-by-company": { type: "string", description: "company id(s), comma-separated (resolve: `curviate core search parameters --type COMPANY`); merges into posted_by" },
     "posted-by-me": { type: "boolean", description: "only posts authored by you; merges into posted_by" },
-    "mentioning-member": { type: "string", description: "member id(s) mentioned in the post, comma-separated (resolve: `curviate search parameters --type PEOPLE`); merges into mentioning" },
-    "mentioning-company": { type: "string", description: "company id(s) mentioned in the post, comma-separated (resolve: `curviate search parameters --type COMPANY`); merges into mentioning" },
-    "author-industry": { type: "string", description: "author's industry id(s), comma-separated (resolve: `curviate search parameters --type INDUSTRY`); merges into author" },
-    "author-company": { type: "string", description: "author's company id(s), comma-separated (resolve: `curviate search parameters --type COMPANY`); merges into author" },
+    "mentioning-member": { type: "string", description: "member id(s) mentioned in the post, comma-separated (resolve: `curviate core search parameters --type PEOPLE`); merges into mentioning" },
+    "mentioning-company": { type: "string", description: "company id(s) mentioned in the post, comma-separated (resolve: `curviate core search parameters --type COMPANY`); merges into mentioning" },
+    "author-industry": { type: "string", description: "author's industry id(s), comma-separated (resolve: `curviate core search parameters --type INDUSTRY`); merges into author" },
+    "author-company": { type: "string", description: "author's company id(s), comma-separated (resolve: `curviate core search parameters --type COMPANY`); merges into author" },
     "author-keywords": { type: "string", description: "author keyword filter (free text); merges into author" },
   },
   async run({ args }) {
@@ -1021,8 +1023,8 @@ const searchJobsCommand = defineCommand({
     name: "jobs",
     description: "Search jobs.",
     examples: [
-      "curviate search jobs --keywords \"AI engineer\"",
-      "curviate search jobs --keywords \"AI engineer\" --location 106967730 --presence remote",
+      "curviate core search jobs --keywords \"AI engineer\"",
+      "curviate core search jobs --keywords \"AI engineer\" --location 106967730 --presence remote",
     ],
   },
   args: {
@@ -1030,7 +1032,7 @@ const searchJobsCommand = defineCommand({
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     // On jobs, --location maps to the geo region filter (not a location array, different API shape for jobs vs people)
-    location: { type: "string", description: "geo region id (single id; resolve via `curviate search parameters --type LOCATION`); maps to region filter" },
+    location: { type: "string", description: "geo region id (single id; resolve via `curviate core search parameters --type LOCATION`); maps to region filter" },
     industry: { type: "string", description: "Industry ids (comma-separated)." },
     seniority: { type: "string", description: "seniority level, closed enum: executive|director|mid_senior|associate|entry|intern (comma-separated)" },
     function: { type: "string", description: "Job function ids (comma-separated)." },
@@ -1042,7 +1044,7 @@ const searchJobsCommand = defineCommand({
     title: {
       type: "string",
       description:
-        "job title id(s), comma-separated (resolve: `curviate search parameters --type JOB_TITLE`); ID-based targeting, unlike `curviate search people --title`, which is free-text",
+        "job title id(s), comma-separated (resolve: `curviate core search parameters --type JOB_TITLE`); ID-based targeting, unlike `curviate core search people --title`, which is free-text",
     },
     presence: { type: "string", description: "work presence, comma-separated: on_site, hybrid, remote" },
     benefits: { type: "string", description: "benefit ids, comma-separated" },
@@ -1081,8 +1083,8 @@ const searchParametersCommand = defineCommand({
     description:
       "Resolve human-readable terms to opaque filter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
     examples: [
-      "curviate search parameters --type LOCATION --keywords Berlin",
-      "curviate search parameters --type COMPANY --keywords Acme",
+      "curviate core search parameters --type LOCATION --keywords Berlin",
+      "curviate core search parameters --type COMPANY --keywords Acme",
     ],
   },
   args: {
@@ -1119,7 +1121,7 @@ const searchGroupsCommand = defineCommand({
     name: "groups",
     description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error.",
     examples: [
-      "curviate search groups \"gtm engineering\"",
+      "curviate core search groups \"gtm engineering\"",
     ],
   },
   args: {
@@ -1153,8 +1155,8 @@ const searchServicesCommand = defineCommand({
       "--service-category, or --location is required. Resolve --service-category/--location values with " +
       "'search service-parameters' first, both take opaque ids, not free text.",
     examples: [
-      "curviate search services --keywords marketing",
-      "curviate search services --service-category 100 --location 106967730",
+      "curviate core search services --keywords marketing",
+      "curviate core search services --service-category 100 --location 106967730",
     ],
     requires: [
       "At least one of --keywords, --service-category or --location.",
@@ -1163,8 +1165,8 @@ const searchServicesCommand = defineCommand({
   args: {
     ...readOnly(GLOBAL_FLAGS),
     keywords: { type: "string", description: "Free-text keyword match." },
-    "service-category": { type: "string", description: "Opaque service-category ids (comma-separated; resolve via `curviate search service-parameters --type service_category`)." },
-    location: { type: "string", description: "Opaque location ids (comma-separated; resolve via `curviate search service-parameters --type location`)." },
+    "service-category": { type: "string", description: "Opaque service-category ids (comma-separated; resolve via `curviate core search service-parameters --type service_category`)." },
+    location: { type: "string", description: "Opaque location ids (comma-separated; resolve via `curviate core search service-parameters --type location`)." },
     connections: { type: "string", description: "Connection degree filter, comma-separated: 1 (1st), 2 (2nd), 3 (3rd+)." },
     language: { type: "string", description: "Profile-language ISO 639-1 codes, comma-separated (e.g. en,de,es,fr)." },
   },
@@ -1193,7 +1195,7 @@ const searchServiceParametersCommand = defineCommand({
     description:
       "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
     examples: [
-      "curviate search service-parameters --type service_category --keywords marketing",
+      "curviate core search service-parameters --type service_category --keywords marketing",
     ],
   },
   args: {
@@ -1226,9 +1228,9 @@ const searchServiceParametersCommand = defineCommand({
 export const searchCommand = defineCommand({
   meta: {
     name: "search",
-    description: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",
+    description: DESCRIPTIONS.search,
     examples: [
-      "curviate search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
+      "curviate core search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
     ],
   },
   args: {
@@ -1255,15 +1257,15 @@ export const searchCommand = defineCommand({
     // Bare form: `search <url>` runs the URL directly. No url -> print usage.
     if (!flags.url) {
       process.stderr.write(
-        "Usage: curviate search <url>\n" +
-        "       curviate search people [--keywords <k>]\n" +
-        "       curviate search companies [--keywords <k>]\n" +
-        "       curviate search posts [--keywords <k>]\n" +
-        "       curviate search jobs [--keywords <k>]\n" +
-        "       curviate search parameters --type <t> --keywords <k>\n" +
-        "       curviate search groups <query>\n" +
-        "       curviate search services [--keywords <k>]\n" +
-        "       curviate search service-parameters --keywords <k> [--type <t>]\n",
+        "Usage: curviate core search <url>\n" +
+        "       curviate core search people [--keywords <k>]\n" +
+        "       curviate core search companies [--keywords <k>]\n" +
+        "       curviate core search posts [--keywords <k>]\n" +
+        "       curviate core search jobs [--keywords <k>]\n" +
+        "       curviate core search parameters --type <t> --keywords <k>\n" +
+        "       curviate core search groups <query>\n" +
+        "       curviate core search services [--keywords <k>]\n" +
+        "       curviate core search service-parameters --keywords <k> [--type <t>]\n",
       );
       // <url> is functionally required for the bare form, a missing
       // required positional is a usage error (exit 2), not a silent success.

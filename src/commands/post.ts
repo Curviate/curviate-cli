@@ -1,5 +1,5 @@
 /**
- * `curviate post`, LinkedIn post operations.
+ * `curviate core post`, LinkedIn post operations.
  *
  * Subcommands:
  *   post get <post_id>: get a single post (read)
@@ -28,6 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
@@ -610,8 +611,8 @@ const postGetCommand = defineCommand({
     name: "get",
     description: "Get a post by id.",
     examples: [
-      "curviate post get 7290000000000000000",
-      "curviate post get urn:li:activity:7290000000000000000",
+      "curviate core post get 7290000000000000000",
+      "curviate core post get urn:li:activity:7290000000000000000",
     ],
   },
   args: {
@@ -647,8 +648,8 @@ const postCreateCommand = defineCommand({
     name: "create",
     description: "Create a new post.",
     examples: [
-      "curviate post create \"We just shipped webhooks for inbox events.\"",
-      "curviate post create \"Our latest product update.\" --attach screenshot.png",
+      "curviate core post create \"We just shipped webhooks for inbox events.\"",
+      "curviate core post create \"Our latest product update.\" --attach screenshot.png",
     ],
   },
   args: {
@@ -686,8 +687,8 @@ const postReactCommand = defineCommand({
     name: "react",
     description: "React to a post.",
     examples: [
-      "curviate post react 7290000000000000000 like",
-      "curviate post react 7290000000000000000 celebrate --as-organization 1234567",
+      "curviate core post react 7290000000000000000 like",
+      "curviate core post react 7290000000000000000 celebrate --as-organization 1234567",
     ],
   },
   args: {
@@ -742,8 +743,8 @@ const postReactionsCommand = defineCommand({
     name: "reactions",
     description: "List reactions on a post.",
     examples: [
-      "curviate post reactions 7290000000000000000",
-      "curviate post reactions 7290000000000000000 --all",
+      "curviate core post reactions 7290000000000000000",
+      "curviate core post reactions 7290000000000000000 --all",
     ],
   },
   args: {
@@ -800,7 +801,7 @@ const postDeleteCommand = defineCommand({
     name: "delete",
     description: "Delete a post you own.",
     examples: [
-      "curviate post delete 7290000000000000000",
+      "curviate core post delete 7290000000000000000",
     ],
   },
   args: {
@@ -817,7 +818,7 @@ const postUnreactCommand = defineCommand({
     name: "unreact",
     description: "Remove your reaction from a post.",
     examples: [
-      "curviate post unreact 7290000000000000000 like",
+      "curviate core post unreact 7290000000000000000 like",
     ],
   },
   args: {
@@ -835,7 +836,7 @@ const postSavedCommand = defineCommand({
     name: "saved",
     description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars).",
     examples: [
-      "curviate post saved",
+      "curviate core post saved",
     ],
   },
   args: { ...readOnly(GLOBAL_FLAGS) },
@@ -849,7 +850,7 @@ const postSaveCommand = defineCommand({
     name: "save",
     description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Saving a saved post changes nothing.",
     examples: [
-      "curviate post save 7290000000000000000",
+      "curviate core post save 7290000000000000000",
     ],
   },
   args: {
@@ -866,7 +867,7 @@ const postUnsaveCommand = defineCommand({
     name: "unsave",
     description: "Remove a post from your saved-posts bookmark list. Unsaving a post that is not saved changes nothing.",
     examples: [
-      "curviate post unsave 7290000000000000000",
+      "curviate core post unsave 7290000000000000000",
     ],
   },
   args: {
@@ -881,10 +882,10 @@ const postUnsaveCommand = defineCommand({
 const postUserPostsCommand = defineCommand({
   meta: {
     name: "user-posts",
-    description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `post get <post_id>` reflects it immediately.",
+    description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core post get <post_id>` reflects it immediately.",
     examples: [
-      "curviate post user-posts me",
-      "curviate post user-posts janesmith --limit 10",
+      "curviate core post user-posts me",
+      "curviate core post user-posts janesmith --limit 10",
     ],
   },
   args: {
@@ -901,8 +902,8 @@ const postUserReactionsCommand = defineCommand({
     name: "user-reactions",
     description: "List a member's own reactions (accepts 'me'). Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page.",
     examples: [
-      "curviate post user-reactions me",
-      "curviate post user-reactions me --all",
+      "curviate core post user-reactions me",
+      "curviate core post user-reactions me --all",
     ],
   },
   args: {
@@ -915,7 +916,7 @@ const postUserReactionsCommand = defineCommand({
 });
 
 export const postCommand = defineCommand({
-  meta: { name: "post", description: "Create and manage LinkedIn posts." },
+  meta: { name: "post", description: DESCRIPTIONS.post },
   subCommands: {
     get: postGetCommand,
     create: postCreateCommand,
@@ -931,7 +932,7 @@ export const postCommand = defineCommand({
   },
   async run() {
     process.stderr.write(
-      "Usage: curviate post <subcommand>\n" +
+      "Usage: curviate core post <subcommand>\n" +
       "  get <post_id>\n" +
       "  create \"<text>\" [--attach <file>...]\n" +
       "  react <post_id> <reaction> [--as-organization <org_id>]\n" +
@@ -943,7 +944,7 @@ export const postCommand = defineCommand({
       "  unsave <post_id>\n" +
       "  user-posts <user_id>\n" +
       "  user-reactions <user_id>\n" +
-      "\nComment operations moved to the `comment` command group.\n",
+      "\nComment operations moved to the `curviate core comment` command group.\n",
     );
   },
 });

@@ -6,7 +6,7 @@
  *
  *   const sink = useSink();                      // registers its own hooks
  *   sink.reply = (hit) => ({ status: 404, body: {...} });   // reset after each test
- *   const r = await sink.run(["profile", "me", "--json", "--account", "acc_1"]);
+ *   const r = await sink.run(["core", "profile", "me", "--json", "--account", "acc_1"]);
  *   r.status / r.stdout / r.stderr / r.requests
  */
 

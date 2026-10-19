@@ -1,0 +1,11 @@
+{
+  "note": "Every limit-shaped number in help is bound (equal to the published schema at a JSON pointer into test/fixtures/openapi.json) or cited. Only LinkedIn-side limits may be cited: a limit Curviate's server enforces belongs in the published schema. test/help-contract.test.ts checks both lists.",
+  "bound": [
+    { "command": "core connect", "number": 300, "unit": "characters", "pointer": "/paths/~1v1~1{account_id}~1invites/post/requestBody/content/application~1json/schema/properties/message/maxLength" }
+  ],
+  "cited": [
+    { "command": "core connect", "number": 200, "unit": "characters", "enforcer": "LinkedIn", "source": "LinkedIn caps an invitation note at 200 characters on a free account." },
+    { "command": "core connect", "number": 5, "unit": "invitations", "enforcer": "LinkedIn", "source": "LinkedIn allows a note on about 5 invitations a month on a free account." },
+    { "command": "core connect", "number": 10, "unit": "seconds", "enforcer": "LinkedIn", "source": "LinkedIn takes 10-30 seconds to show a sent invitation in the recipient's received list." }
+  ]
+}

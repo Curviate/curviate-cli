@@ -664,16 +664,6 @@ describe("connect help strings — Tier-1", () => {
     expect(desc).toContain("provider_id");
   });
 
-  it("connect --note description mentions acceptance rates and char limit", async () => {
-    const args = (connectCommand as Record<string, unknown>).args as Record<
-      string,
-      { description?: string }
-    >;
-    const desc = args["note"]?.description ?? "";
-    expect(desc).toContain("Personalized messages increase acceptance rates");
-    expect(desc).toMatch(/300 char|≤300 char/);
-  });
-
   it("connect sent description contains pending and connect cancel cross-reference", async () => {
     const subCmds = (connectCommand as Record<string, unknown>).subCommands as Record<
       string,

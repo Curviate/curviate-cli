@@ -1,11 +1,10 @@
 /**
  * Help text is the contract an agent reads: every `--flag` a command's help
  * mentions must be declared by the command it is about (a backticked
- * `curviate <path> ...` span is checked against that command instead), and no
- * help quotes a command that was removed or renamed.
+ * `curviate <path> ...` span is checked against that command instead), (every quoted path resolving is
+ * help-contract.test.ts's).
  */
 import { describe, it, expect } from "vitest";
-import { successorHint } from "../src/dispatch.js";
 import { allNodes } from "./helpers/tree.js";
 
 const GLOBALS = new Set(["account", "json", "fields", "limit", "cursor", "all", "max-pages", "page-delay", "preview", "verbose", "api-key", "base-url", "timeout", "profile", "help", "version"]);
@@ -19,7 +18,8 @@ for (const n of nodes) {
     for (const a of ([] as string[]).concat(d.alias ?? [])) declared.add(a);
   }
   const text = [...Object.entries(meta).filter(([k, v]) => k !== "name" && typeof v === "string").map(([, v]) => v as string), ...Object.values(n.defs).map((d) => d.description ?? "")].join("\n");
-  tree.set(n.path.join(" "), { declared, text });
+  // A pure group declares no flags; its copy (the `core` text) names its members' flags.
+  tree.set(n.path.join(" "), { declared, text: n.hasSubs && declared.size === 0 ? "" : text });
 }
 
 /** The longest known command path a token list starts with. */
@@ -46,19 +46,5 @@ describe("help text", () => {
     }
     expect(tree.size).toBeGreaterThan(150);
     expect(bad).toEqual([]);
-  });
-
-  it("quotes no removed or renamed command", () => {
-    const groups = new Set(nodes.filter((n) => n.path.length === 1).map((n) => n.path[0]));
-    const stale: string[] = [];
-    for (const [path, { text }] of tree) {
-      for (const m of text.matchAll(/`([^`]*)`|'([^']*)'|"([^"]*)"/g)) {
-        const words = (m[1] ?? m[2] ?? m[3] ?? "").trim().split(/\s+/).filter(Boolean);
-        if (words[0] === "curviate") words.shift();
-        const hint = words[0] && words[1] && groups.has(words[0]) ? successorHint(words[0], words[1]) : null;
-        if (hint) stale.push(`${path}: quotes \`${m[0]}\`. ${hint}`);
-      }
-    }
-    expect(stale).toEqual([]);
   });
 });
