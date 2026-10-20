@@ -1561,15 +1561,7 @@ export async function runAccountCheckpointPoll(
     return;
   }
 
-  let timeoutOverrideMs: number | undefined;
-  if (flags.timeout !== undefined) {
-    const parsed = Number(flags.timeout);
-    if (!/^[1-9]\d*$/.test(flags.timeout)) {
-      out.stderr.write("error: --timeout must be a whole number of milliseconds, 1 or more.\n");
-      process.exit(2);
-    }
-    timeoutOverrideMs = parsed;
-  }
+  const timeoutOverrideMs = resolveWaitTimeoutOverrideMs(flags, out);
 
   const resolvedIo = resolveCredentialIO(io);
   // "TTY + not --json" per the flag's own contract, the raw --json flag,
