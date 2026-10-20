@@ -21,7 +21,7 @@
  */
 
 import { isStdinToken } from "./stdin.js";
-import { readFileFlag } from "./document.js";
+import { parseDocument, readFileFlag } from "./document.js";
 
 /** Reader injection point, the stdin source for --filters / --filters-file. */
 export type FilterReaders = {
@@ -76,10 +76,14 @@ export async function assembleFilters(
   if (raw === undefined) return { body: {} };
 
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { error: `${source} is not valid JSON` };
+  // A file flag names the fault's line and column (FR-010), like every --file.
+  if (source === "--filters-file") parsed = parseDocument("filters-file", raw);
+  else {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { error: `${source} is not valid JSON` };
+    }
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { error: `${source} must be a JSON object` };
@@ -93,14 +97,4 @@ export function splitCsv(value: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
-}
-
-/**
- * Split a comma-separated flag value into a number array, dropping any segment
- * that is not a finite number (e.g. network_distance accepts `1,2,3`).
- */
-export function splitCsvNumbers(value: string): number[] {
-  return splitCsv(value)
-    .map((s) => Number(s))
-    .filter((n) => Number.isFinite(n));
 }

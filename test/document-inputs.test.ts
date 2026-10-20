@@ -116,6 +116,10 @@ describe("--file through the entry point (core recruiter job create)", () => {
     ["- while stdin is a terminal", () => job("-", { stdinTTY: true }), /stdin is a terminal/],
     ["the old --body-file", () => sink.run(["core", "recruiter", "job", "create", "--body-file", put("ok2.json", JSON.stringify(DOC)), ...A]), /unknown flag `--body-file`/],
     ["the old --body -", () => sink.run(["core", "recruiter", "job", "create", "--body", "-", ...A], { stdin: JSON.stringify(DOC) }), /unknown flag `--body`/],
+    ["a UTF-8 byte order mark, named (not a JSON column)", () => job(put("bom.json", "\uFEFF" + JSON.stringify(DOC))), /--file: starts with a byte order mark \(BOM\)/],
+    ["Latin-1 bytes, never sent as U+FFFD", () => { const f = join(dir, "latin1.json"); writeFileSync(f, Buffer.from('{"a":"caf\xe9"}', "latin1")); return job(f); }, /--file: not valid UTF-8/],
+    ["Latin-1 bytes on stdin", () => sink.run(["core", "search", "people", "--filters-file", "-", ...A], { stdin: Buffer.from('{"keywords":"caf\xe9"}', "latin1") }), /--filters-file: not valid UTF-8/],
+    ["--filters-file invalid JSON, named by line and column", () => sink.run(["core", "search", "people", "--filters-file", put("badf.json", '{\n  oops\n}'), ...A]), /--filters-file: not valid JSON at line 2, column 3/],
     ["two stdin inputs in one call", () => sink.run(["core", "search", "people", "--filters-file", "-", "--filters", "-", ...A], { stdin: "{}" }), /both read stdin/],
   ])("%s: exit 2, zero requests", async (_l, go, message) => {
     const r = await go();
@@ -130,10 +134,10 @@ describe("--file through the entry point (core recruiter job create)", () => {
     expect((JSON.parse(r.stdout) as { error: { errors: Array<{ path: string }> } }).error.errors.map((e) => e.path)).toEqual(["toString", "__proto__", "company"]);
   });
 
-  it("--filters-file - reads the filter document from stdin into the request", async () => {
-    const r = await sink.run(["core", "search", "people", "--filters-file", "-", ...A, "--json"], { stdin: '{"keywords":"rust"}' });
+  it("--filters-file - reads the filter document from stdin into the request; UTF-8 text arrives intact (control for the decode refusals)", async () => {
+    const r = await sink.run(["core", "search", "people", "--filters-file", "-", ...A, "--json"], { stdin: Buffer.from('{"keywords":"café rust"}', "utf8") });
     expect([r.status, r.requests.length], r.stderr).toEqual([0, 1]);
-    expect(JSON.parse(r.requests[0]!.body)).toMatchObject({ keywords: "rust" });
+    expect(JSON.parse(r.requests[0]!.body)).toMatchObject({ keywords: "café rust" });
   });
 
   it("three faults: three `<path>: <rule>` lines, the typo named with its field, INVALID_REQUEST with three errors in JSON mode, no value echoed, nothing sent", async () => {
@@ -177,6 +181,17 @@ describe("--file through the entry point (core recruiter job create)", () => {
     expect(rows.length).toBeGreaterThan(15);
     expect(rows).toContain(rows.find((l) => /^description\s+string\s+required\s+at least 200 characters$/.test(l)));
     for (const field of ["apply_method.website_url", "apply_method.notification_email", "apply_method.resume_required", "company.id", "company.name"]) expect(rows.some((l) => l.startsWith(`${field} `)), field).toBe(true);
+    // One row per field: oneOf branches merge, and a branch-only field says which branch requires it.
+    for (const key of ["core recruiter job create", "core recruiter project-job create", "core recruiter project-job update"]) {
+      const paths = renderDocument(key).map((l) => l.split(/\s+/)[0]);
+      expect(paths.filter((p, i) => paths.indexOf(p) !== i), key).toEqual([]);
+    }
+    expect(rows.filter((l) => /^(apply_method\.(method|notification_email|website_url)|company\.id) /.test(l)).map((l) => l.split(/\s{2,}/).slice(2).join(" | "))).toEqual([
+      "required in {id} | non-empty",
+      "required | one of linkedin, external",
+      'required if method is "linkedin"',
+      'required if method is "external" | non-empty',
+    ]);
     expect(r.stdout).toContain(`DOCUMENT\n\n${rows.map((l) => `  ${l}`).join("\n")}\n\n`);
     expect(r.stdout.indexOf("DOCUMENT")).toBeLessThan(r.stdout.indexOf("EXAMPLES"));
   });

@@ -37,10 +37,10 @@ import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readab
 import {
   assembleFilters,
   splitCsv,
-  splitCsvNumbers,
   DEFAULT_FILTER_READERS,
   type FilterReaders,
 } from "../lib/search-filters.js";
+import { intFlag, intListFlag } from "../lib/int-flag.js";
 import {
   slimSearchPeople,
   slimSearchPeopleItem,
@@ -230,7 +230,7 @@ const NAMED_FLAG_MAPPERS: Record<
     if (flags.company) body["current_company"] = splitCsv(flags.company);
     if (flags["past-company"]) body["past_company"] = splitCsv(flags["past-company"]);
     if (flags.school) body["school"] = splitCsv(flags.school);
-    if (flags["network-distance"]) body["network_distance"] = splitCsvNumbers(flags["network-distance"]);
+    if (flags["network-distance"]) body["network_distance"] = intListFlag("network-distance", flags["network-distance"], 1, 3);
     // --connections-of / --followers-of: comma-separated -> array
     if (flags["connections-of"]) body["connections_of"] = splitCsv(flags["connections-of"]);
     if (flags["followers-of"]) body["followers_of"] = splitCsv(flags["followers-of"]);
@@ -298,8 +298,8 @@ const NAMED_FLAG_MAPPERS: Record<
     if (flags.company) body["company"] = splitCsv(flags.company);
     if (flags["sort-by"]) body["sort_by"] = flags["sort-by"];
     // --date-posted on jobs is a numeric age-in-days (NOT an enum string; no normalization)
-    if (flags["date-posted"] !== undefined && flags["date-posted"] !== "") {
-      body["date_posted"] = Number(flags["date-posted"]);
+    if (flags["date-posted"] !== undefined) {
+      body["date_posted"] = intFlag("date-posted", flags["date-posted"]);
     }
     // --region alias applied last so it wins over --location when both supplied
     if (flags.region) body["region"] = flags.region;
@@ -730,7 +730,7 @@ export async function runSearchServices(
   if (flags["service-category"]) body["service_category"] = splitCsv(flags["service-category"]);
   if (flags.location) body["location"] = splitCsv(flags.location);
   if (flags.connections) {
-    body["connections"] = splitCsvNumbers(flags.connections);
+    body["connections"] = intListFlag("connections", flags.connections, 1, 3);
   }
   if (flags.language) body["language"] = splitCsv(flags.language);
   if (flags.limit) body["limit"] = parseInt(flags.limit, 10);

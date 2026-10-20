@@ -152,7 +152,7 @@ function resolves(words: string[]): boolean {
  */
 const COMMAND_NAMES = [...new Set(manifest.flatMap((c) => c.path))].sort((a, b) => b.length - a.length);
 const relativeNames = (text: string, names = COMMAND_NAMES) =>
-  [...text.matchAll(new RegExp(`\`(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")})(?: [^\`]*)?\``, "g"))].map((m) => m[0]);
+  [...text.matchAll(new RegExp(`([\`'])(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")})(?: [^\`']*)?\\1`, "g"))].map((m) => m[0]);
 const mentions = (text: string) => [...text.matchAll(/(?<![\w/.@-])curviate((?: [a-z][a-z0-9-]*)*)/g)].map((m) => m[1]!.trim().split(" ").filter(Boolean));
 
 describe("every command named in copy is a full, live path", () => {
@@ -171,7 +171,8 @@ describe("every command named in copy is a full, live path", () => {
       relativeNames("The card_urn of a `notification list` item."),
       relativeNames("Solve it with `checkpoint solve`; write commands (`save-lead`, `project-job create`/`update`)."),
       relativeNames("`curviate core company chats`, `--company`, `primary`, `company_id`, `saved-leads`"),
-    ]).toEqual([["`notification list`"], ["`checkpoint solve`", "`save-lead`", "`project-job create`", "`update`"], []]);
+      relativeNames("To list comments on a post, use 'comment list <post_id>'."),
+    ]).toEqual([["`notification list`"], ["`checkpoint solve`", "`save-lead`", "`project-job create`", "`update`"], [], ["'comment list <post_id>'"]]);
     // Controls: an old path and an unknown subcommand under a pure group are dead; a positional after a bare form is not.
     expect([["profile", "me"], ["core", "inbox", "sync"], ["account", "bogus"]].map(resolves)).toEqual([false, false, false]);
     expect([["core", "profile", "me"], ["core", "connect", "janesmith"], ["account", "get"]].map(resolves)).toEqual([true, true, true]);

@@ -1330,7 +1330,8 @@ export const profileCommand = defineCommand({
         "       curviate core profile followers <id> | following <id>\n" +
         "       curviate core profile follow <id> | unfollow <id>\n" +
         "       curviate core profile update [--headline|--bio|--first-name|--last-name|--skills|--picture]\n" +
-        "       curviate core profile endorse <id> --endorsement-id <id>\n",
+        "       curviate core profile endorse <id> --endorsement-id <id>\n" +
+        "       curviate core profile subscription | analytics | visitors | ssi\n",
       );
       // <id> is functionally required for the bare form, a missing required
       // positional is a usage error (exit 2), not a silent success.

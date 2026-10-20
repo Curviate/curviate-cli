@@ -11,7 +11,7 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assembleFilters, splitCsv, splitCsvNumbers } from "../../src/lib/search-filters.js";
+import { assembleFilters, splitCsv } from "../../src/lib/search-filters.js";
 import { exitCode } from "../helpers/exit-code.js";
 
 const dir = mkdtempSync(join(tmpdir(), "curviate-filters-"));
@@ -96,15 +96,5 @@ describe("splitCsv — comma-separated array flags", () => {
 
   it("drops empty segments from trailing/double commas", () => {
     expect(splitCsv("a,,b,")).toEqual(["a", "b"]);
-  });
-});
-
-describe("splitCsvNumbers — comma-separated numeric array flags", () => {
-  it("parses each segment to a number", () => {
-    expect(splitCsvNumbers("1,2,3")).toEqual([1, 2, 3]);
-  });
-
-  it("ignores non-numeric segments", () => {
-    expect(splitCsvNumbers("1,x,3")).toEqual([1, 3]);
   });
 });

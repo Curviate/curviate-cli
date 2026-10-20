@@ -12,6 +12,7 @@
  */
 
 import { profileValue, readConfigFile, type ProfileField } from "./config.js";
+import { isStdinToken } from "./stdin.js";
 
 export interface FlagInputs {
   /** `--api-key` flag value (citty parses `--api-key` to camelCase `apiKey`). */
@@ -61,6 +62,12 @@ export async function resolveEffectiveConfig(
   const fromProfile = <T extends string | number>(field: ProfileField): T | undefined =>
     profileValue(file, flags.profile, field) as T | undefined;
 
+  // `--api-key -` reads stdin only on `login`; anywhere else it would be sent as
+  // the key itself (`Bearer -`) and blamed on the credentials.
+  if (isStdinToken(flags.apiKey)) {
+    process.stderr.write("error: --api-key - reads stdin only on `curviate login`. Set CURVIATE_API_KEY, or save the key with `curviate login --api-key -`.\n");
+    process.exit(2);
+  }
   // API key: flag > env > profile
   const profileKey =
     flags.apiKey === undefined && process.env["CURVIATE_API_KEY"] === undefined

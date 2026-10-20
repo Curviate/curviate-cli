@@ -119,6 +119,12 @@ async function platformFaultIfUnreadable(res: Response, kind: WriteKind): Promis
     headers.delete("content-type");
     return new Response(null, { status: res.status, statusText: res.statusText, headers });
   }
+  // A write that met an unreadable 5xx (a proxy's HTML page) may have landed
+  // behind it: say so, and never invite the resend that would repeat it.
+  if (kind !== "read") {
+    const check = kind === "state" ? `check with \`${getRecheck()}\`` : "read the current state";
+    return fault(res, `The API answered ${res.status} without a readable body. The request may have been applied: ${check} before sending it again.`, false);
+  }
   return fault(res, `The API answered ${res.status} without a readable body.`, true);
 }
 

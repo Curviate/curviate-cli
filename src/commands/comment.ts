@@ -564,7 +564,7 @@ const commentListCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    postId: { type: "positional", description: "Post to list comments for: the `id` from search posts or a post read, a bare numeric activity id, a urn:li:activity|ugcPost|share:N URN, or a full LinkedIn post URL." },
+    postId: { type: "positional", description: "Post to list comments for: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, a urn:li:activity|ugcPost|share:N URN, or a full LinkedIn post URL." },
   },
   async run({ args }) {
     await withClient(args as CommentFlags, runCommentList);

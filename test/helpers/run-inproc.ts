@@ -28,8 +28,8 @@ export interface RunResult {
 export interface RunOpts {
   /** Env overrides; `undefined` deletes the key. Every CURVIATE_* key starts unset. */
   env?: Record<string, string | undefined>;
-  /** Piped to stdin (default: empty, already ended). */
-  stdin?: string;
+  /** Piped to stdin (default: empty, already ended); a Buffer goes byte for byte. */
+  stdin?: string | Buffer;
   /** Stdin is an interactive terminal (nothing piped). */
   stdinTTY?: boolean;
   /** A config home to use; default: a fresh empty one per run. */

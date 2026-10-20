@@ -43,6 +43,7 @@ import { GLOBAL_FLAGS, STATE_WRITES, setWriteKind } from "./lib/global-flags.js"
 import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 import { editDistance } from "./lib/bare-form-guard.js";
+import { intFlag } from "./lib/int-flag.js";
 
 type AnyCommand = CommandDef;
 
@@ -582,9 +583,18 @@ export function firstSentenceHint(description: string | undefined): string {
 function usageError(message: string, hint?: string): never {
   process.stderr.write(`error: ${message}\n`);
   if (hint) process.stderr.write(`hint: ${hint}\n`);
-  process.stderr.write("Run `curviate --help` for usage.\n");
+  process.stderr.write(helpPointer());
   process.exit(2);
 }
+
+/**
+ * The help to read next: the resolved command's own, by full path, once routing
+ * has found it (an unknown flag on `core connect sent` points at
+ * `curviate core connect sent --help`). Routing errors (an unknown or old
+ * command) keep the root pointer, FR-003's generic error.
+ */
+let helpFor = "curviate";
+const helpPointer = () => `Run \`${helpFor} --help\` for usage.\n`;
 
 /**
  * Where a descent currently is: the command path resolved so far (for the
@@ -718,6 +728,7 @@ export async function resolveLeaf(
  * fast-paths, then routes through `resolveLeaf`.
  */
 export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<void> {
+  helpFor = "curviate";
   // --help / -h: routing is ours, rendering is lib/examples.ts. A token that
   // does not resolve exits 2 exactly as it would without --help: help never rescues an old or mistyped path. A bindable
   // positional keeps its help (`core profile janesmith --help`).
@@ -762,6 +773,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   try {
     const { leaf, leafArgs: resolvedArgs, path: leafPath } = await resolveLeaf(root, argsAfterBeta);
     hintLeaf = leaf;
+    helpFor = renderPath(leafPath);
 
     // CLI-side usage validation on the resolved leaf, BEFORE any handler runs
     // (so a bad projection / unknown flag never reaches the SDK).
@@ -835,6 +847,9 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
                 ctx.args as unknown as Record<string, unknown>,
                 leafArgsDef,
               );
+              // `--limit` is a global flag read by ~60 handlers; checked once here.
+              const limit = (ctx.args as Record<string, unknown>)["limit"];
+              if (typeof limit === "string") intFlag("limit", limit);
               return originalRun(ctx);
             },
           }
@@ -858,6 +873,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
       const hint = firstSentenceHint(defs[missing]?.description);
       if (hint) process.stderr.write(`hint: --${missing}: ${hint}\n`);
     }
+    if (code === "EARG") process.stderr.write(helpPointer());
     // A `CurviateError` raised before any request (the client refusing a
     // malformed base URL) keeps its table row rather than reading as a crash.
     const { CurviateError } = await import("@curviate/sdk");

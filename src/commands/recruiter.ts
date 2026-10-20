@@ -1689,7 +1689,7 @@ const recruiterProjectUpdateCommand = defineCommand({
     "company-name": { type: "string", description: "Target company as free text (used when no id is given)." },
     "job-title-id": { type: "string", description: "Target job-title parameter id." },
     "job-title": { type: "string", description: "Target job-title display name." },
-    location: { type: "string", description: "A LOCATION parameter id (resolve via search parameters)." },
+    location: { type: "string", description: "A LOCATION parameter id (from `curviate core recruiter search parameters --source SEARCH --type LOCATION --keywords <place>`)." },
     "seniority-level": { type: "string", description: "Target seniority level: INTERNSHIP|ENTRY_LEVEL|ASSOCIATE|MID_SENIOR_LEVEL|DIRECTOR|EXECUTIVE|NOT_APPLICABLE." },
   },
   async run({ args }) {

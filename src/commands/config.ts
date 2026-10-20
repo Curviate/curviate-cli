@@ -127,8 +127,10 @@ export const configCommand = defineCommand({
           "curviate config path",
         ],
       },
-      async run() {
-        process.stdout.write(getConfigPath() + "\n");
+      // `--json` (a wrapper prepends it to every call) gets JSON; plain stays a bare path for `$(...)`.
+      args: { json: GLOBAL_FLAGS.json },
+      async run({ args }) {
+        process.stdout.write((args.json ? JSON.stringify({ config_path: getConfigPath() }) : getConfigPath()) + "\n");
       },
     }),
 
@@ -141,6 +143,7 @@ export const configCommand = defineCommand({
         ],
       },
       args: {
+        json: GLOBAL_FLAGS.json,
         name: { type: "positional", description: "Profile name to activate." },
       },
       async run({ args }) {
@@ -166,6 +169,7 @@ export const configCommand = defineCommand({
         ],
       },
       args: {
+        json: GLOBAL_FLAGS.json,
         old: { type: "positional", description: "Current profile name." },
         new: { type: "positional", description: "New profile name." },
       },
