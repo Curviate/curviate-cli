@@ -302,7 +302,9 @@ describe("through the entry point", () => {
   it("a value beginning with '-' is a value, verbatim on the wire; a declared flag name after a flag stays its own flag", async () => {
     expect((await sink.run(["account", "list", "--api-key", "-fixture-dash-value"])).requests[0]!.headers.authorization).toBe("Bearer -fixture-dash-value");
     expect((await sink.run(["--api-key", "-fixture-dash-value", "account", "list"])).requests[0]!.headers.authorization).toBe("Bearer -fixture-dash-value");
-    expect((await sink.run(["account", "list", "--limit", "-5"])).requests[0]!.url).toBe("/v1/accounts?limit=-5");
-    expect((await sink.run(["account", "list", "--limit", "--json"])).requests[0]!.url).toBe("/v1/accounts");
+    expect((await sink.run(["account", "list", "--cursor", "-c5"])).requests[0]!.url).toBe("/v1/accounts?cursor=-c5");
+    // `--json` is not swallowed as --limit's value; --limit is then left without one: refused, nothing sent.
+    const bare = await sink.run(["account", "list", "--limit", "--json"]);
+    expect([bare.status, bare.requests.length, bare.stderr]).toEqual([2, 0, expect.stringContaining("--limit must be a whole number")]);
   });
 });

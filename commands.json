@@ -122,7 +122,9 @@
       "description": "Print the config file path.",
       "usageOnly": false,
       "args": [],
-      "globals": [],
+      "globals": [
+        "json"
+      ],
       "examples": [
         "curviate config path"
       ],
@@ -142,7 +144,9 @@
           "description": "Profile name to activate."
         }
       ],
-      "globals": [],
+      "globals": [
+        "json"
+      ],
       "examples": [
         "curviate config use work"
       ],
@@ -167,7 +171,9 @@
           "description": "New profile name."
         }
       ],
-      "globals": [],
+      "globals": [
+        "json"
+      ],
       "examples": [
         "curviate config rename default personal"
       ],
@@ -1268,7 +1274,7 @@
         {
           "name": "posts",
           "type": "boolean",
-          "description": "List own activity feed (posts + reposts). For authored-only posts, use 'post user-posts me'.",
+          "description": "List own activity feed (posts + reposts). For authored-only posts, use `curviate core post user-posts me`.",
           "default": false
         },
         {
@@ -2381,7 +2387,7 @@
         {
           "name": "location",
           "type": "string",
-          "description": "A LOCATION parameter id (from search parameters).",
+          "description": "A LOCATION parameter id (from `curviate core search parameters --type LOCATION --keywords <place>`).",
           "required": true
         },
         {
@@ -2481,7 +2487,7 @@
         {
           "name": "location",
           "type": "string",
-          "description": "A LOCATION parameter id (from search parameters)."
+          "description": "A LOCATION parameter id (from `curviate core search parameters --type LOCATION --keywords <place>`)."
         },
         {
           "name": "employment-status",
@@ -3524,7 +3530,7 @@
         "search",
         "services"
       ],
-      "description": "Search Services Marketplace providers with structured filters. At least one of --keywords, --service-category, or --location is required. Resolve --service-category/--location values with 'search service-parameters' first, both take opaque ids, not free text.",
+      "description": "Search Services Marketplace providers with structured filters. At least one of --keywords, --service-category, or --location is required. Resolve --service-category/--location values with `curviate core search service-parameters` first, both take opaque ids, not free text.",
       "usageOnly": false,
       "args": [
         {
@@ -3583,7 +3589,7 @@
         "search",
         "service-parameters"
       ],
-      "description": "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+      "description": "Resolve human-readable service-filter terms into the opaque ids `curviate core search services` accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
       "usageOnly": false,
       "args": [
         {
@@ -4381,7 +4387,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id. To list comments on a post, use `curviate core comment list <post_id>`."
         }
       ],
       "globals": [
@@ -4451,7 +4457,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
         },
         {
           "name": "reaction",
@@ -4500,7 +4506,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug). POSTID is always the post's id."
         }
       ],
       "globals": [
@@ -4537,7 +4543,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -4569,7 +4575,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         },
         {
           "name": "reaction",
@@ -4636,7 +4642,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -4668,7 +4674,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
+          "description": "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug)."
         }
       ],
       "globals": [
@@ -4802,7 +4808,7 @@
         {
           "name": "postId",
           "type": "positional",
-          "description": "Post to list comments for: the `id` from search posts or a post read, a bare numeric activity id, a urn:li:activity|ugcPost|share:N URN, or a full LinkedIn post URL."
+          "description": "Post to list comments for: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, a urn:li:activity|ugcPost|share:N URN, or a full LinkedIn post URL."
         }
       ],
       "globals": [
@@ -6213,7 +6219,7 @@
         {
           "name": "location",
           "type": "string",
-          "description": "A LOCATION parameter id (resolve via search parameters)."
+          "description": "A LOCATION parameter id (from `curviate core recruiter search parameters --source SEARCH --type LOCATION --keywords <place>`)."
         },
         {
           "name": "seniority-level",

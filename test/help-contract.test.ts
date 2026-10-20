@@ -53,6 +53,8 @@ describe("the tree", () => {
       "core recruiter project-job update": { removed: ["body-file", "body"], added: ["file"] },
       "webhook verify": { removed: ["body"], added: ["file"] },
     };
+    // Additive: `--json` is accepted on every config command (a wrapper prepends it).
+    const ADDED_GLOBALS: Record<string, string[]> = { "config path": ["json"], "config use": ["json"], "config rename": ["json"] };
     const shape = (args: Array<Record<string, unknown>>, drop: string[] = []) =>
       args.filter((a) => !drop.includes(a["name"] as string)).map((a) => JSON.stringify([a["name"], a["type"], a["required"], a["default"], a["alias"]]));
     const now = new Map(manifest.filter((c) => pathOf(c) !== "core").map((c) => [pathOf(c), c]));
@@ -66,7 +68,8 @@ describe("the tree", () => {
         continue;
       }
       const r = RENAMES[key];
-      if (JSON.stringify([shape(old.args, r?.removed), old.globals, old.usageOnly]) !== JSON.stringify([shape(cur.args, r?.added), cur.globals, cur.usageOnly])) diff.push(`${key}: changed`);
+      const curGlobals = cur.globals.filter((g) => !ADDED_GLOBALS[key]?.includes(g) || old.globals.includes(g));
+      if (JSON.stringify([shape(old.args, r?.removed), old.globals, old.usageOnly]) !== JSON.stringify([shape(cur.args, r?.added), curGlobals, cur.usageOnly])) diff.push(`${key}: changed`);
       if (r && (!r.removed.every((n) => old.args.some((a) => a["name"] === n)) || !r.added.every((n) => cur.args.some((a) => a.name === n)))) diff.push(`${key}: rename not applied`);
     }
     expect(frozen.length).toBe(186);
@@ -152,7 +155,7 @@ function resolves(words: string[]): boolean {
  */
 const COMMAND_NAMES = [...new Set(manifest.flatMap((c) => c.path))].sort((a, b) => b.length - a.length);
 const relativeNames = (text: string, names = COMMAND_NAMES) =>
-  [...text.matchAll(new RegExp(`([\`'])(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")})(?: [^\`']*)?\\1`, "g"))].map((m) => m[0]);
+  [...text.matchAll(new RegExp(`\`(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")})(?: [^\`]*)?\`|'(?:${names.map((n) => n.replace(/[-]/g, "\\-")).join("|")}) [^']*'`, "g"))].map((m) => m[0]);
 const mentions = (text: string) => [...text.matchAll(/(?<![\w/.@-])curviate((?: [a-z][a-z0-9-]*)*)/g)].map((m) => m[1]!.trim().split(" ").filter(Boolean));
 
 describe("every command named in copy is a full, live path", () => {
@@ -171,7 +174,7 @@ describe("every command named in copy is a full, live path", () => {
       relativeNames("The card_urn of a `notification list` item."),
       relativeNames("Solve it with `checkpoint solve`; write commands (`save-lead`, `project-job create`/`update`)."),
       relativeNames("`curviate core company chats`, `--company`, `primary`, `company_id`, `saved-leads`"),
-      relativeNames("To list comments on a post, use 'comment list <post_id>'."),
+      relativeNames("To list comments on a post, use 'comment list <post_id>'. Pass 'me' for yourself."),
     ]).toEqual([["`notification list`"], ["`checkpoint solve`", "`save-lead`", "`project-job create`", "`update`"], [], ["'comment list <post_id>'"]]);
     // Controls: an old path and an unknown subcommand under a pure group are dead; a positional after a bare form is not.
     expect([["profile", "me"], ["core", "inbox", "sync"], ["account", "bogus"]].map(resolves)).toEqual([false, false, false]);

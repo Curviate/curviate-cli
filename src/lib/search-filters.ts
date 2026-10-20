@@ -76,7 +76,7 @@ export async function assembleFilters(
   if (raw === undefined) return { body: {} };
 
   let parsed: unknown;
-  // A file flag names the fault's line and column (FR-010), like every --file.
+  // A file flag names the fault's line and column, like every --file.
   if (source === "--filters-file") parsed = parseDocument("filters-file", raw);
   else {
     try {

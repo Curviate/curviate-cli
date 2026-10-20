@@ -1,5 +1,5 @@
 /**
- * Agent-experience sweep (curviate#2041, before 0.48.0): a bad value is
+ * Agent-experience sweep (before 0.48.0): a bad value is
  * refused before any request instead of silently becoming another request, a
  * usage error points at the command's own help, a write never invites the
  * resend that could repeat it, and `--json` is accepted where a wrapper puts
@@ -79,7 +79,7 @@ describe("a usage error points at the command's own help, by full path", () => {
     ["an unknown flag", ["core", "connect", "sent", "--bogus"], "Run `curviate core connect sent --help` for usage.\n"],
     ["a repeated flag", ["core", "connect", "sent", "--limit", "1", "--limit", "2", ...A], "Run `curviate core connect sent --help` for usage.\n"],
     ["a missing positional", ["core", "post", "get", ...A], "Run `curviate core post get --help` for usage.\n"],
-    ["an unknown command keeps the generic root pointer (FR-003)", ["core", "inbx"], "Run `curviate --help` for usage.\n"],
+    ["an unknown command keeps the generic root pointer", ["core", "inbx"], "Run `curviate --help` for usage.\n"],
   ])("%s", async (_l, argv, pointer) => {
     const r = await sink.run(argv);
     expect([r.status, r.requests.length]).toEqual([2, 0]);

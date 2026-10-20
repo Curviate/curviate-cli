@@ -126,6 +126,42 @@ on a free account, a note on about 5 invitations a month (budget row
   not `company chats`).
 - **`--help` loads only what it describes**: `curviate --help` and
   `curviate core --help` import no command module.
+- **A malformed number is refused, never sent as another value.** `--limit`
+  (every command that takes it), `--date-posted` on `core search jobs`,
+  `--network-distance` and `--connections`, `--proxy-port`, the wait-loop
+  `--timeout` and `webhook verify --max-age-secs` take digits only, in range,
+  or exit 2 before any request. Before, `--limit abc` sent `limit=NaN`,
+  `--limit 5abc` sent 5, `--date-posted 7d` sent `null`, `--network-distance
+  1,x` dropped the `x`, `--proxy-port 80x` sent 80, and `--max-age-secs abc`
+  turned the replay check off.
+- **`--api-key -` is refused outside `curviate login`** (exit 2, nothing
+  sent). It was sent as the key itself (`Bearer -`) and reported as a
+  credential failure. Use `CURVIATE_API_KEY`, or `curviate login --api-key -`.
+- **A document must be UTF-8 without a byte order mark.** A file flag
+  (`--file`, `--filters-file`, `webhook verify --file`) given Latin-1 bytes
+  exits 2 instead of sending U+FFFD in their place; a BOM is named instead of
+  failing the JSON parse at a column you cannot see (or the signature check
+  as a wrong secret). `--filters-file` names the line and column of a JSON
+  fault, like `--file`.
+- **A usage error points at the command's own help**: an unknown or repeated
+  flag, or a missing positional, ends with ``Run `curviate core connect sent
+  --help` for usage.`` (the command's full path). An unknown command keeps
+  the root pointer.
+- **A write that meets an unreadable 5xx is not retry-likely.** The
+  synthesized `PLATFORM_ERROR` (exit 7 as before) on a write now says the
+  request may have been applied and carries `retryLikelyToSucceed: false`; a
+  read keeps `true`.
+- **DOCUMENT lists each field once.** A field in several `oneOf` branches is
+  one row (`apply_method.method`: one of linkedin, external), and a field only
+  one branch requires says which (`required if method is "linkedin"`,
+  `required in {id}`).
+- **`config path`, `config use` and `config rename` accept `--json`** (a
+  wrapper that prepends it no longer gets exit 2). `config path --json`
+  prints `{"config_path": "..."}`; without it the bare path, as before.
+- Help copy names `curviate core search posts`, `curviate core search
+  parameters`, `curviate core recruiter search parameters` and `curviate core
+  comment list` by full path; the `curviate core profile` usage lists
+  `subscription`, `analytics`, `visitors` and `ssi`.
 
 ### Changed
 

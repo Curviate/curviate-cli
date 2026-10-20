@@ -591,7 +591,7 @@ function usageError(message: string, hint?: string): never {
  * The help to read next: the resolved command's own, by full path, once routing
  * has found it (an unknown flag on `core connect sent` points at
  * `curviate core connect sent --help`). Routing errors (an unknown or old
- * command) keep the root pointer, FR-003's generic error.
+ * command) keep the root pointer, the generic error.
  */
 let helpFor = "curviate";
 const helpPointer = () => `Run \`${helpFor} --help\` for usage.\n`;

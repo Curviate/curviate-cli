@@ -995,7 +995,7 @@ const profileMeCommand = defineCommand({
     },
     posts: {
       type: "boolean",
-      description: "List own activity feed (posts + reposts). For authored-only posts, use 'post user-posts me'.",
+      description: "List own activity feed (posts + reposts). For authored-only posts, use `curviate core post user-posts me`.",
       default: false,
     },
     comments: {

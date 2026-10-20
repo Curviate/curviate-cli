@@ -1153,7 +1153,7 @@ const searchServicesCommand = defineCommand({
     description:
       "Search Services Marketplace providers with structured filters. At least one of --keywords, " +
       "--service-category, or --location is required. Resolve --service-category/--location values with " +
-      "'search service-parameters' first, both take opaque ids, not free text.",
+      "`curviate core search service-parameters` first, both take opaque ids, not free text.",
     examples: [
       "curviate core search services --keywords marketing",
       "curviate core search services --service-category 100 --location 106967730",
@@ -1193,7 +1193,7 @@ const searchServiceParametersCommand = defineCommand({
   meta: {
     name: "service-parameters",
     description:
-      "Resolve human-readable service-filter terms into the opaque ids 'search services' accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+      "Resolve human-readable service-filter terms into the opaque ids `curviate core search services` accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
     examples: [
       "curviate core search service-parameters --type service_category --keywords marketing",
     ],
