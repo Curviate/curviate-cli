@@ -21,23 +21,15 @@
  */
 
 import { isStdinToken } from "./stdin.js";
-import { readFileFlag } from "./document.js";
+import { parseDocument, readFileFlag, readStdinCapped } from "./document.js";
 
 /** Reader injection point, the stdin source for --filters / --filters-file. */
 export type FilterReaders = {
   readStdin: () => Promise<string>;
 };
 
-/** Read all of stdin as a UTF-8 string. Used for `--filters -`. */
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
-export const DEFAULT_FILTER_READERS: FilterReaders = { readStdin };
+/** `--filters -`: capped and strictly UTF-8, like every document read. */
+export const DEFAULT_FILTER_READERS: FilterReaders = { readStdin: () => readStdinCapped("filters") };
 
 /** The subset of flags that supply the JSON filter source. */
 export type FilterSourceFlags = {
@@ -75,12 +67,8 @@ export async function assembleFilters(
 
   if (raw === undefined) return { body: {} };
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { error: `${source} is not valid JSON` };
-  }
+  // Unparsable JSON exits 2 naming the line and column, like every --file.
+  const parsed = parseDocument(source === "--filters-file" ? "filters-file" : "filters", raw);
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { error: `${source} must be a JSON object` };
   }
@@ -93,14 +81,4 @@ export function splitCsv(value: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
-}
-
-/**
- * Split a comma-separated flag value into a number array, dropping any segment
- * that is not a finite number (e.g. network_distance accepts `1,2,3`).
- */
-export function splitCsvNumbers(value: string): number[] {
-  return splitCsv(value)
-    .map((s) => Number(s))
-    .filter((n) => Number.isFinite(n));
 }

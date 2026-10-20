@@ -726,7 +726,7 @@ const JOB_BODY_FLAGS = {
   company: { type: "string" as const, description: "Hiring company as free text (or use --company-id)." },
   "company-id": { type: "string" as const, description: "Existing company id." },
   "workplace-type": { type: "string" as const, description: "Workplace arrangement: ON_SITE|HYBRID|REMOTE." },
-  location: { type: "string" as const, description: "A LOCATION parameter id (from search parameters)." },
+  location: { type: "string" as const, description: "A LOCATION parameter id (from `curviate core search parameters --type LOCATION --keywords <place>`)." },
   "employment-status": { type: "string" as const, description: "Employment type: FULL_TIME|PART_TIME|CONTRACT|TEMPORARY|OTHER|VOLUNTEER|INTERNSHIP." },
   description: { type: "string" as const, description: "Full job description (required; minimum 200 characters, enforced server-side)." },
   "apply-method": { type: "string" as const, description: "How candidates apply: linkedin|external." },

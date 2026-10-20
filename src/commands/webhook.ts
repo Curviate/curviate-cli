@@ -24,6 +24,7 @@ import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } fr
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { readFileFlag } from "../lib/document.js";
+import { intFlag } from "../lib/int-flag.js";
 import type { Curviate, CurviateError, paths } from "@curviate/sdk";
 
 /**
@@ -689,7 +690,8 @@ const webhookVerifyCommand = defineCommand({
 
     const signatureHeader = flags.header ?? "";
     const secret = flags.secret ?? "";
-    const replayWindowSecs = flags["max-age-secs"] ? parseInt(flags["max-age-secs"], 10) : undefined;
+    // NaN would disable the replay check (`age > NaN` is false): checked, never parsed loosely.
+    const replayWindowSecs = flags["max-age-secs"] === undefined ? undefined : intFlag("max-age-secs", flags["max-age-secs"]);
 
     await runWebhookVerify({ secret, signatureHeader, rawBody, replayWindowSecs }, out);
   },

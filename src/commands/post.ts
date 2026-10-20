@@ -603,7 +603,7 @@ export async function runPostUserReactions(
  * all of them, so this is the one text the help shows.
  */
 const POST_ID_FORMS =
-  "Post id in any form the CLI returns: the `id` from search posts or a post read, a bare numeric activity id, " +
+  "Post id in any form the CLI returns: the `id` from `curviate core search posts` or a post read, a bare numeric activity id, " +
   "urn:li:activity|ugcPost|share:N, or a full LinkedIn post URL (activity-, ugcPost- or share- slug).";
 
 const postGetCommand = defineCommand({
@@ -621,7 +621,7 @@ const postGetCommand = defineCommand({
       type: "positional",
       description:
         POST_ID_FORMS + " " +
-        "POSTID is always the post's id. To list comments on a post, use 'comment list <post_id>'.",
+        "POSTID is always the post's id. To list comments on a post, use `curviate core comment list <post_id>`.",
     },
   },
   async run({ args }) {

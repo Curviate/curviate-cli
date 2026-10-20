@@ -65,7 +65,21 @@ export async function readStdinCapped(flag = "file"): Promise<string> {
     if (total > MAX_DOCUMENT_BYTES) usage(TOO_LARGE(flag));
     chunks.push(b);
   }
-  return Buffer.concat(chunks).toString("utf8").replace(/\n+$/, "");
+  return decode(flag, Buffer.concat(chunks)).replace(/\n+$/, "");
+}
+
+/**
+ * The bytes as text, or exit 2: a lenient decode turns a Latin-1 `é` into
+ * U+FFFD and sends that, and a BOM breaks the JSON parse (or the signature)
+ * at a column nobody can see.
+ */
+function decode(flag: string, bytes: Buffer): string {
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) usage(`--${flag}: starts with a byte order mark (BOM). Save it as UTF-8 without a BOM.`);
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    usage(`--${flag}: not valid UTF-8. Save it as UTF-8.`);
+  }
 }
 
 function usage(message: string): never {
@@ -118,7 +132,7 @@ export async function readFileFlag(flag: string, value: string, io: FileFlagIo =
       usage(`--${flag}: cannot read ${value}: ${(err as NodeJS.ErrnoException).code ?? "read error"}.`);
     }
     if (bytes === null) usage(TOO_LARGE(flag));
-    text = bytes.toString("utf8");
+    text = decode(flag, bytes);
   }
   if (text.trim() === "") usage(`--${flag}: empty input.`);
   return text;
@@ -246,25 +260,47 @@ function ruleOf(s: Schema): string {
 const typeName = (s: Schema): string =>
   Array.isArray(s["oneOf"]) ? "object" : s["type"] === "array" && s["items"] ? `${typeName(s["items"] as Schema)}[]` : String(s["type"] ?? "any");
 
-/** The DOCUMENT section: field, type, required, default, rule. Rendered, never hand-written. */
+/**
+ * The DOCUMENT section: field, type, required, default, rule. Rendered, never
+ * hand-written. One row per path: a field in several `oneOf` branches is
+ * merged (`apply_method.method`: one of linkedin, external), and a field only
+ * some branches require says which (`required if method is "linkedin"`,
+ * `required in {id}`), never a bare "required".
+ */
 export function renderDocument(key: string): string[] {
-  const rows: string[][] = [];
-  const walk = (s: Schema, prefix: string) => {
+  const rows = new Map<string, { type: string; req: string[]; def: string; rules: string[]; branches: number }>();
+  const walk = (s: Schema, prefix: string, when?: string, branches = 1) => {
     const props = (s["properties"] ?? {}) as Record<string, Schema>;
     const req = new Set((s["required"] as string[] | undefined) ?? []);
     for (const [name, p] of Object.entries(props)) {
       const path = prefix ? `${prefix}.${name}` : name;
-      rows.push([path, typeName(p), req.has(name) ? "required" : "optional", "default" in p ? `default ${JSON.stringify(p["default"])}` : "", ruleOf(p)]);
+      const row = rows.get(path) ?? { type: typeName(p), req: [], def: "", rules: [], branches };
+      rows.set(path, row);
+      row.req.push(req.has(name) ? (when ? `required ${when}` : "required") : "optional");
+      if ("default" in p) row.def = `default ${JSON.stringify(p["default"])}`;
+      row.rules.push(ruleOf(p));
       if (p["type"] === "object" && p["properties"]) walk(p, path);
       // A oneOf field lists each branch's fields, so optional branch fields are documented too.
-      for (const branch of (p["oneOf"] as Schema[] | undefined) ?? []) walk(branch, path);
+      const oneOf = (p["oneOf"] as Schema[] | undefined) ?? [];
+      const disc = (p["discriminator"] as { propertyName?: string } | undefined)?.propertyName;
+      for (const b of oneOf) {
+        const tag = disc ? ((b["properties"] as Record<string, Schema> | undefined)?.[disc]?.["const"]) : undefined;
+        walk(b, path, tag !== undefined ? `if ${disc} is ${JSON.stringify(tag)}` : `in ${shape(b)}`, oneOf.length);
+      }
       const items = p["items"] as Schema | undefined;
       if (items?.["type"] === "object") walk(items, `${path}[]`);
     }
   };
   walk(documentSchema(key), "");
-  const seen = new Set<string>();
-  rows.splice(0, rows.length, ...rows.filter((r) => !seen.has(r.join("|")) && seen.add(r.join("|"))));
-  const widths = [0, 1, 2].map((c) => Math.max(...rows.map((r) => r[c]!.length)));
-  return rows.map((r) => [r[0]!.padEnd(widths[0]!), r[1]!.padEnd(widths[1]!), r[2]!.padEnd(widths[2]!), r[3], r[4]].filter(Boolean).join("  ").trimEnd());
+  const merged = [...rows].map(([path, r]) => {
+    // Required in every branch: plainly required. A const per branch reads as one enum.
+    const everywhere = r.req.length === r.branches && r.req.every((q) => q.startsWith("required"));
+    const req = everywhere ? "required" : [...new Set(r.req)].join(", ");
+    const consts = r.rules.map((x) => /^exactly (".*")$/.exec(x)?.[1]);
+    // ponytail: merges by path only; a nested object inside one branch, or branches typing a field differently, render without the branch, upgrade when a vendored schema has either.
+    const rule = r.rules.length > 1 && consts.every(Boolean) ? `one of ${[...new Set(consts.map((c) => JSON.parse(c!) as string))].join(", ")}` : [...new Set(r.rules.filter(Boolean))].join(" | ");
+    return [path, r.type, req, r.def, rule];
+  });
+  const widths = [0, 1, 2].map((c) => Math.max(...merged.map((r) => r[c]!.length)));
+  return merged.map((r) => [r[0]!.padEnd(widths[0]!), r[1]!.padEnd(widths[1]!), r[2]!.padEnd(widths[2]!), r[3], r[4]].filter(Boolean).join("  ").trimEnd());
 }

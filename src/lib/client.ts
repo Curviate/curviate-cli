@@ -12,7 +12,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
-import { getRecheck, getWriteKind, type WriteKind } from "./global-flags.js";
+import { getRecheck, getWriteKind, isPoll, type WriteKind } from "./global-flags.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -118,6 +118,14 @@ async function platformFaultIfUnreadable(res: Response, kind: WriteKind): Promis
     const headers = new Headers(res.headers);
     headers.delete("content-type");
     return new Response(null, { status: res.status, statusText: res.statusText, headers });
+  }
+  // A write that met an unreadable 5xx (a proxy's HTML page) may have landed
+  // behind it: say so, and never invite the resend that would repeat it. A
+  // poll (GET, or checkpoint poll's POST) applies nothing and stays a read:
+  // retry-likely, and a GET keeps the SDK's own retries.
+  if (kind !== "read" && !isPoll()) {
+    const check = kind === "state" ? `check with \`${getRecheck()}\`` : "read the current state";
+    return fault(res, `The API answered ${res.status} without a readable body. The request may have been applied: ${check} before sending it again.`, false);
   }
   return fault(res, `The API answered ${res.status} without a readable body.`, true);
 }

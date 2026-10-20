@@ -66,6 +66,7 @@ import {
 // comment): the body is assembled dynamically from credential-resolution
 // helpers, not a single typed literal.
 import type { AuthIntentBody, Curviate, CurviateError, SeatList } from "@curviate/sdk";
+import { intFlag } from "../lib/int-flag.js";
 
 // ps/shell-history warning template (mirrors the --api-key warning in global-flags.ts).
 const PW_WARNING = (stdinFlag: string, envVar: string) =>
@@ -587,7 +588,7 @@ async function buildAuthBody(
     body["proxy"] = {
       protocol: flags["proxy-protocol"] ?? "http",
       host: flags["proxy-host"],
-      port: flags["proxy-port"] ? parseInt(flags["proxy-port"], 10) : 80,
+      port: flags["proxy-port"] === undefined ? 80 : intFlag("proxy-port", flags["proxy-port"], 1, 65535),
       ...(flags["proxy-username"] ? { username: flags["proxy-username"] } : {}),
       ...(proxyPassword !== undefined ? { password: proxyPassword } : {}),
     };
@@ -1138,12 +1139,12 @@ function printConnectSessionResolved(
 /** Parse `--timeout <ms>` (the wait-loop bound, not the SDK request timeout). Exits 2 on a non-numeric value. */
 function resolveWaitTimeoutOverrideMs(flags: AccountFlags, out: OutputStreams): number | undefined {
   if (flags.timeout === undefined) return undefined;
-  const parsed = Number(flags.timeout);
-  if (Number.isNaN(parsed)) {
-    out.stderr.write("error: --timeout must be a number of milliseconds.\n");
+  // Capped at 2^31-1 ms (about 24 days): a sane bound for a wait, not a limit of the loop.
+  if (!/^[1-9]\d*$/.test(flags.timeout) || Number(flags.timeout) > 2147483647) {
+    out.stderr.write("error: --timeout must be a whole number of milliseconds, from 1 to 2147483647.\n");
     process.exit(2);
   }
-  return parsed;
+  return Number(flags.timeout);
 }
 
 /**
@@ -1289,7 +1290,7 @@ export async function runAccountUpdate(
     body["proxy"] = {
       protocol: flags["proxy-protocol"] ?? "http",
       host: flags["proxy-host"],
-      port: flags["proxy-port"] ? parseInt(flags["proxy-port"], 10) : 80,
+      port: flags["proxy-port"] === undefined ? 80 : intFlag("proxy-port", flags["proxy-port"], 1, 65535),
       ...(flags["proxy-username"] ? { username: flags["proxy-username"] } : {}),
       ...(proxyPassword !== undefined ? { password: proxyPassword } : {}),
     };
@@ -1560,15 +1561,7 @@ export async function runAccountCheckpointPoll(
     return;
   }
 
-  let timeoutOverrideMs: number | undefined;
-  if (flags.timeout !== undefined) {
-    const parsed = Number(flags.timeout);
-    if (Number.isNaN(parsed)) {
-      out.stderr.write("error: --timeout must be a number of milliseconds.\n");
-      process.exit(2);
-    }
-    timeoutOverrideMs = parsed;
-  }
+  const timeoutOverrideMs = resolveWaitTimeoutOverrideMs(flags, out);
 
   const resolvedIo = resolveCredentialIO(io);
   // "TTY + not --json" per the flag's own contract, the raw --json flag,

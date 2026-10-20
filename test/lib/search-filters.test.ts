@@ -11,7 +11,7 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assembleFilters, splitCsv, splitCsvNumbers } from "../../src/lib/search-filters.js";
+import { assembleFilters, splitCsv } from "../../src/lib/search-filters.js";
 import { exitCode } from "../helpers/exit-code.js";
 
 const dir = mkdtempSync(join(tmpdir(), "curviate-filters-"));
@@ -53,10 +53,14 @@ describe("assembleFilters — JSON escape hatch", () => {
     expect(r).toEqual({ body: { company: ["1441"] } });
   });
 
-  it("invalid JSON → returns an error (no body)", async () => {
-    const r = await assembleFilters({ filters: "{ not valid json " }, makeReaders());
-    expect(r).toHaveProperty("error");
-    expect("error" in r && r.error).toMatch(/valid JSON/i);
+  it("invalid JSON → exit 2 naming the line and column (like every --file)", async () => {
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await exitCode(() => assembleFilters({ filters: "{ not valid json " }, makeReaders()))).toBe(2);
+      expect(String(err.mock.calls[0]?.[0])).toMatch(/--filters: not valid JSON at line 1, column 3/);
+    } finally {
+      err.mockRestore();
+    }
   });
 
   it("non-object JSON (array) → returns an error (no body)", async () => {
@@ -96,15 +100,5 @@ describe("splitCsv — comma-separated array flags", () => {
 
   it("drops empty segments from trailing/double commas", () => {
     expect(splitCsv("a,,b,")).toEqual(["a", "b"]);
-  });
-});
-
-describe("splitCsvNumbers — comma-separated numeric array flags", () => {
-  it("parses each segment to a number", () => {
-    expect(splitCsvNumbers("1,2,3")).toEqual([1, 2, 3]);
-  });
-
-  it("ignores non-numeric segments", () => {
-    expect(splitCsvNumbers("1,x,3")).toEqual([1, 3]);
   });
 });
