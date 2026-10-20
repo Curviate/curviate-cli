@@ -1139,7 +1139,7 @@ function printConnectSessionResolved(
 /** Parse `--timeout <ms>` (the wait-loop bound, not the SDK request timeout). Exits 2 on a non-numeric value. */
 function resolveWaitTimeoutOverrideMs(flags: AccountFlags, out: OutputStreams): number | undefined {
   if (flags.timeout === undefined) return undefined;
-  // Capped at setTimeout's 2^31-1 ms: past it Node fires after 1 ms.
+  // Capped at 2^31-1 ms (about 24 days): a sane bound for a wait, not a limit of the loop.
   if (!/^[1-9]\d*$/.test(flags.timeout) || Number(flags.timeout) > 2147483647) {
     out.stderr.write("error: --timeout must be a whole number of milliseconds, from 1 to 2147483647.\n");
     process.exit(2);

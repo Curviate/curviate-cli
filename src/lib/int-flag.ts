@@ -14,8 +14,8 @@ export function intFlag(flag: string, raw: string, min = 1, max = Number.MAX_SAF
 
 /** A comma-separated list of whole numbers (`1,2,3`), every segment checked by `intFlag`. */
 export function intListFlag(flag: string, raw: string, min = 1, max = Number.MAX_SAFE_INTEGER): number[] {
-  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
-  const n = parts.map((s) => (/^\d+$/.test(s) ? Number(s) : NaN));
+  // Every segment counts: "" and "1,,2" are refused, never shortened.
+  const n = raw.split(",").map((s) => s.trim()).map((s) => (/^\d+$/.test(s) ? Number(s) : NaN));
   if (n.length > 0 && n.every((x) => x >= min && x <= max)) return n;
   process.stderr.write(`error: --${flag} takes comma-separated whole numbers, each from ${min} to ${max}.\n`);
   process.exit(2);

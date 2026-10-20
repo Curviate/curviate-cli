@@ -233,7 +233,12 @@ export function readOnly<T extends { preview?: unknown }>(flags: T): Omit<T, "pr
 export type WriteKind = "read" | "write" | "state";
 let writeKind: WriteKind = "read";
 let recheck = "";
-export const setWriteKind = (v: WriteKind, recheckWith = ""): void => void ((writeKind = v), (recheck = recheckWith));
+let poll = false;
+/** `command`: the running command's full path; a `state` command that re-reads itself is a poll. */
+export const setWriteKind = (v: WriteKind, recheckWith = "", command = ""): void =>
+  void ((writeKind = v), (recheck = recheckWith), (poll = command !== "" && recheckWith.startsWith(`${command} `)));
+/** A poll (`account checkpoint poll`, sent as POST) applies nothing: a failed one is safe to resend. */
+export const isPoll = (): boolean => poll;
 export const getWriteKind = (): WriteKind => writeKind;
 /** For a `state` command: the command that reads the state back. */
 export const getRecheck = (): string => recheck;

@@ -27,10 +27,13 @@ describe("a malformed value is refused before any request, never sent as another
     ["--limit '' (was ignored)", ["core", "connect", "sent", ...A, "--limit", ""], /--limit must be a whole number/],
     ["--date-posted 7d (was null)", ["core", "search", "jobs", ...A, "--date-posted", "7d"], /--date-posted must be a whole number/],
     ["--network-distance first (was [])", ["core", "search", "people", ...A, "--network-distance", "first"], /--network-distance takes comma-separated whole numbers, each from 1 to 3/],
+    ["--network-distance '' (was omitted)", ["core", "search", "people", ...A, "--network-distance", ""], /--network-distance takes comma-separated whole numbers/],
+    ["--network-distance 1,,2 (was [1, 2])", ["core", "search", "people", ...A, "--network-distance", "1,,2"], /--network-distance takes comma-separated whole numbers/],
+    ["--connections '' (was omitted)", ["core", "search", "services", ...A, "--keywords", "k", "--connections", ""], /--connections takes comma-separated whole numbers/],
     ["--network-distance 1,x (was [1])", ["core", "search", "people", ...A, "--network-distance", "1,x"], /--network-distance takes comma-separated whole numbers/],
     ["--proxy-port 80x (was 80)", ["account", "link", "--auth-method", "cookie", "--li-at", "x", "--user-agent", "ua", "--seat-id", "seat_1", "--proxy-host", "p.example", "--proxy-port", "80x"], /--proxy-port must be a whole number, from 1 to 65535/],
     ["--timeout 1e3 on a wait loop", ["account", "checkpoint", "poll", "acc_1", "--wait", "--timeout", "1e3"], /--timeout must be a whole number of milliseconds/],
-    ["--timeout past setTimeout's 2^31-1 ms (fired after 1 ms)", ["account", "checkpoint", "poll", "acc_1", "--wait", "--timeout", "3000000000"], /--timeout must be a whole number of milliseconds, from 1 to 2147483647/],
+    ["--timeout past the 2^31-1 ms bound", ["account", "checkpoint", "poll", "acc_1", "--wait", "--timeout", "3000000000"], /--timeout must be a whole number of milliseconds, from 1 to 2147483647/],
     ["Latin-1 bytes on --filters - (was sent as U+FFFD)", ["core", "search", "people", ...A, "--filters", "-"], /--filters: not valid UTF-8/],
     ["--api-key - (was sent as `Bearer -`)", ["account", "list", "--api-key", "-"], /--api-key - reads stdin only on `curviate login`/],
   ])("%s: exit 2, zero requests", async (_l, argv, message) => {
@@ -105,6 +108,30 @@ describe("an unreadable 5xx", () => {
     const w = (JSON.parse(write.stdout) as { error: { retryLikelyToSucceed: boolean; message: string } }).error;
     expect([w.retryLikelyToSucceed, w.message]).toEqual([false, expect.stringContaining("may have been applied")]);
     expect([read.status, (JSON.parse(read.stdout) as { error: { retryLikelyToSucceed: boolean } }).error.retryLikelyToSucceed]).toEqual([7, true]);
+  });
+
+  // A 5xx: the method decides (connect-session poll is a GET: SDK retries,
+  // retry-likely), and a poll applies nothing; solve and request are writes.
+  // An empty 2xx keeps the checkpoint flow's may-have-applied fault.
+  const POLL = "curviate account checkpoint poll";
+  it.each<[string, string[], { status: number; type?: string; body?: string }, string[], boolean, string | null]>([
+    // checkpoint poll is a read sent as POST: retry-likely like a read, and (a POST) not resent by the SDK.
+    ["checkpoint poll, HTML 503", ["account", "checkpoint", "poll", "acc_1"], { status: 503, type: "text/html", body: "<html>down</html>" }, ["POST"], true, null],
+    ["connect-session poll, HTML 503", ["account", "connect-session", "poll", "--session", "cs_1"], { status: 503, type: "text/html", body: "<html>down</html>" }, ["GET", "GET", "GET", "GET"], true, null],
+    ["checkpoint solve, HTML 503", ["account", "checkpoint", "solve", "acc_1", "--code", "123456"], { status: 503, type: "text/html", body: "<html>down</html>" }, ["POST"], false, POLL],
+    ["checkpoint request, HTML 503", ["account", "checkpoint", "request", "acc_1"], { status: 503, type: "text/html", body: "<html>down</html>" }, ["POST"], false, POLL],
+    ["checkpoint poll, empty 200", ["account", "checkpoint", "poll", "acc_1"], { status: 200, body: "" }, ["POST"], false, POLL],
+    ["connect-session poll, empty 200", ["account", "connect-session", "poll", "--session", "cs_1"], { status: 200, body: "" }, ["GET"], false, "curviate account connect-session poll"],
+    ["checkpoint solve, empty 200", ["account", "checkpoint", "solve", "acc_1", "--code", "123456"], { status: 200, body: "" }, ["POST"], false, POLL],
+    ["checkpoint request, empty 200", ["account", "checkpoint", "request", "acc_1"], { status: 200, body: "" }, ["POST"], false, POLL],
+  ])("%s", async (_l, argv, reply, methods, retryLikely, recheck) => {
+    sink.reply = reply;
+    const r = await sink.run([...argv, "--json"]);
+    sink.reply = OK_PAGE;
+    const e = (JSON.parse(r.stdout) as { error: { code: string; retryLikelyToSucceed: boolean; message: string } }).error;
+    expect([r.status, r.requests.map((h) => h.method), e.code, e.retryLikelyToSucceed]).toEqual([7, methods, "PLATFORM_ERROR", retryLikely]);
+    if (recheck) expect(e.message).toContain(recheck);
+    else expect(e.message).not.toMatch(/may have been applied/);
   });
 });
 

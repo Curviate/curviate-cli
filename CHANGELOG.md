@@ -129,10 +129,11 @@ on a free account, a note on about 5 invitations a month (budget row
 - **A malformed number is refused, never sent as another value.** `--limit`
   (every command that takes it), `--date-posted` on `core search jobs`,
   `--network-distance` and `--connections`, `--proxy-port`, the wait-loop
-  `--timeout` (at most 2147483647 ms, past which Node fires after 1 ms) and `webhook verify --max-age-secs` take digits only, in range,
+  `--timeout` (1 to 2147483647 ms, a sane bound for a wait) and `webhook verify --max-age-secs` take digits only, in range,
   or exit 2 before any request. Before, `--limit abc` sent `limit=NaN`,
   `--limit 5abc` sent 5, `--date-posted 7d` sent `null`, `--network-distance
-  1,x` dropped the `x`, `--proxy-port 80x` sent 80, and `--max-age-secs abc`
+  1,x` dropped the `x` (an empty value or an empty segment, `""` or `1,,2`,
+  is refused too), `--proxy-port 80x` sent 80, and `--max-age-secs abc`
   turned the replay check off.
 - **`--api-key -` is refused outside `curviate login`** (exit 2, nothing
   sent). It was sent as the key itself (`Bearer -`) and reported as a
@@ -149,9 +150,11 @@ on a free account, a note on about 5 invitations a month (budget row
   --help` for usage.`` (the command's full path). An unknown command keeps
   the root pointer.
 - **A write that meets an unreadable 5xx is not retry-likely.** The
-  synthesized `PLATFORM_ERROR` (exit 7 as before) on a write now says the
-  request may have been applied and carries `retryLikelyToSucceed: false`; a
-  read keeps `true`.
+  synthesized `PLATFORM_ERROR` (exit 7 as before) on a non-GET write now says
+  the request may have been applied and carries `retryLikelyToSucceed:
+  false` (`account checkpoint solve|request` name `curviate account
+  checkpoint poll` to read the state back). A GET, and `account checkpoint
+  poll` (a read sent as POST), keep `true` and the SDK's read retries.
 - **DOCUMENT lists each field once.** A field in several `oneOf` branches is
   one row (`apply_method.method`: one of linkedin, external), and a field only
   one branch requires says which (`required if method is "linkedin"`,

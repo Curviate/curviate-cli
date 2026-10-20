@@ -230,7 +230,7 @@ const NAMED_FLAG_MAPPERS: Record<
     if (flags.company) body["current_company"] = splitCsv(flags.company);
     if (flags["past-company"]) body["past_company"] = splitCsv(flags["past-company"]);
     if (flags.school) body["school"] = splitCsv(flags.school);
-    if (flags["network-distance"]) body["network_distance"] = intListFlag("network-distance", flags["network-distance"], 1, 3);
+    if (flags["network-distance"] !== undefined) body["network_distance"] = intListFlag("network-distance", flags["network-distance"], 1, 3);
     // --connections-of / --followers-of: comma-separated -> array
     if (flags["connections-of"]) body["connections_of"] = splitCsv(flags["connections-of"]);
     if (flags["followers-of"]) body["followers_of"] = splitCsv(flags["followers-of"]);
@@ -729,7 +729,7 @@ export async function runSearchServices(
   if (flags.keywords) body["keywords"] = flags.keywords;
   if (flags["service-category"]) body["service_category"] = splitCsv(flags["service-category"]);
   if (flags.location) body["location"] = splitCsv(flags.location);
-  if (flags.connections) {
+  if (flags.connections !== undefined) {
     body["connections"] = intListFlag("connections", flags.connections, 1, 3);
   }
   if (flags.language) body["language"] = splitCsv(flags.language);
