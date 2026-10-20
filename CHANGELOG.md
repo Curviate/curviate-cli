@@ -153,8 +153,10 @@ on a free account, a note on about 5 invitations a month (budget row
   synthesized `PLATFORM_ERROR` (exit 7 as before) on a non-GET write now says
   the request may have been applied and carries `retryLikelyToSucceed:
   false` (`account checkpoint solve|request` name `curviate account
-  checkpoint poll` to read the state back). A GET, and `account checkpoint
-  poll` (a read sent as POST), keep `true` and the SDK's read retries.
+  checkpoint poll` to read the state back). A GET keeps
+  `true` (`connect-session poll` also keeps the SDK's read retries);
+  `account checkpoint poll` (a read sent as POST) keeps `true` too but sends
+  one request and does not retry.
 - **DOCUMENT lists each field once.** A field in several `oneOf` branches is
   one row (`apply_method.method`: one of linkedin, external), and a field only
   one branch requires says which (`required if method is "linkedin"`,
