@@ -297,7 +297,8 @@ export function renderDocument(key: string): string[] {
     const everywhere = r.req.length === r.branches && r.req.every((q) => q.startsWith("required"));
     const req = everywhere ? "required" : [...new Set(r.req)].join(", ");
     const consts = r.rules.map((x) => /^exactly (".*")$/.exec(x)?.[1]);
-    const rule = r.rules.length > 1 && consts.every(Boolean) ? `one of ${consts.map((c) => JSON.parse(c!) as string).join(", ")}` : [...new Set(r.rules.filter(Boolean))].join(" | ");
+    // ponytail: merges by path only; a nested object inside one branch, or branches typing a field differently, render without the branch, upgrade when a vendored schema has either.
+    const rule = r.rules.length > 1 && consts.every(Boolean) ? `one of ${[...new Set(consts.map((c) => JSON.parse(c!) as string))].join(", ")}` : [...new Set(r.rules.filter(Boolean))].join(" | ");
     return [path, r.type, req, r.def, rule];
   });
   const widths = [0, 1, 2].map((c) => Math.max(...merged.map((r) => r[c]!.length)));

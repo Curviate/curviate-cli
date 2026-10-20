@@ -53,10 +53,14 @@ describe("assembleFilters — JSON escape hatch", () => {
     expect(r).toEqual({ body: { company: ["1441"] } });
   });
 
-  it("invalid JSON → returns an error (no body)", async () => {
-    const r = await assembleFilters({ filters: "{ not valid json " }, makeReaders());
-    expect(r).toHaveProperty("error");
-    expect("error" in r && r.error).toMatch(/valid JSON/i);
+  it("invalid JSON → exit 2 naming the line and column (like every --file)", async () => {
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await exitCode(() => assembleFilters({ filters: "{ not valid json " }, makeReaders()))).toBe(2);
+      expect(String(err.mock.calls[0]?.[0])).toMatch(/--filters: not valid JSON at line 1, column 3/);
+    } finally {
+      err.mockRestore();
+    }
   });
 
   it("non-object JSON (array) → returns an error (no body)", async () => {

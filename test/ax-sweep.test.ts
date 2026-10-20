@@ -26,13 +26,16 @@ describe("a malformed value is refused before any request, never sent as another
     ["--limit 0", ["core", "connect", "sent", ...A, "--limit", "0"], /--limit must be a whole number/],
     ["--limit '' (was ignored)", ["core", "connect", "sent", ...A, "--limit", ""], /--limit must be a whole number/],
     ["--date-posted 7d (was null)", ["core", "search", "jobs", ...A, "--date-posted", "7d"], /--date-posted must be a whole number/],
-    ["--network-distance first (was [])", ["core", "search", "people", ...A, "--network-distance", "first"], /--network-distance must be a whole number, from 1 to 3/],
-    ["--network-distance 1,x (was [1])", ["core", "search", "people", ...A, "--network-distance", "1,x"], /--network-distance must be a whole number/],
+    ["--network-distance first (was [])", ["core", "search", "people", ...A, "--network-distance", "first"], /--network-distance takes comma-separated whole numbers, each from 1 to 3/],
+    ["--network-distance 1,x (was [1])", ["core", "search", "people", ...A, "--network-distance", "1,x"], /--network-distance takes comma-separated whole numbers/],
     ["--proxy-port 80x (was 80)", ["account", "link", "--auth-method", "cookie", "--li-at", "x", "--user-agent", "ua", "--seat-id", "seat_1", "--proxy-host", "p.example", "--proxy-port", "80x"], /--proxy-port must be a whole number, from 1 to 65535/],
     ["--timeout 1e3 on a wait loop", ["account", "checkpoint", "poll", "acc_1", "--wait", "--timeout", "1e3"], /--timeout must be a whole number of milliseconds/],
+    ["--timeout past setTimeout's 2^31-1 ms (fired after 1 ms)", ["account", "checkpoint", "poll", "acc_1", "--wait", "--timeout", "3000000000"], /--timeout must be a whole number of milliseconds, from 1 to 2147483647/],
+    ["Latin-1 bytes on --filters - (was sent as U+FFFD)", ["core", "search", "people", ...A, "--filters", "-"], /--filters: not valid UTF-8/],
     ["--api-key - (was sent as `Bearer -`)", ["account", "list", "--api-key", "-"], /--api-key - reads stdin only on `curviate login`/],
   ])("%s: exit 2, zero requests", async (_l, argv, message) => {
-    const r = await sink.run(argv, { stdin: "cvt_from_stdin\n" });
+    const stdin = argv.includes("--filters") ? Buffer.from('{"keywords":"caf\xe9"}', "latin1") : "cvt_from_stdin\n";
+    const r = await sink.run(argv, { stdin });
     expect([r.status, r.requests.length, r.stderr]).toEqual([2, 0, expect.stringMatching(message)]);
   });
 
@@ -45,6 +48,8 @@ describe("a malformed value is refused before any request, never sent as another
     expect(body(people.requests[0])["network_distance"]).toEqual([1, 2]);
     const proxy = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "x", "--user-agent", "ua", "--seat-id", "seat_1", "--proxy-host", "p.example", "--proxy-port", "8080"]);
     expect((body(proxy.requests.at(-1))["proxy"] as { port: number }).port).toBe(8080);
+    const filters = await sink.run(["core", "search", "people", ...A, "--filters", "-"], { stdin: Buffer.from('{"keywords":"café"}', "utf8") });
+    expect(body(filters.requests[0])["keywords"]).toBe("café");
     const key = await sink.run(["account", "list", "--api-key", "cvt_flag_key"]);
     expect([key.status, key.requests[0]?.headers.authorization]).toEqual([0, "Bearer cvt_flag_key"]);
   });
@@ -79,11 +84,14 @@ describe("a usage error points at the command's own help, by full path", () => {
     ["an unknown flag", ["core", "connect", "sent", "--bogus"], "Run `curviate core connect sent --help` for usage.\n"],
     ["a repeated flag", ["core", "connect", "sent", "--limit", "1", "--limit", "2", ...A], "Run `curviate core connect sent --help` for usage.\n"],
     ["a missing positional", ["core", "post", "get", ...A], "Run `curviate core post get --help` for usage.\n"],
+    ["a stray positional after a leaf", ["core", "profile", "me", "extra", ...A], "Run `curviate core profile me --help` for usage.\n"],
+    ["a stray positional after a bare form", ["core", "company", "1035", "extra", "more", ...A], "Run `curviate core company --help` for usage.\n"],
     ["an unknown command keeps the generic root pointer", ["core", "inbx"], "Run `curviate --help` for usage.\n"],
   ])("%s", async (_l, argv, pointer) => {
     const r = await sink.run(argv);
     expect([r.status, r.requests.length]).toEqual([2, 0]);
     expect(r.stderr.endsWith(pointer), r.stderr).toBe(true);
+    expect(r.stderr.match(/--help/g), r.stderr).toHaveLength(1);
   });
 });
 

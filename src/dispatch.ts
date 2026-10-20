@@ -432,12 +432,8 @@ async function assertLeafConsumesPositionals(
       ? `Did you mean \`${renderPath([...path.slice(0, -1), token])}\`?`
       : undefined;
 
-  usageError(
-    `unexpected ${shown} after \`${form}\`. ` +
-      `\`${form}\` takes ${arity}. ` +
-      `Run \`${form} --help\` for its usage.`,
-    hint,
-  );
+  helpFor = form;
+  usageError(`unexpected ${shown} after \`${form}\`. \`${form}\` takes ${arity}.`, hint);
 }
 
 /** Collect the declared argument names for a node (for unknown-flag detection). */
@@ -696,10 +692,10 @@ export async function resolveLeaf(
         // Otherwise it cannot be a valid reroute -> actionable usage error, never
         // a silent swallow of the extra token.
         const form = renderPath(here.path);
+        helpFor = form;
         usageError(
           `unexpected ${argumentAt(first.index)} after \`${form}\`. ` +
-            `It is neither a positional \`${form}\` accepts nor one of its subcommands. ` +
-            `Run \`${form} --help\` for the available subcommands.`,
+            `It is neither a positional \`${form}\` accepts nor one of its subcommands.`,
         );
       }
       // No keyword match but the node accepts a bare positional -> run it.

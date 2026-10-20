@@ -129,7 +129,7 @@ on a free account, a note on about 5 invitations a month (budget row
 - **A malformed number is refused, never sent as another value.** `--limit`
   (every command that takes it), `--date-posted` on `core search jobs`,
   `--network-distance` and `--connections`, `--proxy-port`, the wait-loop
-  `--timeout` and `webhook verify --max-age-secs` take digits only, in range,
+  `--timeout` (at most 2147483647 ms, past which Node fires after 1 ms) and `webhook verify --max-age-secs` take digits only, in range,
   or exit 2 before any request. Before, `--limit abc` sent `limit=NaN`,
   `--limit 5abc` sent 5, `--date-posted 7d` sent `null`, `--network-distance
   1,x` dropped the `x`, `--proxy-port 80x` sent 80, and `--max-age-secs abc`
@@ -141,10 +141,11 @@ on a free account, a note on about 5 invitations a month (budget row
   (`--file`, `--filters-file`, `webhook verify --file`) given Latin-1 bytes
   exits 2 instead of sending U+FFFD in their place; a BOM is named instead of
   failing the JSON parse at a column you cannot see (or the signature check
-  as a wrong secret). `--filters-file` names the line and column of a JSON
-  fault, like `--file`.
+  as a wrong secret). `--filters-file`, `--filters -` and inline `--filters`
+  name the line and column of a JSON fault, like `--file`, and `--filters -`
+  is capped at 5 MiB like every other document read.
 - **A usage error points at the command's own help**: an unknown or repeated
-  flag, or a missing positional, ends with ``Run `curviate core connect sent
+  flag, a missing or stray positional, ends with ``Run `curviate core connect sent
   --help` for usage.`` (the command's full path). An unknown command keeps
   the root pointer.
 - **A write that meets an unreadable 5xx is not retry-likely.** The
