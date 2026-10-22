@@ -835,6 +835,1305 @@
     },
     {
       "path": [
+        "motion"
+      ],
+      "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "motion",
+        "list"
+      ],
+      "description": "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Comma list of draft, scheduled, active, paused, completed, archived. Default: all but archived."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion list",
+        "curviate motion list --status active,paused"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "motion",
+        "get"
+      ],
+      "description": "One Motion with its current Sequence and lint warnings. With --version, that Sequence version instead, and how many Enrollments still run on it.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "A Sequence version number (1 or more)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion get mot_YOUR_MOTION_ID",
+        "curviate motion get mot_YOUR_MOTION_ID --version 1"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The full Motion, pasteable: `curviate motion create --file -` and `curviate motion update <motion_id> --file -` accept it as is, dropping the keys Curviate sets."
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "create"
+      ],
+      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "file",
+          "type": "string",
+          "stdinArg": true,
+          "required": true,
+          "description": "The Motion file: a path, or - to read it from stdin. `curviate motion get` output is accepted as is."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion create --file motion.json",
+        "curviate motion create --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"contact_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A retry creates a second draft: list with `curviate motion list --status draft` first.",
+        "undo": "`curviate motion delete <motion_id>` deletes a draft."
+      },
+      "errors": {
+        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate motion lint` prints them.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
+        "TIER_REQUIRED": "Motions need the Automate plan."
+      },
+      "seeAlso": [
+        "curviate motion lint",
+        "curviate motion init",
+        "curviate motion preview"
+      ],
+      "document": "motion create"
+    },
+    {
+      "path": [
+        "motion",
+        "update"
+      ],
+      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "stdinArg": true,
+          "required": true,
+          "description": "The Motion file: a path, or - to read it from stdin. `curviate motion get` output is accepted as is."
+        },
+        {
+          "name": "if-revision",
+          "type": "string",
+          "description": "The sequence_revision you read (`curviate motion get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion update mot_YOUR_MOTION_ID --file motion.json --if-revision 3",
+        "curviate motion update mot_YOUR_MOTION_ID --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"contact_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
+        "visible_to": "Your Team, and the Contacts its next Steps reach.",
+        "budget_rows": [],
+        "retry": "Safe: the same file sends the same change. Without --if-revision the last save wins.",
+        "undo": "Send the previous file again (`curviate motion get <motion_id> --version <n>` reads an earlier Sequence)."
+      },
+      "errors": {
+        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate motion lint` prints them.",
+        "SEQUENCE_CONFLICT": "with --if-revision: someone saved the Sequence since that revision; the message names the newer revision and who saved it.",
+        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, cannot change.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate motion get",
+        "curviate motion lint"
+      ],
+      "document": "motion update"
+    },
+    {
+      "path": [
+        "motion",
+        "start"
+      ],
+      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion start mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
+        "visible_to": "The Contacts each Step reaches on LinkedIn.",
+        "budget_rows": [],
+        "retry": "A retry on a started Motion answers MOTION_STATUS_CONFLICT; nothing runs twice.",
+        "undo": "`curviate motion pause <motion_id>` stops new Steps; what was sent stays sent.",
+        "blast_radius": "Every Contact of its Contact lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`)."
+      },
+      "errors": {
+        "MOTION_NOT_STARTABLE": "a gap stops it (Contact list, sending Account, timezone, Sequence); each is listed.",
+        "MOTION_STATUS_CONFLICT": "only a draft starts.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
+        "TIER_REQUIRED": "Motions need the Automate plan."
+      },
+      "seeAlso": [
+        "curviate motion preview",
+        "curviate motion pause"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "pause"
+      ],
+      "description": "Pause an active or scheduled Motion: no Step runs until it is resumed. Waits keep their time.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion pause mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "No Step of the Motion runs while it is paused.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe: a paused Motion answers MOTION_STATUS_CONFLICT.",
+        "undo": "`curviate motion resume <motion_id>`."
+      },
+      "errors": {
+        "MOTION_STATUS_CONFLICT": "only an active or scheduled Motion pauses.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate motion get",
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "resume"
+      ],
+      "description": "Resume a paused Motion. Runs the start checks again.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion resume mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The Motion's Steps run again from its sending Accounts.",
+        "visible_to": "The Contacts each Step reaches on LinkedIn.",
+        "budget_rows": [],
+        "retry": "A retry on a running Motion answers MOTION_STATUS_CONFLICT.",
+        "undo": "`curviate motion pause <motion_id>`; what was sent stays sent.",
+        "blast_radius": "Every open Enrollment of the Motion."
+      },
+      "errors": {
+        "MOTION_NOT_STARTABLE": "a gap stops it; each is listed.",
+        "MOTION_STATUS_CONFLICT": "only a paused Motion resumes.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
+        "TIER_REQUIRED": "Motions need the Automate plan."
+      },
+      "seeAlso": [
+        "curviate motion get",
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "archive"
+      ],
+      "description": "Archive a Motion: its open Enrollments end (motion_archived) and it never runs again.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion archive mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Ends every open Enrollment and freezes the Motion.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A retry answers MOTION_STATUS_CONFLICT.",
+        "undo": "Cannot be undone. Create a new Motion from `curviate motion get <motion_id>` output.",
+        "blast_radius": "Every open Enrollment of the Motion."
+      },
+      "errors": {
+        "MOTION_STATUS_CONFLICT": "already archived.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate motion get",
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "delete"
+      ],
+      "description": "Delete a draft Motion with its Sequence versions. Any other status: archive it instead.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion delete mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes the draft and its Sequence versions.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A retry answers RESOURCE_NOT_FOUND.",
+        "undo": "Cannot be undone. Keep `curviate motion get <motion_id>` output to create it again.",
+        "blast_radius": "One draft Motion; it has no Enrollments."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no Motion with this id.",
+        "MOTION_STATUS_CONFLICT": "only a draft is deleted; archive the others.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate motion archive",
+        "curviate motion list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "preview"
+      ],
+      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection. A read: never reaches LinkedIn, spends nothing.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        },
+        {
+          "name": "sample",
+          "type": "string",
+          "description": "How many Contacts to render (default 5)."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "description": "A Contact id (con_...) to render; repeatable, or a comma list. Not with --sample."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion preview mot_YOUR_MOTION_ID",
+        "curviate motion preview mot_YOUR_MOTION_ID --sample 3"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "motion",
+        "add"
+      ],
+      "description": "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "description": "Enroll them on this sending Account of the Motion (acc_...). Never defaulted: omit it and Curviate assigns one."
+        },
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "required": true,
+          "description": "A Contact id (con_...); repeatable, or a comma list."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion add mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID",
+        "curviate motion add mot_YOUR_MOTION_ID --contact con_A,con_B --account acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Each queued Contact becomes a pending Enrollment; a running Motion reaches it on its schedule.",
+        "visible_to": "Your Team now; the Contacts once their Steps run.",
+        "budget_rows": [],
+        "retry": "Safe: a Contact already in the Motion answers already_enrolled. After a failed request, send the ids from the failed one on.",
+        "undo": "`curviate motion remove <motion_id> --contact <contact_id>`; what was sent stays sent.",
+        "blast_radius": "Every Contact given."
+      },
+      "errors": {
+        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, takes no Contacts.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "remove"
+      ],
+      "description": "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Motion id (mot_...)."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "required": true,
+          "description": "A Contact id (con_...); repeatable, or a comma list."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion remove mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Ends each named Contact's open Enrollments in the Motion (removed).",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe: a Contact no longer in the Motion is listed in not_found.",
+        "undo": "`curviate motion add <motion_id> --contact <contact_id>` enrolls it again.",
+        "blast_radius": "Every Contact given."
+      },
+      "errors": {
+        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, takes no Contacts.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "lint"
+      ],
+      "description": "Check a Sequence offline with the rules the API applies: a Motion file (its sequence) or a bare Sequence document. One line per finding, `<file>:<line>:<col> error|warning <code> <path>: <message>. <hint> -> <docs_url>`; exit 2 on any error, 0 otherwise.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "file",
+          "type": "string",
+          "stdinArg": true,
+          "required": true,
+          "description": "A Motion file or a Sequence document: a path, or - to read it from stdin."
+        }
+      ],
+      "globals": [
+        "json"
+      ],
+      "examples": [
+        "curviate motion lint --file motion.json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "notes": [
+          "Offline: no API call."
+        ]
+      },
+      "output": [
+        "Findings on stderr. With --json (or piped), stdout carries `{errors, warnings}`, or on errors the SEQUENCE_INVALID refusal the API would send."
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "init"
+      ],
+      "description": "Write a Motion file from a template (connect-and-converse, engage-then-connect, nurture-connections), its schedule in this machine's timezone. Fill contact_list_ids and account_ids, then create it.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "template",
+          "type": "string",
+          "required": true,
+          "description": "One of connect-and-converse, engage-then-connect, nurture-connections."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "description": "Write to this path, replacing what is there. Omitted: stdout."
+        }
+      ],
+      "globals": [],
+      "examples": [
+        "curviate motion init --template connect-and-converse --output motion.json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "notes": [
+          "Offline: no API call."
+        ]
+      },
+      "output": [
+        "The Motion file on stdout, or in the --output file."
+      ]
+    },
+    {
+      "path": [
+        "enrollment"
+      ],
+      "description": "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "enrollment",
+        "list"
+      ],
+      "description": "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Only this Motion's Enrollments (mot_...)."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "description": "Only this Contact's Enrollments (con_...)."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Comma list of pending, active, paused, finished, skipped."
+        },
+        {
+          "name": "step",
+          "type": "string",
+          "description": "Only Enrollments now at this Step id."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "Only Enrollments running this Sequence version (1 or more)."
+        },
+        {
+          "name": "done-step",
+          "type": "string",
+          "description": "Only Enrollments that ran this Step id. With --outcome: how it ended."
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "description": "With --done-step: executed, skipped, failed, accepted, not_accepted, replied, no_reply or seen."
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Comma list of reason codes (skip, finish or Step reasons; narrowed to --done-step when given)."
+        },
+        {
+          "name": "variant",
+          "type": "string",
+          "description": "Only Enrollments given this variant id."
+        },
+        {
+          "name": "relationship",
+          "type": "string",
+          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment list --motion mot_YOUR_MOTION_ID",
+        "curviate enrollment list --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed",
+        "curviate enrollment list --motion mot_YOUR_MOTION_ID --reason already_connected,known_chat --relationship connected"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "Each reason code comes with its sentence beside it (`skip_reason` and `skip_message`, `finish_reason` and `finish_message`)."
+      ]
+    },
+    {
+      "path": [
+        "enrollment",
+        "get"
+      ],
+      "description": "One Enrollment with the history of its Steps: outcome, reason and its sentence, the Account that ran it. Metadata only, never the text sent.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment get enr_YOUR_ENROLLMENT_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "enrollment",
+        "pause"
+      ],
+      "description": "Hold one Enrollment until you resume it; its waits freeze with the time they had left. Replies are still recorded.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment pause enr_YOUR_ENROLLMENT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "No Step of this Enrollment runs until it is resumed.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A second pause answers ENROLLMENT_NOT_ACTIVE; nothing changes.",
+        "undo": "`curviate enrollment resume <enrollment_id>`."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
+        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      }
+    },
+    {
+      "path": [
+        "enrollment",
+        "resume"
+      ],
+      "description": "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "at",
+          "type": "string",
+          "description": "Jump to this Step id (the out-of-office path). Not guarded: a Step that already sent sends again."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment resume enr_YOUR_ENROLLMENT_ID",
+        "curviate enrollment resume enr_YOUR_ENROLLMENT_ID --at bump"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The Enrollment runs again from its Account; with --at, from the named Step.",
+        "visible_to": "The Contact, once its next Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "With --at, every call jumps again and may send again: read `curviate enrollment get <enrollment_id>` first.",
+        "undo": "`curviate enrollment pause <enrollment_id>`; what was sent stays sent.",
+        "blast_radius": "One Enrollment: one Contact, from one Account."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
+        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment retry",
+        "curviate enrollment get"
+      ]
+    },
+    {
+      "path": [
+        "enrollment",
+        "retry"
+      ],
+      "description": "Retry the failed Step of one Enrollment. Acts only while that Step's latest outcome is failed, so a repeated retry never re-sends a delivered message. Then waits for the Step's next record and prints it as {outcome, reason, message}; the Step may wait for pacing or a budget.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "wait-timeout",
+          "type": "string",
+          "description": "How long to wait for the re-run, in milliseconds (default 600000). --timeout stays the request timeout."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment retry enr_YOUR_ENROLLMENT_ID",
+        "curviate enrollment retry enr_YOUR_ENROLLMENT_ID --wait-timeout 60000"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Resumes the Enrollment at its failed Step, which runs again when its Account may send.",
+        "visible_to": "The Contact, if the Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe: with nothing failed it answers NOTHING_TO_RETRY and sends nothing.",
+        "undo": "`curviate enrollment pause <enrollment_id>` before the Step runs; what was sent stays sent.",
+        "blast_radius": "One Step of one Enrollment."
+      },
+      "output": [
+        "The re-run's record, {step_id, outcome, reason, message}. Exit 7 when the wait runs out first: the Step is resumed; read it later."
+      ],
+      "errors": {
+        "NOTHING_TO_RETRY": "nothing to retry: the Enrollment's latest Step outcome is not failed.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment get",
+        "curviate enrollment bulk"
+      ]
+    },
+    {
+      "path": [
+        "enrollment",
+        "stop"
+      ],
+      "description": "Stop a pending, active or paused Enrollment: it finishes (stopped) and runs no further Step.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment stop enr_YOUR_ENROLLMENT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Enrollment finishes with reason stopped.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A second stop answers ENROLLMENT_NOT_ACTIVE.",
+        "undo": "`curviate enrollment resume <enrollment_id> --at <step_id>` restarts it at a Step."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      }
+    },
+    {
+      "path": [
+        "enrollment",
+        "event"
+      ],
+      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "name",
+          "type": "positional",
+          "description": "The event name a Step of its Sequence waits for (`until event.<name>`)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment event enr_YOUR_ENROLLMENT_ID research_ready"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Records the event; a Step waiting for it continues. Fires no webhook.",
+        "visible_to": "Your Team; the Contact once the next Step runs.",
+        "budget_rows": [],
+        "retry": "A second event is recorded again; a Step already past the wait ignores it.",
+        "undo": "Cannot be undone; pause or stop the Enrollment to keep its next Step from running."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "INVALID_REQUEST": "no Step of its version waits for this name; the message lists the awaited names.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      }
+    },
+    {
+      "path": [
+        "enrollment",
+        "signal"
+      ],
+      "description": "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "name",
+          "type": "positional",
+          "description": "The event name a Step of its Sequence waits for (`until event.<name>`)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment signal enr_YOUR_ENROLLMENT_ID research_ready"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Records the event; a Step waiting for it continues. Fires no webhook.",
+        "visible_to": "Your Team; the Contact once the next Step runs.",
+        "budget_rows": [],
+        "retry": "A second event is recorded again; a Step already past the wait ignores it.",
+        "undo": "Cannot be undone; pause or stop the Enrollment to keep its next Step from running."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "INVALID_REQUEST": "no Step of its version waits for this name; the message lists the awaited names.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      }
+    },
+    {
+      "path": [
+        "enrollment",
+        "reassign"
+      ],
+      "description": "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "required": true,
+          "description": "The target sending Account of the Motion (acc_...). Never defaulted."
+        },
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment reassign enr_YOUR_ENROLLMENT_ID --account acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The Enrollment restarts on the target Account; Steps already skipped are named in warnings.",
+        "visible_to": "The Contact, once the target Account's first Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "A second call to the same Account answers ALREADY_ENROLLED_ON_ACCOUNT.",
+        "undo": "Reassign it back while the target has not engaged the person yet.",
+        "blast_radius": "One Enrollment: one Contact, from one Account."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the target is not a sending Account of the Motion.",
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
+        "ACCOUNT_ALREADY_ENGAGED": "its current Account already did something the person can see.",
+        "ALREADY_ENROLLED_ON_ACCOUNT": "the target already holds this Contact in the Motion, or is the current Account.",
+        "KNOWN_CHAT": "the target already has a chat with the person.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment get",
+        "curviate motion get"
+      ]
+    },
+    {
+      "path": [
+        "enrollment",
+        "bulk"
+      ],
+      "description": "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "string",
+          "description": "With --action reassign: the target sending Account (acc_...). Never defaulted."
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "One of pause, resume, stop, retry, event, reassign."
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "description": "An Enrollment id (enr_...); repeatable, or a comma list. Not with --motion."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Act on this Motion's Enrollments (mot_...) that the other filters match. Not with --id."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "description": "Only this Contact's Enrollments (con_...)."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "description": "Comma list of pending, active, paused, finished, skipped."
+        },
+        {
+          "name": "step",
+          "type": "string",
+          "description": "Only Enrollments now at this Step id."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "Only Enrollments running this Sequence version (1 or more)."
+        },
+        {
+          "name": "done-step",
+          "type": "string",
+          "description": "Only Enrollments that ran this Step id. With --outcome: how it ended."
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "description": "With --done-step: executed, skipped, failed, accepted, not_accepted, replied, no_reply or seen."
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Comma list of reason codes (skip, finish or Step reasons; narrowed to --done-step when given)."
+        },
+        {
+          "name": "variant",
+          "type": "string",
+          "description": "Only Enrollments given this variant id."
+        },
+        {
+          "name": "relationship",
+          "type": "string",
+          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+        },
+        {
+          "name": "at",
+          "type": "string",
+          "description": "With --action resume: jump to this Step id (not guarded, see `curviate enrollment resume`)."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "With --action event: the event name."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment bulk --action stop --id enr_A,enr_B",
+        "curviate enrollment bulk --action retry --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Each Enrollment gets the action as its single command would.",
+        "visible_to": "The Contacts whose next Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "A retried call is a new call: each Enrollment answers again on its own (a second stop is ENROLLMENT_NOT_ACTIVE for it).",
+        "undo": "Per Enrollment, as its single command says; what was sent stays sent.",
+        "blast_radius": "Up to 1000 items (Enrollments), every Contact and Account they cover."
+      },
+      "output": [
+        "One line per Enrollment, `<enrollment_id> ok` or `<enrollment_id> error <code>: <message>`; with --json (or piped) the API's answer. Exit 0 when every one is ok, else the first refusal's exit."
+      ],
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "NOTHING_TO_RETRY": "retry, per Enrollment: nothing failed.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment get",
+        "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
         "webhook"
       ],
       "description": "Webhook management and signature verification.",
@@ -855,7 +2154,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed).",
+          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | motion (motion.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, motion.custom_event; opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
           "required": true
         },
         {
@@ -867,7 +2166,12 @@
         {
           "name": "account-ids",
           "type": "string",
-          "description": "Comma-separated account ids to target. Required for messaging, user and post; omit on account_status to cover every current and future account."
+          "description": "Comma-separated account ids to target. Omit to cover every account you can operate, now and later."
+        },
+        {
+          "name": "motion-ids",
+          "type": "string",
+          "description": "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter."
         },
         {
           "name": "name",
@@ -905,11 +2209,10 @@
       ],
       "examples": [
         "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
+        "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
-      "requires": [
-        "--account-ids for --source messaging, user and post; omit it with --source account_status to cover every current and future account."
-      ]
+      "requires": []
     },
     {
       "path": [

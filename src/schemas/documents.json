@@ -882,5 +882,356 @@
       }
     },
     "additionalProperties": false
+  },
+  "motion create": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "contact_list_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "exclusion_list_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "account_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "schedule": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ]
+            }
+          },
+          "hours": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "start_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "end_at": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "settings": {
+        "type": "object",
+        "properties": {
+          "accounts_per_contact": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "assign": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "even",
+              "already_connected"
+            ]
+          },
+          "new_enrollments_per_account_per_day": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "exclude": {
+            "type": "object",
+            "properties": {
+              "other_motions": {
+                "type": "boolean"
+              },
+              "known_chats": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "acceptance_floor": {
+            "type": "object",
+            "properties": {
+              "percent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "min_invites": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 1000
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "nullable": true
+            }
+          },
+          "stop_on_engagement": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "where": {
+        "type": "array",
+        "items": {}
+      },
+      "sequence": {}
+    },
+    "required": [
+      "name"
+    ],
+    "additionalProperties": false,
+    "x-curviate-response-only": [
+      "object",
+      "id",
+      "status",
+      "pause_reason",
+      "sequence_version",
+      "sequence_revision",
+      "sequence_updated_by_user_id",
+      "counts",
+      "warnings",
+      "created_by_user_id",
+      "created_at",
+      "updated_at",
+      "started_at",
+      "completed_at",
+      "archived_at",
+      "safety_warning"
+    ]
+  },
+  "motion update": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "contact_list_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "exclusion_list_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "account_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "schedule": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ]
+            }
+          },
+          "hours": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "start_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "end_at": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "settings": {
+        "type": "object",
+        "properties": {
+          "accounts_per_contact": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "assign": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "even",
+              "already_connected"
+            ]
+          },
+          "new_enrollments_per_account_per_day": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "exclude": {
+            "type": "object",
+            "properties": {
+              "other_motions": {
+                "type": "boolean"
+              },
+              "known_chats": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "acceptance_floor": {
+            "type": "object",
+            "properties": {
+              "percent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "min_invites": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 1000
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "nullable": true
+            }
+          },
+          "stop_on_engagement": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "where": {
+        "type": "array",
+        "items": {}
+      },
+      "sequence": {},
+      "if_sequence_revision": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "additionalProperties": false,
+    "x-curviate-response-only": [
+      "object",
+      "id",
+      "status",
+      "pause_reason",
+      "sequence_version",
+      "sequence_revision",
+      "sequence_updated_by_user_id",
+      "counts",
+      "warnings",
+      "created_by_user_id",
+      "created_at",
+      "updated_at",
+      "started_at",
+      "completed_at",
+      "archived_at",
+      "safety_warning"
+    ]
   }
 }

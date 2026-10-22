@@ -249,4 +249,6 @@ export const STATE_WRITES: Readonly<Record<string, string>> = {
   "curviate account checkpoint poll": "curviate account checkpoint poll <account_id>",
   "curviate account checkpoint request": "curviate account checkpoint poll <account_id>",
   "curviate account connect-session poll": "curviate account connect-session poll --session <session_id>",
+  // Its answer says whether the Step was resumed, and what to wait for.
+  "curviate enrollment retry": "curviate enrollment get <enrollment_id>",
 };

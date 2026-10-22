@@ -309,6 +309,40 @@ curviate core draft list --account none --all --json                            
 
 A scheduled post that fails to publish becomes a `failed` Draft with a `failure` code; any `curviate core draft update` on it clears the failure. Failed `outcome_unknown` means the post may be live: check the account's posts before retrying.
 
+## Motions and Enrollments
+
+A Motion runs one Sequence for the Contacts of your Contact lists, from its sending accounts, paced on a schedule. It is created as a draft and does nothing until you start it. An Enrollment is one Contact in one Motion on one account. Both belong to your team: `--account` is never read from your config for them.
+
+### 1. From a template to a running Motion
+
+```bash
+curviate motion init --template connect-and-converse --output motion.json   # offline; fill contact_list_ids and account_ids
+curviate motion lint --file motion.json                                     # offline: the rules the API applies
+curviate motion create --file motion.json --json
+curviate motion preview mot_1 --sample 3 --json                             # rendered messages and the budget projection; spends nothing
+curviate motion start mot_1 --json
+```
+
+`curviate motion lint` prints one line per finding, compiler style, and exits 2 on any error:
+
+```text
+motion.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
+```
+
+`curviate motion create` and `curviate motion update` check the same way before anything is sent. `curviate motion get mot_1 --json` prints a file `curviate motion update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
+
+### 2. Find and fix Enrollments
+
+```bash
+curviate enrollment list --motion mot_1 --done-step opener --outcome failed --json
+curviate enrollment retry enr_1 --json                  # only a failed Step; waits for the re-run and prints its outcome
+curviate enrollment bulk --action retry --motion mot_1 --done-step opener --outcome failed --json
+curviate enrollment pause enr_1 --json
+curviate enrollment resume enr_1 --json                 # lifts your pause
+```
+
+`curviate enrollment resume <id> --at <step>` is a jump, not a retry: it re-enters that Step even when it already sent. `curviate enrollment retry` never sends a delivered message again.
+
 ## Sales Navigator
 
 Sales Navigator commands (`curviate core sales-nav ...`) are **beta**: this surface has not been
@@ -620,7 +654,7 @@ curviate core inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 | 2 | Usage / argument error |
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |
-| 5 | No active seat, the LinkedIn account lacks the subscription, or beta consent is missing |
+| 5 | Someone must act first: no active seat, the LinkedIn account lacks the subscription, beta consent is missing, the plan is below the Tier the action needs, or a teammate with the right role (or the Account's own person) must do it |
 | 6 | Rate limited |
 | 7 | Transient platform error (retry likely to succeed) |
 | 8 | Account or connection state blocks the request |

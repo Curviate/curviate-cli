@@ -6,6 +6,63 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.49.0] - 2026-10-22
+
+A minor: Motions and Enrollments arrive as top-level groups. Requires
+`@curviate/sdk` 0.44.0 (exact pin). The vendored OpenAPI fixture is re-copied
+from the SDK's fixture.
+
+### Added
+
+- `curviate motion`: `list`, `get` (with `--version` for one Sequence
+  version), `create --file`, `update --file [--if-revision <n>]`, `start`,
+  `pause`, `resume`, `archive`, `delete`, `preview [--sample | --contact]`,
+  `add` and `remove` (`--contact`, sent in requests of up to 1000 ids, in
+  order; a failed request stops the run and reports what was sent), and two
+  offline commands: `lint --file` and `init --template [--output]`.
+- A Motion file is checked before anything is sent: its fields against the
+  published schema, its Sequence with the SDK's `validateSequence`. Sequence
+  findings print one per line, `<file>:<line>:<col> error R12 <path>: <message>.
+  <hint> -> <docs_url>`, the same as `curviate motion lint`.
+- `curviate motion get` output is a Motion file: `motion create --file -` and
+  `motion update <id> --file -` accept it, dropping the keys Curviate sets with a
+  warning naming each.
+- `curviate motion update --if-revision <n>`: refused with `SEQUENCE_CONFLICT`
+  (exit 2) when someone saved the Sequence since; the message names the newer
+  revision and who saved it.
+- `curviate motion init --template` writes `connect-and-converse`,
+  `engage-then-connect` or `nurture-connections` (which follows up only when the
+  first message was seen) in this machine's timezone.
+- `curviate enrollment`: `list` (filters `--motion`, `--contact`, `--status`,
+  `--step`, `--version`, `--done-step` with `--outcome`, `--reason`,
+  `--variant`, `--relationship`), `get`, `pause`, `resume [--at]`, `retry`,
+  `stop`, `event <id> <name>`, `reassign --account`, and `bulk --action` over
+  `--id` or `--motion` with the list filters.
+- `curviate enrollment retry` retries only a failed Step (a repeat never sends a
+  delivered message again), then waits for the re-run (`--wait-timeout <ms>`, default
+  600000) and prints its outcome, reason and message.
+- In human output, each Enrollment reason reads `<code>: <message>` (skip,
+  finish and every history entry); `--json` keeps the API's code and message
+  keys.
+- `curviate webhook create --source motion` and `--motion-ids`.
+
+### Changed
+
+- `curviate webhook create`: `--account-ids` is optional for every source;
+  omitted, the webhook covers every account you can operate, now and later.
+- `curviate enrollment resume --at` is a jump: it re-enters the named Step even
+  when that Step already sent. Use `curviate enrollment retry` for a failed Step.
+- Exit codes for the new error codes: `SEQUENCE_INVALID`, `SEQUENCE_CONFLICT`,
+  `NOTHING_TO_RETRY`, `MOTION_STATUS_CONFLICT`, `ENROLLMENT_NOT_ACTIVE` and the
+  other Motion refusals exit 2; `STEP_IN_FLIGHT` exits 7 (read again in a
+  minute); `TIER_REQUIRED` and the team-role codes exit 5; a request timeout
+  exits 7.
+
+### Deprecated
+
+- `curviate enrollment signal` is an alias of `curviate enrollment event`,
+  accepted until 2027-01-19.
+
 ## [0.48.0] - 2026-10-19
 
 A breaking minor (pre-1.0): the LinkedIn commands move under `curviate core`.

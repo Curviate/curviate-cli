@@ -19,7 +19,7 @@ const BAD_STUB = "The API returned an unreadable response"; // a read the stub's
 const SLOW = 300_000;
 /** The checkpoint flow reads its next step from the body: an unreadable one stays exit 7, saying the request may have been applied (sweeps.test.ts). */
 /** The SDK method returns nothing (a documented 204), so any body prints as {}. */
-const VOID_RESULT = new Set(["core draft delete"]);
+const VOID_RESULT = new Set(["core draft delete", "motion delete"]);
 const CHECKPOINT_FLOW = new Set(Object.keys(STATE_WRITES).map((p) => p.replace(/^curviate /, "")));
 
 describe("meta.examples", () => {
@@ -45,7 +45,9 @@ describe("meta.examples", () => {
         let last = "";
         let ok = false;
         for (const line of c.examples.filter((l) => !INTERACTIVE_ONLY.has(l))) {
-          const r = await ex.run(withArgs(line, `--${flag}${value[flag] !== undefined ? ` ${value[flag]}` : ""}`), { fresh: true });
+          // --preview needs the acting Account only where --account is that global; a command's own --account is already in its example.
+          const v = flag === "preview" && !c.globals.includes("account") ? undefined : value[flag];
+          const r = await ex.run(withArgs(line, `--${flag}${v !== undefined ? ` ${v}` : ""}`), { fresh: true });
           if (r.status !== 2) {
             ok = true;
             break;
