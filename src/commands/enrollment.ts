@@ -38,6 +38,7 @@ type EnrollmentFlags = RootFlags & {
   all?: boolean;
   "max-pages"?: string;
   "page-delay"?: string;
+  "wait-timeout"?: string;
 };
 
 type Record_ = Record<string, unknown>;
@@ -124,13 +125,12 @@ const required = (flag: string, v: string | undefined, what: string): string => 
 
 /**
  * `retry`: the guarded Retry, then a wait for the failed Step's next record,
- * printed as `{outcome, reason, message}`. Here `--timeout` bounds that wait
- * (the `account checkpoint poll --wait` precedent); requests keep the default
- * request timeout.
+ * printed as `{outcome, reason, message}`. `--wait-timeout` bounds that wait;
+ * `--timeout` stays the request timeout.
  */
 export async function runRetry(c: Curviate, f: EnrollmentFlags): Promise<void> {
   const id = String(f.id ?? "");
-  const waitMs = f.timeout === undefined ? RETRY_WAIT_MS : intFlag("timeout", f.timeout, 0, 24 * 60 * 60 * 1000);
+  const waitMs = f["wait-timeout"] === undefined ? RETRY_WAIT_MS : intFlag("wait-timeout", f["wait-timeout"], 0, 24 * 60 * 60 * 1000);
   if (f.preview) return preview("enrollments.retry", { id });
   const read = async () => {
     const e = (await c.enrollments.get(id)) as { history?: HistoryEntry[] } | null;
@@ -215,9 +215,9 @@ async function runBulk(c: Curviate, f: EnrollmentFlags): Promise<void> {
 // citty definitions
 // ---------------------------------------------------------------------------
 
-const online = (fn: (c: Curviate, f: EnrollmentFlags) => Promise<void>, requestTimeout = true) => async ({ args }: { args: unknown }) => {
+const online = (fn: (c: Curviate, f: EnrollmentFlags) => Promise<void>) => async ({ args }: { args: unknown }) => {
   const f = args as EnrollmentFlags;
-  await fn(await rootClient(requestTimeout ? f : { ...f, timeout: undefined }), f);
+  await fn(await rootClient(f), f);
 };
 
 const ID = { type: "positional" as const, description: "Enrollment id (enr_...)." };
@@ -337,14 +337,14 @@ const retryCmd = defineCommand({
     },
     output: ["The re-run's record, {step_id, outcome, reason, message}. Exit 7 when the wait runs out first: the Step is resumed; read it later."],
     seeAlso: ["curviate enrollment get", "curviate enrollment bulk"],
-    examples: ["curviate enrollment retry enr_YOUR_ENROLLMENT_ID", "curviate enrollment retry enr_YOUR_ENROLLMENT_ID --timeout 60000"],
+    examples: ["curviate enrollment retry enr_YOUR_ENROLLMENT_ID", "curviate enrollment retry enr_YOUR_ENROLLMENT_ID --wait-timeout 60000"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: ID,
-    timeout: { type: "string", description: "How long to wait for the re-run, in milliseconds (default 600000). Requests keep the default timeout." },
+    "wait-timeout": { type: "string", description: "How long to wait for the re-run, in milliseconds (default 600000). --timeout stays the request timeout." },
   },
-  run: online(runRetry, false),
+  run: online(runRetry),
 });
 
 const stopCmd = defineCommand({

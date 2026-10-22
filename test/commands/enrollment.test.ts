@@ -85,20 +85,20 @@ describe("enrollment retry: the guarded Retry, then the re-run's record", () => 
     expect(JSON.parse(r.stdout)).toEqual({ step_id: "opener", outcome: "executed", reason: null, message: null });
   });
 
-  it.each<[string, Reply, number, RegExp]>([
-    ["nothing failed", bulk({ outcome: "error", error: { code: "NOTHING_TO_RETRY", message: "Nothing to retry: the latest Step outcome is executed." } }), 2, /nothing to retry/i],
-    ["a Step in flight", bulk({ outcome: "error", error: { code: "STEP_IN_FLIGHT", message: "A Step is being sent." } }), 7, /STEP_IN_FLIGHT/],
-    ["an answer it cannot read", { body: { object: "enrollment_bulk_result" } }, 7, /may have been applied: check with `curviate enrollment get enr_1`/],
-  ])("%s: exit %#, one retry call, nothing waited for", async (_why, answer, exit, message) => {
+  it.each<[string, number, Reply, RegExp]>([
+    ["nothing failed", 2, bulk({ outcome: "error", error: { code: "NOTHING_TO_RETRY", message: "Nothing to retry: the latest Step outcome is executed." } }), /nothing to retry/i],
+    ["a Step in flight", 7, bulk({ outcome: "error", error: { code: "STEP_IN_FLIGHT", message: "A Step is being sent." } }), /STEP_IN_FLIGHT/],
+    ["an answer it cannot read", 7, { body: { object: "enrollment_bulk_result" } }, /may have been applied: check with `curviate enrollment get enr_1`/],
+  ])("%s: exit %i, one retry call, nothing waited for", async (_why, exit, answer, message) => {
     script([[FAILED]], answer);
     const r = await sink.run(["enrollment", "retry", "enr_1", "--json"]);
     expect([r.status, r.requests.map(line)]).toEqual([exit, ["GET /v1/enrollments/enr_1", "POST /v1/enrollments/bulk"]]);
     expect(r.stdout + r.stderr).toMatch(message);
   });
 
-  it("the wait runs out (--timeout 0): exit 7, the Step is resumed, read it later, do not retry", async () => {
+  it("the wait runs out (--wait-timeout 0): exit 7, the Step is resumed, read it later, do not retry; --timeout stays the request timeout", async () => {
     script([[FAILED]], bulk({ outcome: "ok", error: null }));
-    const r = await sink.run(["enrollment", "retry", "enr_1", "--timeout", "0"]);
+    const r = await sink.run(["enrollment", "retry", "enr_1", "--wait-timeout", "0", "--timeout", "5000"]);
     expect([r.status, r.requests.map(line)]).toEqual([7, ["GET /v1/enrollments/enr_1", "POST /v1/enrollments/bulk", "GET /v1/enrollments/enr_1"]]);
     expect(r.stderr).toContain("Step opener was resumed but has not run within 0 ms");
   });

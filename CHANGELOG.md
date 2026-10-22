@@ -39,7 +39,7 @@ from the SDK's fixture.
   `stop`, `event <id> <name>`, `reassign --account`, and `bulk --action` over
   `--id` or `--motion` with the list filters.
 - `curviate enrollment retry` retries only a failed Step (a repeat never sends a
-  delivered message again), then waits for the re-run (`--timeout <ms>`, default
+  delivered message again), then waits for the re-run (`--wait-timeout <ms>`, default
   600000) and prints its outcome, reason and message.
 - `curviate webhook create --source motion` and `--motion-ids`.
 
