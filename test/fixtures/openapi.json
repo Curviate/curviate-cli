@@ -93591,6 +93591,13 @@
                       ],
                       "description": "LinkedIn's member id, when observed."
                     },
+                    "profile_picture_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                    },
                     "full_name": {
                       "type": [
                         "string",
@@ -93759,6 +93766,7 @@
                     "public_identifier",
                     "provider_id",
                     "member_id",
+                    "profile_picture_url",
                     "full_name",
                     "first_name",
                     "last_name",
@@ -93835,6 +93843,13 @@
                       ],
                       "description": "LinkedIn's member id, when observed."
                     },
+                    "profile_picture_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                    },
                     "full_name": {
                       "type": [
                         "string",
@@ -94003,6 +94018,7 @@
                     "public_identifier",
                     "provider_id",
                     "member_id",
+                    "profile_picture_url",
                     "full_name",
                     "first_name",
                     "last_name",
@@ -94031,6 +94047,7 @@
                       "public_identifier": "jane-doe",
                       "provider_id": null,
                       "member_id": null,
+                      "profile_picture_url": null,
                       "full_name": "Jane Doe",
                       "first_name": "Jane",
                       "last_name": "Doe",
@@ -94583,6 +94600,13 @@
                             ],
                             "description": "LinkedIn's member id, when observed."
                           },
+                          "profile_picture_url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                          },
                           "full_name": {
                             "type": [
                               "string",
@@ -94740,6 +94764,7 @@
                           "public_identifier",
                           "provider_id",
                           "member_id",
+                          "profile_picture_url",
                           "full_name",
                           "first_name",
                           "last_name",
@@ -94789,6 +94814,7 @@
                           "public_identifier": "jane-doe",
                           "provider_id": null,
                           "member_id": null,
+                          "profile_picture_url": null,
                           "full_name": "Jane Doe",
                           "first_name": "Jane",
                           "last_name": "Doe",
@@ -95178,6 +95204,13 @@
                         ],
                         "description": "LinkedIn's member id, when observed."
                       },
+                      "profile_picture_url": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                      },
                       "full_name": {
                         "type": [
                           "string",
@@ -95335,6 +95368,7 @@
                       "public_identifier",
                       "provider_id",
                       "member_id",
+                      "profile_picture_url",
                       "full_name",
                       "first_name",
                       "last_name",
@@ -95367,6 +95401,7 @@
                         "public_identifier": "jane-doe",
                         "provider_id": null,
                         "member_id": null,
+                        "profile_picture_url": null,
                         "full_name": "Jane Doe",
                         "first_name": "Jane",
                         "last_name": "Doe",
@@ -98443,6 +98478,13 @@
                       ],
                       "description": "LinkedIn's member id, when observed."
                     },
+                    "profile_picture_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                    },
                     "full_name": {
                       "type": [
                         "string",
@@ -98603,6 +98645,7 @@
                     "public_identifier",
                     "provider_id",
                     "member_id",
+                    "profile_picture_url",
                     "full_name",
                     "first_name",
                     "last_name",
@@ -98631,6 +98674,7 @@
                       "public_identifier": "jane-doe",
                       "provider_id": null,
                       "member_id": null,
+                      "profile_picture_url": null,
                       "full_name": "Jane Doe",
                       "first_name": "Jane",
                       "last_name": "Doe",
@@ -98825,6 +98869,13 @@
                       ],
                       "description": "LinkedIn's member id, when observed."
                     },
+                    "profile_picture_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                    },
                     "full_name": {
                       "type": [
                         "string",
@@ -98985,6 +99036,7 @@
                     "public_identifier",
                     "provider_id",
                     "member_id",
+                    "profile_picture_url",
                     "full_name",
                     "first_name",
                     "last_name",
@@ -99013,6 +99065,7 @@
                       "public_identifier": "jane-doe",
                       "provider_id": null,
                       "member_id": null,
+                      "profile_picture_url": null,
                       "full_name": "Jane Doe",
                       "first_name": "Jane",
                       "last_name": "Doe",

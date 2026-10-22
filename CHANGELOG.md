@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [0.49.0] - UNRELEASED
+## [0.49.0] - 2026-10-22
 
 A minor: Motions and Enrollments arrive as top-level groups. Requires
 `@curviate/sdk` 0.44.0 (exact pin). The vendored OpenAPI fixture is re-copied

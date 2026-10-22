@@ -4,16 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@curviate/sdk': link:../sdk
-
 importers:
 
   .:
     dependencies:
       '@curviate/sdk':
-        specifier: link:../sdk
-        version: link:../sdk
+        specifier: 0.44.0
+        version: 0.44.0
       citty:
         specifier: ^0.1.6
         version: 0.1.6
@@ -41,6 +38,10 @@ importers:
         version: 3.2.6(@types/node@22.20.0)
 
 packages:
+
+  '@curviate/sdk@0.44.0':
+    resolution: {integrity: sha512-qJrmOydLqTa99aVMd9pJVpTwwg7iwtJEeYZbBfh9NxG3DGWAadcEt0HEC/ZjDe5qQFq0Ub7YT58MYgFu4D54Cw==}
+    engines: {node: '>=18'}
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -1207,7 +1208,14 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
+
+  '@curviate/sdk@0.44.0':
+    dependencies:
+      zod: 3.25.76
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
@@ -2259,3 +2267,5 @@ snapshots:
       is-wsl: 3.1.1
 
   yocto-queue@0.1.0: {}
+
+  zod@3.25.76: {}
