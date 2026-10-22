@@ -279,6 +279,52 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // backoff. Not 11, which tells the caller the tenant's billing is at fault,
   // and here it is not. The `--json` envelope still names the real code.
   STRIPE_DRIFT_DETECTED: 1,
+
+  // Teams (cli/011 FR-017): the credential is valid, a person with the right
+  // role, or the Account's own person, must act first (5, never 3, which tells
+  // a script to rotate its key). The credential is another team's: 3. The
+  // rest never succeed as sent: 2. TIER_REQUIRED joins the entitlement bucket.
+  INSUFFICIENT_ROLE: 5,
+  ACCOUNT_NOT_SHARED: 5,
+  ACCOUNT_OWNER_ONLY: 5,
+  BILLING_OWNER_REQUIRED: 5,
+  LAST_OWNER: 5,
+  TIER_REQUIRED: 5,
+  TEAM_ACCESS_DENIED: 3,
+  DEFAULT_TEAM_PROTECTED: 2,
+  ALREADY_MEMBER: 2,
+  INVITE_ALREADY_PENDING: 2,
+  INVITE_NOT_PENDING: 2,
+  INVITE_LIMIT_REACHED: 2,
+  CONNECT_REQUEST_NOT_PENDING: 2,
+  CONNECT_REQUEST_IN_USE: 2,
+  LINKEDIN_ACCOUNT_MISMATCH: 8,
+
+  // Contacts (api/039): a cap or a name clash never succeeds as sent; a full import queue drains (6).
+  NAME_TAKEN: 2,
+  RESOURCE_IN_USE: 2,
+  CONTACT_LIMIT_REACHED: 2,
+  IMPORT_QUEUE_FULL: 6,
+
+  // Motions and Enrollments (api/040). Every refusal but one never succeeds as
+  // sent (2): fix the document, merge the newer Sequence, or pick another
+  // Enrollment or Account. STEP_IN_FLIGHT settles within a minute (7, the
+  // DRAFT_PUBLISHING precedent: read again, then retry).
+  SEQUENCE_INVALID: 2,
+  SEQUENCE_CONFLICT: 2,
+  MOTION_NOT_STARTABLE: 2,
+  MOTION_STATUS_CONFLICT: 2,
+  ENROLLMENT_NOT_ACTIVE: 2,
+  NOTHING_TO_RETRY: 2,
+  ACCOUNT_ALREADY_ENGAGED: 2,
+  ALREADY_ENROLLED_ON_ACCOUNT: 2,
+  KNOWN_CHAT: 2,
+  CONTACT_NOT_ENROLLABLE: 2,
+  CHAT_NOT_ONE_TO_ONE: 2,
+  STEP_IN_FLIGHT: 7,
+
+  // Client-side: no response within --timeout. Transient, as a refused connection is.
+  CLIENT_TIMEOUT: 7,
 };
 
 /**

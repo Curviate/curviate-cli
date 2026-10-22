@@ -620,7 +620,7 @@ curviate core inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 | 2 | Usage / argument error |
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |
-| 5 | No active seat, the LinkedIn account lacks the subscription, or beta consent is missing |
+| 5 | Someone must act first: no active seat, the LinkedIn account lacks the subscription, beta consent is missing, the plan is below the Tier the action needs, or a teammate with the right role (or the Account's own person) must do it |
 | 6 | Rate limited |
 | 7 | Transient platform error (retry likely to succeed) |
 | 8 | Account or connection state blocks the request |

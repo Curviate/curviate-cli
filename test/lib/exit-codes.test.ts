@@ -87,6 +87,24 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     // NOT_STORED 422 actually reaches this row on the wire.
     ["NOT_STORED" as ErrorCode, 14],
     ["STRIPE_DRIFT_DETECTED" as ErrorCode, 1],
+    // cli/011 FR-017 (AC-024): a person with the right role must act (5); the credential is another team's (3).
+    ["INSUFFICIENT_ROLE", 5],
+    ["ACCOUNT_NOT_SHARED", 5],
+    ["ACCOUNT_OWNER_ONLY", 5],
+    ["BILLING_OWNER_REQUIRED", 5],
+    ["LAST_OWNER", 5],
+    ["TEAM_ACCESS_DENIED", 3],
+    ["DEFAULT_TEAM_PROTECTED", 2],
+    ["TRIAL_IDENTITY_ALREADY_USED", 11],
+    // api/040: never succeeds as sent (2); a Step mid-send settles within a minute (7, the DRAFT_PUBLISHING precedent).
+    ["SEQUENCE_INVALID", 2],
+    ["SEQUENCE_CONFLICT", 2],
+    ["NOTHING_TO_RETRY", 2],
+    ["ENROLLMENT_NOT_ACTIVE", 2],
+    ["MOTION_STATUS_CONFLICT", 2],
+    ["MOTION_NOT_STARTABLE", 2],
+    ["STEP_IN_FLIGHT", 7],
+    ["TIER_REQUIRED", 5],
   ] as [ErrorCode, number][])(
     "ErrorCode %s → exit %i",
     (code, expectedExit) => {
@@ -273,15 +291,21 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
     expect(mappedToOne, "1 is the bucket each of these just came OUT of").toEqual([]);
   });
 
-  it("the three entitlement codes all share exit 5, and nothing else does", () => {
+  it("the entitlement and role codes share exit 5, and nothing else does", () => {
     // They share a bucket because the remedy has the same SHAPE, not because
     // they mean the same thing. If a future change splits one out, this reds
     // and the README's row 5 has to be rewritten with it.
     const five = ERROR_CODES.filter((c) => EXIT_CODE_MAP[c] === 5).sort();
     expect(five).toEqual([
+      "ACCOUNT_NOT_SHARED",
+      "ACCOUNT_OWNER_ONLY",
       "BETA_NOT_ENABLED",
+      "BILLING_OWNER_REQUIRED",
+      "INSUFFICIENT_ROLE",
+      "LAST_OWNER",
       "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
       "NO_ACTIVE_SEAT",
+      "TIER_REQUIRED",
     ]);
   });
 
