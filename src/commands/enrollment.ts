@@ -215,7 +215,7 @@ async function runBulk(c: Curviate, f: EnrollmentFlags): Promise<void> {
 
 const online = (fn: (c: Curviate, f: EnrollmentFlags) => Promise<void>, requestTimeout = true) => async ({ args }: { args: unknown }) => {
   const f = args as EnrollmentFlags;
-  await fn(await rootClient(f, requestTimeout ? f.timeout : undefined), f);
+  await fn(await rootClient(requestTimeout ? f : { ...f, timeout: undefined }), f);
 };
 
 const ID = { type: "positional" as const, description: "Enrollment id (enr_...)." };

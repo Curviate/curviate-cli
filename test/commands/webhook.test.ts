@@ -34,7 +34,7 @@ describe("webhook CRUD", () => {
     expect(client.webhooks.create.mock.calls[0]![0]).not.toHaveProperty("format");
   });
 
-  it.each([["--source", { source: undefined }], ["--request-url", { "request-url": undefined }], ["--account-ids", { "account-ids": undefined }]])("create without %s exits 2 with no call", async (_f, drop) => {
+  it.each([["--source", { source: undefined }], ["--request-url", { "request-url": undefined }]])("create without %s exits 2 with no call", async (_f, drop) => {
     expect(await exitCode(() => run(runWebhookCreate, { ...CREATE, ...drop }))).toBe(2);
     expect(client.webhooks.create).not.toHaveBeenCalled();
   });

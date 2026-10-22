@@ -33,9 +33,9 @@ export function usage(message: string): never {
   process.exit(2);
 }
 
-/** A client for the caller's key, or exit 3 when there is none. `timeout`: the request timeout, when `--timeout` means something else. */
-export async function rootClient(f: RootFlags, timeout: string | undefined = f.timeout): Promise<Curviate> {
-  const cfg = await resolveEffectiveConfig({ apiKey: f["api-key"], baseUrl: f["base-url"], timeout, profile: f.profile });
+/** A client for the caller's key, or exit 3 when there is none. */
+export async function rootClient(f: RootFlags): Promise<Curviate> {
+  const cfg = await resolveEffectiveConfig({ apiKey: f["api-key"], baseUrl: f["base-url"], timeout: f.timeout, profile: f.profile });
   if (!cfg.apiKey) {
     process.stderr.write("error: no API key, run `curviate login` or pass --api-key.\n");
     process.exit(3);

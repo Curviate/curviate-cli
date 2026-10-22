@@ -45,6 +45,7 @@ type WebhookFlags = {
   id?: string;
   "account-id"?: string;
   "account-ids"?: string;
+  "motion-ids"?: string;
   "request-url"?: string;
   source?: string;
   name?: string;
@@ -119,9 +120,9 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
 
 /**
  * Run `webhook create <body...>`.
- * Required: --source, --request-url; --account-ids for messaging and user.
- * --account-ids is comma-separated and maps to account_ids[]. Omitted on an
- * account_status webhook, it covers every current and future account.
+ * Required: --source, --request-url. --account-ids is comma-separated and
+ * maps to account_ids[]; omitted, the webhook covers every account the
+ * creator can operate, now and later (ADR-072). --motion-ids filters by Motion.
  */
 export async function runWebhookCreate(
   client: Curviate,
@@ -129,7 +130,7 @@ export async function runWebhookCreate(
   out: OutputStreams,
 ): Promise<void> {
   if (!flags.source) {
-    out.stderr.write("error: --source is required (messaging | user | account_status | post).\n");
+    out.stderr.write("error: --source is required (messaging | user | account_status | post | motion).\n");
     process.exit(2);
   }
   if (!flags["request-url"]) {
@@ -141,22 +142,16 @@ export async function runWebhookCreate(
     request_url: flags["request-url"],
   };
   // `!== undefined`, not truthiness: `--account-ids "$IDS"` with IDS unset is
-  // an empty value, and reading it as "omitted" would silently widen an
-  // account_status webhook to every account.
-  if (flags["account-ids"] !== undefined) {
-    const accountIds = flags["account-ids"].split(",").map((s) => s.trim()).filter(Boolean);
-    if (accountIds.length === 0) {
-      out.stderr.write(
-        "error: --account-ids was given an empty value. Pass acc_... ids, or omit the flag on an account_status webhook to cover every account.\n",
-      );
+  // an empty value, and reading it as "omitted" would silently widen the
+  // webhook to every account.
+  for (const [flag, key, omitted] of [["account-ids", "account_ids", "omit the flag to cover every account you can operate"], ["motion-ids", "motion_ids", "omit the flag for every Motion"]] as const) {
+    if (flags[flag] === undefined) continue;
+    const ids = flags[flag]!.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      out.stderr.write(`error: --${flag} was given an empty value. Pass ids, or ${omitted}.\n`);
       process.exit(2);
     }
-    body["account_ids"] = accountIds;
-  } else if (flags.source !== "account_status") {
-    out.stderr.write(
-      "error: --account-ids is required when --source is messaging, user or post (comma-separated acc_... ids). Only an account_status webhook may omit it.\n",
-    );
-    process.exit(2);
+    body[key] = ids;
   }
 
   if (flags.name) body["name"] = flags.name;
@@ -454,17 +449,23 @@ const webhookCreateCommand = defineCommand({
     description: "Register a new webhook endpoint.",
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
+      "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
       "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status",
-    ],
-    requires: [
-      "--account-ids for --source messaging, user and post; omit it with --source account_status to cover every current and future account.",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    source: { type: "string", description: "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed).", required: true },
+    source: {
+      type: "string",
+      description:
+        "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | motion " +
+        "(motion.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, motion.custom_event; " +
+        "opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
+      required: true,
+    },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
-    "account-ids": { type: "string", description: "Comma-separated account ids to target. Required for messaging, user and post; omit on account_status to cover every current and future account." },
+    "account-ids": { type: "string", description: "Comma-separated account ids to target. Omit to cover every account you can operate, now and later." },
+    "motion-ids": { type: "string", description: "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter." },
     name: { type: "string", description: "Human-readable name (1-100 chars)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },

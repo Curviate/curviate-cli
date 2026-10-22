@@ -197,6 +197,32 @@ const PARITY_MANIFEST: Record<string, string> = {
   "comment unreact":   "comments.removeReaction",
   "comment user":      "comments.listUserComments",
 
+  // motions (13)
+  "motion create":  "motions.create",
+  "motion list":    "motions.list",
+  "motion get":     "motions.get",
+  "motion update":  "motions.update",
+  "motion delete":  "motions.delete",
+  "motion start":   "motions.start",
+  "motion pause":   "motions.pause",
+  "motion resume":  "motions.resume",
+  "motion archive": "motions.archive",
+  "motion preview": "motions.preview",
+  "motion get --version": "motions.getSequenceVersion",
+  "motion add":     "motions.addContacts",
+  "motion remove":  "motions.removeContacts",
+
+  // enrollments (11): `enrollment signal` is the CLI alias of `event` and sends to events.
+  "enrollment list":     "enrollments.list",
+  "enrollment get":      "enrollments.get",
+  "enrollment stop":     "enrollments.stop",
+  "enrollment pause":    "enrollments.pause",
+  "enrollment resume":   "enrollments.resume",
+  "enrollment event":    "enrollments.events",
+  "enrollment reassign": "enrollments.reassign",
+  "enrollment bulk":     "enrollments.bulk",
+  "enrollment retry":    "enrollments.retry",
+
   // groups (3) — new account-scoped namespace
   "group list":    "groups.list",
   "group get":     "groups.get",
@@ -219,6 +245,10 @@ const PARITY_MANIFEST: Record<string, string> = {
 // Seat add/cancel/revert are REST + SDK only by product ruling: no CLI
 // command, ever. A deliberate gap rather than a backlog item.
 const KNOWN_GAP_METHODS: readonly string[] = [
+  // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
+  "enrollments.signal",
+  // identity/007's CLI ticket (#2046) owns team access.
+  "accounts.setTeamAccess",
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
@@ -242,6 +272,8 @@ async function buildSdkMethodSet(): Promise<Set<string>> {
     ["accounts", client.accounts],
     ["webhooks", client.webhooks],
     ["drafts", client.drafts],
+    ["motions", client.motions],
+    ["enrollments", client.enrollments],
     ["auth", client.auth],
   ];
 
