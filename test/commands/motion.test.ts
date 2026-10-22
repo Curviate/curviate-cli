@@ -110,6 +110,10 @@ describe("Sequence findings in the compiler format", () => {
     const r = await sink.run(["motion", "create", "--file", put("bad.json", R12_FILE), "--json"]);
     expect([r.status, r.requests.length, JSON.parse(r.stdout).error.code]).toEqual([2, 0, "SEQUENCE_INVALID"]);
     expect(r.stderr).toMatch(/:7:32 error R12 pause\.wait: /);
+    // A canary in a faulty value and in a message text appears in no output.
+    const canary = await sink.run(["motion", "create", "--file", put("canary.json", R12_FILE.replace('"999d"', '"CANARY_9d"').replace('"note": null', '"note": "CANARY_NOTE {FIRST}"')), "--json"]);
+    expect([canary.status, canary.requests.length, JSON.parse(canary.stdout).error.errors.length]).toEqual([2, 0, 2]);
+    expect(canary.stdout + canary.stderr).not.toMatch(/CANARY/);
     const ok = await sink.run(["motion", "create", "--file", put("ok.json", R12_FILE.replace("999d", "3d")), "--json"]);
     expect([ok.status, ok.requests.map(line)]).toEqual([0, ["POST /v1/motions"]]);
   });

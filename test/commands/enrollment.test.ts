@@ -66,11 +66,14 @@ describe("enrollment retry: the guarded Retry, then the re-run's record", () => 
   };
 
   it("resumes through bulk retry (never resume --at), waits for the Step's next record, prints {outcome, reason, message}, exit 0", async () => {
-    script([[FAILED], [FAILED], [FAILED, RERUN]], bulk({ outcome: "ok", error: null }));
+    // Another Step's record lands first: only the failed Step's own next record ends the wait.
+    const OTHER = { step_id: "w_accept", outcome: "skipped", reason: "already_connected", reason_message: "Already connected." };
+    script([[FAILED], [FAILED], [FAILED, OTHER], [FAILED, OTHER, RERUN]], bulk({ outcome: "ok", error: null }));
     const r = await sink.run(["enrollment", "retry", "enr_1", "--json"]);
     expect([r.status, sent(r)], r.stderr).toEqual([0, [
       ["GET /v1/enrollments/enr_1", null],
       ["POST /v1/enrollments/bulk", { action: "retry", ids: ["enr_1"] }],
+      ["GET /v1/enrollments/enr_1", null],
       ["GET /v1/enrollments/enr_1", null],
       ["GET /v1/enrollments/enr_1", null],
     ]]);
