@@ -1752,14 +1752,14 @@
       "usageOnly": false,
       "args": [
         {
-          "name": "timeout",
-          "type": "string",
-          "description": "How long to wait for the re-run, in milliseconds (default 600000). Requests keep the default timeout."
-        },
-        {
           "name": "id",
           "type": "positional",
           "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "wait-timeout",
+          "type": "string",
+          "description": "How long to wait for the re-run, in milliseconds (default 600000). --timeout stays the request timeout."
         }
       ],
       "globals": [
@@ -1767,6 +1767,7 @@
         "profile",
         "account",
         "base-url",
+        "timeout",
         "json",
         "fields",
         "preview",
@@ -1775,7 +1776,7 @@
       ],
       "examples": [
         "curviate enrollment retry enr_YOUR_ENROLLMENT_ID",
-        "curviate enrollment retry enr_YOUR_ENROLLMENT_ID --timeout 60000"
+        "curviate enrollment retry enr_YOUR_ENROLLMENT_ID --wait-timeout 60000"
       ],
       "requires": [],
       "risk": "high",
