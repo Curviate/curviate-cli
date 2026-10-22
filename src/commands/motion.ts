@@ -20,6 +20,7 @@ import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { documentSchema, parseDocument, readFileFlag, reportIssues, validate } from "../lib/document.js";
 import { intFlag } from "../lib/int-flag.js";
+import { isStdinToken } from "../lib/stdin.js";
 import { compilerLines } from "../lib/sequence-report.js";
 import { sendInChunks } from "../lib/chunks.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
@@ -63,7 +64,7 @@ function preview(method: string, args: Record<string, unknown>, body: unknown = 
 }
 
 /** `--file`'s path as the findings name it: `-` for stdin. */
-const shownFile = (f: MotionFlags) => (f.file === "-" ? "-" : (f.file ?? "-"));
+const shownFile = (f: MotionFlags) => (f.file === undefined || isStdinToken(f.file) ? "-" : f.file);
 
 /**
  * The Sequence verdict printed in the compiler format on stderr, and in JSON
