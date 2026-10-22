@@ -75,6 +75,38 @@ function filters(f: EnrollmentFlags): Record_ {
   return q;
 }
 
+/** `code` with its sentence as one `<code>: <message>`; the code alone when there is no sentence. */
+const paired = (code: unknown, message: unknown) => (code != null && message != null ? `${code}: ${message}` : code);
+
+/**
+ * Human mode reads each reason as `<code>: <message>`: `skip_reason`,
+ * `finish_reason` and every history entry's `reason` carry their sentence, and
+ * the separate `*_message` keys go. JSON keeps the API's pair.
+ */
+export function humanReasons(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(humanReasons);
+  if (!data || typeof data !== "object") return data;
+  const o = { ...(data as Record_) };
+  for (const k of ["skip", "finish"]) {
+    if (`${k}_message` in o) {
+      o[`${k}_reason`] = paired(o[`${k}_reason`], o[`${k}_message`]);
+      delete o[`${k}_message`];
+    }
+  }
+  if ("reason_message" in o) {
+    o["reason"] = paired(o["reason"], o["reason_message"]);
+    delete o["reason_message"];
+  }
+  for (const k of ["items", "history"]) if (Array.isArray(o[k])) o[k] = (o[k] as unknown[]).map(humanReasons);
+  return o;
+}
+
+/** Print an Enrollment answer: verbatim in JSON, reasons paired in human mode. */
+function show(result: unknown, f: EnrollmentFlags): void {
+  const opts = outputOpts(f);
+  renderSuccess(opts.json ? result : humanReasons(result), opts, process);
+}
+
 // ---------------------------------------------------------------------------
 // Run functions
 // ---------------------------------------------------------------------------
@@ -90,7 +122,7 @@ async function runList(c: Curviate, f: EnrollmentFlags): Promise<void> {
       const page = (p: Record_) => c.enrollments.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(page, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
     } else {
-      renderSuccess(readablePage(await c.enrollments.list(params as never)), outputOpts(f), process);
+      show(readablePage(await c.enrollments.list(params as never)), f);
     }
   } catch (err) {
     await fail(err, f);
@@ -99,7 +131,7 @@ async function runList(c: Curviate, f: EnrollmentFlags): Promise<void> {
 
 async function runGet(c: Curviate, f: EnrollmentFlags): Promise<void> {
   try {
-    renderSuccess(readableObject(await c.enrollments.get(String(f.id ?? ""))), outputOpts(f), process);
+    show(readableObject(await c.enrollments.get(String(f.id ?? ""))), f);
   } catch (err) {
     await fail(err, f);
   }
@@ -112,7 +144,7 @@ const single = (method: "pause" | "resume" | "stop" | "events" | "reassign", bod
     if (f.preview) return preview(`enrollments.${method}`, { id: f.id }, b ?? {});
     try {
       const call = c.enrollments[method] as (id: string, b?: Record_) => Promise<unknown>;
-      renderSuccess(await call.call(c.enrollments, String(f.id ?? ""), b), outputOpts(f), process);
+      show(await call.call(c.enrollments, String(f.id ?? ""), b), f);
     } catch (err) {
       await fail(err, f);
     }

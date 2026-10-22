@@ -5,6 +5,9 @@
  * The failure carries what was done, so a caller resumes from the failed
  * chunk: in JSON mode stdout is one document, `{error, progress}`; in human
  * mode the summary goes to stderr. The exit is the failing request's.
+ * `progress.chunks.sent` counts the chunks accepted before the failed one (the
+ * failed request went out too, and is `failed_chunk`); `items.accepted` is
+ * their ids.
  */
 import type { CurviateError } from "@curviate/sdk";
 import { fail, outputOpts, type RootFlags } from "./root-command.js";

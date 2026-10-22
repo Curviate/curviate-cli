@@ -136,3 +136,41 @@ describe("enrollment bulk", () => {
     }
   });
 });
+
+describe("reasons in human mode read `<code>: <message>`; JSON keeps the API's pair", () => {
+  const ENROLLMENT = {
+    object: "enrollment", id: "enr_1", status: "skipped",
+    skip_reason: "profile_unavailable", skip_message: "The LinkedIn profile could not be read.",
+    finish_reason: null, finish_message: null,
+    history: [
+      { step_id: "opener", outcome: "failed", reason: "platform_error", reason_message: "LinkedIn did not answer.", at: "2026-10-21T10:00:00Z" },
+      { step_id: "w_accept", outcome: "taken", reason: null, reason_message: null, at: "2026-10-21T11:00:00Z" },
+    ],
+  };
+  const tty = async (argv: string[]) => {
+    const was = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    try {
+      return await sink.run(argv);
+    } finally {
+      if (was) Object.defineProperty(process.stdout, "isTTY", was);
+      else delete (process.stdout as { isTTY?: boolean }).isTTY;
+    }
+  };
+
+  it.each<[string, string[], Reply]>([
+    ["get", ["enrollment", "get", "enr_1"], { body: ENROLLMENT }],
+    ["list", ["enrollment", "list", "--motion", "mot_1"], { body: { object: "list", items: [ENROLLMENT], cursor: null } }],
+  ])("%s", async (_name, argv, reply) => {
+    sink.reply = reply;
+    const human = await tty(argv);
+    expect(human.status, human.stderr).toBe(0);
+    expect(human.stdout).toContain("profile_unavailable: The LinkedIn profile could not be read.");
+    expect(human.stdout).toContain("platform_error: LinkedIn did not answer.");
+    expect(human.stdout).not.toMatch(/skip_message|finish_message|reason_message/);
+    // Control: the same answer in JSON is the API's, both keys of each pair kept.
+    const json = await sink.run([...argv, "--json"]);
+    const body = JSON.parse(json.stdout) as typeof ENROLLMENT | { items: Array<typeof ENROLLMENT> };
+    expect("items" in body ? body.items[0] : body).toEqual(ENROLLMENT);
+  });
+});

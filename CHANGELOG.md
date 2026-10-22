@@ -41,6 +41,9 @@ from the SDK's fixture.
 - `curviate enrollment retry` retries only a failed Step (a repeat never sends a
   delivered message again), then waits for the re-run (`--wait-timeout <ms>`, default
   600000) and prints its outcome, reason and message.
+- In human output, each Enrollment reason reads `<code>: <message>` (skip,
+  finish and every history entry); `--json` keeps the API's code and message
+  keys.
 - `curviate webhook create --source motion` and `--motion-ids`.
 
 ### Changed
