@@ -244,7 +244,7 @@ export async function runLint(f: MotionFlags): Promise<void> {
 
 /** `init`: offline. A template as a Motion file, `schedule.timezone` set to this machine's. */
 export async function runInit(f: MotionFlags): Promise<void> {
-  const tpl = Object.hasOwn(TEMPLATES, f.template ?? "") ? TEMPLATES[f.template!] : undefined;
+  const tpl = Object.prototype.hasOwnProperty.call(TEMPLATES, f.template ?? "") ? TEMPLATES[f.template!] : undefined;
   if (!tpl) usage(`--template takes one of ${Object.keys(TEMPLATES).join(", ")}.`);
   const doc = structuredClone(tpl) as { schedule: { timezone: string | null } };
   doc.schedule.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
