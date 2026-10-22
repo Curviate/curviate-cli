@@ -91,6 +91,7 @@ export function useExamples() {
     }
     writeFileSync(join(workDir, "description.txt"), "We are hiring a staff engineer to build agent infrastructure. ".repeat(5));
     writeFileSync(join(workDir, "filters.json"), "{}");
+    writeFileSync(join(workDir, "motion.json"), JSON.stringify({ name: "Fixture", sequence: { on_reply: "end", steps: [{ id: "invite", do: "invite.send", with: { note: null }, next: "end" }] } }));
     writeFileSync(
       join(workDir, "job.json"),
       JSON.stringify({

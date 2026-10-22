@@ -1,7 +1,10 @@
 {
   "note": "Every limit-shaped number in help is bound (equal to the published schema at a JSON pointer into test/fixtures/openapi.json) or cited. Only LinkedIn-side limits may be cited: a limit Curviate's server enforces belongs in the published schema. test/help-contract.test.ts checks both lists.",
   "bound": [
-    { "command": "core connect", "number": 300, "unit": "characters", "pointer": "/paths/~1v1~1{account_id}~1invites/post/requestBody/content/application~1json/schema/properties/message/maxLength" }
+    { "command": "core connect", "number": 300, "unit": "characters", "pointer": "/paths/~1v1~1{account_id}~1invites/post/requestBody/content/application~1json/schema/properties/message/maxLength" },
+    { "command": "motion add", "number": 1000, "unit": "ids", "pointer": "/paths/~1v1~1motions~1{id}~1contacts/post/x-curviate-limits/items" },
+    { "command": "motion remove", "number": 1000, "unit": "ids", "pointer": "/paths/~1v1~1motions~1{id}~1contacts~1remove/post/x-curviate-limits/items" },
+    { "command": "enrollment bulk", "number": 1000, "unit": "items", "pointer": "/paths/~1v1~1enrollments~1bulk/post/x-curviate-limits/items" }
   ],
   "cited": [
     { "command": "core connect", "number": 200, "unit": "characters", "enforcer": "LinkedIn", "source": "LinkedIn caps an invitation note at 200 characters on a free account." },

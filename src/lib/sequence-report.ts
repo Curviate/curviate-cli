@@ -1,13 +1,13 @@
 /**
- * Sequence findings in the compiler format (api/040 FR-019):
+ * Sequence findings in the compiler format:
  *
  *   <file>:<line>:<col> error R12 <path>: <message>. <hint> -> <docs_url>
  *
  * `warning` for a warning. Line and column come from the entry's JSON Pointer,
  * resolved in the text as read (a Motion file's Sequence sits under
  * `/sequence`); stdin is named `-`. The verdict itself is the SDK's
- * `validateSequence` (cli/011 FR-011): this module only places and prints it.
- * The spec's arrow is printed as ASCII `->` (cli/011 NFR-004 bans arrow glyphs).
+ * `validateSequence`: this module only places and prints it.
+ * The arrow is ASCII `->`: CLI copy carries no arrow glyph.
  */
 import type { CurviateErrorDetail } from "@curviate/sdk";
 

@@ -247,7 +247,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 const KNOWN_GAP_METHODS: readonly string[] = [
   // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
   "enrollments.signal",
-  // identity/007's CLI ticket (#2046) owns team access.
+  // Team access lands with the teams commands.
   "accounts.setTeamAccess",
   "accounts.addSeats",
   "accounts.cancelSeat",

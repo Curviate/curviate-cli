@@ -122,7 +122,7 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
  * Run `webhook create <body...>`.
  * Required: --source, --request-url. --account-ids is comma-separated and
  * maps to account_ids[]; omitted, the webhook covers every account the
- * creator can operate, now and later (ADR-072). --motion-ids filters by Motion.
+ * creator can operate, now and later. --motion-ids filters by Motion.
  */
 export async function runWebhookCreate(
   client: Curviate,

@@ -48,7 +48,7 @@ const sink = useSink((h) => ({
 const sent = (r: { requests: Hit[] }) => r.requests.map((q) => [line(q), q.body ? JSON.parse(q.body) : null]);
 const NO_KEY = { env: { CURVIATE_API_KEY: undefined, CURVIATE_BASE_URL: "http://127.0.0.1:1" } };
 
-describe("a pasted `motion get` is a Motion file (cli/011 FR-012, AC-019)", () => {
+describe("a pasted `motion get` is a Motion file", () => {
   it.each([
     [["motion", "create"], "POST /v1/motions"],
     [["motion", "update", "mot_1"], "PATCH /v1/motions/mot_1"],
@@ -83,7 +83,7 @@ const R12_FILE = [
   "}",
 ].join("\n");
 
-describe("Sequence findings in the compiler format (api/040 FR-019, AC-019)", () => {
+describe("Sequence findings in the compiler format", () => {
   it("motion lint: one line per finding at the pointer's line and column, with the hint and docs URL; exit 2, offline, no credential needed", async () => {
     const file = put("r12.json", R12_FILE);
     const r = await runCli(["motion", "lint", "--file", file], NO_KEY);
@@ -115,7 +115,7 @@ describe("Sequence findings in the compiler format (api/040 FR-019, AC-019)", ()
   });
 });
 
-describe("motion update --if-revision (api/040 OQ-19)", () => {
+describe("motion update --if-revision", () => {
   it("sends if_sequence_revision only from the flag, never from the file's sequence_revision", async () => {
     const file = put("m.json", JSON.stringify(MOTION));
     const [without, withRev] = [await sink.run(["motion", "update", "mot_1", "--file", file]), await sink.run(["motion", "update", "mot_1", "--file", file, "--if-revision", "3"])];
@@ -134,7 +134,7 @@ describe("motion update --if-revision (api/040 OQ-19)", () => {
   });
 });
 
-describe("motion init --template (api/040 FR-031)", () => {
+describe("motion init --template", () => {
   it.each(Object.keys(TEMPLATES))("%s: a Motion file motion create accepts, in this machine's timezone", async (name) => {
     const r = await runCli(["motion", "init", "--template", name], { ...NO_KEY, env: { ...NO_KEY.env, TZ: "Asia/Tokyo" } });
     expect(r.status).toBe(0);
@@ -148,17 +148,16 @@ describe("motion init --template (api/040 FR-031)", () => {
     expect([sent.status, sent.requests.map(line)]).toEqual([0, ["POST /v1/motions"]]);
   });
 
-  it("nurture-connections follows up only when seen; --output never overwrites; an unknown template exits 2", async () => {
+  it("nurture-connections follows up only when seen; -o writes the file and nothing to stdout; an unknown template exits 2", async () => {
     expect(JSON.stringify(TEMPLATES["nurture-connections"])).toContain('"message.seen":true');
     const out = join(dir, "init.json");
-    expect((await runCli(["motion", "init", "--template", "nurture-connections", "-o", out], NO_KEY)).status).toBe(0);
-    const again = await runCli(["motion", "init", "--template", "connect-and-converse", "--output", out], NO_KEY);
-    expect([again.status, again.stderr, JSON.parse(readFileSync(out, "utf8")).name]).toEqual([2, expect.stringContaining("already exists"), "Nurture connections"]);
+    const r = await runCli(["motion", "init", "--template", "nurture-connections", "-o", out], NO_KEY);
+    expect([r.status, r.stdout, JSON.parse(readFileSync(out, "utf8")).name]).toEqual([0, "", "Nurture connections"]);
     expect((await runCli(["motion", "init", "--template", "nope"], NO_KEY)).status).toBe(2);
   });
 });
 
-describe("motion add / remove: id batches (cli/011 FR-013)", () => {
+describe("motion add / remove: id batches", () => {
   const openapi = JSON.parse(readFileSync(join(pkgRoot, "test/fixtures/openapi.json"), "utf8")) as { paths: Record<string, { post: { "x-curviate-limits": { items: number } } }> };
   const ids = (n: number) => Array.from({ length: n }, (_, i) => `con_${i + 1}`);
 

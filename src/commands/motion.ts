@@ -1,5 +1,5 @@
 /**
- * `curviate motion`: Motions and their Sequences (api/040, cli/011 FR-002).
+ * `curviate motion`: Motions and their Sequences.
  * Root-scoped (`curviate.motions.*`). Enrollments are the root `enrollment`
  * group.
  *
@@ -7,7 +7,7 @@
  * any request, the Motion fields against the vendored request schema
  * (lib/document.ts, `<path>: <rule>`), then its `sequence` with the SDK's
  * `validateSequence` (compiler-format lines, lib/sequence-report.ts). A pasted
- * `motion get` output loses its read-only keys with a warning (cli/011 FR-012).
+ * `motion get` output loses its read-only keys with a warning.
  * `lint` and `init` are offline.
  */
 import { defineCommand } from "citty";
@@ -17,7 +17,7 @@ import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { renderSuccess, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableObject, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { documentSchema, parseDocument, readFileFlag, reportIssues, validate } from "../lib/document.js";
 import { intFlag } from "../lib/int-flag.js";
 import { isStdinToken } from "../lib/stdin.js";
@@ -154,7 +154,7 @@ async function runGet(c: Curviate, f: MotionFlags): Promise<void> {
     const result = f.version === undefined
       ? await c.motions.get(f.id ?? "")
       : await c.motions.getSequenceVersion(f.id ?? "", { version: intFlag("version", f.version) });
-    renderSuccess(result, outputOpts(f), process);
+    renderSuccess(readableObject(result), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -200,17 +200,16 @@ async function runPreview(c: Curviate, f: MotionFlags): Promise<void> {
   if (f.contact !== undefined) params["contact_ids"] = listFlag("contact", f.contact);
   if (params["sample"] !== undefined && params["contact_ids"] !== undefined) usage("--sample and --contact cannot be combined: name the Contacts, or let Curviate sample.");
   try {
-    renderSuccess(await c.motions.preview(f.id ?? "", params as never), outputOpts(f), process);
+    renderSuccess(readableObject(await c.motions.preview(f.id ?? "", params as never)), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
 }
 
-/** `add` and `remove`: Contact ids in chunks of BULK_MAX_IDS, in order (FR-013). */
+/** `add` and `remove`: Contact ids in chunks of BULK_MAX_IDS, in order. */
 const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlags): Promise<void> => {
   const ids = listFlag("contact", f.contact);
   if (!ids.length) usage("--contact is required: one or more Contact ids (con_...).");
-  if (kind === "remove" && f.account !== undefined) usage("--account applies to `curviate motion add` only.");
   if (f.account !== undefined && f.account.trim() === "") usage("--account was given an empty value. Pass an acc_... id of the Motion, or omit it to let Curviate assign one.");
   const body = (chunk: string[]) => ({ contact_ids: chunk, ...(f.account !== undefined ? { account_id: f.account } : {}) });
   const method = kind === "add" ? "addContacts" : "removeContacts";
@@ -244,12 +243,11 @@ export async function runInit(f: MotionFlags): Promise<void> {
   const doc = structuredClone(tpl) as { schedule: { timezone: string | null } };
   doc.schedule.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const text = JSON.stringify(doc, null, 2) + "\n";
-  if (f.output === undefined || f.output === "-") return void process.stdout.write(text);
+  if (f.output === undefined) return void process.stdout.write(text);
   try {
-    await writeFile(f.output, text, { flag: "wx" });
+    await writeFile(f.output, text);
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    usage(code === "EEXIST" ? `--output: ${f.output} already exists. Pick another path or remove it first.` : `--output: cannot write ${f.output}: ${code ?? "write error"}.`);
+    usage(`--output: cannot write ${f.output}: ${(err as NodeJS.ErrnoException).code ?? "write error"}.`);
   }
   process.stderr.write(`Wrote ${f.output}. Next: fill contact_list_ids and account_ids, then \`curviate motion create --file ${f.output}\`.\n`);
 }
@@ -541,12 +539,12 @@ const initCmd = defineCommand({
     description: `Write a Motion file from a template (${Object.keys(TEMPLATES).join(", ")}), its schedule in this machine's timezone. Fill contact_list_ids and account_ids, then create it.`,
     risk: "read",
     rules: OFFLINE,
-    output: ["The Motion file on stdout, or in the --output file (never overwritten)."],
+    output: ["The Motion file on stdout, or in the --output file."],
     examples: ["curviate motion init --template connect-and-converse --output motion.json"],
   },
   args: {
     template: { type: "string", required: true, description: `One of ${Object.keys(TEMPLATES).join(", ")}.` },
-    output: { type: "string", alias: "o", description: "Write to this path (refused when it exists), or - for stdout (default)." },
+    output: { type: "string", alias: "o", description: "Write to this path, replacing what is there. Omitted: stdout." },
   },
   async run({ args }) {
     await runInit(args as MotionFlags);

@@ -1494,7 +1494,7 @@
           "name": "output",
           "type": "string",
           "alias": "o",
-          "description": "Write to this path (refused when it exists), or - for stdout (default)."
+          "description": "Write to this path, replacing what is there. Omitted: stdout."
         }
       ],
       "globals": [],
@@ -1509,7 +1509,7 @@
         ]
       },
       "output": [
-        "The Motion file on stdout, or in the --output file (never overwritten)."
+        "The Motion file on stdout, or in the --output file."
       ]
     },
     {
@@ -2011,7 +2011,7 @@
         "enrollment",
         "bulk"
       ],
-      "description": "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. Each is decided alone, as its own command would be; not atomic. Up to 1000 Enrollments. List with the same filters first to see the matches.",
+      "description": "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
       "usageOnly": false,
       "args": [
         {
@@ -2114,7 +2114,7 @@
         "budget_rows": [],
         "retry": "A retried call is a new call: each Enrollment answers again on its own (a second stop is ENROLLMENT_NOT_ACTIVE for it).",
         "undo": "Per Enrollment, as its single command says; what was sent stays sent.",
-        "blast_radius": "Up to 1000 Enrollments, every Contact and Account they cover."
+        "blast_radius": "Up to 1000 items (Enrollments), every Contact and Account they cover."
       },
       "output": [
         "One line per Enrollment, `<enrollment_id> ok` or `<enrollment_id> error <code>: <message>`; with --json (or piped) the API's answer. Exit 0 when every one is ok, else the first refusal's exit."

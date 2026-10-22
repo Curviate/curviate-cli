@@ -35,7 +35,7 @@ const sink = useSink((h) => ({ body: h.method === "GET" ? { object: "list", item
 const GENERIC = "error: unknown command at argument 1\nRun `curviate --help` for usage.\n";
 
 describe("the tree", () => {
-  it("root holds setup, doctor, login, config, account, the landed reserved groups (motion, enrollment), webhook, core in FR-001's order; core holds the 16 LinkedIn groups in order", () => {
+  it("root holds setup, doctor, login, config, account, the landed reserved groups (motion, enrollment), webhook, core in order; core holds the 16 LinkedIn groups in order", () => {
     const children = (prefix: string[]) => manifest.filter((c) => c.path.length === prefix.length + 1 && prefix.every((p, i) => c.path[i] === p)).map((c) => last(c.path));
     expect(children([])).toEqual(ROOT);
     expect(children(["core"])).toEqual(CORE);
@@ -55,6 +55,8 @@ describe("the tree", () => {
     };
     // Additive: `--json` is accepted on every config command (a wrapper prepends it).
     const ADDED_GLOBALS: Record<string, string[]> = { "config path": ["json"], "config use": ["json"], "config rename": ["json"] };
+    // Additive: the Motion filter of a webhook.
+    const ADDED_ARGS: Record<string, string[]> = { "webhook create": ["motion-ids"] };
     const shape = (args: Array<Record<string, unknown>>, drop: string[] = []) =>
       args.filter((a) => !drop.includes(a["name"] as string)).map((a) => JSON.stringify([a["name"], a["type"], a["required"], a["default"], a["alias"]]));
     const now = new Map(manifest.filter((c) => pathOf(c) !== "core").map((c) => [pathOf(c), c]));
@@ -69,7 +71,7 @@ describe("the tree", () => {
       }
       const r = RENAMES[key];
       const curGlobals = cur.globals.filter((g) => !ADDED_GLOBALS[key]?.includes(g) || old.globals.includes(g));
-      if (JSON.stringify([shape(old.args, r?.removed), old.globals, old.usageOnly]) !== JSON.stringify([shape(cur.args, r?.added), curGlobals, cur.usageOnly])) diff.push(`${key}: changed`);
+      if (JSON.stringify([shape(old.args, r?.removed), old.globals, old.usageOnly]) !== JSON.stringify([shape(cur.args, [...(r?.added ?? []), ...(ADDED_ARGS[key] ?? [])]), curGlobals, cur.usageOnly])) diff.push(`${key}: changed`);
       if (r && (!r.removed.every((n) => old.args.some((a) => a["name"] === n)) || !r.added.every((n) => cur.args.some((a) => a.name === n)))) diff.push(`${key}: rename not applied`);
     }
     expect(frozen.length).toBe(186);
@@ -269,7 +271,7 @@ describe("help sections and risk classes", () => {
 
   it("a multi-line example is only a document command's last one, a `--file -` heredoc; webhook verify carries none", () => {
     const multi = runnable.flatMap((c) => c.examples.filter((e) => e.includes("\n")).map((e) => ({ c, e, last: e === last(c.examples) })));
-    expect(multi.map(({ c }) => pathOf(c)).sort()).toEqual(["core recruiter job create", "core recruiter project-job create", "core recruiter project-job update"]);
+    expect(multi.map(({ c }) => pathOf(c)).sort()).toEqual(["core recruiter job create", "core recruiter project-job create", "core recruiter project-job update", "motion create", "motion update"]);
     expect(multi.filter(({ c, e, last }) => !last || !c.document || !/ --file - <<'EOF'\n[\s\S]+\nEOF$/.test(e))).toEqual([]);
     expect(runnable.find((c) => pathOf(c) === "webhook verify")!.examples.join("\n")).not.toContain("<<");
   });

@@ -32,7 +32,7 @@ describe("webhook create, tenant-wide account_status", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it.each(["messaging", "user", "post", "motion"])("%s without --account-ids sends no account_ids key: every Account the creator can operate (ADR-072)", async (source) => {
+  it.each(["messaging", "user", "post", "motion"])("%s without --account-ids sends no account_ids key: every Account the creator can operate", async (source) => {
     create.mockResolvedValue({ object: "webhook", id: "wh_1" });
     await go({ source, json: true });
     expect(create.mock.calls[0]![0]).toMatchObject({ source });

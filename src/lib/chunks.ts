@@ -1,5 +1,5 @@
 /**
- * Id batches (cli/011 FR-013): one request per chunk of the operation's
+ * Id batches: one request per chunk of the operation's
  * `x-curviate-limits.items`, sequential, in input order. On a failed chunk the
  * CLI stops: no later chunk, no automatic retry (clients own retry safety).
  * The failure carries what was done, so a caller resumes from the failed

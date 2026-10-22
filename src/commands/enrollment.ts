@@ -1,7 +1,6 @@
 /**
- * `curviate enrollment`: one Contact in one Motion on one Account (api/040
- * FR-025 to FR-028, FR-035, FR-036; cli/011 FR-002). Root-scoped
- * (`curviate.enrollments.*`).
+ * `curviate enrollment`: one Contact in one Motion on one Account.
+ * Root-scoped (`curviate.enrollments.*`).
  *
  * `retry` is the guarded Retry (`enrollments.retry`, acts only on a failed
  * Step), never `resume --at`, which is an unguarded jump. It then waits for
@@ -14,12 +13,12 @@ import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { renderSuccess, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableObject, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { intFlag } from "../lib/int-flag.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 
 type EnrollmentFlags = RootFlags & {
-  id?: string;
+  id?: string | string[];
   name?: string;
   at?: string;
   account?: string;
@@ -46,7 +45,7 @@ type HistoryEntry = { step_id?: string | null; outcome?: string; reason?: string
 
 /** How often `retry` reads the Enrollment while it waits. */
 const POLL_MS = 2000;
-/** `retry`'s default wait: the Step may sit behind pacing or a budget (api/040 FR-027). */
+/** `retry`'s default wait: the Step may sit behind pacing or a budget */
 const RETRY_WAIT_MS = 10 * 60 * 1000;
 
 function preview(method: string, args: Record_, body: unknown = {}): void {
@@ -99,7 +98,7 @@ async function runList(c: Curviate, f: EnrollmentFlags): Promise<void> {
 
 async function runGet(c: Curviate, f: EnrollmentFlags): Promise<void> {
   try {
-    renderSuccess(await c.enrollments.get(f.id ?? ""), outputOpts(f), process);
+    renderSuccess(readableObject(await c.enrollments.get(String(f.id ?? ""))), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -112,7 +111,7 @@ const single = (method: "pause" | "resume" | "stop" | "events" | "reassign", bod
     if (f.preview) return preview(`enrollments.${method}`, { id: f.id }, b ?? {});
     try {
       const call = c.enrollments[method] as (id: string, b?: Record_) => Promise<unknown>;
-      renderSuccess(await call.call(c.enrollments, f.id ?? "", b), outputOpts(f), process);
+      renderSuccess(await call.call(c.enrollments, String(f.id ?? ""), b), outputOpts(f), process);
     } catch (err) {
       await fail(err, f);
     }
@@ -130,7 +129,7 @@ const required = (flag: string, v: string | undefined, what: string): string => 
  * request timeout.
  */
 export async function runRetry(c: Curviate, f: EnrollmentFlags): Promise<void> {
-  const id = f.id ?? "";
+  const id = String(f.id ?? "");
   const waitMs = f.timeout === undefined ? RETRY_WAIT_MS : intFlag("timeout", f.timeout, 0, 24 * 60 * 60 * 1000);
   if (f.preview) return preview("enrollments.retry", { id });
   const history = async () => {
@@ -447,7 +446,7 @@ const bulkCmd = defineCommand({
     name: "bulk",
     description:
       "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. " +
-      "Each is decided alone, as its own command would be; not atomic. Up to 1000 Enrollments. List with the same filters first to see the matches.",
+      "Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
     risk: "high",
     rules: {
       changes: "Each Enrollment gets the action as its single command would.",
@@ -455,7 +454,7 @@ const bulkCmd = defineCommand({
       budget_rows: [],
       retry: "A retried call is a new call: each Enrollment answers again on its own (a second stop is ENROLLMENT_NOT_ACTIVE for it).",
       undo: "Per Enrollment, as its single command says; what was sent stays sent.",
-      blast_radius: "Up to 1000 Enrollments, every Contact and Account they cover.",
+      blast_radius: "Up to 1000 items (Enrollments), every Contact and Account they cover.",
     },
     errors: { ...NOT_ACTIVE, NOTHING_TO_RETRY: "retry, per Enrollment: nothing failed.", ...IN_FLIGHT, ...ROLE },
     output: ["One line per Enrollment, `<enrollment_id> ok` or `<enrollment_id> error <code>: <message>`; with --json (or piped) the API's answer. Exit 0 when every one is ok, else the first refusal's exit."],

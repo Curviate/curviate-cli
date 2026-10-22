@@ -87,7 +87,7 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     // NOT_STORED 422 actually reaches this row on the wire.
     ["NOT_STORED" as ErrorCode, 14],
     ["STRIPE_DRIFT_DETECTED" as ErrorCode, 1],
-    // cli/011 FR-017 (AC-024): a person with the right role must act (5); the credential is another team's (3).
+    // Teams: a person with the right role must act (5); the credential is another team's (3).
     ["INSUFFICIENT_ROLE", 5],
     ["ACCOUNT_NOT_SHARED", 5],
     ["ACCOUNT_OWNER_ONLY", 5],
@@ -96,7 +96,7 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["TEAM_ACCESS_DENIED", 3],
     ["DEFAULT_TEAM_PROTECTED", 2],
     ["TRIAL_IDENTITY_ALREADY_USED", 11],
-    // api/040: never succeeds as sent (2); a Step mid-send settles within a minute (7, the DRAFT_PUBLISHING precedent).
+    // Motions: never succeeds as sent (2); a Step mid-send settles within a minute (7, the DRAFT_PUBLISHING precedent).
     ["SEQUENCE_INVALID", 2],
     ["SEQUENCE_CONFLICT", 2],
     ["NOTHING_TO_RETRY", 2],

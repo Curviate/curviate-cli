@@ -14,10 +14,10 @@ import { useSink } from "./helpers/sink.js";
 
 /**
  * `delegated`: request properties another validator owns (a Motion's `sequence`
- * is the SDK's `validateSequence`, cli/011 FR-011), vendored as `{}`.
+ * is the SDK's `validateSequence`), vendored as `{}`.
  * `response`: the `get` response schema; its keys the request lacks are
  * vendored as `x-curviate-response-only`, the keys a pasted `get` output drops
- * (cli/011 FR-012).
+ * (a pasted `get` stays a valid document).
  */
 type Entry = { command: string; flag: string; operation: string; pointer: string; delegated?: string[]; response?: string };
 const manifest = JSON.parse(readFileSync(join(pkgRoot, "test/fixtures/document-inputs.json"), "utf8")) as { documents: Entry[] };

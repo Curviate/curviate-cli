@@ -280,7 +280,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // and here it is not. The `--json` envelope still names the real code.
   STRIPE_DRIFT_DETECTED: 1,
 
-  // Teams (cli/011 FR-017): the credential is valid, a person with the right
+  // Teams: the credential is valid, a person with the right
   // role, or the Account's own person, must act first (5, never 3, which tells
   // a script to rotate its key). The credential is another team's: 3. The
   // rest never succeed as sent: 2. TIER_REQUIRED joins the entitlement bucket.
@@ -300,13 +300,13 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   CONNECT_REQUEST_IN_USE: 2,
   LINKEDIN_ACCOUNT_MISMATCH: 8,
 
-  // Contacts (api/039): a cap or a name clash never succeeds as sent; a full import queue drains (6).
+  // Contacts: a cap or a name clash never succeeds as sent; a full import queue drains (6).
   NAME_TAKEN: 2,
   RESOURCE_IN_USE: 2,
   CONTACT_LIMIT_REACHED: 2,
   IMPORT_QUEUE_FULL: 6,
 
-  // Motions and Enrollments (api/040). Every refusal but one never succeeds as
+  // Motions and Enrollments. Every refusal but one never succeeds as
   // sent (2): fix the document, merge the newer Sequence, or pick another
   // Enrollment or Account. STEP_IN_FLIGHT settles within a minute (7, the
   // DRAFT_PUBLISHING precedent: read again, then retry).
