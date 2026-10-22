@@ -1,8 +1,10 @@
 {
   "note": "Each document input names one schema in the vendored OpenAPI fixture (test/fixtures/openapi.json, pinned by VENDORED_FROM.json + scripts/check-fixture-pin.mjs). src/schemas/documents.json is that schema, annotations stripped; test/document-inputs.test.ts holds them equal (regenerate: WRITE_DOCUMENT_SCHEMAS=1 pnpm vitest run test/document-inputs.test.ts). The parent repo's document-schema-drift test reads this file at the CLI gitlink.",
   "documents": [
-    { "command": "core recruiter job create", "flag": "file", "operation": "post /v1/{account_id}/recruiter/jobs", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1jobs/post/requestBody/content/application~1json/schema" },
-    { "command": "core recruiter project-job create", "flag": "file", "operation": "post /v1/{account_id}/recruiter/projects/{project_id}/jobs", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1projects~1{project_id}~1jobs/post/requestBody/content/application~1json/schema" },
-    { "command": "core recruiter project-job update", "flag": "file", "operation": "patch /v1/{account_id}/recruiter/projects/{project_id}/jobs/{job_id}", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1projects~1{project_id}~1jobs~1{job_id}/patch/requestBody/content/application~1json/schema" }
+    {"command": "core recruiter job create", "flag": "file", "operation": "post /v1/{account_id}/recruiter/jobs", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1jobs/post/requestBody/content/application~1json/schema"},
+    {"command": "core recruiter project-job create", "flag": "file", "operation": "post /v1/{account_id}/recruiter/projects/{project_id}/jobs", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1projects~1{project_id}~1jobs/post/requestBody/content/application~1json/schema"},
+    {"command": "core recruiter project-job update", "flag": "file", "operation": "patch /v1/{account_id}/recruiter/projects/{project_id}/jobs/{job_id}", "pointer": "/paths/~1v1~1{account_id}~1recruiter~1projects~1{project_id}~1jobs~1{job_id}/patch/requestBody/content/application~1json/schema"},
+    {"command": "motion create", "flag": "file", "operation": "post /v1/motions", "pointer": "/paths/~1v1~1motions/post/requestBody/content/application~1json/schema", "delegated": ["sequence"], "response": "/paths/~1v1~1motions~1{id}/get/responses/200/content/application~1json/schema"},
+    {"command": "motion update", "flag": "file", "operation": "patch /v1/motions/{id}", "pointer": "/paths/~1v1~1motions~1{id}/patch/requestBody/content/application~1json/schema", "delegated": ["sequence"], "response": "/paths/~1v1~1motions~1{id}/get/responses/200/content/application~1json/schema"}
   ]
 }

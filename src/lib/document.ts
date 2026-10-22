@@ -19,7 +19,7 @@ export type Schema = { [k: string]: unknown };
 export type Issue = { path: string; rule: string; suggestion?: string };
 
 /** Keywords the validator enforces. A vendored schema using any other keyword throws. */
-export const ENFORCED = new Set(["type", "properties", "required", "additionalProperties", "enum", "const", "minLength", "maxLength", "minimum", "maximum", "items", "minItems", "maxItems", "oneOf"]);
+export const ENFORCED = new Set(["type", "properties", "required", "additionalProperties", "enum", "const", "minLength", "maxLength", "minimum", "maximum", "items", "minItems", "maxItems", "oneOf", "nullable"]);
 /** Annotations: read, never enforced. `x-` extensions carry limits, not rules. */
 export const ANNOTATIONS = new Set(["description", "title", "default", "discriminator"]);
 
@@ -187,6 +187,8 @@ export function validate(schema: Schema, value: unknown, path = ""): Issue[] {
     if (results.some((r) => r.length === 0)) return [];
     return [{ path: at, rule: `must match one of: ${branches.map(shape).join(" | ")}` }];
   }
+  // OpenAPI 3.0 `nullable: true`: null is an accepted value, nothing else about it to check.
+  if (value === null && schema["nullable"] === true) return out;
   const t = schema["type"] as string | undefined;
   if (t && !isType(value, t)) return [{ path: at, rule: `must be ${t === "array" || t === "object" || t === "integer" ? "an" : "a"} ${t}` }];
   if ("const" in schema && value !== schema["const"]) out.push({ path: at, rule: `must be ${JSON.stringify(schema["const"])}` });

@@ -12,7 +12,14 @@ import { pkgRoot } from "./helpers/pkg.js";
 import { ANNOTATIONS, ENFORCED, renderDocument, validate, type Schema } from "../src/lib/document.js";
 import { useSink } from "./helpers/sink.js";
 
-type Entry = { command: string; flag: string; operation: string; pointer: string };
+/**
+ * `delegated`: request properties another validator owns (a Motion's `sequence`
+ * is the SDK's `validateSequence`, cli/011 FR-011), vendored as `{}`.
+ * `response`: the `get` response schema; its keys the request lacks are
+ * vendored as `x-curviate-response-only`, the keys a pasted `get` output drops
+ * (cli/011 FR-012).
+ */
+type Entry = { command: string; flag: string; operation: string; pointer: string; delegated?: string[]; response?: string };
 const manifest = JSON.parse(readFileSync(join(pkgRoot, "test/fixtures/document-inputs.json"), "utf8")) as { documents: Entry[] };
 const openapi = JSON.parse(readFileSync(join(pkgRoot, "test/fixtures/openapi.json"), "utf8")) as unknown;
 const SCHEMAS = join(pkgRoot, "src/schemas/documents.json");
@@ -22,9 +29,16 @@ const at = (doc: unknown, pointer: string) =>
 const strip = (s: unknown): unknown =>
   Array.isArray(s) ? s.map(strip) : s && typeof s === "object" ? Object.fromEntries(Object.entries(s).filter(([k]) => k !== "description" && k !== "title").map(([k, v]) => [k, k === "properties" ? Object.fromEntries(Object.entries(v as object).map(([p, ps]) => [p, strip(ps)])) : strip(v)])) : s;
 
+const vendored = (d: Entry): Schema => {
+  const s = strip(at(openapi, d.pointer)) as Schema & { properties: Record<string, unknown> };
+  for (const k of d.delegated ?? []) s.properties[k] = {};
+  if (d.response) s["x-curviate-response-only"] = Object.keys((at(openapi, d.response) as { properties: object }).properties).filter((k) => !(k in s.properties));
+  return s;
+};
+
 describe("document schemas", () => {
   it("src/schemas/documents.json is the fixture's schema at each manifest pointer (regenerate: WRITE_DOCUMENT_SCHEMAS=1)", () => {
-    const expected = JSON.stringify(Object.fromEntries(manifest.documents.map((d) => [d.command, strip(at(openapi, d.pointer))])), null, 2) + "\n";
+    const expected = JSON.stringify(Object.fromEntries(manifest.documents.map((d) => [d.command, vendored(d)])), null, 2) + "\n";
     if (process.env["WRITE_DOCUMENT_SCHEMAS"] === "1") writeFileSync(SCHEMAS, expected);
     expect(manifest.documents.length).toBeGreaterThanOrEqual(3);
     expect(readFileSync(SCHEMAS, "utf8")).toBe(expected);
@@ -41,7 +55,7 @@ describe("document schemas", () => {
         else if (k !== "discriminator" && k !== "enum" && k !== "const") walk(v);
       }
     };
-    for (const d of manifest.documents) walk(at(openapi, d.pointer));
+    for (const d of manifest.documents) walk(vendored(d));
     expect([...used].filter((k) => !ENFORCED.has(k) && !ANNOTATIONS.has(k) && !k.startsWith("x-"))).toEqual([]);
     expect(used.has("oneOf") && used.has("minLength") && used.has("additionalProperties")).toBe(true);
     expect(() => validate({ type: "string", pattern: "^a" }, "a")).toThrow(/pattern/);
@@ -71,6 +85,8 @@ describe("document schemas", () => {
     expect(validate(schema, { kind: "A", zzzzzz: 1 })).toEqual([{ path: "zzzzzz", rule: "unknown field" }, { path: "name", rule: "required" }]);
     expect(validate(schema, { name: "ab", kind: "A", apply: { method: "q" } })).toEqual([{ path: "name", rule: "must be at least 3 characters" }, { path: "apply.method", rule: "must be one of x, y" }]);
     expect(validate(schema, [])).toEqual([{ path: "(document)", rule: "must be an object" }]);
+    // OpenAPI 3.0 `nullable`: null passes the type check only where declared.
+    expect([validate({ type: "string", nullable: true }, null), validate({ type: "string" }, null)]).toEqual([[], [{ path: "(document)", rule: "must be a string" }]]);
     // Inherited member names are not fields, at the root or nested; the required check reads own keys too.
     for (const k of ["toString", "constructor", "hasOwnProperty", "valueOf", "isPrototypeOf", "__proto__"]) {
       const doc = JSON.parse(`{"name": "abc", "kind": "A", "ref": {"id": "1", "${k}": 1}, "${k}": 1}`) as unknown;
