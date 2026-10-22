@@ -1,0 +1,126 @@
+{
+  "name": "Connect and converse",
+  "contact_list_ids": [],
+  "account_ids": [],
+  "schedule": {
+    "timezone": null,
+    "days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri"
+    ],
+    "hours": {
+      "start": "09:00",
+      "end": "18:00"
+    }
+  },
+  "settings": {
+    "new_enrollments_per_account_per_day": 20,
+    "stop_on_engagement": false
+  },
+  "sequence": {
+    "$schema": "https://docs.curviate.com/schemas/sequence/v1.json",
+    "on_reply": "replied",
+    "steps": [
+      {
+        "id": "visit",
+        "do": "profile.view",
+        "note": "Warm-up visit before any contact."
+      },
+      {
+        "id": "has_post",
+        "if": {
+          "contact.posted_within": "14d"
+        },
+        "then": "w_like",
+        "else": "w_invite"
+      },
+      {
+        "id": "w_like",
+        "wait": "1d"
+      },
+      {
+        "id": "like",
+        "do": "post.react",
+        "with": {
+          "post": "latest",
+          "newer_than": "14d",
+          "reaction": "like"
+        }
+      },
+      {
+        "id": "w_invite",
+        "wait": "1d"
+      },
+      {
+        "id": "invite",
+        "do": "invite.send",
+        "with": {
+          "withdraw_after": "21d"
+        },
+        "note": "No note: blank invites are accepted slightly more often."
+      },
+      {
+        "id": "accepted",
+        "until": "invite.accepted",
+        "timeout": "21d",
+        "then": "w_opener",
+        "else": "end"
+      },
+      {
+        "id": "w_opener",
+        "wait": "1d"
+      },
+      {
+        "id": "opener",
+        "do": "message.send",
+        "variants": [
+          {
+            "id": "opener_named",
+            "text": "Hi {{first_name}}, {{opener}}"
+          },
+          {
+            "id": "opener_plain",
+            "text": "{{opener}}"
+          }
+        ],
+        "with": {
+          "fallback": "Hi, glad we are connected. How do you handle LinkedIn outreach today?"
+        },
+        "note": "No link in the first message."
+      },
+      {
+        "id": "r_opener",
+        "until": "message.replied",
+        "timeout": "4d",
+        "then": "replied"
+      },
+      {
+        "id": "followup",
+        "do": "message.send",
+        "with": {
+          "text": "{{followup}}",
+          "fallback": "Quick follow-up in case this got buried. Happy to leave it here if the timing is off."
+        }
+      },
+      {
+        "id": "r_followup",
+        "until": "message.replied",
+        "timeout": "7d",
+        "then": "replied"
+      },
+      {
+        "id": "silent",
+        "tag": "no-reply",
+        "next": "end"
+      },
+      {
+        "id": "replied",
+        "tag": "in-conversation",
+        "next": "end"
+      }
+    ]
+  }
+}

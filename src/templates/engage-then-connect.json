@@ -1,0 +1,110 @@
+{
+  "name": "Engage then connect",
+  "contact_list_ids": [],
+  "account_ids": [],
+  "schedule": {
+    "timezone": null,
+    "days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri"
+    ],
+    "hours": {
+      "start": "09:00",
+      "end": "18:00"
+    }
+  },
+  "settings": {
+    "new_enrollments_per_account_per_day": 20,
+    "stop_on_engagement": false
+  },
+  "sequence": {
+    "on_reply": "replied",
+    "steps": [
+      {
+        "id": "react",
+        "do": "post.react",
+        "with": {
+          "newer_than": "60d"
+        },
+        "else": "w_invite"
+      },
+      {
+        "id": "w_comment",
+        "wait": "10m"
+      },
+      {
+        "id": "comment",
+        "do": "post.comment",
+        "with": {
+          "newer_than": "60d",
+          "text": "{{comment}}",
+          "fallback": "skip"
+        },
+        "note": "The agent writes one comment per Contact; no product mention."
+      },
+      {
+        "id": "w_invite",
+        "wait": "30m"
+      },
+      {
+        "id": "invite",
+        "do": "invite.send",
+        "with": {
+          "withdraw_after": "21d"
+        }
+      },
+      {
+        "id": "accepted",
+        "until": "invite.accepted",
+        "timeout": "21d",
+        "then": "w_opener",
+        "else": "end"
+      },
+      {
+        "id": "w_opener",
+        "wait": "1d"
+      },
+      {
+        "id": "opener",
+        "do": "message.send",
+        "with": {
+          "text": "Hi {{first_name}}, {{opener}}",
+          "fallback": "Hi, thanks for connecting. What are you working on at the moment?"
+        }
+      },
+      {
+        "id": "r_opener",
+        "until": "message.replied",
+        "timeout": "5d",
+        "then": "replied"
+      },
+      {
+        "id": "followup",
+        "do": "message.send",
+        "with": {
+          "text": "{{followup}}",
+          "fallback": "Following up once in case this got buried. All good if now is not the time."
+        }
+      },
+      {
+        "id": "r_followup",
+        "until": "message.replied",
+        "timeout": "7d",
+        "then": "replied"
+      },
+      {
+        "id": "silent",
+        "tag": "no-reply",
+        "next": "end"
+      },
+      {
+        "id": "replied",
+        "tag": "in-conversation",
+        "next": "end"
+      }
+    ]
+  }
+}

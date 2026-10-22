@@ -1,0 +1,84 @@
+{
+  "name": "Nurture connections",
+  "contact_list_ids": [],
+  "account_ids": [],
+  "schedule": {
+    "timezone": null,
+    "days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri"
+    ],
+    "hours": {
+      "start": "09:00",
+      "end": "18:00"
+    }
+  },
+  "settings": {
+    "assign": "already_connected",
+    "stop_on_engagement": false
+  },
+  "sequence": {
+    "on_reply": "replied",
+    "steps": [
+      {
+        "id": "is_connected",
+        "if": {
+          "contact.connected": true
+        },
+        "then": "dm",
+        "else": "not_connected"
+      },
+      {
+        "id": "not_connected",
+        "tag": "not-connected",
+        "next": "end"
+      },
+      {
+        "id": "dm",
+        "do": "message.send",
+        "with": {
+          "text": "{{dm}}",
+          "fallback": "Hi, it has been a while. What are you focused on these days?"
+        }
+      },
+      {
+        "id": "r_dm",
+        "until": "message.replied",
+        "timeout": "5d",
+        "then": "replied"
+      },
+      {
+        "id": "seen_dm",
+        "if": {
+          "message.seen": true
+        },
+        "then": "followup",
+        "else": "end",
+        "note": "Follow up only when they saw the first message."
+      },
+      {
+        "id": "followup",
+        "do": "message.send",
+        "with": {
+          "text": "{{followup}}",
+          "fallback": "No rush on this, just wanted to check in once more."
+        }
+      },
+      {
+        "id": "r_followup",
+        "until": "message.replied",
+        "timeout": "7d",
+        "then": "replied",
+        "else": "end"
+      },
+      {
+        "id": "replied",
+        "tag": "in-conversation",
+        "next": "end"
+      }
+    ]
+  }
+}
