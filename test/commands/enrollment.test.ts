@@ -65,14 +65,19 @@ describe("enrollment retry: the guarded Retry, then the re-run's record", () => 
     sink.reply = (h) => (h.method === "GET" ? { body: { object: "enrollment", id: "enr_1", history: histories[Math.min(n++, histories.length - 1)] } } : answer);
   };
 
-  it("resumes through bulk retry (never resume --at), waits for the Step's next record, prints {outcome, reason, message}, exit 0", async () => {
+  it("resumes through bulk retry (never resume --at), waits for the Step's next record, prints {outcome, reason, message}, exit 0", { timeout: 20_000 }, async () => {
     // Another Step's record lands first: only the failed Step's own next record ends the wait.
     const OTHER = { step_id: "w_accept", outcome: "skipped", reason: "already_connected", reason_message: "Already connected." };
     script([[FAILED], [FAILED], [FAILED, OTHER], [FAILED, OTHER, RERUN]], bulk({ outcome: "ok", error: null }));
+    // One unreadable poll after the accepted retry is skipped, not reported as a failed retry.
+    const scripted = sink.reply as (h: Hit) => Reply;
+    let polls = 0;
+    sink.reply = (h) => (h.method === "GET" && ++polls === 2 ? { status: 400, body: { code: "INVALID_REQUEST", message: "unreadable poll" } } : scripted(h));
     const r = await sink.run(["enrollment", "retry", "enr_1", "--json"]);
     expect([r.status, sent(r)], r.stderr).toEqual([0, [
       ["GET /v1/enrollments/enr_1", null],
       ["POST /v1/enrollments/bulk", { action: "retry", ids: ["enr_1"] }],
+      ["GET /v1/enrollments/enr_1", null],
       ["GET /v1/enrollments/enr_1", null],
       ["GET /v1/enrollments/enr_1", null],
       ["GET /v1/enrollments/enr_1", null],

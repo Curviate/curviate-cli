@@ -132,15 +132,16 @@ export async function runRetry(c: Curviate, f: EnrollmentFlags): Promise<void> {
   const id = String(f.id ?? "");
   const waitMs = f.timeout === undefined ? RETRY_WAIT_MS : intFlag("timeout", f.timeout, 0, 24 * 60 * 60 * 1000);
   if (f.preview) return preview("enrollments.retry", { id });
-  const history = async () => {
-    try {
-      const e = (await c.enrollments.get(id)) as { history?: HistoryEntry[] } | null;
-      return Array.isArray(e?.history) ? e.history : [];
-    } catch (err) {
-      return fail(err, f);
-    }
+  const read = async () => {
+    const e = (await c.enrollments.get(id)) as { history?: HistoryEntry[] } | null;
+    return Array.isArray(e?.history) ? e.history : [];
   };
-  const before = await history();
+  let before: HistoryEntry[];
+  try {
+    before = await read();
+  } catch (err) {
+    return fail(err, f);
+  }
   const failed = [...before].reverse().find((h) => h.outcome === "failed");
   let item: unknown;
   try {
@@ -158,7 +159,9 @@ export async function runRetry(c: Curviate, f: EnrollmentFlags): Promise<void> {
   }
   const deadline = Date.now() + waitMs;
   for (;;) {
-    const record = (await history()).slice(before.length).find((h) => h.step_id === failed.step_id);
+    // Resumed already: a failed read only costs this poll, never reads as a failed retry.
+    const now = await read().catch(() => null);
+    const record = now?.slice(before.length).find((h) => h.step_id === failed.step_id);
     if (record) return renderSuccess({ step_id: failed.step_id, outcome: record.outcome ?? null, reason: record.reason ?? null, message: record.reason_message ?? null }, outputOpts(f), process);
     const left = deadline - Date.now();
     if (left <= 0) break;
@@ -200,11 +203,11 @@ async function runBulk(c: Curviate, f: EnrollmentFlags): Promise<void> {
       process.stdout.write(`${r.enrollment_id} ${r.outcome === "ok" ? "ok" : `error ${r.error?.code}: ${r.error?.message ?? ""}`}${warn}\n`);
     }
   }
-  const firstError = results.find((r) => r.outcome !== "ok" && r.error?.code);
+  const firstError = results.find((r) => r.outcome !== "ok");
   if (firstError) {
     const { getExitCode } = await import("../lib/exit-codes.js");
     process.stderr.write(`error: ${results.filter((r) => r.outcome !== "ok").length} of ${results.length} Enrollments were refused; each refusal is listed.\n`);
-    process.exit(getExitCode(firstError.error!.code as never));
+    process.exit(getExitCode((firstError.error?.code ?? "INTERNAL") as never));
   }
 }
 

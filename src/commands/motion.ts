@@ -173,7 +173,11 @@ async function runCreate(c: Curviate, f: MotionFlags): Promise<void> {
 
 async function runUpdate(c: Curviate, f: MotionFlags): Promise<void> {
   const { body, text } = await readMotionFile(f, "motion update");
-  // OQ-19: the precondition is sent only when asked for, never read from the file.
+  // The precondition is sent only when asked for, never read from the file.
+  if ("if_sequence_revision" in body) {
+    process.stderr.write("warning: dropped if_sequence_revision from the file: pass --if-revision <n> to send it.\n");
+    delete body["if_sequence_revision"];
+  }
   if (f["if-revision"] !== undefined) body["if_sequence_revision"] = intFlag("if-revision", f["if-revision"], 0);
   if (f.preview) return preview("motions.update", { id: f.id }, body);
   try {
@@ -217,9 +221,11 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
   const results = await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.motions[method](f.id ?? "", body(chunk) as never) as Promise<unknown>, f);
   if (results.length === 1) return renderSuccess(results[0], outputOpts(f), process);
   // Several chunks: one answer, every chunk's entries in input order.
+  const last = (results[results.length - 1] ?? {}) as Body;
   const merged = kind === "add"
-    ? { object: "motion_contacts_result", results: results.flatMap((r) => (r as { results?: unknown[] } | null)?.results ?? []) }
+    ? { ...last, results: results.flatMap((r) => (r as { results?: unknown[] } | null)?.results ?? []) }
     : {
+        ...last,
         removed: results.reduce<number>((n, r) => n + ((r as { removed?: number } | null)?.removed ?? 0), 0),
         not_found: results.flatMap((r) => (r as { not_found?: unknown[] } | null)?.not_found ?? []),
       };
@@ -230,15 +236,15 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
 export async function runLint(f: MotionFlags): Promise<void> {
   const text = await readFileFlag("file", f.file ?? "", { others: f });
   const doc = parseDocument("file", text) as Body | null;
-  const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && "sequence" in doc;
-  if (motionFile && doc["sequence"] === null) usage("--file: the Motion file's sequence is null; there is nothing to lint.");
+  const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
+  if (motionFile && doc["sequence"] == null) usage("--file: the Motion file has no sequence; there is nothing to lint.");
   const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "");
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
 }
 
 /** `init`: offline. A template as a Motion file, `schedule.timezone` set to this machine's. */
 export async function runInit(f: MotionFlags): Promise<void> {
-  const tpl = TEMPLATES[f.template ?? ""];
+  const tpl = Object.hasOwn(TEMPLATES, f.template ?? "") ? TEMPLATES[f.template!] : undefined;
   if (!tpl) usage(`--template takes one of ${Object.keys(TEMPLATES).join(", ")}.`);
   const doc = structuredClone(tpl) as { schedule: { timezone: string | null } };
   doc.schedule.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;

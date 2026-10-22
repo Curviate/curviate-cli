@@ -124,6 +124,9 @@ describe("motion update --if-revision", () => {
     const file = put("m.json", JSON.stringify(MOTION));
     const [without, withRev] = [await sink.run(["motion", "update", "mot_1", "--file", file]), await sink.run(["motion", "update", "mot_1", "--file", file, "--if-revision", "3"])];
     expect([JSON.parse(without.requests[0]!.body)["if_sequence_revision"], JSON.parse(withRev.requests[0]!.body)["if_sequence_revision"]]).toEqual([undefined, 3]);
+    // A precondition written into the file is dropped with a warning, never sent.
+    const inFile = await sink.run(["motion", "update", "mot_1", "--file", put("p.json", JSON.stringify({ ...REQUEST, if_sequence_revision: 2 }))]);
+    expect([inFile.status, JSON.parse(inFile.requests[0]!.body)["if_sequence_revision"], inFile.stderr]).toEqual([0, undefined, expect.stringContaining("dropped if_sequence_revision")]);
   });
 
   it("SEQUENCE_CONFLICT exits 2 and names the newer revision and who saved it", async () => {
@@ -157,7 +160,7 @@ describe("motion init --template", () => {
     const out = join(dir, "init.json");
     const r = await runCli(["motion", "init", "--template", "nurture-connections", "-o", out], NO_KEY);
     expect([r.status, r.stdout, JSON.parse(readFileSync(out, "utf8")).name]).toEqual([0, "", "Nurture connections"]);
-    expect((await runCli(["motion", "init", "--template", "nope"], NO_KEY)).status).toBe(2);
+    for (const name of ["nope", "constructor", "toString", "__proto__"]) expect((await runCli(["motion", "init", "--template", name], NO_KEY)).status, name).toBe(2);
   });
 });
 

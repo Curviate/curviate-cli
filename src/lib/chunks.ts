@@ -18,12 +18,15 @@ export async function sendInChunks<R>(ids: string[], size: number, send: (chunk:
       done.push(await send(chunk));
     } catch (err) {
       const { CurviateError } = await import("@curviate/sdk");
-      if (!(err instanceof CurviateError)) return fail(err, f);
       const progress = {
         chunks: { sent: k, total },
         items: { accepted: k * size, total: ids.length },
         failed_chunk: { index: k + 1, first_row: k * size + 1, last_row: k * size + chunk.length },
       };
+      if (!(err instanceof CurviateError)) {
+        process.stderr.write(`Chunk ${k + 1} of ${total} failed; ${k * size} of ${ids.length} ids were sent before it. Nothing after it was sent.\n`);
+        return fail(err, f);
+      }
       const { getExitCode } = await import("./exit-codes.js");
       const e = (err as CurviateError).toJSON();
       if (outputOpts(f).json) process.stdout.write(JSON.stringify({ error: e, progress }) + "\n");
