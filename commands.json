@@ -1079,7 +1079,7 @@
         "blast_radius": "Every Contact of its Contact lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`)."
       },
       "errors": {
-        "MOTION_NOT_STARTABLE": "a gap stops it (Contact list, sending Account, timezone, Sequence); each is listed.",
+        "MOTION_NOT_STARTABLE": "a gap stops it (Contact list, sending Account, Sequence); each is listed.",
         "MOTION_STATUS_CONFLICT": "only a draft starts.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
@@ -1481,7 +1481,7 @@
         "motion",
         "init"
       ],
-      "description": "Write a Motion file from a template (connect-and-converse, engage-then-connect, nurture-connections), its schedule in this machine's timezone. Fill contact_list_ids and account_ids, then create it.",
+      "description": "Write a Motion file from a template (connect-and-converse, engage-then-connect, nurture-connections). Fill contact_list_ids and account_ids, then create it.",
       "usageOnly": false,
       "args": [
         {

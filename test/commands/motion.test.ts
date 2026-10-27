@@ -142,11 +142,11 @@ describe("motion update --if-revision", () => {
 });
 
 describe("motion init --template", () => {
-  it.each(Object.keys(TEMPLATES))("%s: a Motion file motion create accepts, in this machine's timezone", async (name) => {
-    const r = await runCli(["motion", "init", "--template", name], { ...NO_KEY, env: { ...NO_KEY.env, TZ: "Asia/Tokyo" } });
+  it.each(Object.keys(TEMPLATES))("%s: writes {name, sequence} only (no description, zone, schedule, settings) and motion create accepts it", async (name) => {
+    const r = await runCli(["motion", "init", "--template", name], NO_KEY);
     expect(r.status).toBe(0);
-    const doc = JSON.parse(r.stdout) as { schedule: { timezone: string }; sequence: { steps: Array<Record<string, unknown>> } };
-    expect(doc.schedule.timezone).toBe("Asia/Tokyo");
+    const doc = JSON.parse(r.stdout) as { sequence: { steps: Array<Record<string, unknown>> } };
+    expect(Object.keys(doc)).toEqual(["name", "sequence"]);
     const v = validateSequence(doc.sequence);
     expect([v.errors, v.warnings.map((w) => `${w.code} ${w.path}`)]).toEqual([[], name === "nurture-connections" ? [] : ["W1 w_invite"]]);
     const text = JSON.stringify(doc.sequence);
