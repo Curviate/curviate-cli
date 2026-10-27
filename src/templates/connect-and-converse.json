@@ -1,25 +1,6 @@
 {
   "name": "Connect and converse",
-  "contact_list_ids": [],
-  "account_ids": [],
-  "schedule": {
-    "timezone": null,
-    "days": [
-      "mon",
-      "tue",
-      "wed",
-      "thu",
-      "fri"
-    ],
-    "hours": {
-      "start": "09:00",
-      "end": "18:00"
-    }
-  },
-  "settings": {
-    "new_enrollments_per_account_per_day": 20,
-    "stop_on_engagement": false
-  },
+  "description": "Visit, like a recent post, invite without a note, then two messages after acceptance.",
   "sequence": {
     "$schema": "https://docs.curviate.com/schemas/sequence/v1.json",
     "on_reply": "replied",

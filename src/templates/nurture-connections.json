@@ -1,25 +1,6 @@
 {
   "name": "Nurture connections",
-  "contact_list_ids": [],
-  "account_ids": [],
-  "schedule": {
-    "timezone": null,
-    "days": [
-      "mon",
-      "tue",
-      "wed",
-      "thu",
-      "fri"
-    ],
-    "hours": {
-      "start": "09:00",
-      "end": "18:00"
-    }
-  },
-  "settings": {
-    "assign": "already_connected",
-    "stop_on_engagement": false
-  },
+  "description": "Message existing Connections twice; people not connected are tagged and skipped.",
   "sequence": {
     "on_reply": "replied",
     "steps": [

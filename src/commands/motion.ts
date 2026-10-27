@@ -242,12 +242,12 @@ export async function runLint(f: MotionFlags): Promise<void> {
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
 }
 
-/** `init`: offline. A template as a Motion file, `schedule.timezone` set to this machine's. */
+/** `init`: offline. A template as a Motion file: `{name, sequence}` only; the server fills schedule and settings. */
 export async function runInit(f: MotionFlags): Promise<void> {
   const tpl = Object.prototype.hasOwnProperty.call(TEMPLATES, f.template ?? "") ? TEMPLATES[f.template!] : undefined;
   if (!tpl) usage(`--template takes one of ${Object.keys(TEMPLATES).join(", ")}.`);
-  const doc = structuredClone(tpl) as { schedule: { timezone: string | null } };
-  doc.schedule.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { name, sequence } = tpl as { name: string; sequence: unknown }; // description is not a Motion field
+  const doc = { name, sequence: structuredClone(sequence) };
   const text = JSON.stringify(doc, null, 2) + "\n";
   if (f.output === undefined) return void process.stdout.write(text);
   try {
@@ -399,7 +399,7 @@ const startCmd = lifecycleCmd("start", {
     undo: "`curviate motion pause <motion_id>` stops new Steps; what was sent stays sent.",
     blast_radius: "Every Contact of its Contact lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`).",
   },
-  errors: { MOTION_NOT_STARTABLE: "a gap stops it (Contact list, sending Account, timezone, Sequence); each is listed.", MOTION_STATUS_CONFLICT: "only a draft starts.", ...ROLE_ERRORS, TIER_REQUIRED: "Motions need the Automate plan." },
+  errors: { MOTION_NOT_STARTABLE: "a gap stops it (Contact list, sending Account, Sequence); each is listed.", MOTION_STATUS_CONFLICT: "only a draft starts.", ...ROLE_ERRORS, TIER_REQUIRED: "Motions need the Automate plan." },
   seeAlso: ["curviate motion preview", "curviate motion pause"],
 });
 
@@ -542,7 +542,7 @@ const lintCmd = defineCommand({
 const initCmd = defineCommand({
   meta: {
     name: "init",
-    description: `Write a Motion file from a template (${Object.keys(TEMPLATES).join(", ")}), its schedule in this machine's timezone. Fill contact_list_ids and account_ids, then create it.`,
+    description: `Write a Motion file from a template (${Object.keys(TEMPLATES).join(", ")}). Fill contact_list_ids and account_ids, then create it.`,
     risk: "read",
     rules: OFFLINE,
     output: ["The Motion file on stdout, or in the --output file."],
