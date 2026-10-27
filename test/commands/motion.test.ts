@@ -29,15 +29,15 @@ const REQUEST = {
   contact_list_ids: ["cl_1"],
   exclusion_list_ids: [],
   account_ids: ["acc_1"],
-  schedule: { timezone: "Europe/Berlin", days: ["mon", "tue"], hours: { start: "09:00", end: "18:00" } },
-  settings: { stop_on_engagement: false },
+  schedule: { days: ["mon", "tue"], hours: { start: "09:00", end: "18:00" } },
+  settings: { assign: "even" },
   where: [],
   sequence: SEQUENCE,
 };
 const READ_ONLY = {
   object: "motion", id: "mot_1", status: "active", pause_reason: null, sequence_version: 2, sequence_revision: 3, sequence_updated_by_user_id: "usr_1",
   counts: { pending: 0, active: 1, paused: 0, finished: 0, skipped: 0 }, warnings: [], created_by_user_id: "usr_1",
-  created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-02T00:00:00Z", started_at: null, completed_at: null, archived_at: null, safety_warning: null,
+  created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-02T00:00:00Z", started_at: null, completed_at: null, archived_at: null,
 };
 /** `motion get` output: every key of the GET response. */
 const MOTION = { ...READ_ONLY, ...REQUEST };
