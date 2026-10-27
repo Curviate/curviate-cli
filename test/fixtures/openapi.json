@@ -104739,6 +104739,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -105123,7 +105139,7 @@
             }
           },
           "400": {
-            "description": "Invalid input; the message starts with the field. An unknown query parameter, an unknown key or a read-only field, a value over its cap, a list id that is not yours (contact_list_ids: unknown list cl_...), one list as both source and exclusion, an invalid schedule or setting, or an unknown where predicate (where[0]: ...). Checked before the sequence.",
+            "description": "Invalid input; the message starts with the field. An unknown query parameter, an unknown key or a read-only field, a value over its cap, a list id that is not yours (contact_list_ids: unknown list cl_...), one list as both source and exclusion, an invalid schedule or setting (a Several-mode setting with accounts_per_contact 1, withdraw_on_reply_elsewhere true with on_reply_elsewhere continue, an account_gap outside 1d to 30d), or an unknown where predicate (where[0]: ...). Checked before the sequence.",
             "content": {
               "application/json": {
                 "schema": {
@@ -105468,6 +105484,22 @@
                           "nullable": true
                         },
                         "description": "Deprecated: Motion variables are removed (accepted with warning W13 until 2027-01-19); write text that is the same for everyone in place, and per-Contact text in a custom field. Rendered as `{{motion.<key>}}`. Up to 50 keys matching ^[a-z][a-z0-9_]{0,39}$; values up to 2000 characters, without variables. On update a null value removes the key."
+                      },
+                      "on_reply_elsewhere": {
+                        "type": "string",
+                        "enum": [
+                          "stop",
+                          "continue"
+                        ],
+                        "description": "Several mode only (accounts_per_contact above 1; absent and refused otherwise). What a reply to one sending account, or a message sent by hand from it, does to the Contact's Enrollments on the Motion's other accounts: stop (default) ends them, continue lets them run on."
+                      },
+                      "withdraw_on_reply_elsewhere": {
+                        "type": "boolean",
+                        "description": "Several mode only, with on_reply_elsewhere stop. When true, the stopped accounts also withdraw the pending invitations this Motion sent the Contact. Default false."
+                      },
+                      "account_gap": {
+                        "type": "string",
+                        "description": "Several mode only. The least time between two accounts' starts on one Contact, plus a small random spread: a number then m, h or d, 1d to 30d. Default 1d."
                       },
                       "stop_on_engagement": {
                         "type": "boolean",
@@ -105925,6 +105957,22 @@
                                   "type": "string"
                                 },
                                 "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                              },
+                              "on_reply_elsewhere": {
+                                "type": "string",
+                                "enum": [
+                                  "stop",
+                                  "continue"
+                                ],
+                                "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                              },
+                              "withdraw_on_reply_elsewhere": {
+                                "type": "boolean",
+                                "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                              },
+                              "account_gap": {
+                                "type": "string",
+                                "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                               }
                             },
                             "required": [
@@ -106491,6 +106539,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -107156,6 +107220,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -107550,7 +107630,7 @@
             }
           },
           "400": {
-            "description": "Invalid input, as on create. On a started Motion also: sequence null, a schedule.end_at that is not in the future, and a changed schedule.start_at once it has been active. An unknown query parameter.",
+            "description": "Invalid input, as on create. On a started Motion also: sequence null, a schedule.end_at that is not in the future, and a changed schedule.start_at or settings.accounts_per_contact once it has been active. An unknown query parameter.",
             "content": {
               "application/json": {
                 "schema": {
@@ -107896,6 +107976,22 @@
                         },
                         "description": "Deprecated: Motion variables are removed (accepted with warning W13 until 2027-01-19); write text that is the same for everyone in place, and per-Contact text in a custom field. Rendered as `{{motion.<key>}}`. Up to 50 keys matching ^[a-z][a-z0-9_]{0,39}$; values up to 2000 characters, without variables. On update a null value removes the key."
                       },
+                      "on_reply_elsewhere": {
+                        "type": "string",
+                        "enum": [
+                          "stop",
+                          "continue"
+                        ],
+                        "description": "Several mode only (accounts_per_contact above 1; absent and refused otherwise). What a reply to one sending account, or a message sent by hand from it, does to the Contact's Enrollments on the Motion's other accounts: stop (default) ends them, continue lets them run on."
+                      },
+                      "withdraw_on_reply_elsewhere": {
+                        "type": "boolean",
+                        "description": "Several mode only, with on_reply_elsewhere stop. When true, the stopped accounts also withdraw the pending invitations this Motion sent the Contact. Default false."
+                      },
+                      "account_gap": {
+                        "type": "string",
+                        "description": "Several mode only. The least time between two accounts' starts on one Contact, plus a small random spread: a number then m, h or d, 1d to 30d. Default 1d."
+                      },
                       "stop_on_engagement": {
                         "type": "boolean",
                         "description": "Retired: the Sequence decides what a reply does (on_reply \"end\" stops on a reply), and a message you send by hand always ends the Enrollment. Accepted with warning W13 until 2027-01-25, never stored or returned: false always; true only while no reply route reaches a step that acts (on_reply, or the then of an until message.replied), else 400."
@@ -107934,6 +108030,15 @@
                   "value": {
                     "settings": {
                       "assign": "even"
+                    }
+                  }
+                },
+                "several": {
+                  "summary": "Several accounts per Contact, two days apart",
+                  "value": {
+                    "settings": {
+                      "accounts_per_contact": 2,
+                      "account_gap": "2d"
                     }
                   }
                 },
@@ -108332,6 +108437,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -109084,6 +109205,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -109803,6 +109940,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
@@ -110555,6 +110708,22 @@
                             "type": "string"
                           },
                           "description": "Deprecated (warning W13): Motion variables are removed; write text in place or use a custom field."
+                        },
+                        "on_reply_elsewhere": {
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "continue"
+                          ],
+                          "description": "Several mode only (accounts_per_contact above 1; absent otherwise). stop: a reply to one account, or a message sent by hand from it, ends the Contact's Enrollments on the other accounts."
+                        },
+                        "withdraw_on_reply_elsewhere": {
+                          "type": "boolean",
+                          "description": "Several mode only. The stopped accounts also withdraw the pending invitations this Motion sent."
+                        },
+                        "account_gap": {
+                          "type": "string",
+                          "description": "Several mode only. The least time between two accounts' starts on one Contact, 1d to 30d."
                         }
                       },
                       "required": [
