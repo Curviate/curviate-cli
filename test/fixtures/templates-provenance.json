@@ -1,4 +1,0 @@
-{
-  "note": "src/templates/*.json are copied byte for byte from the server's Motion templates. The parent repo drift test compares them at the CLI gitlink. Refresh: copy the three files, update serverGitSha.",
-  "serverGitSha": "b4283b57a10cd0ba08eb23f8d70755b30a45d3d3"
-}
