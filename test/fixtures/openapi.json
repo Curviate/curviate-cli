@@ -82674,7 +82674,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: from or to is not a calendar date, from is after to, or the range spans more than 366 days (the message names from). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: from or to is not a calendar date, from is after to, or the range spans more than 3,650 days (the message names from). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -82799,7 +82799,7 @@
             }
           }
         },
-        "description": "The account's own numbers, one snapshot per day (connections, followers, profile viewers, search appearances, post impressions; SSI on Sales Navigator), read once a day and stored: no LinkedIn call. Oldest first, default the last 90 days, at most 366 days.",
+        "description": "The account's own numbers, one snapshot per day (connections, followers, profile viewers, search appearances, post impressions; SSI on Sales Navigator), read once a day and stored: no LinkedIn call. Oldest first, default the last 90 days, at most 3,650 days: no 12-month limit.",
         "x-order": 7
       }
     },
@@ -83051,6 +83051,20 @@
                             "month"
                           ],
                           "description": "How daily is grouped (auto resolved: day up to 90 days, week up to 366, month beyond)."
+                        },
+                        "counts_only_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, set when the window reaches back more than 12 months: up to and including this day the figures come from daily counts (UTC days); step and variant rates, seen and paths do not cover those days. null when every day is read in full detail."
+                        },
+                        "paths_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, the same day as counts_only_through: paths covers the days after it only, so past it paths does not add up to totals. null when paths covers the whole window."
                         }
                       },
                       "required": [
@@ -83058,7 +83072,9 @@
                         "to",
                         "timezone",
                         "days",
-                        "bucket"
+                        "bucket",
+                        "counts_only_through",
+                        "paths_through"
                       ]
                     },
                     "generated_at": {
@@ -83427,7 +83443,7 @@
                     },
                     "activity": {
                       "type": "array",
-                      "description": "The account's latest 10 actions and their outcomes, newest first, whatever the window: invitations, messages and InMails sent, invitations accepted, replies. Source: origin, and the Motion for origin motion. Metadata only, never message text. The full feed: GET /v1/analytics/events?account_id=.",
+                      "description": "The account's latest 10 actions and their outcomes, newest first, whatever the window, within the last 12 months (the raw reach): invitations, messages and InMails sent, invitations accepted, replies. Source: origin, and the Motion for origin motion. Metadata only, never message text. The full feed: GET /v1/analytics/events?account_id=.",
                       "items": {
                         "type": "object",
                         "properties": {
@@ -84654,7 +84670,9 @@
                         "to": "2026-10-31",
                         "timezone": "UTC",
                         "days": 30,
-                        "bucket": "day"
+                        "bucket": "day",
+                        "counts_only_through": null,
+                        "paths_through": null
                       },
                       "generated_at": "2026-10-31T12:00:00.000Z",
                       "profile": {
@@ -84796,7 +84814,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 365 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 3650 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -84921,7 +84939,7 @@
             }
           }
         },
-        "description": "One account at a glance, no LinkedIn call: profile, its daily numbers, limits, latest activity, and its results in the window (rates, daily, its Motions) with flags. include, fields, sort, limit and compare trim it as on GET /v1/analytics/motions.",
+        "description": "One account at a glance, no LinkedIn call: profile, its daily numbers, limits, latest activity (its last 10 actions within the last 12 months), and its results in the window (rates, daily, its Motions) with flags. include, fields, sort, limit and compare trim it as on GET /v1/analytics/motions.",
         "x-order": 8
       }
     },
@@ -126822,7 +126840,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The Enrollment with its history: what each Step did, in order. Metadata only; the text that was sent is never stored.",
+            "description": "The Enrollment with its history: what each Step did, in order. Metadata only; the text that was sent is never stored. history reaches back 12 months (the raw reach, the same line as the events feed), plus the entries Retry reads at any age; history_truncated says when older entries are not listed. The Enrollment's state (status, current step, waiting) and the list have no such limit.",
             "content": {
               "application/json": {
                 "schema": {
@@ -127164,6 +127182,10 @@
                           "at"
                         ]
                       }
+                    },
+                    "history_truncated": {
+                      "type": "boolean",
+                      "description": "true when the Enrollment started more than 12 months ago (before the raw reach), so entries older than that are not in history, except those Retry reads. false when history is complete."
                     }
                   },
                   "required": [
@@ -127188,7 +127210,8 @@
                     "started_at",
                     "finished_at",
                     "values",
-                    "history"
+                    "history",
+                    "history_truncated"
                   ]
                 },
                 "examples": {
@@ -127267,7 +127290,8 @@
                           "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                           "at": "2026-10-09T09:30:00.000Z"
                         }
-                      ]
+                      ],
+                      "history_truncated": false
                     }
                   }
                 }
@@ -131318,6 +131342,20 @@
                             "month"
                           ],
                           "description": "How daily is grouped (auto resolved: day up to 90 days, week up to 366, month beyond)."
+                        },
+                        "counts_only_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, set when the window reaches back more than 12 months: up to and including this day the figures come from daily counts (UTC days); step and variant rates, seen and paths do not cover those days. null when every day is read in full detail."
+                        },
+                        "paths_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, the same day as counts_only_through: paths covers the days after it only, so past it paths does not add up to totals. null when paths covers the whole window."
                         }
                       },
                       "required": [
@@ -131325,7 +131363,9 @@
                         "to",
                         "timezone",
                         "days",
-                        "bucket"
+                        "bucket",
+                        "counts_only_through",
+                        "paths_through"
                       ]
                     },
                     "generated_at": {
@@ -133751,7 +133791,9 @@
                         "to": "2026-10-31",
                         "timezone": "UTC",
                         "days": 30,
-                        "bucket": "day"
+                        "bucket": "day",
+                        "counts_only_through": null,
+                        "paths_through": null
                       },
                       "generated_at": "2026-10-31T12:00:00.000Z",
                       "totals": {
@@ -134023,7 +134065,9 @@
                         "to": "2026-10-31",
                         "timezone": "UTC",
                         "days": 30,
-                        "bucket": "day"
+                        "bucket": "day",
+                        "counts_only_through": null,
+                        "paths_through": null
                       },
                       "generated_at": "2026-10-31T12:00:00.000Z",
                       "performance": {
@@ -134223,7 +134267,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 365 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 3650 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -134642,6 +134686,20 @@
                             "month"
                           ],
                           "description": "How daily is grouped (auto resolved: day up to 90 days, week up to 366, month beyond)."
+                        },
+                        "counts_only_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, set when the window reaches back more than 12 months: up to and including this day the figures come from daily counts (UTC days); step and variant rates, seen and paths do not cover those days. null when every day is read in full detail."
+                        },
+                        "paths_through": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, the same day as counts_only_through: paths covers the days after it only, so past it paths does not add up to totals. null when paths covers the whole window."
                         }
                       },
                       "required": [
@@ -134649,7 +134707,9 @@
                         "to",
                         "timezone",
                         "days",
-                        "bucket"
+                        "bucket",
+                        "counts_only_through",
+                        "paths_through"
                       ]
                     },
                     "generated_at": {
@@ -138614,7 +138674,9 @@
                         "to": "2026-10-31",
                         "timezone": "UTC",
                         "days": 30,
-                        "bucket": "day"
+                        "bucket": "day",
+                        "counts_only_through": null,
+                        "paths_through": null
                       },
                       "generated_at": "2026-10-31T12:00:00.000Z",
                       "totals": {
@@ -139071,7 +139133,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 365 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown query parameter, a malformed date (message starts from: or to:), from after to or a custom window over 3650 days (from:), range together with from or to (range:), an unknown range, bucket or origin, origin linkedin (never counted), or an unknown zone (timezone:). The grammar: a section this read does not have (include:), a path that is not a field or lies outside the returned sections (fields:), an unknown sort key (sort:), a limit outside 1 to 100 (limit:), a compare other than previous_period (compare:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -140462,7 +140524,7 @@
             }
           }
         },
-        "description": "Recent Motion events, newest first: steps executed, skipped or failed, invitations accepted and replies, with the person's name. Messages and replies only from chats you may read. Keyset paging: events recorded after your first page never shift later pages. Read-only, no LinkedIn call.",
+        "description": "Recent Motion events, newest first: steps executed, skipped or failed, invitations accepted and replies, with the person's name. Messages and replies only from chats you may read. Reaches back 12 months (the raw reach); older activity is in the daily counts of GET /v1/analytics/motions. Keyset paging: events recorded after your first page never shift later pages. Read-only, no LinkedIn call.",
         "x-order": 4
       }
     },
@@ -140984,7 +141046,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown entity or table, ndjson with more than one table, an activity or metrics window over 366 days, or an invalid filter (the message names it). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown entity or table, ndjson with more than one table, an activity or metrics window over 366 days, an activity window that starts before the raw reach (12 months of full activity; the message starts with from: and names the earliest from in your timezone; a 366-day window ending today is always accepted), or an invalid filter (the message names it). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
