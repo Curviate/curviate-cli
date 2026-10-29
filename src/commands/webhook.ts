@@ -15,6 +15,7 @@
  * offline; no Curviate client is constructed.
  */
 
+import { DELIVERY_ARGS, deliveryFields, webhookDeliveriesCommand, webhookLintCommand, webhookRedeliverCommand, webhookRotateCommand, webhookTestCommand, webhookVariablesCommand } from "./webhook-ops.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -62,7 +63,9 @@ type WebhookFlags = {
   preview?: boolean;
   // webhook verify flags
   secret?: string;
-  header?: string;
+  header?: string | string[];
+  "template-file"?: string;
+  "custom-events"?: string;
   file?: string;
   "max-age-secs"?: string;
   "api-key"?: string;
@@ -163,6 +166,7 @@ export async function runWebhookCreate(
     body["data"] = flags.data.split(",").map((s) => s.trim()).filter(Boolean);
   }
 
+  Object.assign(body, await deliveryFields(flags));
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
@@ -300,6 +304,7 @@ export async function runWebhookUpdate(
     body["account_ids"] = accountIds;
   }
 
+  Object.assign(body, await deliveryFields(flags));
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
@@ -455,6 +460,7 @@ const webhookCreateCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
+    ...DELIVERY_ARGS,
     source: {
       type: "string",
       description:
@@ -519,7 +525,9 @@ const webhookListCommand = defineCommand({
 const webhookEventsCommand = defineCommand({
   meta: {
     name: "events",
-    description: "List the canonical webhook event catalogue.",
+    description:
+      "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. " +
+      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
     examples: [
       "curviate webhook events",
     ],
@@ -590,7 +598,7 @@ const webhookUpdateCommand = defineCommand({
     enabled: { type: "boolean", description: "Enable or disable the webhook." },
     events: { type: "string", description: "Replace subscribed events (comma-separated)." },
     data: { type: "string", description: "Replace field-remapping keys (comma-separated)." },
-    "account-ids": { type: "string", description: "Replace targeted accounts (comma-separated)." },
+    "account-ids": { type: "string", description: "Replace targeted accounts (comma-separated)." },    ...DELIVERY_ARGS,
   },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -689,7 +697,7 @@ const webhookVerifyCommand = defineCommand({
 
     const rawBody = await resolveWebhookBody(flags.file, undefined, flags);
 
-    const signatureHeader = flags.header ?? "";
+    const signatureHeader = String(flags.header ?? "");
     const secret = flags.secret ?? "";
     // NaN would disable the replay check (`age > NaN` is false): checked, never parsed loosely.
     const replayWindowSecs = flags["max-age-secs"] === undefined ? undefined : intFlag("max-age-secs", flags["max-age-secs"]);
@@ -708,11 +716,17 @@ export const webhookCommand = defineCommand({
     update: webhookUpdateCommand,
     delete: webhookDeleteCommand,
     verify: webhookVerifyCommand,
+    lint: webhookLintCommand,
+    variables: webhookVariablesCommand,
+    deliveries: webhookDeliveriesCommand,
+    redeliver: webhookRedeliverCommand,
+    rotate: webhookRotateCommand,
+    test: webhookTestCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate webhook <subcommand>\n" +
-      "  create | list | events | get | update | delete | verify\n",
+      "  create | list | events | get | update | delete | verify | lint | variables | deliveries | redeliver | rotate | test\n",
     );
   },
 });

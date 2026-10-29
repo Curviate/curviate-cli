@@ -30,6 +30,9 @@ export const DESCRIPTIONS = {
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners manage; every role reads.",
+  incoming:
+    "Incoming events: a private URL any tool posts to. Curviate finds the Contact in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
+  beta: "Beta consent for your Team: whether beta operations run without --beta on each call. Owners change it.",
   webhook: "Webhook management and signature verification.",
   core:
     "Curviate core: LinkedIn building blocks. Each command runs one action now, from one Account, and counts against that Account's budgets. " +
@@ -44,8 +47,8 @@ export const DESCRIPTIONS = {
   message: "Send and manage LinkedIn messages. A COMPANY_ chat id (from `curviate core inboxes chats`) sends as that company page instead of yourself; see `curviate core message send --help`.",
   post: "Create and manage LinkedIn posts.",
   comment: "Comment-thread operations (list, add, reply, edit, delete, react).",
-  "sales-nav": "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
-  recruiter: "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+  "sales-nav": "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this call.",
+  recruiter: "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this call.",
   group: "Read LinkedIn groups: your own membership list, one group's detail, and its member roster.",
   feed: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
   notification: "Read and act on LinkedIn notification cards.",

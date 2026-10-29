@@ -263,6 +263,24 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account overview":            "accounts.overview",
   "account metrics":             "accounts.metrics",
 
+  // webhooks (6 more), incoming (8), beta (2)
+  "webhook variables":                   "webhooks.variables",
+  "webhook test":                        "webhooks.test",
+  "webhook redeliver":                   "webhooks.redeliver",
+  "webhook rotate":                      "webhooks.rotateSecret",
+  "webhook deliveries":                  "webhooks.deliveries.list",
+  "webhook deliveries <delivery_id>":    "webhooks.deliveries.get",
+  "incoming create":   "incomingEvents.create",
+  "incoming list":     "incomingEvents.list",
+  "incoming get":      "incomingEvents.get",
+  "incoming update":   "incomingEvents.update",
+  "incoming delete":   "incomingEvents.delete",
+  "incoming rotate":   "incomingEvents.rotate",
+  "incoming capture":  "incomingEvents.capture",
+  "incoming arrivals": "incomingEvents.arrivals",
+  "beta status": "tenant.beta.get",
+  "beta update": "tenant.beta.set",
+
   // teams (15). `team switch` reuses teams.list; `team leave` reuses removeMember.
   "team list":           "teams.list",
   "team create":         "teams.create",
@@ -314,12 +332,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact
   "doNotContact.list", "doNotContact.get", "doNotContact.add", "doNotContact.update", "doNotContact.remove",
-  // webhooks, incoming, beta
-  "webhooks.variables", "webhooks.test", "webhooks.redeliver", "webhooks.rotateSecret",
-  "webhooks.deliveries.list", "webhooks.deliveries.get",
-  "incomingEvents.create", "incomingEvents.list", "incomingEvents.get", "incomingEvents.update",
-  "incomingEvents.delete", "incomingEvents.rotate", "incomingEvents.capture", "incomingEvents.arrivals",
-  "tenant.beta.get", "tenant.beta.set",
 ];
 
 // ---------------------------------------------------------------------------

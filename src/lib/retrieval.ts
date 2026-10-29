@@ -48,7 +48,7 @@ export const RETRIEVAL_FLAGS = {
     type: "string" as const,
     description:
       "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), " +
-      "live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), " +
+      "live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), " +
       "cache_only (never fetch; a store miss is refused rather than fetched). " +
       "Not combinable with --max-age under cache_only.",
   },
