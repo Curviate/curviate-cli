@@ -381,6 +381,7 @@ export const doctorCommand = defineCommand({
   meta: {
     name: "doctor",
     description: DESCRIPTIONS.doctor,
+    risk: "read",
     examples: [
       "curviate doctor",
       "curviate doctor --json",
