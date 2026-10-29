@@ -708,9 +708,9 @@ rather than parsing the message:
   LinkedIn regrants on its own schedule. Null-check it before scheduling on it.
 - `safetyHint.parameter` is addressable on the safety policy, so an agent can
   choose between waiting, escalating and reconfiguring without reading prose.
-- On the default posture nothing is refused at all: the action goes through and
-  the same payload rides the SUCCESS body under `safety_warning` with
-  `blocked: false`.
+- A limit is always enforced: at the ceiling, or outside the activity window,
+  the action is refused with this error. Nothing is sent and nothing rides a
+  success body.
 
 A `429` that carries `budgetRow` under `PLATFORM_RATE_LIMIT` is a third thing:
 that row is PAUSED because LinkedIn refused a recent call on it. The pause is

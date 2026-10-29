@@ -309,6 +309,17 @@ const PARITY_MANIFEST: Record<string, string> = {
   "team seats lend":     "billing.seats.lend",
   "team seats return":   "billing.seats.return",
 
+  // billing (2)
+  "billing invoices":     "billing.invoices.list",
+  "billing invoices pdf": "billing.invoices.pdf",
+
+  // doNotContact (5)
+  "do-not-contact list":   "doNotContact.list",
+  "do-not-contact get":    "doNotContact.get",
+  "do-not-contact add":    "doNotContact.add",
+  "do-not-contact update": "doNotContact.update",
+  "do-not-contact remove": "doNotContact.remove",
+
   // tier (1)
   "tier": "tier.get",
 
@@ -356,9 +367,7 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   // Dashboard v2 surface: open until each group's commands land; the group
   // deletes its rows. Empty before the next release.
   // invoices
-  "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact
-  "doNotContact.list", "doNotContact.get", "doNotContact.add", "doNotContact.update", "doNotContact.remove",
 ];
 
 // ---------------------------------------------------------------------------

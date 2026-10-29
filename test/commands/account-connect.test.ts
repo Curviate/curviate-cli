@@ -194,3 +194,31 @@ describe("guided checkpoint", () => {
     expect(r2.err).toContain("Recruiter contract you named was not selected");
   });
 });
+
+describe("warm-up and zone", () => {
+  const UA = ["--user-agent", "UA/1", "--seat-id", "seat_1", "--country", "US", "--json"];
+  it("link --no-warm-up sends warm_up:false; omitted sends no key; --timezone is accepted and sends no zone; refused with --account-id", async () => {
+    const off = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", "--no-warm-up", "--timezone", "Europe/Berlin", ...UA]);
+    const body = JSON.parse(off.requests[0]!.body) as Record<string, unknown>;
+    expect(body["warm_up"]).toBe(false);
+    expect(body).not.toHaveProperty("timezone");
+    const dflt = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", ...UA]);
+    expect(JSON.parse(dflt.requests[0]!.body)).not.toHaveProperty("warm_up");
+    const re = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", "--no-warm-up", "--account-id", "acc_1", ...UA]);
+    expect([re.status, re.requests.length]).toEqual([2, 0]);
+  });
+
+  it("connect-request create --no-warm-up sends warm_up:false; with --reconnect it exits 2", async () => {
+    const r = await sink.run(["account", "connect-request", "create", "--no-warm-up", "--json"]);
+    expect(JSON.parse(r.requests[0]!.body)).toEqual({ warm_up: false });
+    const re = await sink.run(["account", "connect-request", "create", "--no-warm-up", "--reconnect", "acc_1"]);
+    expect([re.status, re.requests.length]).toEqual([2, 0]);
+  });
+
+  it("account get shows the warm-up, the zone with its state and the location flags", async () => {
+    const acc = { object: "account", account_id: "acc_1", status: "active", warm_up: { enabled: true, state: "ramping", factor: 0.15, week: 1 }, activity_window: { effective_timezone: "Europe/Berlin", source: "country", zone_state: "known", fallback_timezones: [] }, connection_location: { country: "DE", detected_country: "FR", checked_at: "2026-10-28T00:00:00Z", flags: ["country_mismatch"] }, quotas: [] };
+    sink.reply = { body: acc };
+    const r = await sink.run(["account", "get", "acc_1", "--json"]);
+    expect(JSON.parse(r.stdout)).toMatchObject({ warm_up: acc.warm_up, activity_window: acc.activity_window, connection_location: acc.connection_location });
+  });
+});

@@ -110,7 +110,8 @@ type AccountFlags = {
   "recruiter-contract-id"?: string;
   "linkedin-premium"?: string;
   "external-id"?: string;  // link: your own end-user id (also the list filter)
-  timezone?: string;       // link: IANA zone for the account
+  timezone?: string;       // link: accepted and ignored
+  "warm-up"?: boolean;     // link: false (--no-warm-up) skips the new account's ramp
   products?: string;       // link: comma-separated premium allow-list
   challenge?: string;      // checkpoint request: a challenge_selection id
   // update body fields
@@ -227,6 +228,10 @@ export async function runAccountList(
       const result = await client.accounts.list(params);
       readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimAccountList }, out);
+      // Zero on the first unfiltered page is zero Accounts; a filter or a later page is not.
+      if (!isJsonMode(outOpts) && !result.items?.length && !cursor && flags["external-id"] === undefined) {
+        out.stderr.write("No Account connected: ask your user to connect one in the dashboard, or create a Connect request.\n");
+      }
     }
   } catch (err) {
     await handleError(err, outOpts, out);
@@ -331,18 +336,12 @@ export async function runAccountSeats(
     return;
   }
 
-  // Same precedence as the generic renderHuman (lib/output.ts): notices
-  // first, then safety_warning prepended to the body. A hand-rolled human
-  // body must not silently drop either — both are cross-cutting response
-  // fields, not seat data, and CHANGELOG 0.33.0 already fixed one path that
-  // dropped safety_warning; this one must not reintroduce it.
+  // Same precedence as the generic renderHuman (lib/output.ts): notices first.
+  // A hand-rolled human body must not silently drop them: they are a
+  // cross-cutting response field, not seat data.
   const notices = renderNotices((result as { notices?: unknown }).notices);
   if (notices) out.stdout.write(notices + "\n");
-  let body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
-  const safetyWarning = (result as { safety_warning?: unknown }).safety_warning;
-  if (typeof safetyWarning === "object" && safetyWarning !== null) {
-    body = `safety_warning: ${JSON.stringify(safetyWarning)}\n${body}`;
-  }
+  const body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
   out.stdout.write(body + "\n");
 }
 
@@ -543,7 +542,8 @@ async function buildAuthBody(
 
   // Passed through as given; the API validates both and names the field.
   if (flags["external-id"] !== undefined) body["external_id"] = flags["external-id"];
-  if (flags.timezone !== undefined) body["timezone"] = flags.timezone;
+  // --timezone is accepted and ignored: the account's zone follows its connection location, so none is sent.
+  if (flags["warm-up"] === false) body["warm_up"] = false;
   // Closed set, validated here for the same silent-narrowing reason as
   // --linkedin-premium: `--products "$P"` with P unset must not become [].
   // ponytail: `[]` (ask for no premium product) is not expressible from the
@@ -1064,6 +1064,11 @@ export async function runAccountLink(
       "error: --account-id was given an empty value. Pass the acc_... id of the account to reconnect " +
         "(`curviate account list`), or omit the flag entirely to connect a new account.\n",
     );
+    process.exit(2);
+  }
+
+  if (flags["warm-up"] === false && flags["account-id"] !== undefined) {
+    out.stderr.write("error: --no-warm-up applies to a new connect. A connected account's ramp is switched with `curviate account warm-up`.\n");
     process.exit(2);
   }
 
@@ -1901,7 +1906,8 @@ const accountLinkCommand = defineCommand({
     "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
     products: { type: "string", description: "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included." },
     "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `curviate account list --external-id`. Use an opaque id, not an email." },
-    timezone: { type: "string", description: "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused." },
+    timezone: { type: "string", description: "Ignored: the account's time zone follows its connection location. Accepted so existing scripts keep working; nothing is sent." },
+    "warm-up": { type: "boolean", description: "--no-warm-up skips the ramp a new account starts on (its first weeks at lower limits). A new connect only; for a connected account use `curviate account warm-up`. Default on." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",

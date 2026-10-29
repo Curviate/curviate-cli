@@ -21,6 +21,10 @@ export const DESCRIPTIONS = {
     "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. " +
     "Subgroups: `curviate contact lists` (Contact lists, including combining lists), `curviate contact tags`, `curviate contact imports`. " +
     "Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
+  "do-not-contact":
+    "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove. " +
+    "Any member adds; removing is for Owners and Managers.",
+  billing: "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",
   contactImport: "Import Contacts from a CSV, JSON or NDJSON file into a Contact list, splitting a large file into several imports.",
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
   contactLists: "Contact lists: named sets of Contacts a Motion enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Contacts.",
