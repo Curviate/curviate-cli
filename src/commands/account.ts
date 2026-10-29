@@ -39,6 +39,7 @@
  */
 
 import { accountMetricsCommand, accountOverviewCommand } from "./account-insights.js";
+import { accountWarmUpCommand } from "./account-warm-up.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -2298,11 +2299,12 @@ export const accountCommand = defineCommand({
     checkpoint: accountCheckpointCommand,
     overview: accountOverviewCommand,
     metrics: accountMetricsCommand,
+    "warm-up": accountWarmUpCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate account <subcommand>\n" +
-      "  list | get | seats | link | connect-request | connect-session poll | update | disconnect | checkpoint | overview | metrics\n",
+      "  list | get | seats | link | connect-request | connect-session poll | update | disconnect | checkpoint | overview | metrics | warm-up\n",
     );
   },
 });

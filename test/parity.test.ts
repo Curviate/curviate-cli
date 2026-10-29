@@ -25,6 +25,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account seats":      "accounts.listSeats",
   "account update":     "accounts.update",
   "account disconnect": "accounts.disconnect",
+  "account warm-up on|off": "accounts.updateSafetyPolicy",
 
   // webhooks (6)
   "webhook create": "webhooks.create",
@@ -364,6 +365,8 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
+  // safety commands land with their own spec
+  "accounts.getSafetyPolicy",
   // Dashboard v2 surface: open until each group's commands land; the group
   // deletes its rows. Empty before the next release.
   // invoices
