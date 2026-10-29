@@ -1023,6 +1023,19 @@
               "nullable": true
             }
           },
+          "on_reply_elsewhere": {
+            "type": "string",
+            "enum": [
+              "stop",
+              "continue"
+            ]
+          },
+          "withdraw_on_reply_elsewhere": {
+            "type": "boolean"
+          },
+          "account_gap": {
+            "type": "string"
+          },
           "stop_on_engagement": {
             "type": "boolean"
           }
@@ -1196,6 +1209,19 @@
               "minLength": 1,
               "nullable": true
             }
+          },
+          "on_reply_elsewhere": {
+            "type": "string",
+            "enum": [
+              "stop",
+              "continue"
+            ]
+          },
+          "withdraw_on_reply_elsewhere": {
+            "type": "boolean"
+          },
+          "account_gap": {
+            "type": "string"
           },
           "stop_on_engagement": {
             "type": "boolean"
