@@ -37,6 +37,12 @@ export interface ProfileEntry {
    * never learns it.
    */
   tenant?: string;
+  /**
+   * The Team to act in (`tnt_...`), sent as `X-Curviate-Team`. Not a
+   * credential. Overridden by `--team` and `CURVIATE_TEAM`; written by `setup`
+   * (an all-teams key) and `team switch`.
+   */
+  team?: string;
 }
 
 /** The on-disk config shape. */
@@ -72,6 +78,7 @@ export const PROFILE_FIELD_TYPES = {
   account: "string",
   baseUrl: "string",
   tenant: "string",
+  team: "string",
   timeout: "number",
 } as const;
 
@@ -350,6 +357,8 @@ export async function updateProfileField(
     profile.baseUrl = value !== undefined ? String(value) : undefined;
   } else if (field === "tenant") {
     profile.tenant = value !== undefined ? String(value) : undefined;
+  } else if (field === "team") {
+    profile.team = value !== undefined ? String(value) : undefined;
   }
   await writeConfig(cfg);
 }
