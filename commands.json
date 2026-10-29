@@ -874,7 +874,7 @@
         "account",
         "update"
       ],
-      "description": "Update an account's metadata, connection location or own proxy. Prints the updated account, with connection_location re-read after a location change.",
+      "description": "Update an account's metadata, connection location, own proxy or whether its Connections are saved as Contacts. Prints the updated account, with connection_location re-read after a location change.",
       "usageOnly": false,
       "args": [
         {
@@ -927,6 +927,11 @@
           "name": "proxy-password",
           "type": "string",
           "description": "Proxy auth password. Note: a value on the command line is visible to other processes via `ps` and saved in shell history; prefer the CURVIATE_PROXY_PASSWORD env var."
+        },
+        {
+          "name": "save-connections-as-contacts",
+          "type": "boolean",
+          "description": "Save this account's Connections as Contacts (Automate; on by default): each person becomes one Contact in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-contacts stops it and keeps the Contacts saved so far."
         }
       ],
       "globals": [
@@ -950,7 +955,7 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Changes the Account's metadata, connection location or own proxy.",
+        "changes": "Changes the Account's metadata, connection location, own proxy or Save Connections as Contacts.",
         "visible_to": "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
         "budget_rows": [],
         "retry": "Safe: the same values written again leave the Account the same.",
