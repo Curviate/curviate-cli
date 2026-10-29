@@ -45,10 +45,11 @@ export const main = defineCommand({
     account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
     motion: lazy("motion", () => import("./commands/motion.js").then((m) => m.motionCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
+    contact: lazy("contact", () => import("./commands/contact.js").then((m) => m.contactCommand)),
     notification: lazy("notification", () => import("./commands/notifications.js").then((m) => m.notificationsCommand)),
     webhook: lazy("webhook", () => import("./commands/webhook.js").then((m) => m.webhookCommand)),
     // The LinkedIn building blocks. Reserved product groups
-    // (contact, unibox, network, analytics, team) land
+    // (unibox, network, analytics, team) land
     // between `enrollment` and `webhook` with their owning specs.
     core: lazy("core", () => import("./commands/core.js").then((m) => m.coreCommand)),
   },
