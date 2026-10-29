@@ -48,6 +48,8 @@ type MotionFlags = RootFlags & {
   sample?: string;
   contact?: string | string[];
   account?: string;
+  accounts?: string;
+  sort?: string;
   template?: string;
   output?: string;
   limit?: string;
@@ -133,6 +135,12 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
     const bad = status.filter((s) => !STATUSES.includes(s));
     if (bad.length) usage(`--status takes a comma list of ${STATUSES.join(", ")}.`);
     params["status"] = status;
+  }
+  const accounts = f.accounts ?? f.account;
+  if (accounts !== undefined) params["account_id"] = listFlag("accounts", accounts);
+  if (f.sort !== undefined) {
+    if (!["updated", "activity"].includes(f.sort)) usage("--sort takes updated or activity.");
+    params["sort"] = f.sort;
   }
   if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
   const cursor = readCursorFlag(f, process);
@@ -279,12 +287,16 @@ const SEE_LIFECYCLE = ["curviate motion get", "curviate enrollment list"];
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+    description:
+      "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. " +
+      "A cursor belongs to its sort.",
     risk: "read",
-    examples: ["curviate motion list", "curviate motion list --status active,paused"],
+    examples: ["curviate motion list", "curviate motion list --status active,paused", "curviate motion list --accounts acc_A,acc_B --sort activity"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    accounts: { type: "string", description: "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
+    sort: { type: "string", description: "updated (default) or activity." },
     status: { type: "string", description: `Comma list of ${STATUSES.join(", ")}. Default: all but archived.` },
   },
   run: online(runList),

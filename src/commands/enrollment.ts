@@ -22,6 +22,7 @@ type EnrollmentFlags = RootFlags & {
   name?: string;
   at?: string;
   account?: string;
+  accounts?: string;
   action?: string;
   motion?: string;
   contact?: string;
@@ -114,6 +115,8 @@ function show(result: unknown, f: EnrollmentFlags): void {
 async function runList(c: Curviate, f: EnrollmentFlags): Promise<void> {
   rejectPaginationModifiersWithoutAll(f, process);
   const params = filters(f);
+  const accounts = f.accounts ?? f.account;
+  if (accounts !== undefined) params["account_id"] = listFlag("accounts", accounts);
   if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
   const cursor = readCursorFlag(f, process);
   if (cursor) params["cursor"] = cursor;
@@ -131,7 +134,11 @@ async function runList(c: Curviate, f: EnrollmentFlags): Promise<void> {
 
 async function runGet(c: Curviate, f: EnrollmentFlags): Promise<void> {
   try {
-    show(readableObject(await c.enrollments.get(String(f.id ?? ""))), f);
+    const e = readableObject(await c.enrollments.get(String(f.id ?? "")));
+    show(e, f);
+    if ((e as { history_truncated?: boolean }).history_truncated && !outputOpts(f).json) {
+      process.stderr.write("history_truncated: Steps older than about 12 months are no longer stored in detail; the history lists the later ones only.\n");
+    }
   } catch (err) {
     await fail(err, f);
   }
@@ -283,7 +290,11 @@ const listCmd = defineCommand({
       "curviate enrollment list --motion mot_YOUR_MOTION_ID --reason already_connected,known_chat --relationship connected",
     ],
   },
-  args: { ...readOnly(GLOBAL_FLAGS), ...FILTER_ARGS },
+  args: {
+    ...readOnly(GLOBAL_FLAGS),
+    ...FILTER_ARGS,
+    accounts: { type: "string" as const, description: "Only Enrollments on one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
+  },
   run: online(runList),
 });
 

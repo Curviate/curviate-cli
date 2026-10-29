@@ -1007,9 +1007,19 @@
         "motion",
         "list"
       ],
-      "description": "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+      "description": "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. A cursor belongs to its sort.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "description": "updated (default) or activity."
+        },
         {
           "name": "status",
           "type": "string",
@@ -1035,7 +1045,8 @@
       ],
       "examples": [
         "curviate motion list",
-        "curviate motion list --status active,paused"
+        "curviate motion list --status active,paused",
+        "curviate motion list --accounts acc_A,acc_B --sort activity"
       ],
       "requires": [],
       "risk": "read"
@@ -1750,6 +1761,11 @@
           "name": "relationship",
           "type": "string",
           "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+        },
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only Enrollments on one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
         }
       ],
       "globals": [
@@ -3870,7 +3886,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -3921,7 +3937,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -6415,7 +6431,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -6495,7 +6511,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
