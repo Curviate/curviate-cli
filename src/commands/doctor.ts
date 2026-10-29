@@ -58,6 +58,8 @@ export interface DoctorReport {
   api_reachable: boolean;
   credential_valid: boolean;
   accounts: AccountLine[];
+  /** A literal runnable command, only when the Team has no Account in any status. */
+  next_step?: string;
   checks: Array<Omit<Check, "exit">>;
   ok: boolean;
   exit: number;
@@ -309,6 +311,8 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
     api_reachable: reachable,
     credential_valid: valid,
     accounts,
+    // doctor's own count: every Account the list returns, whatever its status, so one needing a reconnect is not zero.
+    ...(valid && accounts.length === 0 ? { next_step: "curviate account connect-request create" } : {}),
     checks: checks.map(({ name, ok, detail }) => ({ name, ok, detail })),
     ok: firstFailure === undefined,
     exit: firstFailure?.exit ?? 0,
@@ -357,6 +361,8 @@ async function checkTeam(
   return { ...team, name: row?.name ?? null };
 }
 
+const NO_ACCOUNT = "No Account connected: ask your user to connect one in the dashboard, or create a Connect request.";
+
 function renderHuman(report: DoctorReport, io: DoctorIO): void {
   const lines = [
     `version           ${report.version}`,
@@ -374,6 +380,7 @@ function renderHuman(report: DoctorReport, io: DoctorIO): void {
   for (const account of report.accounts) {
     lines.push(`account           ${account.account_id}  ${account.status}`);
   }
+  if (report.next_step) lines.push(NO_ACCOUNT);
   io.stdout.write(lines.join("\n") + "\n");
 }
 

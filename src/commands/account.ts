@@ -227,6 +227,10 @@ export async function runAccountList(
       const result = await client.accounts.list(params);
       readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimAccountList }, out);
+      // Zero on the first unfiltered page is zero Accounts; a filter or a later page is not.
+      if (!isJsonMode(outOpts) && !result.items?.length && !cursor && flags["external-id"] === undefined) {
+        out.stderr.write("No Account connected: ask your user to connect one in the dashboard, or create a Connect request.\n");
+      }
     }
   } catch (err) {
     await handleError(err, outOpts, out);
