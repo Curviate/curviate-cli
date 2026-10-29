@@ -111,7 +111,7 @@ export const configCommand = defineCommand({
               continue;
             }
             process.stdout.write(`  apiKey: ${d["apiKey"]}\n`);
-            for (const field of ["account", "baseUrl", "timeout"]) {
+            for (const field of ["account", "team", "baseUrl", "timeout"]) {
               if (d[field]) process.stdout.write(`  ${field}: ${d[field]}\n`);
             }
           }

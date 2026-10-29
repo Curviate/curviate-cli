@@ -6,7 +6,7 @@
  * of which command is running.
  *
  * Semantics of each flag are owned by the relevant sub-system:
- *   --account / --api-key / --profile  -> lib/resolve.ts (auth & config)
+ *   --account / --api-key / --profile / --team -> lib/resolve.ts (auth & config)
  *   --json / --fields / --limit / --cursor / --all / --max-pages -> lib/output.ts
  *   --preview                           -> lib/preview.ts
  *   --beta                              -> lib/beta.ts
@@ -27,6 +27,11 @@ export const GLOBAL_FLAGS = {
   account: {
     type: "string" as const,
     description: "Account id for account-scoped commands. Optional when exactly one account is connected, and required with --preview.",
+  },
+  team: {
+    type: "string" as const,
+    description:
+      "Team to act in (tnt_...), sent with every request. Overrides CURVIATE_TEAM and the profile's team. Needed with a key that works in all your Teams; a Team key acts only in its own Team.",
   },
   "base-url": {
     type: "string" as const,
@@ -113,6 +118,7 @@ export const NON_STREAM_FLAGS = {
   "api-key": GLOBAL_FLAGS["api-key"],
   profile: GLOBAL_FLAGS.profile,
   account: GLOBAL_FLAGS.account,
+  team: GLOBAL_FLAGS.team,
   "base-url": GLOBAL_FLAGS["base-url"],
   timeout: GLOBAL_FLAGS.timeout,
   json: GLOBAL_FLAGS.json,
@@ -128,6 +134,7 @@ export type GlobalFlags = {
   "api-key"?: string;
   profile?: string;
   account?: string;
+  team?: string;
   "base-url"?: string;
   timeout?: string;
   json?: boolean;
@@ -159,6 +166,7 @@ export const WRITE_FLAGS = {
   "api-key": GLOBAL_FLAGS["api-key"],
   profile: GLOBAL_FLAGS.profile,
   account: GLOBAL_FLAGS.account,
+  team: GLOBAL_FLAGS.team,
   "base-url": GLOBAL_FLAGS["base-url"],
   timeout: GLOBAL_FLAGS.timeout,
   json: GLOBAL_FLAGS.json,
@@ -181,6 +189,7 @@ export const READ_SINGLE_FLAGS = {
   "api-key": GLOBAL_FLAGS["api-key"],
   profile: GLOBAL_FLAGS.profile,
   account: GLOBAL_FLAGS.account,
+  team: GLOBAL_FLAGS.team,
   "base-url": GLOBAL_FLAGS["base-url"],
   timeout: GLOBAL_FLAGS.timeout,
   json: GLOBAL_FLAGS.json,
@@ -252,3 +261,12 @@ export const STATE_WRITES: Readonly<Record<string, string>> = {
   // Its answer says whether the Step was resumed, and what to wait for.
   "curviate enrollment retry": "curviate enrollment get <enrollment_id>",
 };
+
+/**
+ * `--team` as citty parsed it for the running leaf, set once by the dispatcher.
+ * Read by `lib/resolve.ts` only: about 120 handlers build their resolve input
+ * by hand, so a value threaded through them would be missed by the next one.
+ */
+let teamFlag: string | undefined;
+export const setTeamFlag = (v: unknown): void => void (teamFlag = typeof v === "string" ? v : undefined);
+export const getTeamFlag = (): string | undefined => teamFlag;
