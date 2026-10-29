@@ -31,10 +31,10 @@ export function documentSchema(key: string): Schema {
 
 /** The largest document a file flag reads; past it, exit 2 instead of reading on (`--file /dev/zero`). */
 export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
-const TOO_LARGE = (flag: string) => `--${flag}: larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MiB, the most a document may be.`;
+const TOO_LARGE = (flag: string, max = MAX_DOCUMENT_BYTES) => `--${flag}: larger than ${max / 1024 / 1024} MiB, the most a document may be.`;
 
 /** Read fd to EOF, or null past MAX_DOCUMENT_BYTES. */
-function readCapped(fd: number): Buffer | null {
+function readCapped(fd: number, max = MAX_DOCUMENT_BYTES): Buffer | null {
   const chunks: Buffer[] = [];
   let total = 0;
   const buf = Buffer.alloc(64 * 1024);
@@ -49,23 +49,23 @@ function readCapped(fd: number): Buffer | null {
     }
     if (n === 0) break;
     total += n;
-    if (total > MAX_DOCUMENT_BYTES) return null;
+    if (total > max) return null;
     chunks.push(Buffer.from(buf.subarray(0, n)));
   }
   return Buffer.concat(chunks);
 }
 
 /** All of stdin, trailing newlines stripped, capped at MAX_DOCUMENT_BYTES (exit 2 past it). */
-export async function readStdinCapped(flag = "file"): Promise<string> {
+export async function readStdinCapped(flag = "file", allowBom = false, max = MAX_DOCUMENT_BYTES): Promise<string> {
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of process.stdin) {
     const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
     total += b.length;
-    if (total > MAX_DOCUMENT_BYTES) usage(TOO_LARGE(flag));
+    if (total > max) usage(TOO_LARGE(flag, max));
     chunks.push(b);
   }
-  return decode(flag, Buffer.concat(chunks)).replace(/\n+$/, "");
+  return decode(flag, Buffer.concat(chunks), allowBom).replace(/\n+$/, "");
 }
 
 /**
@@ -73,8 +73,11 @@ export async function readStdinCapped(flag = "file"): Promise<string> {
  * U+FFFD and sends that, and a BOM breaks the JSON parse (or the signature)
  * at a column nobody can see.
  */
-function decode(flag: string, bytes: Buffer): string {
-  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) usage(`--${flag}: starts with a byte order mark (BOM). Save it as UTF-8 without a BOM.`);
+function decode(flag: string, bytes: Buffer, allowBom = false): string {
+  const bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+  // A CSV export from a spreadsheet starts with a BOM and is still a CSV: the caller says so.
+  if (bom && allowBom) bytes = bytes.subarray(3);
+  else if (bom) usage(`--${flag}: starts with a byte order mark (BOM). Save it as UTF-8 without a BOM.`);
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
@@ -90,6 +93,10 @@ function usage(message: string): never {
 export interface FileFlagIo {
   readStdin?: () => Promise<string>;
   stdinIsTTY?: boolean;
+  /** A leading BOM is dropped instead of refused (a spreadsheet's CSV). */
+  allowBom?: boolean;
+  /** The most bytes to read (default MAX_DOCUMENT_BYTES). */
+  maxBytes?: number;
   /** Other parsed flag values: one of them also reading stdin is a second consumer. */
   others?: Record<string, unknown>;
 }
@@ -110,8 +117,8 @@ export async function readFileFlag(flag: string, value: string, io: FileFlagIo =
     const second = Object.entries(io.others ?? {}).find(([k, o]) => k !== flag && k !== "_" && isStdinToken(o));
     if (second) usage(`--${flag} - and --${second[0]} - both read stdin. Only one input can come from stdin.`);
     if (io.stdinIsTTY ?? process.stdin.isTTY) usage(`--${flag} -: stdin is a terminal. Pipe the document in or use a heredoc: --${flag} - <<'EOF' ... EOF`);
-    text = await (io.readStdin ?? (() => readStdinCapped(flag)))();
-    if (Buffer.byteLength(text) > MAX_DOCUMENT_BYTES) usage(TOO_LARGE(flag));
+    text = await (io.readStdin ?? (() => readStdinCapped(flag, io.allowBom, io.maxBytes)))();
+    if (Buffer.byteLength(text) > (io.maxBytes ?? MAX_DOCUMENT_BYTES)) usage(TOO_LARGE(flag, io.maxBytes));
   } else {
     let isDir = false;
     try {
@@ -124,15 +131,15 @@ export async function readFileFlag(flag: string, value: string, io: FileFlagIo =
     try {
       const fd = openSync(value, "r");
       try {
-        bytes = readCapped(fd);
+        bytes = readCapped(fd, io.maxBytes);
       } finally {
         closeSync(fd);
       }
     } catch (err) {
       usage(`--${flag}: cannot read ${value}: ${(err as NodeJS.ErrnoException).code ?? "read error"}.`);
     }
-    if (bytes === null) usage(TOO_LARGE(flag));
-    text = decode(flag, bytes);
+    if (bytes === null) usage(TOO_LARGE(flag, io.maxBytes));
+    text = decode(flag, bytes, io.allowBom);
   }
   if (text.trim() === "") usage(`--${flag}: empty input.`);
   return text;

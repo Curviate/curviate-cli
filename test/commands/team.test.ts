@@ -217,6 +217,10 @@ describe("the Tier", () => {
     ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
     ["network resync", "post", "/v1/network/resync"], ["unibox refresh", "post", "/v1/unibox/refresh"],
     ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/contact"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
+    ["contact create", "post", "/v1/contacts"], ["contact update", "patch", "/v1/contacts/{id}"], ["contact enrich", "post", "/v1/contacts/enrich"],
+    ["contact import", "post", "/v1/contacts/imports"], ["contact tags add", "post", "/v1/contacts/update"], ["contact lists remove", "post", "/v1/contacts/update"],
+    ["contact tags update", "patch", "/v1/tags/{id}"], ["contact lists create", "post", "/v1/contact-lists"], ["contact lists combine", "post", "/v1/contact-lists"],
+    ["contact lists update", "patch", "/v1/contact-lists/{id}"],
     ["incoming create", "post", "/v1/incoming-events"], ["incoming rotate", "post", "/v1/incoming-events/{id}/rotate"], ["incoming capture", "post", "/v1/incoming-events/{id}/capture"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],
   ])("%s (%s %s) says it needs Automate", (cmd, method, path) => {

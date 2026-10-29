@@ -45,9 +45,11 @@ export const main = defineCommand({
     account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
     motion: lazy("motion", () => import("./commands/motion.js").then((m) => m.motionCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
+    contact: lazy("contact", () => import("./commands/contact.js").then((m) => m.contactCommand)),
     unibox: lazy("unibox", () => import("./commands/unibox.js").then((m) => m.uniboxCommand)),
     network: lazy("network", () => import("./commands/network.js").then((m) => m.networkCommand)),
     analytics: lazy("analytics", () => import("./commands/analytics.js").then((m) => m.analyticsCommand)),
+    notification: lazy("notification", () => import("./commands/notifications.js").then((m) => m.notificationsCommand)),
     export: lazy("export", () => import("./commands/export.js").then((m) => m.exportCommand)),
     tier: lazy("tier", () => import("./commands/tier.js").then((m) => m.tierCommand)),
     team: lazy("team", () => import("./commands/team.js").then((m) => m.teamCommand)),
@@ -55,7 +57,7 @@ export const main = defineCommand({
     beta: lazy("beta", () => import("./commands/beta-consent.js").then((m) => m.betaCommand)),
     webhook: lazy("webhook", () => import("./commands/webhook.js").then((m) => m.webhookCommand)),
     // The LinkedIn building blocks. Reserved product groups
-    // (contact, unibox, network, analytics, notification, team) land
+    // (unibox, network, analytics, team) land
     // between `enrollment` and `webhook` with their owning specs.
     core: lazy("core", () => import("./commands/core.js").then((m) => m.coreCommand)),
   },

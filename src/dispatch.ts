@@ -387,6 +387,9 @@ async function extraPositionals(
   cmd: AnyCommand,
   rawArgs: string[],
 ): Promise<Array<{ token: string; index: number }>> {
+  // A command whose positional is `variadic: true` (`notification read <id>...`) takes the rest.
+  const argsDef = (await resolveValue(cmd.args ?? {})) as Record<string, { type?: string; variadic?: boolean }>;
+  if (Object.values(argsDef).some((def) => def?.type === "positional" && def.variadic)) return [];
   const booleanFlags = await routingBooleanFlagNames(cmd);
   const declaredFlags = await routingDeclaredFlagNames(cmd);
   const { positionals } = walkTokens(rawArgs, booleanFlags, declaredFlags);

@@ -197,7 +197,7 @@ export async function runNotificationShowLess(
 const notificationListCommand = defineCommand({
   meta: {
     name: "list",
-    description: "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark.",
+    description: "List the connected account's LinkedIn notification cards, newest first, plus the unread badge and a poll watermark. Curviate's own Notifications are `curviate notification list`.",
     risk: "read",
     examples: [
       "curviate core notification list",
