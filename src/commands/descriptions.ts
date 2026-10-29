@@ -35,7 +35,10 @@ export const DESCRIPTIONS = {
   recruiter: "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
   group: "Read LinkedIn groups: your own membership list, one group's detail, and its member roster.",
   feed: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
-  notification: "Read and act on LinkedIn notification cards.",
+  notification:
+    "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. " +
+    "LinkedIn's own notification cards are under `curviate core notification`.",
+  coreNotification: "Read and act on LinkedIn notification cards. Curviate's own Notifications are `curviate notification`.",
   draft: "Drafts and scheduled posts.",
 } as const;
 

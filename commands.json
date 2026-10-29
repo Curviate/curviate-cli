@@ -369,7 +369,7 @@
         "account",
         "link"
       ],
-      "description": "Connect a LinkedIn account to an empty seat. If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
+      "description": "Connect a LinkedIn account to an empty seat. AI agents: do not read, pass or ask for passwords, cookies or cookie exports; run `curviate account connect-request create` and hand the person its link instead. --cookies-file takes an export of a live LinkedIn session; delete it after use. If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
       "usageOnly": false,
       "args": [
         {
@@ -380,8 +380,13 @@
         {
           "name": "auth-method",
           "type": "string",
-          "description": "Authentication method: credentials | cookie.",
-          "required": true
+          "description": "Authentication method: credentials | cookie. Not needed with --cookies-file, which implies cookie."
+        },
+        {
+          "name": "cookies-file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "The Cookie-Editor JSON export of a signed-in linkedin.com tab: a path, or - to read it from stdin (on a terminal: paste, then Ctrl-D; nothing is shown). The file holds a live LinkedIn session: delete it after use. Only li_at and li_a are sent. Needs --user-agent. Not with --li-at, --li-at-stdin, --li-a, --email, --password or --password-stdin."
         },
         {
           "name": "email",
@@ -463,7 +468,7 @@
         {
           "name": "recruiter-contract-id",
           "type": "string",
-          "description": "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription."
+          "description": "Recruiter contract to select once the account is connected, so a connected account may still have none selected: `contract_selected: false` in the answer means connected, not selected. Only meaningful when the LinkedIn account holds a Recruiter subscription."
         },
         {
           "name": "linkedin-premium",
@@ -511,14 +516,157 @@
       ],
       "examples": [
         "curviate account link --auth-method credentials --email jane@example.com --password-stdin --country US",
-        "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID"
+        "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
+        "curviate account link --cookies-file linkedin-cookies.json --user-agent \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" --country US"
       ],
       "requires": [
         "Exactly one of --country, --ip or --proxy-host on a new connect; a reconnect (--account-id) may omit it to keep the account's location.",
-        "--user-agent with --auth-method cookie.",
+        "--user-agent with --auth-method cookie or --cookies-file.",
         "--seat-id with --preview or --account-id, and when zero or several seats are free.",
         "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie."
       ]
+    },
+    {
+      "path": [
+        "account",
+        "connect-request"
+      ],
+      "description": "Connect a LinkedIn account without any credential passing through you: create a request, give the person its link, read it until done.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "account",
+        "connect-request",
+        "create"
+      ],
+      "description": "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link must be opened within 15 minutes. AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "reconnect",
+          "type": "string",
+          "description": "Reconnect this account (acc_...) instead of connecting a new one."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account connect-request create",
+        "curviate account connect-request create --reconnect acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a pending connect request and a link. Nothing is connected until the person completes it.",
+        "visible_to": "Your Team: the person it is for sees it listed under Accounts in their dashboard.",
+        "budget_rows": [],
+        "retry": "Not safe: a repeated call creates a second request. Read `curviate account connect-request get <request_id>` first.",
+        "undo": "`curviate account connect-request cancel <request_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "--reconnect names an account that is unknown, archived or another Team's.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the account you named.",
+        "ACCOUNT_NOT_SHARED": "the account you named is not shared with you."
+      },
+      "seeAlso": [
+        "curviate account connect-request get",
+        "curviate account connect-request cancel"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "connect-request",
+        "get"
+      ],
+      "description": "Read a connect request: pending, completed (with the connected account_id), expired, failed or cancelled. Poll it until it leaves pending.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Connect request id (creq_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account connect-request get creq_YOUR_REQUEST_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The request: status, and account_id once completed. Never a credential, code or the step the person is on."
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "connect-request",
+        "cancel"
+      ],
+      "description": "Cancel a pending connect request; its link stops working. A request that is no longer pending is refused.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Connect request id (creq_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account connect-request cancel creq_YOUR_REQUEST_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The request becomes cancelled and its link stops working.",
+        "visible_to": "Your Team: it leaves the person's Accounts list.",
+        "budget_rows": [],
+        "retry": "Safe: cancelling a cancelled request answers the same request again.",
+        "undo": "Cannot be undone; create a new request."
+      },
+      "errors": {
+        "CONNECT_REQUEST_NOT_PENDING": "the request is completed, expired or failed; the message names which.",
+        "CONNECT_REQUEST_IN_USE": "the person is completing it right now; try again in a minute.",
+        "RESOURCE_NOT_FOUND": "no such request, or it was removed a day after it ended."
+      }
     },
     {
       "path": [
@@ -2130,6 +2278,282 @@
       "seeAlso": [
         "curviate enrollment get",
         "curviate enrollment list"
+      ]
+    },
+    {
+      "path": [
+        "notification"
+      ],
+      "description": "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "notification",
+        "list"
+      ],
+      "description": "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. --unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for 90 days.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "unread",
+          "type": "boolean",
+          "description": "Only unread notifications (--no-unread: only read ones). Not with --archived."
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "description": "Only archived notifications (--no-archived: not archived, which is also the default)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification list",
+        "curviate notification list --unread",
+        "curviate notification list --archived --limit 50"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "`items`, a `cursor` for the next page, and `unread_count`, the Team-wide unread badge, not a count of the items shown."
+      ]
+    },
+    {
+      "path": [
+        "notification",
+        "count"
+      ],
+      "description": "Your unread Curviate Notifications: the number only. Check it at the start of a session.",
+      "usageOnly": false,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification count"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "notification",
+        "read"
+      ],
+      "description": "Mark one or more of your notifications read. Each id is its own request; one that is not yours is reported and the rest still apply.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "variadic": true,
+          "description": "Notification id (ntf_...), from `curviate notification list`. Several may follow."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification read ntf_YOUR_NOTIFICATION_ID",
+        "curviate notification read ntf_A ntf_B"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The notifications are marked read.",
+        "visible_to": "Only you; no one else's notifications change.",
+        "budget_rows": [],
+        "retry": "Safe: setting a flag that is already set changes nothing.",
+        "undo": "Cannot be undone: a notification cannot be marked unread."
+      },
+      "output": [
+        "`updated` (the notifications as they now stand) and `not_found` (ids that are not yours). Exit 4 when any was not found; the others were still applied."
+      ],
+      "errors": {
+        "RESOURCE_NOT_FOUND": "an id is not one of your notifications (reported, exit 4, the others still apply)."
+      }
+    },
+    {
+      "path": [
+        "notification",
+        "read-all"
+      ],
+      "description": "Mark all your unread notifications read, up to a moment: --to, an ISO 8601 instant with an offset (default: now). One that arrives after it stays unread; a future --to acts as now.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Mark read what was created up to this instant (ISO 8601 with offset). Default: now."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification read-all",
+        "curviate notification read-all --to 2026-10-08T10:00:00Z"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Every unread notification of yours created at or before the instant is marked read.",
+        "visible_to": "Only you.",
+        "budget_rows": [],
+        "retry": "Safe: a second call marks only what arrived since.",
+        "undo": "Cannot be undone: a notification cannot be marked unread.",
+        "blast_radius": "All of your unread notifications in this Team up to the instant: `marked` in the answer says how many."
+      },
+      "output": [
+        "`before` (the instant used, UTC), `marked`, and the `unread_count` that remains."
+      ],
+      "seeAlso": [
+        "curviate notification list",
+        "curviate core notification"
+      ]
+    },
+    {
+      "path": [
+        "notification",
+        "archive"
+      ],
+      "description": "Archive one or more of your notifications: marked read and moved out of `list` into `list --archived`. A notification that is not yours is reported and the rest still apply.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "variadic": true,
+          "description": "Notification id (ntf_...), from `curviate notification list`. Several may follow."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification archive ntf_YOUR_NOTIFICATION_ID",
+        "curviate notification archive ntf_A ntf_B"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The notifications are archived (and marked read).",
+        "visible_to": "Only you; no one else's notifications change.",
+        "budget_rows": [],
+        "retry": "Safe: setting a flag that is already set changes nothing.",
+        "undo": "`curviate notification unarchive <id>`; the read mark stays."
+      },
+      "output": [
+        "`updated` (the notifications as they now stand) and `not_found` (ids that are not yours). Exit 4 when any was not found; the others were still applied."
+      ],
+      "errors": {
+        "RESOURCE_NOT_FOUND": "an id is not one of your notifications (reported, exit 4, the others still apply)."
+      },
+      "seeAlso": [
+        "curviate notification unarchive"
+      ]
+    },
+    {
+      "path": [
+        "notification",
+        "unarchive"
+      ],
+      "description": "Move one or more archived notifications back into your list; they stay read.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "variadic": true,
+          "description": "Notification id (ntf_...), from `curviate notification list`. Several may follow."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate notification unarchive ntf_YOUR_NOTIFICATION_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The notifications are unarchived.",
+        "visible_to": "Only you; no one else's notifications change.",
+        "budget_rows": [],
+        "retry": "Safe: setting a flag that is already set changes nothing.",
+        "undo": "`curviate notification archive <id>`."
+      },
+      "output": [
+        "`updated` (the notifications as they now stand) and `not_found` (ids that are not yours). Exit 4 when any was not found; the others were still applied."
+      ],
+      "errors": {
+        "RESOURCE_NOT_FOUND": "an id is not one of your notifications (reported, exit 4, the others still apply)."
+      },
+      "seeAlso": [
+        "curviate notification archive"
       ]
     },
     {
@@ -8640,7 +9064,7 @@
         "core",
         "notification"
       ],
-      "description": "Read and act on LinkedIn notification cards.",
+      "description": "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -8653,7 +9077,7 @@
         "notification",
         "list"
       ],
-      "description": "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark.",
+      "description": "List the connected account's LinkedIn notification cards, newest first, plus the unread badge and a poll watermark. Curviate's own Notifications are `curviate notification list`.",
       "usageOnly": false,
       "args": [
         {

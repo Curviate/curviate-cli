@@ -231,10 +231,21 @@ const PARITY_MANIFEST: Record<string, string> = {
   // feed (1) — new account-scoped namespace
   "feed home": "feed.home",
 
-  // notifications (3) — new account-scoped namespace
+  // notifications (3), account scope — LinkedIn cards (`core notification`). The root `notification list`
+  // (Curviate's own, `client.notifications.list`) shares the method name, so it carries no entry here.
   "notification list":      "notifications.list",
   "notification delete":    "notifications.delete",
   "notification show-less": "notifications.showLess",
+
+  // notifications, root (3): `notification archive|unarchive` reuse `update` (read) and carry no entry.
+  "notification count":    "notifications.unreadCount",
+  "notification read":     "notifications.update",
+  "notification read-all": "notifications.markAllRead",
+
+  // connectRequests (3) — mounted under `account`
+  "account connect-request create": "connectRequests.create",
+  "account connect-request get":    "connectRequests.get",
+  "account connect-request cancel": "connectRequests.cancel",
 };
 
 /**
@@ -254,9 +265,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.revertSeatCancellation",
   // Dashboard v2 surface: open until each group's commands land; the group
   // deletes its rows. Empty before the next release.
-  // notification + account connect
-  "connectRequests.create", "connectRequests.get", "connectRequests.cancel",
-  "notifications.unreadCount", "notifications.update", "notifications.markAllRead",
   // contact
   "contacts.list", "contacts.get", "contacts.upsert", "contacts.update", "contacts.delete",
   "contacts.deleteMany", "contacts.updateMany", "contacts.enrich", "contacts.export",

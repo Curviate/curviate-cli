@@ -320,8 +320,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   INVITE_ALREADY_PENDING: 2,
   INVITE_NOT_PENDING: 2,
   INVITE_LIMIT_REACHED: 2,
-  CONNECT_REQUEST_NOT_PENDING: 2,
-  CONNECT_REQUEST_IN_USE: 2,
+  // 8: the request's state forbids it (connection state), not a usage error: the same input works on a pending one.
+  CONNECT_REQUEST_NOT_PENDING: 8,
+  CONNECT_REQUEST_IN_USE: 8,
   LINKEDIN_ACCOUNT_MISMATCH: 8,
 
   // Contacts: a cap or a name clash never succeeds as sent; a full import queue drains (6).
