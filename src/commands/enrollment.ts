@@ -26,7 +26,7 @@ type EnrollmentFlags = RootFlags & {
   motion?: string;
   contact?: string;
   status?: string;
-  step?: string;
+  step?: string | string[];
   version?: string;
   "done-step"?: string;
   outcome?: string;
@@ -64,10 +64,10 @@ function filters(f: EnrollmentFlags): Record_ {
   };
   one("motion", "motion_id");
   one("contact", "contact_id");
-  one("step", "step_id");
   one("done-step", "done_step");
   one("outcome", "outcome");
   one("variant", "variant_id");
+  if (f.step !== undefined) q["step_id"] = listFlag("step", f.step);
   if (f.status !== undefined) q["status"] = listFlag("status", f.status);
   if (f.reason !== undefined) q["reason"] = listFlag("reason", f.reason);
   if (f.relationship !== undefined) q["relationship_at_enrollment"] = listFlag("relationship", f.relationship);
@@ -262,7 +262,7 @@ const FILTER_ARGS = {
   motion: { type: "string" as const, description: "Only this Motion's Enrollments (mot_...)." },
   contact: { type: "string" as const, description: "Only this Contact's Enrollments (con_...)." },
   status: { type: "string" as const, description: "Comma list of pending, active, paused, finished, skipped." },
-  step: { type: "string" as const, description: "Only Enrollments now at this Step id." },
+  step: { type: "string" as const, description: "Only Enrollments now at one of these Step ids: repeatable or a comma list." },
   version: { type: "string" as const, description: "Only Enrollments running this Sequence version (1 or more)." },
   "done-step": { type: "string" as const, description: "Only Enrollments that ran this Step id. With --outcome: how it ended." },
   outcome: { type: "string" as const, description: "With --done-step: executed, skipped, failed, accepted, not_accepted, replied, no_reply or seen." },

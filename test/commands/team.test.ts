@@ -215,6 +215,8 @@ describe("the Tier", () => {
     ["motion resume", "post", "/v1/motions/{id}/resume"], ["motion add", "post", "/v1/motions/{id}/contacts"],
     ["enrollment resume", "post", "/v1/enrollments/{id}/resume"], ["enrollment event", "post", "/v1/enrollments/{id}/events"],
     ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
+    ["network resync", "post", "/v1/network/resync"], ["unibox refresh", "post", "/v1/unibox/refresh"],
+    ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/contact"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],
   ])("%s (%s %s) says it needs Automate", (cmd, method, path) => {
     const api = JSON.parse(readFileSync(resolve(pkgRoot, "test/fixtures/openapi.json"), "utf8")) as { paths: Record<string, Record<string, Record<string, unknown>>> };
