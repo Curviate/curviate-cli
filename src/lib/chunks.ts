@@ -13,21 +13,31 @@ import type { CurviateError } from "@curviate/sdk";
 import { fail, outputOpts, type RootFlags } from "./root-command.js";
 
 export async function sendInChunks<R>(ids: string[], size: number, send: (chunk: string[]) => Promise<R>, f: RootFlags): Promise<R[]> {
-  const total = Math.ceil(ids.length / size);
+  const chunks: string[][] = [];
+  for (let k = 0; k < ids.length; k += size) chunks.push(ids.slice(k, k + size));
+  return sendChunked(chunks, send, f, "ids");
+}
+
+/** The same, for chunks already cut (an import's rows split by row count and body bytes): `unit` names what the chunks hold. */
+export async function sendChunked<T, R>(chunks: T[][], send: (chunk: T[]) => Promise<R>, f: RootFlags, unit: "ids" | "rows"): Promise<R[]> {
+  const total = chunks.length;
+  const all = chunks.reduce((n, c) => n + c.length, 0);
   const done: R[] = [];
+  let accepted = 0;
   for (let k = 0; k < total; k++) {
-    const chunk = ids.slice(k * size, (k + 1) * size);
+    const chunk = chunks[k]!;
     try {
       done.push(await send(chunk));
+      accepted += chunk.length;
     } catch (err) {
       const { CurviateError } = await import("@curviate/sdk");
       const progress = {
         chunks: { sent: k, total },
-        items: { accepted: k * size, total: ids.length },
-        failed_chunk: { index: k + 1, first_row: k * size + 1, last_row: k * size + chunk.length },
+        items: { accepted, total: all },
+        failed_chunk: { index: k + 1, first_row: accepted + 1, last_row: accepted + chunk.length },
       };
       if (!(err instanceof CurviateError)) {
-        process.stderr.write(`Chunk ${k + 1} of ${total} failed; ${k * size} of ${ids.length} ids were sent before it. Nothing after it was sent.\n`);
+        process.stderr.write(`Chunk ${k + 1} of ${total} failed; ${accepted} of ${all} ${unit} were sent before it. Nothing after it was sent.\n`);
         return fail(err, f);
       }
       const { getExitCode } = await import("./exit-codes.js");
@@ -35,8 +45,8 @@ export async function sendInChunks<R>(ids: string[], size: number, send: (chunk:
       if (outputOpts(f).json) process.stdout.write(JSON.stringify({ error: e, progress }) + "\n");
       process.stderr.write(
         `error [${e.code}] ${e.message}\n` +
-          `Chunk ${k + 1} of ${total} failed (ids ${progress.failed_chunk.first_row} to ${progress.failed_chunk.last_row}); ` +
-          `${progress.items.accepted} of ${ids.length} ids were sent before it. Nothing after it was sent.\n`,
+          `Chunk ${k + 1} of ${total} failed (${unit} ${progress.failed_chunk.first_row} to ${progress.failed_chunk.last_row}); ` +
+          `${accepted} of ${all} ${unit} were sent before it. Nothing after it was sent.\n`,
       );
       process.exit(getExitCode(err as CurviateError));
     }

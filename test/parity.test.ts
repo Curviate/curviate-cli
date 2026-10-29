@@ -231,10 +231,21 @@ const PARITY_MANIFEST: Record<string, string> = {
   // feed (1) — new account-scoped namespace
   "feed home": "feed.home",
 
-  // notifications (3) — new account-scoped namespace
+  // notifications (3), account scope — LinkedIn cards (`core notification`). The root `notification list`
+  // (Curviate's own, `client.notifications.list`) shares the method name, so it carries no entry here.
   "notification list":      "notifications.list",
   "notification delete":    "notifications.delete",
   "notification show-less": "notifications.showLess",
+
+  // notifications, root (3): `notification archive|unarchive` reuse `update` (read) and carry no entry.
+  "notification count":    "notifications.unreadCount",
+  "notification read":     "notifications.update",
+  "notification read-all": "notifications.markAllRead",
+
+  // connectRequests (3) — mounted under `account`
+  "account connect-request create": "connectRequests.create",
+  "account connect-request get":    "connectRequests.get",
+  "account connect-request cancel": "connectRequests.cancel",
 
   // network (3)
   "network list":   "network.connections.list",
@@ -300,6 +311,31 @@ const PARITY_MANIFEST: Record<string, string> = {
 
   // tier (1)
   "tier": "tier.get",
+
+  // contacts (13). `contact lists add|remove` and `contact tags add|remove` reuse updateMany (no entry).
+  "contact list":               "contacts.list",
+  "contact get":                "contacts.get",
+  "contact create":             "contacts.upsert",
+  "contact update":             "contacts.update",
+  "contact delete":             "contacts.delete",
+  "contact delete --ids":       "contacts.deleteMany",
+  "contact tags add":           "contacts.updateMany",
+  "contact enrich":             "contacts.enrich",
+  "contact export":             "contacts.export",
+  "contact import":             "contacts.imports.create",
+  "contact imports list":       "contacts.imports.list",
+  "contact imports get":        "contacts.imports.get",
+  "contact imports get --outcome": "contacts.imports.rows",
+
+  // contactLists (5), tags (3)
+  "contact lists list":    "contactLists.list",
+  "contact lists get":     "contactLists.get",
+  "contact lists create":  "contactLists.create",
+  "contact lists update":  "contactLists.update",
+  "contact lists delete":  "contactLists.delete",
+  "contact tags list":     "tags.list",
+  "contact tags update":   "tags.update",
+  "contact tags delete":   "tags.delete",
 };
 
 /**
@@ -319,15 +355,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.revertSeatCancellation",
   // Dashboard v2 surface: open until each group's commands land; the group
   // deletes its rows. Empty before the next release.
-  // notification + account connect
-  "connectRequests.create", "connectRequests.get", "connectRequests.cancel",
-  "notifications.unreadCount", "notifications.update", "notifications.markAllRead",
-  // contact
-  "contacts.list", "contacts.get", "contacts.upsert", "contacts.update", "contacts.delete",
-  "contacts.deleteMany", "contacts.updateMany", "contacts.enrich", "contacts.export",
-  "contacts.imports.create", "contacts.imports.list", "contacts.imports.get", "contacts.imports.rows",
-  "contactLists.create", "contactLists.list", "contactLists.get", "contactLists.update", "contactLists.delete",
-  "tags.list", "tags.update", "tags.delete",
   // invoices
   "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact

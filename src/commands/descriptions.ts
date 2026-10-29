@@ -17,6 +17,14 @@ export const DESCRIPTIONS = {
   enrollment:
     "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
+  contact:
+    "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. " +
+    "Subgroups: `contact lists` (Contact lists, including combining lists), `contact tags`, `contact imports`. " +
+    "Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
+  contactImport: "Import Contacts from a CSV, JSON or NDJSON file into a Contact list, splitting a large file into several imports.",
+  contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
+  contactLists: "Contact lists: named sets of Contacts a Motion enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Contacts.",
+  contactTags: "Tags: labels on Contacts. List, rename, delete, and add or remove one on Contacts named by id or by filter.",
   unibox:
     "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. " +
     "An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
@@ -51,7 +59,10 @@ export const DESCRIPTIONS = {
   recruiter: "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this call.",
   group: "Read LinkedIn groups: your own membership list, one group's detail, and its member roster.",
   feed: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
-  notification: "Read and act on LinkedIn notification cards.",
+  notification:
+    "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. " +
+    "LinkedIn's own notification cards are under `curviate core notification`.",
+  coreNotification: "Read and act on LinkedIn notification cards. Curviate's own Notifications are `curviate notification`.",
   draft: "Drafts and scheduled posts.",
 } as const;
 
