@@ -365,12 +365,8 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
-  // safety commands land with their own spec
+  // Safety commands land with their own spec; `account warm-up` writes through updateSafetyPolicy.
   "accounts.getSafetyPolicy",
-  // Dashboard v2 surface: open until each group's commands land; the group
-  // deletes its rows. Empty before the next release.
-  // invoices
-  // do-not-contact
 ];
 
 // ---------------------------------------------------------------------------
