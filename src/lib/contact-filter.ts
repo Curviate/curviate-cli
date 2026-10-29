@@ -82,9 +82,11 @@ export async function readFilter(c: Curviate, f: FilterFlags & RootFlags, shape:
     if (!motion) usage("--status needs --motion: it filters that Motion's Enrollments.");
     q["enrollment_status"] = join(listFlag("status", f.status));
   }
-  if (f["has-email"] && f["no-email"]) usage("--has-email and --no-email cannot be combined.");
+  // The parser reads `--no-email` as the negation of an `email` flag.
+  const noEmail = f["no-email"] === true || (f as { email?: boolean }).email === false;
+  if (f["has-email"] && noEmail) usage("--has-email and --no-email cannot be combined.");
   if (f["has-email"]) q["has_email"] = true;
-  if (f["no-email"]) q["has_email"] = false;
+  if (noEmail) q["has_email"] = false;
   if (f.connected !== undefined) q["connected"] = f.connected;
   if (f["connected-account"] !== undefined) {
     if (f.connected === false) usage("--connected-account and --no-connected cannot be combined.");

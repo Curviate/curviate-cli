@@ -293,6 +293,31 @@ const PARITY_MANIFEST: Record<string, string> = {
 
   // tier (1)
   "tier": "tier.get",
+
+  // contacts (13). `contact lists add|remove` and `contact tags add|remove` reuse updateMany (no entry).
+  "contact list":               "contacts.list",
+  "contact get":                "contacts.get",
+  "contact create":             "contacts.upsert",
+  "contact update":             "contacts.update",
+  "contact delete":             "contacts.delete",
+  "contact delete --ids":       "contacts.deleteMany",
+  "contact tags add":           "contacts.updateMany",
+  "contact enrich":             "contacts.enrich",
+  "contact export":             "contacts.export",
+  "contact import":             "contacts.imports.create",
+  "contact imports list":       "contacts.imports.list",
+  "contact imports get":        "contacts.imports.get",
+  "contact imports get --outcome": "contacts.imports.rows",
+
+  // contactLists (5), tags (3)
+  "contact lists list":    "contactLists.list",
+  "contact lists get":     "contactLists.get",
+  "contact lists create":  "contactLists.create",
+  "contact lists update":  "contactLists.update",
+  "contact lists delete":  "contactLists.delete",
+  "contact tags list":     "tags.list",
+  "contact tags update":   "tags.update",
+  "contact tags delete":   "tags.delete",
 };
 
 /**

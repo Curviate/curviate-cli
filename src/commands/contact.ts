@@ -219,7 +219,7 @@ async function runEnrich(c: Curviate, f: ContactFlags): Promise<void> {
 
 const FORMATS = ["csv", "json", "ndjson"];
 
-/** Write `bytes` to `path` the way cli/011 says: a 0600 temp file in the same directory, renamed over the target on success. */
+/** Write `bytes` to `path` the way an export must be: a 0600 temp file in the same directory, renamed over the target on success. */
 function writeAtomic(path: string, bytes: Buffer): void {
   const tmp = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`);
   let fd: number | undefined;
@@ -431,6 +431,7 @@ const exportCmd = defineCommand({
   args: {
     "api-key": GLOBAL_FLAGS["api-key"],
     profile: GLOBAL_FLAGS.profile,
+    team: GLOBAL_FLAGS.team,
     "base-url": GLOBAL_FLAGS["base-url"],
     timeout: GLOBAL_FLAGS.timeout,
     json: { type: "boolean", description: "Not accepted: an export's data is the file. Use --format json." },

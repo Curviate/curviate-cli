@@ -41,6 +41,7 @@ type ImportFlags = Omit<ContactFlags, "list" | "tag"> & {
   map?: string | string[];
   delimiter?: string;
   "no-wait"?: boolean;
+  wait?: boolean;
   outcome?: string;
 };
 
@@ -182,12 +183,13 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
   const total = chunks.reduce((n, x) => n + x.length, 0);
   if (f.preview) return preview("contacts.imports.create", chunks.length > 1 ? { imports: chunks.length, rows: total } : {}, bodyOf(chunks[0]!));
 
-  const wait = !f["no-wait"];
+  // The parser reads `--no-wait` as the negation of a `wait` flag.
+  const wait = !(f["no-wait"] === true || f.wait === false);
   const poll = async (made: Imp): Promise<Imp> => {
     let imp = made;
     while (wait && imp.status !== "completed" && imp.status !== "failed") {
-      await sleep(POLL_MS);
       imp = readableObject((await c.contacts.imports.get(String(imp.id))) as Imp);
+      if (imp.status !== "completed" && imp.status !== "failed") await sleep(POLL_MS);
     }
     return imp;
   };
