@@ -497,7 +497,12 @@
         {
           "name": "timezone",
           "type": "string",
-          "description": "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused."
+          "description": "Ignored: the account's time zone follows its connection location. Accepted so existing scripts keep working; nothing is sent."
+        },
+        {
+          "name": "warm-up",
+          "type": "boolean",
+          "description": "--no-warm-up skips the ramp a new account starts on (its first weeks at lower limits). A new connect only; for a connected account use `curviate account warm-up`. Default on."
         },
         {
           "name": "account-id",
@@ -561,6 +566,11 @@
           "name": "reconnect",
           "type": "string",
           "description": "Reconnect this account (acc_...) instead of connecting a new one."
+        },
+        {
+          "name": "warm-up",
+          "type": "boolean",
+          "description": "--no-warm-up: the new account skips the ramp (its first weeks at lower limits) once the person connects it. A new connect only. Default on."
         }
       ],
       "globals": [
@@ -578,6 +588,7 @@
       ],
       "examples": [
         "curviate account connect-request create",
+        "curviate account connect-request create --no-warm-up",
         "curviate account connect-request create --reconnect acc_YOUR_ACCOUNT_ID"
       ],
       "requires": [],
