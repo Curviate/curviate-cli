@@ -944,7 +944,7 @@
         "motion",
         "create"
       ],
-      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it.",
+      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -999,7 +999,7 @@
         "motion",
         "update"
       ],
-      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since.",
+      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1064,7 +1064,7 @@
         "motion",
         "start"
       ],
-      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed.",
+      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1165,7 +1165,7 @@
         "motion",
         "resume"
       ],
-      "description": "Resume a paused Motion. Runs the start checks again.",
+      "description": "Resume a paused Motion. Runs the start checks again. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1361,7 +1361,7 @@
         "motion",
         "add"
       ],
-      "description": "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order.",
+      "description": "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1722,7 +1722,7 @@
         "enrollment",
         "resume"
       ],
-      "description": "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure.",
+      "description": "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1887,7 +1887,7 @@
         "enrollment",
         "event"
       ],
-      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook.",
+      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1938,7 +1938,7 @@
         "enrollment",
         "signal"
       ],
-      "description": "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event.",
+      "description": "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1989,7 +1989,7 @@
         "enrollment",
         "reassign"
       ],
-      "description": "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them.",
+      "description": "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -2169,6 +2169,32 @@
         "curviate enrollment get",
         "curviate enrollment list"
       ]
+    },
+    {
+      "path": [
+        "tier"
+      ],
+      "description": "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
+      "usageOnly": false,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate tier",
+        "curviate tier --json"
+      ],
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9716,7 +9742,7 @@
         "draft",
         "create"
       ],
-      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft.",
+      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -9767,7 +9793,7 @@
         "draft",
         "update"
       ],
-      "description": "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds.",
+      "description": "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -9860,7 +9886,7 @@
         "draft",
         "publish"
       ],
-      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
+      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying. Needs Automate.",
       "usageOnly": false,
       "args": [
         {

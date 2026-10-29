@@ -169,3 +169,57 @@ describe("team switch rewrites the profile's team", () => {
     expect(next.requests[0]?.headers["x-curviate-team"]).toBe(stored);
   });
 });
+
+const TIER = {
+  object: "tier", tier: "automate", bought_tier: "build", period: "monthly",
+  trial: { tier: "automate", expires_at: "2026-11-05T00:00:00Z" }, override: null, pending: null,
+  features: ["drafts", "motions"], early_access: [{ tier: "enhance", requested_at: null }],
+};
+
+/** Human mode: the CLI renders for a person only when stdout is a terminal. */
+async function asHuman<T>(run: () => Promise<T>): Promise<T> {
+  const was = process.stdout.isTTY;
+  process.stdout.isTTY = true;
+  try {
+    return await run();
+  } finally {
+    process.stdout.isTTY = was;
+  }
+}
+
+describe("the Tier", () => {
+  it("`tier` reads GET /v1/billing/tier: JSON verbatim, every field in human output", async () => {
+    sink.reply = { body: TIER };
+    const json = await sink.run(["tier", "--json"]);
+    expect([json.status, json.requests.map(line), JSON.parse(json.stdout)]).toEqual([0, ["GET /v1/billing/tier"], TIER]);
+    const human = await asHuman(() => sink.run(["tier"]));
+    expect(human.status).toBe(0);
+    for (const v of ["automate", "build (monthly)", "2026-11-05T00:00:00Z", "drafts, motions", "enhance (not requested)"]) expect(human.stdout).toContain(v);
+  });
+
+  it.each([
+    ["an Owner gets the upgrade link", { upgrade_url: "https://app.curviate.com/settings/billing" }, "Upgrade: https://app.curviate.com/settings/billing"],
+    ["anyone else is sent to an Owner", {}, "Ask an Owner"],
+  ])("TIER_REQUIRED exits 5 naming the feature, the Tier and the remedy: %s", async (_l, extra, remedy) => {
+    sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Motions are part of Automate.", user_fixable: true, retry_likely_to_succeed: false, feature: "motions", required_tier: "automate", current_tier: "build", ...extra } };
+    const r = await asHuman(() => sink.run(["motion", "start", "mot_1"]));
+    expect(r.status).toBe(5);
+    expect(r.stderr).toContain("motions is part of automate; this Team has build.");
+    expect(r.stderr).toContain(remedy);
+    expect(r.stderr.toLowerCase()).not.toContain(["uni", "pile"].join(""));
+  });
+
+  // The served OpenAPI marks each operation a Tier gates (`x-curviate-tier`); each command sending one says so in its help.
+  it.each([
+    ["motion create", "post", "/v1/motions"], ["motion update", "patch", "/v1/motions/{id}"], ["motion start", "post", "/v1/motions/{id}/start"],
+    ["motion resume", "post", "/v1/motions/{id}/resume"], ["motion add", "post", "/v1/motions/{id}/contacts"],
+    ["enrollment resume", "post", "/v1/enrollments/{id}/resume"], ["enrollment event", "post", "/v1/enrollments/{id}/events"],
+    ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
+    ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],
+  ])("%s (%s %s) says it needs Automate", (cmd, method, path) => {
+    const api = JSON.parse(readFileSync(resolve(pkgRoot, "test/fixtures/openapi.json"), "utf8")) as { paths: Record<string, Record<string, Record<string, unknown>>> };
+    expect(api.paths[path]?.[method]?.["x-curviate-tier"]).toBe("automate");
+    const { commands } = JSON.parse(readFileSync(resolve(pkgRoot, "commands.json"), "utf8")) as { commands: Array<{ path: string[]; description: string }> };
+    expect(commands.find((c) => c.path.join(" ") === cmd)?.description).toContain("Needs Automate.");
+  });
+});

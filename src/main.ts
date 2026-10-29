@@ -45,6 +45,7 @@ export const main = defineCommand({
     account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
     motion: lazy("motion", () => import("./commands/motion.js").then((m) => m.motionCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
+    tier: lazy("tier", () => import("./commands/tier.js").then((m) => m.tierCommand)),
     team: lazy("team", () => import("./commands/team.js").then((m) => m.teamCommand)),
     webhook: lazy("webhook", () => import("./commands/webhook.js").then((m) => m.webhookCommand)),
     // The LinkedIn building blocks. Reserved product groups

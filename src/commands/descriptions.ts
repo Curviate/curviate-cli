@@ -17,6 +17,7 @@ export const DESCRIPTIONS = {
   enrollment:
     "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
+  tier: "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners manage; every role reads.",

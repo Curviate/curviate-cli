@@ -252,6 +252,9 @@ const PARITY_MANIFEST: Record<string, string> = {
   "team invites revoke": "teams.revokeInvite",
   "team seats lend":     "billing.seats.lend",
   "team seats return":   "billing.seats.return",
+
+  // tier (1)
+  "tier": "tier.get",
 };
 
 /**
@@ -287,8 +290,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "analytics.activity", "analytics.export", "analytics.motions.list", "analytics.motions.get", "analytics.events.list",
   "exports.create", "exports.get", "exports.download",
   "accounts.metrics", "accounts.overview",
-  // tier
-  "tier.get",
   // invoices
   "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact
