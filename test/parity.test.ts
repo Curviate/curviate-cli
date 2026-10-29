@@ -309,6 +309,13 @@ const PARITY_MANIFEST: Record<string, string> = {
   "team seats lend":     "billing.seats.lend",
   "team seats return":   "billing.seats.return",
 
+  // doNotContact (5)
+  "do-not-contact list":   "doNotContact.list",
+  "do-not-contact get":    "doNotContact.get",
+  "do-not-contact add":    "doNotContact.add",
+  "do-not-contact update": "doNotContact.update",
+  "do-not-contact remove": "doNotContact.remove",
+
   // tier (1)
   "tier": "tier.get",
 
@@ -358,7 +365,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   // invoices
   "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact
-  "doNotContact.list", "doNotContact.get", "doNotContact.add", "doNotContact.update", "doNotContact.remove",
 ];
 
 // ---------------------------------------------------------------------------

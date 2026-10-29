@@ -4392,6 +4392,236 @@
     },
     {
       "path": [
+        "do-not-contact"
+      ],
+      "description": "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove. Any member adds; removing is for Owners and Managers.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "list"
+      ],
+      "description": "List your Team's do-not-contact list, newest first. No Motion contacts a person on it and writes toward them are refused (exit 10); a reply in a conversation they wrote in stays allowed. An entry whose Contact was deleted still applies.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Only entries whose Contact name matches this text."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact list",
+        "curviate do-not-contact list --query jane"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "get"
+      ],
+      "description": "One do-not-contact entry: the person, the reason, and who added it.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Entry id (dnc_...), from `curviate do-not-contact list`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact get dnc_YOUR_ENTRY_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "add"
+      ],
+      "description": "Put one person on the list, by Contact id or LinkedIn URL (a URL of someone who is not a Contact yet creates the Contact from stored data). No Motion contacts them afterwards and writes toward them are refused. One person per call; loop for many. Any member may add. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "contact",
+          "type": "string",
+          "description": "The Contact (con_...). Not with --linkedin-url."
+        },
+        {
+          "name": "linkedin-url",
+          "type": "string",
+          "description": "The person's LinkedIn profile URL, in any spelling. Not with --contact."
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Why: asked_to_stop | existing_customer | competitor | partner | employee | other."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact add --contact con_YOUR_CONTACT_ID --reason asked_to_stop",
+        "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The person joins the list; Motions skip them and writes toward them are refused.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe: a person already on the list answers with their existing entry.",
+        "undo": "`curviate do-not-contact remove <id>` (Owners and Managers)."
+      },
+      "seeAlso": [
+        "curviate do-not-contact list"
+      ]
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "update"
+      ],
+      "description": "Change the reason on an entry. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Entry id (dnc_...), from `curviate do-not-contact list`."
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "description": "Why: asked_to_stop | existing_customer | competitor | partner | employee | other.",
+          "required": true
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact update dnc_YOUR_ENTRY_ID --reason existing_customer"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The entry's reason.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe: the same call leaves the same reason.",
+        "undo": "Update again with the old reason."
+      }
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "remove"
+      ],
+      "description": "Take a person off the list: Motions and writes may reach them again. Owners and Managers only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Entry id (dnc_...), from `curviate do-not-contact list`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact remove dnc_YOUR_ENTRY_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The entry is deleted; Motions may enroll the person and writes toward them are allowed again.",
+        "visible_to": "The person, if a Motion or write then reaches them on LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe: a second call answers RESOURCE_NOT_FOUND.",
+        "undo": "`curviate do-not-contact add` again.",
+        "blast_radius": "One person."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "removing is for Owners and Managers.",
+        "RESOURCE_NOT_FOUND": "no such entry (already removed)."
+      },
+      "seeAlso": [
+        "curviate do-not-contact list",
+        "curviate do-not-contact add"
+      ]
+    },
+    {
+      "path": [
         "unibox"
       ],
       "description": "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
