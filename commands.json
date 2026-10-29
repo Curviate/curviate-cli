@@ -2568,7 +2568,7 @@
       "path": [
         "contact"
       ],
-      "description": "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. Subgroups: `contact lists` (Contact lists, including combining lists), `contact tags`, `contact imports`. Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
+      "description": "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. Subgroups: `curviate contact lists` (Contact lists, including combining lists), `curviate contact tags`, `curviate contact imports`. Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2586,7 +2586,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -2596,7 +2596,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -2917,6 +2917,9 @@
         "budget_rows": [],
         "retry": "Safe: the same call leaves the same Contact.",
         "undo": "Update again with the old values."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no Contact has this id."
       }
     },
     {
@@ -2942,7 +2945,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -2952,7 +2955,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3036,7 +3039,7 @@
         "budget_rows": [],
         "retry": "Safe: a Contact already gone answers in `not_found`.",
         "undo": "Cannot be undone. Import or create them again; Enrollment history does not come back.",
-        "blast_radius": "Every Contact the filter matches, up to 100000. By id: 1000 per request."
+        "blast_radius": "Every Contact the filter matches. By id: 1000 per request."
       },
       "output": [
         "`deleted` (a count) and `not_found` (ids that did not exist)."
@@ -3130,7 +3133,7 @@
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "Safe to repeat: Contacts converge, a second run reports them `unchanged`. A run stopped part way: read `curviate contact imports list`, then import the rest.",
-        "undo": "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `contact tags remove` and `contact lists remove`."
+        "undo": "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `curviate contact tags remove` and `curviate contact lists remove`."
       },
       "output": [
         "One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --no-wait: the imports' ids and statuses only."
@@ -3161,7 +3164,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -3171,7 +3174,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3300,7 +3303,7 @@
         {
           "name": "max-age",
           "type": "string",
-          "description": "Refresh what is older than this many seconds (up to 31536000, one year)."
+          "description": "Refresh what is older than this many seconds (up to 31536000 seconds, one year)."
         }
       ],
       "globals": [
@@ -3334,6 +3337,9 @@
       "output": [
         "`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found) and `skipped` with a reason each."
       ],
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team."
+      },
       "seeAlso": [
         "curviate contact list",
         "curviate contact get"
@@ -3429,7 +3435,7 @@
         "lists",
         "create"
       ],
-      "description": "Create an empty Contact list. Fill it with `contact lists add`, `contact import --list`, or build it from other lists with `contact lists combine`. Needs Automate.",
+      "description": "Create an empty Contact list. Fill it with `curviate contact lists add`, `curviate contact import --list`, or build it from other lists with `curviate contact lists combine`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3489,7 +3495,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -3499,7 +3505,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3707,7 +3713,7 @@
         "lists",
         "add"
       ],
-      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3735,7 +3741,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3795,7 +3801,7 @@
         {
           "name": "from-list",
           "type": "string",
-          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -3843,7 +3849,7 @@
         "lists",
         "remove"
       ],
-      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3871,7 +3877,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3931,7 +3937,7 @@
         {
           "name": "from-list",
           "type": "string",
-          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -4121,7 +4127,7 @@
         "tags",
         "add"
       ],
-      "description": "Put a Tag on Contacts, named by id or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Put a Tag on Contacts, named by id or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4144,7 +4150,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -4154,7 +4160,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -4257,7 +4263,7 @@
         "tags",
         "remove"
       ],
-      "description": "Take a Tag off Contacts, named by id or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Take a Tag off Contacts, named by id or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4280,7 +4286,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -4290,7 +4296,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -4914,7 +4920,7 @@
         "unibox",
         "refresh"
       ],
-      "description": "Queue a re-read of the newest chats (up to 100) of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account every 2 minutes: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
+      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4948,7 +4954,7 @@
         "budget_rows": [
           "inbox_sync"
         ],
-        "retry": "A repeat within 2 minutes answers cooldown; nothing new is queued.",
+        "retry": "A repeat inside the cooldown answers cooldown; nothing new is queued.",
         "undo": "Nothing to undo: a refresh only reads."
       },
       "errors": {
@@ -4986,7 +4992,7 @@
         "unibox",
         "consent"
       ],
-      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them within 15 minutes.",
+      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them shortly after.",
       "usageOnly": false,
       "args": [
         {
@@ -5036,7 +5042,11 @@
       "errors": {
         "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
         "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
-      }
+      },
+      "seeAlso": [
+        "curviate unibox refresh",
+        "curviate unibox list"
+      ]
     },
     {
       "path": [
@@ -5060,7 +5070,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         },
         {
           "name": "query",
@@ -5115,7 +5125,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         }
       ],
       "globals": [
@@ -5148,7 +5158,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         },
         {
           "name": "query",
@@ -5204,7 +5214,7 @@
         "network",
         "resync"
       ],
-      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per 24 hours; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
+      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5244,7 +5254,7 @@
         "budget_rows": [
           "connections_sync"
         ],
-        "retry": "A second call within 24 hours answers cooldown; nothing new starts.",
+        "retry": "A second call within the same day answers cooldown; nothing new starts.",
         "undo": "Cannot be stopped once queued; the walk ends on its own.",
         "blast_radius": "One Account, or with --all every Account you may operate."
       },
@@ -5576,7 +5586,7 @@
         "notification",
         "list"
       ],
-      "description": "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. --unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for 90 days.",
+      "description": "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. --unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for a limited time.",
       "usageOnly": false,
       "args": [
         {
@@ -5736,6 +5746,9 @@
       "output": [
         "`before` (the instant used, UTC), `marked`, and the `unread_count` that remains."
       ],
+      "errors": {
+        "INVALID_REQUEST": "--to is not an ISO 8601 instant with an offset."
+      },
       "seeAlso": [
         "curviate notification list",
         "curviate core notification"
@@ -5746,7 +5759,7 @@
         "notification",
         "archive"
       ],
-      "description": "Archive one or more of your notifications: marked read and moved out of `list` into `list --archived`. A notification that is not yours is reported and the rest still apply.",
+      "description": "Archive one or more of your notifications: marked read and moved out of `curviate notification list` into `curviate notification list --archived`. A notification that is not yours is reported and the rest still apply.",
       "usageOnly": false,
       "args": [
         {
@@ -5925,7 +5938,7 @@
       ],
       "errors": {
         "EXPORT_NOT_READY": "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
-        "EXPORT_EXPIRED": "the file expired 24 hours after it was ready: run the export again.",
+        "EXPORT_EXPIRED": "the file has expired: run the export again.",
         "EXPORT_REMOVED": "the export was removed because a Contact was deleted: run it again."
       }
     },
@@ -6304,7 +6317,7 @@
         "invites",
         "create"
       ],
-      "description": "Invite 1 to 20 people by email, comma-separated, each with --role (default member). Owners only.",
+      "description": "Invite people by email, comma-separated, each with --role (default member). Owners only.",
       "usageOnly": false,
       "args": [
         {
@@ -6473,13 +6486,13 @@
         "logo",
         "set"
       ],
-      "description": "Set the Team's logo from a PNG file of at most 1 MB; replaces the previous one. Owners only.",
+      "description": "Set the Team's logo from a PNG file; replaces the previous one. Owners only.",
       "usageOnly": false,
       "args": [
         {
           "name": "file",
           "type": "positional",
-          "description": "Path to a PNG, at most 1 MB."
+          "description": "Path to a PNG."
         }
       ],
       "globals": [
@@ -7177,7 +7190,7 @@
         {
           "name": "name",
           "type": "string",
-          "description": "Human-readable name (1-100 chars)."
+          "description": "Human-readable name (up to 100 characters)."
         },
         {
           "name": "enabled",
@@ -7214,7 +7227,18 @@
         "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Registers a webhook endpoint: Curviate delivers the subscribed events to its URL.",
+        "visible_to": "Your endpoint, which receives event payloads. Nothing reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "Not safe: each call registers another webhook, with its own id and secret.",
+        "undo": "`curviate webhook delete <webhook_id>`."
+      },
+      "errors": {
+        "WEBHOOK_TEMPLATE_INVALID": "the body template is invalid: `curviate webhook lint` names every finding."
+      }
     },
     {
       "path": [
@@ -7244,7 +7268,8 @@
       "examples": [
         "curviate webhook list"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7269,7 +7294,8 @@
       "examples": [
         "curviate webhook events"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7300,7 +7326,8 @@
       "examples": [
         "curviate webhook get wh_YOUR_WEBHOOK_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7379,7 +7406,19 @@
         "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
         "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the fields you pass on the webhook; its source cannot change.",
+        "visible_to": "Your endpoint, which receives the payloads the webhook now selects.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the webhook the same.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no webhook with this id.",
+        "WEBHOOK_TEMPLATE_INVALID": "the body template is invalid: `curviate webhook lint` names every finding."
+      }
     },
     {
       "path": [
@@ -7468,14 +7507,15 @@
       "examples": [
         "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --file payload.json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
         "webhook",
         "lint"
       ],
-      "description": "Check a webhook body template offline, every finding at once, as `webhook create` would answer it. Offline: no API call.",
+      "description": "Check a webhook body template offline, every finding at once, as `curviate webhook create` would answer it. Offline: no API call.",
       "usageOnly": false,
       "args": [
         {
@@ -7642,7 +7682,7 @@
         "webhook",
         "rotate"
       ],
-      "description": "Issue a new signing secret, printed once. For 24 hours every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that window.",
+      "description": "Issue a new signing secret, printed once. For a grace period every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that period.",
       "usageOnly": false,
       "args": [
         {
@@ -7670,8 +7710,8 @@
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "A new signing secret; the old one stops signing after 24 hours (at once on a second rotation inside the window).",
-        "visible_to": "Your endpoint, which must verify with the new secret within 24 hours.",
+        "changes": "A new signing secret; the old one stops signing when the grace period ends (at once on a second rotation inside it).",
+        "visible_to": "Your endpoint, which must verify with the new secret before the grace period ends.",
         "budget_rows": [],
         "retry": "A second rotation drops the oldest secret at once.",
         "undo": "Cannot be undone: rotate again for another new secret.",

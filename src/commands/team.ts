@@ -246,7 +246,7 @@ const invitesCmd = defineCommand({
     create: defineCommand({
       meta: {
         name: "create",
-        description: "Invite 1 to 20 people by email, comma-separated, each with --role (default member). Owners only.",
+        description: "Invite people by email, comma-separated, each with --role (default member). Owners only.",
         risk: "write",
         errors: { ...OWNERS, ALREADY_MEMBER: "that person is already in the Team." },
         examples: ["curviate team invites create dana@example.com", "curviate team invites create dana@example.com,lee@example.com --role manager"],
@@ -281,8 +281,8 @@ const logoCmd = defineCommand({
   meta: { name: "logo", description: "Set or remove the Team's logo. Owners only." },
   subCommands: {
     set: defineCommand({
-      meta: { name: "set", description: "Set the Team's logo from a PNG file of at most 1 MB; replaces the previous one. Owners only.", risk: "write", errors: OWNERS, examples: ["curviate team logo set ./logo.png"] },
-      args: { ...WRITE_SINGLE_FLAGS, file: { type: "positional", description: "Path to a PNG, at most 1 MB." } },
+      meta: { name: "set", description: "Set the Team's logo from a PNG file; replaces the previous one. Owners only.", risk: "write", errors: OWNERS, examples: ["curviate team logo set ./logo.png"] },
+      args: { ...WRITE_SINGLE_FLAGS, file: { type: "positional", description: "Path to a PNG." } },
       run: call("teams.setLogo", (f) => ({ file: f.file }), () => undefined, async (c, f) => {
         const path = nonEmpty("<file>", f.file);
         let png: Uint8Array;

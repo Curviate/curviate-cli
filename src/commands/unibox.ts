@@ -356,8 +356,8 @@ const refreshCmd = defineCommand({
   meta: {
     name: "refresh",
     description:
-      "Queue a re-read of the newest chats (up to 100) of each Account the inbox poll covers, or of --accounts; it runs within minutes. " +
-      "Once per Account every 2 minutes: a repeat answers cooldown with next_allowed_at. " +
+      "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. " +
+      "Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. " +
       "An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. " +
       "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
     risk: "write",
@@ -365,7 +365,7 @@ const refreshCmd = defineCommand({
       changes: "Queues one read of each Account's newest chats.",
       visible_to: "Nobody: reads only.",
       budget_rows: ["inbox_sync"],
-      retry: "A repeat within 2 minutes answers cooldown; nothing new is queued.",
+      retry: "A repeat inside the cooldown answers cooldown; nothing new is queued.",
       undo: "Nothing to undo: a refresh only reads.",
     },
     errors: AUTOMATE,
@@ -391,7 +391,7 @@ const consentCmd = defineCommand({
     name: "consent",
     description:
       "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); " +
-      "off hides the Account's non-Motion chats at once and deletes them within 15 minutes.",
+      "off hides the Account's non-Motion chats at once and deletes them shortly after.",
     risk: "high",
     rules: {
       changes: "Copies the Account's whole inbox into the Unibox (on), or removes the non-Motion chats from it (off).",
@@ -402,6 +402,7 @@ const consentCmd = defineCommand({
       blast_radius: "One Account's whole inbox.",
     },
     errors: { ...AUTOMATE, ACCOUNT_OWNER_ONLY: "only the person who connected the Account can change this." },
+    seeAlso: ["curviate unibox refresh", "curviate unibox list"],
     examples: ["curviate unibox consent acc_YOUR_ACCOUNT_ID --on"],
   },
   args: {

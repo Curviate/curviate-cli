@@ -347,6 +347,7 @@ const updateCmd = defineCommand({
     description: "Change a Contact's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs Automate.",
     risk: "write",
     rules: writeRules("The named fields change.", "Update again with the old values."),
+    errors: { RESOURCE_NOT_FOUND: "no Contact has this id." },
     examples: ["curviate contact update con_YOUR_CONTACT_ID --email jane@example.com", "curviate contact update con_YOUR_CONTACT_ID --clear email"],
   },
   args: {
@@ -371,7 +372,7 @@ const deleteCmd = defineCommand({
       budget_rows: [],
       retry: "Safe: a Contact already gone answers in `not_found`.",
       undo: "Cannot be undone. Import or create them again; Enrollment history does not come back.",
-      blast_radius: `Every Contact the filter matches, up to 100000. By id: ${BULK_MAX_IDS} per request.`,
+      blast_radius: `Every Contact the filter matches. By id: ${BULK_MAX_IDS} per request.`,
     },
     errors: LIST_ROLE,
     output: ["`deleted` (a count) and `not_found` (ids that did not exist)."],
@@ -402,6 +403,7 @@ const enrichCmd = defineCommand({
       undo: "Cannot be undone; a visit made stays seen.",
       blast_radius: `Up to ${BULK_MAX_IDS} Contacts per request, from one Account; a --list is every Contact in it.`,
     },
+    errors: { ACCOUNT_NOT_FOUND: "the Account is not in your Team." },
     output: ["`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found) and `skipped` with a reason each."],
     seeAlso: SEE,
     examples: ["curviate contact enrich con_A con_B --mode cache_only", "curviate contact enrich --list cl_YOUR_LIST_ID --account acc_YOUR_ACCOUNT_ID"],
@@ -413,7 +415,7 @@ const enrichCmd = defineCommand({
     list: { type: "string", description: "Enrich every Contact in this Contact list (cl_...) instead of naming ids." },
     account: { type: "string", description: "The Account that visits profiles (acc_...). Never defaulted." },
     mode: { type: "string", description: `${MODES.join(" | ")}. cache_only never visits LinkedIn.` },
-    "max-age": { type: "string", description: "Refresh what is older than this many seconds (up to 31536000, one year)." },
+    "max-age": { type: "string", description: "Refresh what is older than this many seconds (up to 31536000 seconds, one year)." },
   },
   run: online(runEnrich),
 });

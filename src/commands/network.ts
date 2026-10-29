@@ -136,7 +136,7 @@ const online = (fn: (c: Curviate, f: NetworkFlags) => Promise<void>) => async ({
 };
 
 const FILTERS = {
-  accounts: { type: "string" as const, description: "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account." },
+  accounts: { type: "string" as const, description: "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account." },
   query: { type: "string" as const, description: "Name or headline contains this text (3 to 100 characters)." },
   "include-removed": { type: "boolean" as const, description: "Also list Connections that have left (removed_at set)." },
 };
@@ -196,14 +196,14 @@ const resyncCmd = defineCommand({
   meta: {
     name: "resync",
     description:
-      "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per 24 hours; pages are read inside the Account's read window. " +
+      "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. " +
       "Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
     risk: "high",
     rules: {
       changes: "Opens a sync walk; Curviate reads the Account's Connections from LinkedIn over the next hours.",
       visible_to: "Nobody: reads only.",
       budget_rows: ["connections_sync"],
-      retry: "A second call within 24 hours answers cooldown; nothing new starts.",
+      retry: "A second call within the same day answers cooldown; nothing new starts.",
       undo: "Cannot be stopped once queued; the walk ends on its own.",
       blast_radius: "One Account, or with --all every Account you may operate.",
     },

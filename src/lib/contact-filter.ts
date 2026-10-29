@@ -26,9 +26,9 @@ export type FilterFlags = {
 };
 
 export const FILTER_ARGS = {
-  list: { type: "string" as const, description: "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all." },
+  list: { type: "string" as const, description: "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all." },
   "list-match": { type: "string" as const, description: "With --list: any (default, in at least one) or all (in every one)." },
-  "not-list": { type: "string" as const, description: "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20." },
+  "not-list": { type: "string" as const, description: "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list." },
   tag: { type: "string" as const, description: "Only Contacts with this Tag, any casing; repeatable: with any of them." },
   motion: { type: "string" as const, description: "Only Contacts with an Enrollment in this Motion (mot_...)." },
   status: { type: "string" as const, description: "With --motion: comma list of Enrollment statuses (queued, active, paused, finished, failed, skipped)." },
