@@ -101,6 +101,15 @@ import type { ErrorCode } from "@curviate/sdk";
  * `CONNECTION_IN_PROGRESS` / `ACCOUNT_ALREADY_LINKED` (the connect/reconnect
  * flow hitting a state it cannot resolve without a different input);
  * user_fixable (retry with `auth_method: "credentials"`), not retryable as-is.
+ *
+ * Note (dashboard v2 codes): `DO_NOT_CONTACT` and `CHAT_NOT_VISIBLE` -> 10
+ * (recipient: this person or thread cannot be written to from here);
+ * `SEAT_LENT` -> 11 (billing); `LINKEDIN_SIGN_IN_REQUIRED` -> 8 (the
+ * connection needs a LinkedIn sign-in); `TEAM_REQUIRED` -> 2 (pass --team);
+ * `EXPORT_IN_PROGRESS` / `EXPORT_NOT_READY` / `DELIVERY_IN_FLIGHT` -> 7 (wait
+ * and retry); `EXPORT_EXPIRED` / `EXPORT_REMOVED` / `REDELIVERY_EXPIRED` /
+ * `INCOMING_URL_RETIRED` -> 4 (gone); `NOTHING_TO_REDELIVER` /
+ * `WEBHOOK_DISABLED` / `WEBHOOK_TEMPLATE_INVALID` -> 2 (fix the input or state).
  */
 export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Make the shape explicit so TypeScript catches literal errors in the values
@@ -136,12 +145,20 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   ACCOUNT_REQUIRED: 2,
   DRAFT_NOT_PUBLISHABLE: 2,
   SCHEDULE_CONFLICT: 2,
+  TEAM_REQUIRED: 2,
+  NOTHING_TO_REDELIVER: 2,
+  WEBHOOK_DISABLED: 2,
+  WEBHOOK_TEMPLATE_INVALID: 2,
 
   // Not found (4)
   RESOURCE_NOT_FOUND: 4,
   ACCOUNT_NOT_FOUND: 4,
   SUBSCRIPTION_NOT_FOUND: 4,
   SEAT_NOT_FOUND: 4,
+  EXPORT_EXPIRED: 4,
+  EXPORT_REMOVED: 4,
+  REDELIVERY_EXPIRED: 4,
+  INCOMING_URL_RETIRED: 4,
 
   // Entitlement (5), three independent refusals, see the note above
   NO_ACTIVE_SEAT: 5,
@@ -160,6 +177,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // 7: a publish of this Draft is in flight (or being settled); read it again
   // in a few seconds. A busy state, not a malformed request.
   DRAFT_PUBLISHING: 7,
+  EXPORT_IN_PROGRESS: 7,
+  EXPORT_NOT_READY: 7,
+  DELIVERY_IN_FLIGHT: 7,
 
   // Account / connection state (8)
   ACCOUNT_RESTRICTED: 8,
@@ -179,6 +199,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // cannot land there, which is account/connection state. user_fixable, not
   // retryable as sent: pick a nearby country or allow fallback.
   CONNECTION_LOCATION_UNAVAILABLE: 8,
+  LINKEDIN_SIGN_IN_REQUIRED: 8,
 
   // Checkpoint flow (9)
   CHECKPOINT_NOT_FOUND: 9,
@@ -191,12 +212,15 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Messaging window / recipient (10)
   MESSAGE_WINDOW_EXPIRED: 10,
   RECIPIENT_UNREACHABLE: 10,
+  CHAT_NOT_VISIBLE: 10,
+  DO_NOT_CONTACT: 10,
 
   // Billing (11)
   PAYMENT_REQUIRED: 11,
   PAYMENT_FAILED: 11,
   SUBSCRIPTION_BUSY: 11,
   SEAT_CANCELLED: 11,
+  SEAT_LENT: 11,
 
   // Account-safety budget (13), see the note above for why this is not 6
   BUDGET_EXHAUSTED: 13,

@@ -19,6 +19,7 @@
 // and skipping loudly, exit 0, when that sibling is absent or its declared
 // package version doesn't match this package's pinned @curviate/sdk — never
 // silently, and never a false red on a standalone clone.
+import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +67,19 @@ function resolveSiblingSdkFixture() {
   const cliPkg = load(join(pkgRoot, "package.json"));
   const declared = cliPkg.dependencies?.["@curviate/sdk"];
   const sdkPkg = load(sdkPkgPath);
+  // Before a publish the CLI pins the SDK PR build by commit (`github:…#<sha>`): the sibling is
+  // the pinned build when its HEAD is that commit.
+  const gitPin = /^github:[^#]+#([0-9a-f]{40})$/.exec(declared ?? "");
+  if (gitPin) {
+    let head = null;
+    try {
+      head = execFileSync("git", ["-C", sdkRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    } catch {}
+    if (head !== gitPin[1]) {
+      return { path: null, reason: `sibling ../sdk is at ${head}, CLI declares ${declared} — not the pinned build` };
+    }
+    return { path: sdkFixturePath, reason: null };
+  }
   if (sdkPkg.version !== declared) {
     return {
       path: null,

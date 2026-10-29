@@ -252,6 +252,41 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
+  // Dashboard v2 surface: open until each group's commands land; the group
+  // deletes its rows. Empty before the next release.
+  // notification + account connect
+  "connectRequests.create", "connectRequests.get", "connectRequests.cancel",
+  "notifications.unreadCount", "notifications.update", "notifications.markAllRead",
+  // contact
+  "contacts.list", "contacts.get", "contacts.upsert", "contacts.update", "contacts.delete",
+  "contacts.deleteMany", "contacts.updateMany", "contacts.enrich", "contacts.export",
+  "contacts.imports.create", "contacts.imports.list", "contacts.imports.get", "contacts.imports.rows",
+  "contactLists.create", "contactLists.list", "contactLists.get", "contactLists.update", "contactLists.delete",
+  "tags.list", "tags.update", "tags.delete",
+  // network, unibox, analytics (+ analytics export, export, account overview/metrics)
+  "network.syncStatus", "network.resync", "network.connections.list",
+  "unibox.list", "unibox.get", "unibox.unreadCount", "unibox.refresh", "unibox.tagContact", "unibox.enroll",
+  "unibox.accounts.list", "unibox.accounts.update",
+  "analytics.activity", "analytics.export", "analytics.motions.list", "analytics.motions.get", "analytics.events.list",
+  "exports.create", "exports.get", "exports.download",
+  "accounts.metrics", "accounts.overview",
+  // team
+  "teams.list", "teams.create", "teams.getCurrent", "teams.updateCurrent", "teams.setLogo", "teams.removeLogo",
+  "teams.listMembers", "teams.updateMember", "teams.removeMember",
+  "teams.createInvites", "teams.listInvites", "teams.resendInvite", "teams.revokeInvite",
+  "billing.seats.lend", "billing.seats.return",
+  // tier
+  "tier.get",
+  // invoices
+  "billing.invoices.list", "billing.invoices.pdf",
+  // do-not-contact
+  "doNotContact.list", "doNotContact.get", "doNotContact.add", "doNotContact.update", "doNotContact.remove",
+  // webhooks, incoming, beta
+  "webhooks.variables", "webhooks.test", "webhooks.redeliver", "webhooks.rotateSecret",
+  "webhooks.deliveries.list", "webhooks.deliveries.get",
+  "incomingEvents.create", "incomingEvents.list", "incomingEvents.get", "incomingEvents.update",
+  "incomingEvents.delete", "incomingEvents.rotate", "incomingEvents.capture", "incomingEvents.arrivals",
+  "tenant.beta.get", "tenant.beta.set",
 ];
 
 // ---------------------------------------------------------------------------
@@ -267,45 +302,23 @@ async function buildSdkMethodSet(): Promise<Set<string>> {
   const { Curviate } = await import("@curviate/sdk");
   const client = new Curviate({ apiKey: "rdc_live_parity_test_stub" });
 
-  // Root namespaces live on the client directly.
-  const rootNamespaces: [string, object][] = [
-    ["accounts", client.accounts],
-    ["webhooks", client.webhooks],
-    ["drafts", client.drafts],
-    ["motions", client.motions],
-    ["enrollments", client.enrollments],
-    ["auth", client.auth],
-  ];
-
-  // Account-scoped namespaces live on client.account(id).
-  const scoped = client.account("stub_account_id");
-  const scopedNamespaces: [string, object][] = [
-    ["messaging", scoped.messaging],
-    ["users", scoped.users],
-    ["invites", scoped.invites],
-    ["search", scoped.search],
-    ["posts", scoped.posts],
-    ["salesNavigator", scoped.salesNavigator],
-    ["recruiter", scoped.recruiter],
-    ["jobs", scoped.jobs],
-    ["companies", scoped.companies],
-    ["comments", scoped.comments],
-    ["profile", scoped.profile],
-    ["groups", scoped.groups],
-    ["feed", scoped.feed],
-    ["notifications", scoped.notifications],
-    ["inboxes", scoped.inboxes],
-  ];
-
+  // Every namespace the SDK exposes, read off the instance, so a new namespace
+  // fails here until its commands land (a hand list missed whole namespaces).
   const methods = new Set<string>();
-  for (const [ns, instance] of [...rootNamespaces, ...scopedNamespaces]) {
-    const proto = Object.getPrototypeOf(instance) as Record<string, unknown>;
-    for (const name of Object.getOwnPropertyNames(proto)) {
-      if (name === "constructor") continue;
-      if (typeof (instance as Record<string, unknown>)[name] !== "function") continue;
-      methods.add(`${ns}.${name}`);
+  const walk = (prefix: string, obj: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === "config" || key === "ctx" || !value || typeof value !== "object") continue;
+      const proto = Object.getPrototypeOf(value) as Record<string, unknown>;
+      const ns = prefix ? `${prefix}.${key}` : key;
+      for (const name of Object.getOwnPropertyNames(proto)) {
+        if (name === "constructor") continue;
+        if (typeof (value as Record<string, unknown>)[name] === "function") methods.add(`${ns}.${name}`);
+      }
+      walk(ns, value as Record<string, unknown>);
     }
-  }
+  };
+  walk("", client as unknown as Record<string, unknown>);
+  walk("", client.account("stub_account_id") as unknown as Record<string, unknown>);
   return methods;
 }
 
