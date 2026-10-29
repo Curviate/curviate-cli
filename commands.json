@@ -400,7 +400,8 @@
         "curviate account list --json --fields items.account_id,items.status",
         "curviate account list --external-id usr_42"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -431,7 +432,8 @@
       "examples": [
         "curviate account get acc_YOUR_ACCOUNT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -456,7 +458,8 @@
       "examples": [
         "curviate account seats"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -624,6 +627,27 @@
         "--user-agent with --auth-method cookie or --cookies-file.",
         "--seat-id with --preview or --account-id, and when zero or several seats are free.",
         "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie."
+      ],
+      "risk": "high",
+      "rules": {
+        "changes": "Connects a LinkedIn account to a seat, signing in with the credentials or session cookies you pass; with --account-id, signs an existing Account in again.",
+        "visible_to": "Your Team gets the Account to operate; LinkedIn sees a sign-in from the chosen location.",
+        "budget_rows": [],
+        "retry": "Not safe for a new connect: each success takes another seat. Read `curviate account list` first.",
+        "undo": "`curviate account disconnect <account_id>` disconnects it and releases the seat.",
+        "blast_radius": "One LinkedIn account and one seat."
+      },
+      "errors": {
+        "NO_ACTIVE_SEAT": "no seat is free.",
+        "ACCOUNT_ALREADY_LINKED": "this LinkedIn account is already connected: reconnect it with --account-id.",
+        "CONNECTION_IN_PROGRESS": "a connect for this seat is still running.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn did not accept the credentials or cookies.",
+        "CONNECTION_LOCATION_REQUIRED": "a new connect named no location."
+      },
+      "seeAlso": [
+        "curviate account seats",
+        "curviate account connect-request create",
+        "curviate account checkpoint solve"
       ]
     },
     {
@@ -644,7 +668,7 @@
         "connect-request",
         "create"
       ],
-      "description": "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link must be opened within 15 minutes. AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
+      "description": "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link expires if it is not opened in time. AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
       "usageOnly": false,
       "args": [
         {
@@ -832,7 +856,18 @@
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks for the status of a connect that is still running; with --wait, keeps asking until it ends.",
+        "visible_to": "Your Team; a connect that finishes makes the Account available.",
+        "budget_rows": [],
+        "retry": "Safe: it only asks again.",
+        "undo": "Nothing to undo; a connected Account is released with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CONNECTION_IN_PROGRESS": "the connect has not ended yet."
+      }
     },
     {
       "path": [
@@ -912,7 +947,19 @@
         "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
         "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy --country DE"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the Account's metadata, connection location or own proxy.",
+        "visible_to": "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the Account the same.",
+        "undo": "Run it again with the previous values; metadata is replaced wholesale and the old map is not kept."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "CONNECTION_LOCATION_UNAVAILABLE": "no connection is free in that country."
+      }
     },
     {
       "path": [
@@ -1011,7 +1058,22 @@
       "examples": [
         "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends the verification code for the Account's pending checkpoint; on success the Account connects.",
+        "visible_to": "LinkedIn, and your Team once the Account is connected.",
+        "budget_rows": [],
+        "retry": "Read `curviate account get <account_id>` first: a wrong code counts against the attempts the checkpoint allows.",
+        "undo": "Nothing to undo; disconnect with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again.",
+        "CHECKPOINT_INVALID_CODE": "the code was not accepted.",
+        "CHECKPOINT_MAX_ATTEMPTS": "too many wrong codes: connect again.",
+        "CHECKPOINT_ALREADY_RESOLVED": "the checkpoint is already resolved."
+      }
     },
     {
       "path": [
@@ -1055,7 +1117,19 @@
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks LinkedIn whether the mobile-app approval has happened; with --wait, keeps asking until it ends.",
+        "visible_to": "LinkedIn, and your Team once the Account is connected.",
+        "budget_rows": [],
+        "retry": "Safe: it only asks again.",
+        "undo": "Nothing to undo; disconnect with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again."
+      }
     },
     {
       "path": [
@@ -1094,7 +1168,20 @@
         "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
         "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks LinkedIn to send the challenge notification again, or with --challenge picks the verification method.",
+        "visible_to": "The Account's owner, who receives a new code or push.",
+        "budget_rows": [],
+        "retry": "A repeat sends another notification; the answer's `resent` says whether one went out.",
+        "undo": "Cannot be undone: the notification is sent."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again.",
+        "CHECKPOINT_UNSUPPORTED": "this challenge cannot be re-sent."
+      }
     },
     {
       "path": [
@@ -4623,6 +4710,10 @@
         "retry": "Safe: a person already on the list answers with their existing entry.",
         "undo": "`curviate do-not-contact remove <id>` (Owners and Managers)."
       },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "RESOURCE_NOT_FOUND": "no Contact has this id."
+      },
       "seeAlso": [
         "curviate do-not-contact list"
       ]
@@ -4671,6 +4762,10 @@
         "budget_rows": [],
         "retry": "Safe: the same call leaves the same reason.",
         "undo": "Update again with the old reason."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "RESOURCE_NOT_FOUND": "no such entry."
       }
     },
     {
@@ -6400,7 +6495,18 @@
         "curviate team switch \"Acme (client)\" --profile work"
       ],
       "requires": [],
-      "risk": "write"
+      "risk": "write",
+      "rules": {
+        "changes": "Writes the Team to the local profile; later calls act in it unless --team or CURVIATE_TEAM says otherwise.",
+        "visible_to": "Nobody else: the profile stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same result every time.",
+        "undo": "Switch back with `curviate team switch <team>` and the previous Team."
+      },
+      "errors": {
+        "TEAM_ACCESS_DENIED": "this key works only in its own Team: run `curviate setup --team <team_id>` for a key that reaches the other one.",
+        "INVALID_REQUEST": "the Team is not one of yours, or several share the name."
+      }
     },
     {
       "path": [
@@ -6435,7 +6541,14 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "retry": "Two identical calls create two Teams."
+        "changes": "Creates a Team with you as its Owner, with no subscription or seat.",
+        "visible_to": "You alone, until you invite people (`curviate team invites create`).",
+        "budget_rows": [],
+        "retry": "Two identical calls create two Teams.",
+        "undo": "The CLI cannot delete a Team: leave it with `curviate team leave --team <team_id>` once another Owner holds it."
+      },
+      "errors": {
+        "INVALID_REQUEST": "the name is empty or longer than allowed."
       }
     },
     {
@@ -6476,8 +6589,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Renames the Team, or names the Owner whose email receives invoices.",
+        "visible_to": "Everyone in the Team; the billing Owner receives the invoices.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the Team the same.",
+        "undo": "Run it again with the previous values."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "BILLING_OWNER_REQUIRED": "--billing-owner must name an Owner of this Team."
       }
     },
     {
@@ -6549,6 +6670,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Sets the member's role in this Team.",
+        "visible_to": "The member and the Team's Owners.",
+        "budget_rows": [],
+        "retry": "Safe: the same role written again changes nothing.",
+        "undo": "Set the previous role."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
         "LAST_OWNER": "the Team must keep one Owner.",
@@ -6587,11 +6715,23 @@
       ],
       "requires": [],
       "risk": "high",
+      "rules": {
+        "changes": "The member leaves the Team; their Accounts here are disconnected and their key and connectors for it stop working.",
+        "visible_to": "The member, who loses access at once.",
+        "budget_rows": [],
+        "retry": "Safe: a member already gone has nothing left to remove.",
+        "undo": "Cannot be undone for their Accounts, which are disconnected; invite them again with `curviate team invites create`.",
+        "blast_radius": "One member and every Account they connected to this Team."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
         "LAST_OWNER": "the Team must keep one Owner.",
         "DEFAULT_TEAM_PROTECTED": "nobody is removed from their own default Team."
-      }
+      },
+      "seeAlso": [
+        "curviate team members",
+        "curviate team invites create"
+      ]
     },
     {
       "path": [
@@ -6619,10 +6759,21 @@
       ],
       "requires": [],
       "risk": "high",
+      "rules": {
+        "changes": "You leave the Team; your Accounts here are disconnected and your key for it stops working.",
+        "visible_to": "The Team's members, who no longer see you.",
+        "budget_rows": [],
+        "retry": "Safe: once you have left, a repeat is refused.",
+        "undo": "Cannot be undone for your Accounts, which are disconnected; an Owner can invite you again.",
+        "blast_radius": "You and every Account you connected to this Team."
+      },
       "errors": {
         "DEFAULT_TEAM_PROTECTED": "you can never leave your own default Team.",
         "LAST_OWNER": "the Team must keep one Owner."
-      }
+      },
+      "seeAlso": [
+        "curviate team members"
+      ]
     },
     {
       "path": [
@@ -6675,9 +6826,18 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Emails an invite, with a link, to each address.",
+        "visible_to": "Each invitee, by email.",
+        "budget_rows": [],
+        "retry": "A repeat for an invite still pending answers INVITE_ALREADY_PENDING and sends nothing new.",
+        "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
-        "ALREADY_MEMBER": "that person is already in the Team."
+        "ALREADY_MEMBER": "that person is already in the Team.",
+        "INVITE_ALREADY_PENDING": "that person has a pending invite.",
+        "INVITE_LIMIT_REACHED": "the Team has as many pending invites as it may."
       }
     },
     {
@@ -6752,8 +6912,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Sends the invite email again, with a fresh link that replaces the old one.",
+        "visible_to": "The invitee, by email.",
+        "budget_rows": [],
+        "retry": "Each call sends another email.",
+        "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
     {
@@ -6789,8 +6957,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "The invite's link stops working.",
+        "visible_to": "The invitee, whose link no longer opens.",
+        "budget_rows": [],
+        "retry": "A second call answers INVITE_NOT_PENDING and changes nothing.",
+        "undo": "`curviate team invites create <email>` sends a new invite."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
     {
@@ -6838,6 +7014,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Replaces the Team's logo with the PNG.",
+        "visible_to": "Everyone in the Team, in the dashboard.",
+        "budget_rows": [],
+        "retry": "Safe: the same file written again leaves the logo the same.",
+        "undo": "`curviate team logo remove`; the previous logo is not kept."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
       }
@@ -6869,6 +7052,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Removes the Team's logo.",
+        "visible_to": "Everyone in the Team, in the dashboard.",
+        "budget_rows": [],
+        "retry": "Safe: removing a logo that is not set changes nothing.",
+        "undo": "`curviate team logo set <file>` with the PNG; the removed logo is not kept."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
       }
@@ -6926,6 +7116,9 @@
       "requires": [],
       "risk": "write",
       "rules": {
+        "changes": "One unused paid seat moves to the Team named by --to, at no charge; it stays on this Team's invoice.",
+        "visible_to": "Both Teams: the receiving Team gains a seat to connect an Account to.",
+        "budget_rows": [],
         "retry": "Each call lends one more seat.",
         "undo": "`curviate team seats return <seat_id>`."
       },
@@ -6966,7 +7159,18 @@
         "curviate team seats return seat_01HZY3K8Q2"
       ],
       "requires": [],
-      "risk": "write"
+      "risk": "write",
+      "rules": {
+        "changes": "Ends the loan: the seat goes back to the Team that lent it.",
+        "visible_to": "Both Teams.",
+        "budget_rows": [],
+        "retry": "A second call finds no loan to end.",
+        "undo": "`curviate team seats lend --to <team_id> --seat <seat_id>` lends it again."
+      },
+      "errors": {
+        "SEAT_NOT_FOUND": "no seat has this id.",
+        "SEAT_NOT_EMPTY": "an Account still uses the seat: disconnect it first."
+      }
     },
     {
       "path": [
