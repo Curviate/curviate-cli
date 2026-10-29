@@ -111,7 +111,7 @@ const FIELDS = {
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create an incoming event: a private URL, printed once, that any tool posts to. Treat the URL like a password.",
+    description: "Create an incoming event: a private URL, printed once, that any tool posts to. Treat the URL like a password. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates the URL; posts to it move the matching Enrollments waiting for the event.",
@@ -181,7 +181,7 @@ const deleteCmd = defineCommand({
 const rotateCmd = defineCommand({
   meta: {
     name: "rotate",
-    description: "Replace the URL's secret: the new URL is printed once and the old one stops working at once.",
+    description: "Replace the URL's secret: the new URL is printed once and the old one stops working at once. Needs Automate.",
     risk: "high",
     rules: {
       changes: "A new URL; posts to the old one answer 404.",
@@ -202,7 +202,7 @@ const rotateCmd = defineCommand({
 const captureCmd = defineCommand({
   meta: {
     name: "capture",
-    description: "Capture the next post as the sample: its field paths (never its values' meaning) become the shape the match paths and Sequences are checked against.",
+    description: "Capture the next post as the sample: its field paths (never its values' meaning) become the shape the match paths and Sequences are checked against. Needs Automate.",
     risk: "write",
     rules: { changes: "The next post's shape replaces the captured sample.", visible_to: "Your Team.", budget_rows: [], retry: "Safe to repeat: it waits for the next post.", undo: "Capture again." },
     errors: EDITOR,

@@ -313,7 +313,7 @@ const markCmd = defineCommand({
 const tagCmd = defineCommand({
   meta: {
     name: "tag",
-    description: "Save the other person of a one-to-one chat as a Contact (or find the one you hold) and add tags, never removing any.",
+    description: "Save the other person of a one-to-one chat as a Contact (or find the one you hold) and add tags, never removing any. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates or finds the Contact and adds the tags.",
@@ -334,7 +334,7 @@ const enrollCmd = defineCommand({
     name: "enroll",
     description:
       "Save the other person of a one-to-one chat as a Contact and enroll them in a Motion through this chat's Account (one of its sending Accounts). " +
-      "A direct add: the rule that skips people you already chat with does not apply; every other rule does.",
+      "A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
     risk: "high",
     rules: {
       changes: "Creates the Enrollment; the Motion's Steps run for this person from this Account.",
@@ -359,7 +359,7 @@ const refreshCmd = defineCommand({
       "Queue a re-read of the newest chats (up to 100) of each Account the inbox poll covers, or of --accounts; it runs within minutes. " +
       "Once per Account every 2 minutes: a repeat answers cooldown with next_allowed_at. " +
       "An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. " +
-      "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day.",
+      "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Queues one read of each Account's newest chats.",

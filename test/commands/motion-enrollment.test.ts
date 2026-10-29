@@ -28,6 +28,12 @@ describe("enrollment get: history_truncated", () => {
     expect((await read(true)).stderr).toContain("history_truncated");
     expect((await read(false)).stderr).not.toContain("history_truncated");
   });
+
+  it("prints the Enrollment's saved values", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    const r = await wire(["enrollment", "get", "enr_1"], () => ({ body: { object: "enrollment", id: "enr_1", history: [], values: { meeting_url: "https://cal.example/x" } } }));
+    expect(r.stdout).toContain("https://cal.example/x");
+  });
 });
 
 it("motion list --sort outside updated|activity exits 2 with no request", async () => {

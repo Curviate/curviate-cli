@@ -477,7 +477,7 @@ const draftCreateCommand = defineCommand({
     name: "create",
     description:
       "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. " +
-      "Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft.",
+      "Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft. Needs Automate.",
     examples: [
       "curviate core draft create \"Three things we learned shipping our first agent integration.\"",
       "curviate core draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -501,7 +501,7 @@ const draftUpdateCommand = defineCommand({
     name: "update",
     description:
       "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. " +
-      "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds.",
+      "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs Automate.",
     examples: [
       "curviate core draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
       "curviate core draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -542,7 +542,7 @@ const draftPublishCommand = defineCommand({
     name: "publish",
     description:
       "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
-      "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying.",
+      "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying. Needs Automate.",
     examples: ["curviate core draft publish drf_YOUR_DRAFT_ID"],
   },
   args: {
