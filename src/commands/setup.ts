@@ -694,6 +694,15 @@ export const setupCommand = defineCommand({
   meta: {
     name: "setup",
     description: DESCRIPTIONS.setup,
+    risk: "write",
+    rules: {
+      changes: "Opens the dashboard, exchanges the code it shows for an API key and saves it as a local profile.",
+      visible_to: "Your workspace lists the new API key; nothing reaches LinkedIn.",
+      budget_rows: [],
+      retry: "Each run creates another API key; revoke the unused ones in the dashboard.",
+      undo: "Revoke the key in the dashboard and remove the profile with `curviate config reset --profile <name> --yes`.",
+    },
+    errors: { INVALID_REQUEST: "the code was not accepted or has expired: run `curviate setup` again for a fresh one." },
     examples: [
       "curviate setup",
       "curviate setup --json --team tnt_01HZY3K8Q2",

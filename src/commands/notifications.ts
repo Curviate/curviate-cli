@@ -136,7 +136,7 @@ const listCmd = defineCommand({
     name: "list",
     description:
       "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. " +
-      "--unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for 90 days.",
+      "--unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for a limited time.",
     risk: "read",
     output: ["`items`, a `cursor` for the next page, and `unread_count`, the Team-wide unread badge, not a count of the items shown."],
     examples: ["curviate notification list", "curviate notification list --unread", "curviate notification list --archived --limit 50"],
@@ -185,7 +185,7 @@ const readCmd = defineCommand({
 const archiveCmd = defineCommand({
   meta: {
     name: "archive",
-    description: "Archive one or more of your notifications: marked read and moved out of `list` into `list --archived`. A notification that is not yours is reported and the rest still apply.",
+    description: "Archive one or more of your notifications: marked read and moved out of `curviate notification list` into `curviate notification list --archived`. A notification that is not yours is reported and the rest still apply.",
     risk: "write",
     rules: markRules("The notifications are archived (and marked read).", "`curviate notification unarchive <id>`; the read mark stays."),
     errors: { RESOURCE_NOT_FOUND: "an id is not one of your notifications (reported, exit 4, the others still apply)." },
@@ -226,6 +226,7 @@ const readAllCmd = defineCommand({
       undo: "Cannot be undone: a notification cannot be marked unread.",
       blast_radius: "All of your unread notifications in this Team up to the instant: `marked` in the answer says how many.",
     },
+    errors: { INVALID_REQUEST: "--to is not an ISO 8601 instant with an offset." },
     output: ["`before` (the instant used, UTC), `marked`, and the `unread_count` that remains."],
     seeAlso: SEE,
     examples: ["curviate notification read-all", "curviate notification read-all --to 2026-10-08T10:00:00Z"],

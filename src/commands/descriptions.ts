@@ -19,7 +19,7 @@ export const DESCRIPTIONS = {
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
   contact:
     "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. " +
-    "Subgroups: `contact lists` (Contact lists, including combining lists), `contact tags`, `contact imports`. " +
+    "Subgroups: `curviate contact lists` (Contact lists, including combining lists), `curviate contact tags`, `curviate contact imports`. " +
     "Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
   "do-not-contact":
     "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove. " +

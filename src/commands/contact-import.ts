@@ -254,7 +254,7 @@ const importCmd = defineCommand({
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe to repeat: Contacts converge, a second run reports them `unchanged`. A run stopped part way: read `curviate contact imports list`, then import the rest.",
-      undo: "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `contact tags remove` and `contact lists remove`.",
+      undo: "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `curviate contact tags remove` and `curviate contact lists remove`.",
     },
     errors: {
       CONTACT_LIMIT_REACHED: "the Team is at its Contact cap; rows past it are skipped.",

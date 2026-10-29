@@ -108,7 +108,7 @@ const listsGet = defineCommand({
 const listsCreate = defineCommand({
   meta: {
     name: "create",
-    description: "Create an empty Contact list. Fill it with `contact lists add`, `contact import --list`, or build it from other lists with `contact lists combine`. Needs Automate.",
+    description: "Create an empty Contact list. Fill it with `curviate contact lists add`, `curviate contact import --list`, or build it from other lists with `curviate contact lists combine`. Needs Automate.",
     risk: "write",
     rules: {
       changes: "A new, empty Contact list.",
@@ -247,7 +247,7 @@ const membership = (verb: "add" | "remove") =>
     meta: {
       name: verb,
       description:
-        `${verb === "add" ? "Add Contacts to" : "Remove Contacts from"} a Contact list. Name the Contacts by id, or with filter flags (the same as \`contact list\`) to act on every match. ` +
+        `${verb === "add" ? "Add Contacts to" : "Remove Contacts from"} a Contact list. Name the Contacts by id, or with filter flags (the same as \`curviate contact list\`) to act on every match. ` +
         "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       risk: "high",
       rules: {
@@ -271,7 +271,7 @@ const membership = (verb: "add" | "remove") =>
       listId: { type: "positional", description: "Contact list id (cl_...)." },
       ...IDS,
       ...Object.fromEntries(Object.entries(FILTER_ARGS).filter(([k]) => k !== "list")),
-      "from-list": { type: "string", description: "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20." },
+      "from-list": { type: "string", description: "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list." },
     },
     run: online(async (c, f) => {
       const listId = named("the list id", (f._ ?? [])[0]);
@@ -364,7 +364,7 @@ const tagging = (verb: "add" | "remove") =>
     meta: {
       name: verb,
       description:
-        `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Contacts, named by id or with filter flags (the same as \`contact list\`) to act on every match. ` +
+        `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Contacts, named by id or with filter flags (the same as \`curviate contact list\`) to act on every match. ` +
         "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       risk: "high",
       rules: {

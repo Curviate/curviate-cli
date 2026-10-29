@@ -134,7 +134,7 @@ const CREATOR = { INSUFFICIENT_ROLE: "only the webhook's creator can do this." }
 export const webhookLintCommand = defineCommand({
   meta: {
     name: "lint",
-    description: "Check a webhook body template offline, every finding at once, as `webhook create` would answer it. Offline: no API call.",
+    description: "Check a webhook body template offline, every finding at once, as `curviate webhook create` would answer it. Offline: no API call.",
     risk: "read",
     rules: { notes: ["Offline: no API call."] },
     output: ["Findings on stderr, one per line: <file>:<line>:<col> error <code>: <rule>. <hint> -> <docs_url>. With --json (or piped) stdout carries the WEBHOOK_TEMPLATE_INVALID shape, or {\"errors\": []}. Exit 2 on any finding."],
@@ -198,11 +198,11 @@ export const webhookRotateCommand = defineCommand({
   meta: {
     name: "rotate",
     description:
-      "Issue a new signing secret, printed once. For 24 hours every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that window.",
+      "Issue a new signing secret, printed once. For a grace period every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that period.",
     risk: "high",
     rules: {
-      changes: "A new signing secret; the old one stops signing after 24 hours (at once on a second rotation inside the window).",
-      visible_to: "Your endpoint, which must verify with the new secret within 24 hours.",
+      changes: "A new signing secret; the old one stops signing when the grace period ends (at once on a second rotation inside it).",
+      visible_to: "Your endpoint, which must verify with the new secret before the grace period ends.",
       budget_rows: [],
       retry: "A second rotation drops the oldest secret at once.",
       undo: "Cannot be undone: rotate again for another new secret.",

@@ -35,7 +35,18 @@
         "curviate setup --json --team tnt_01HZY3K8Q2",
         "curviate setup --code -"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Opens the dashboard, exchanges the code it shows for an API key and saves it as a local profile.",
+        "visible_to": "Your workspace lists the new API key; nothing reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "Each run creates another API key; revoke the unused ones in the dashboard.",
+        "undo": "Revoke the key in the dashboard and remove the profile with `curviate config reset --profile <name> --yes`."
+      },
+      "errors": {
+        "INVALID_REQUEST": "the code was not accepted or has expired: run `curviate setup` again for a fresh one."
+      }
     },
     {
       "path": [
@@ -56,7 +67,8 @@
         "curviate doctor",
         "curviate doctor --json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -91,7 +103,18 @@
         "curviate login",
         "curviate login --api-key - --profile work"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Saves the API key to a local profile; no request is made.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same key saved again leaves the profile the same.",
+        "undo": "`curviate config reset --profile <name> --yes` removes the profile."
+      },
+      "errors": {
+        "INVALID_REQUEST": "the key is empty or the base URL is not valid."
+      }
     },
     {
       "path": [
@@ -118,7 +141,8 @@
       "examples": [
         "curviate config list"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -134,7 +158,8 @@
       "examples": [
         "curviate config path"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -156,7 +181,18 @@
       "examples": [
         "curviate config use work"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Makes the named profile the active one in the config file.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same result every time.",
+        "undo": "Run it again with the previous profile name (`curviate config list`)."
+      },
+      "errors": {
+        "INVALID_REQUEST": "no profile has that name."
+      }
     },
     {
       "path": [
@@ -183,7 +219,18 @@
       "examples": [
         "curviate config rename default personal"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Renames a profile in the config file; its key is unchanged.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "A second call fails: the old name is gone.",
+        "undo": "Rename it back."
+      },
+      "errors": {
+        "INVALID_REQUEST": "the old name does not exist, or the new one is taken."
+      }
     },
     {
       "path": [
@@ -206,7 +253,18 @@
       "examples": [
         "curviate config set-account acc_YOUR_ACCOUNT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sets the Account that commands use when you pass no --account.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same result every time.",
+        "undo": "Run it again with the previous Account id."
+      },
+      "errors": {
+        "INVALID_REQUEST": "there is no config file or no such profile."
+      }
     },
     {
       "path": [
@@ -237,7 +295,18 @@
         "curviate config set-base-url https://api.curviate.com",
         "curviate config set-base-url --reset"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sets or clears the API base URL on a profile.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same result every time.",
+        "undo": "Run it again with the previous URL, or --reset."
+      },
+      "errors": {
+        "INVALID_REQUEST": "there is no config file, no such profile, or the URL is not valid."
+      }
     },
     {
       "path": [
@@ -266,7 +335,23 @@
         "curviate config reset --profile work --yes",
         "curviate config reset --yes"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes the config file, or with --profile one profile, with the API keys stored there.",
+        "visible_to": "Nobody else: the file stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: with nothing left to remove it changes nothing.",
+        "undo": "Cannot be undone: a removed key is gone; create a new one with `curviate setup`.",
+        "blast_radius": "Every profile in the file, or the one named by --profile."
+      },
+      "errors": {
+        "INVALID_REQUEST": "no profile has that name."
+      },
+      "seeAlso": [
+        "curviate config list",
+        "curviate setup"
+      ]
     },
     {
       "path": [
@@ -315,7 +400,8 @@
         "curviate account list --json --fields items.account_id,items.status",
         "curviate account list --external-id usr_42"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -346,7 +432,8 @@
       "examples": [
         "curviate account get acc_YOUR_ACCOUNT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -371,7 +458,8 @@
       "examples": [
         "curviate account seats"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -539,6 +627,27 @@
         "--user-agent with --auth-method cookie or --cookies-file.",
         "--seat-id with --preview or --account-id, and when zero or several seats are free.",
         "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie."
+      ],
+      "risk": "high",
+      "rules": {
+        "changes": "Connects a LinkedIn account to a seat, signing in with the credentials or session cookies you pass; with --account-id, signs an existing Account in again.",
+        "visible_to": "Your Team gets the Account to operate; LinkedIn sees a sign-in from the chosen location.",
+        "budget_rows": [],
+        "retry": "Not safe for a new connect: each success takes another seat. Read `curviate account list` first.",
+        "undo": "`curviate account disconnect <account_id>` disconnects it and releases the seat.",
+        "blast_radius": "One LinkedIn account and one seat."
+      },
+      "errors": {
+        "NO_ACTIVE_SEAT": "no seat is free.",
+        "ACCOUNT_ALREADY_LINKED": "this LinkedIn account is already connected: reconnect it with --account-id.",
+        "CONNECTION_IN_PROGRESS": "a connect for this seat is still running.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn did not accept the credentials or cookies.",
+        "CONNECTION_LOCATION_REQUIRED": "a new connect named no location."
+      },
+      "seeAlso": [
+        "curviate account seats",
+        "curviate account connect-request create",
+        "curviate account checkpoint solve"
       ]
     },
     {
@@ -559,7 +668,7 @@
         "connect-request",
         "create"
       ],
-      "description": "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link must be opened within 15 minutes. AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
+      "description": "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link expires if it is not opened in time. AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
       "usageOnly": false,
       "args": [
         {
@@ -747,7 +856,18 @@
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
         "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks for the status of a connect that is still running; with --wait, keeps asking until it ends.",
+        "visible_to": "Your Team; a connect that finishes makes the Account available.",
+        "budget_rows": [],
+        "retry": "Safe: it only asks again.",
+        "undo": "Nothing to undo; a connected Account is released with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CONNECTION_IN_PROGRESS": "the connect has not ended yet."
+      }
     },
     {
       "path": [
@@ -827,7 +947,19 @@
         "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
         "curviate account update acc_YOUR_ACCOUNT_ID --clear-proxy --country DE"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the Account's metadata, connection location or own proxy.",
+        "visible_to": "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the Account the same.",
+        "undo": "Run it again with the previous values; metadata is replaced wholesale and the old map is not kept."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "CONNECTION_LOCATION_UNAVAILABLE": "no connection is free in that country."
+      }
     },
     {
       "path": [
@@ -926,7 +1058,22 @@
       "examples": [
         "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends the verification code for the Account's pending checkpoint; on success the Account connects.",
+        "visible_to": "LinkedIn, and your Team once the Account is connected.",
+        "budget_rows": [],
+        "retry": "Read `curviate account get <account_id>` first: a wrong code counts against the attempts the checkpoint allows.",
+        "undo": "Nothing to undo; disconnect with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again.",
+        "CHECKPOINT_INVALID_CODE": "the code was not accepted.",
+        "CHECKPOINT_MAX_ATTEMPTS": "too many wrong codes: connect again.",
+        "CHECKPOINT_ALREADY_RESOLVED": "the checkpoint is already resolved."
+      }
     },
     {
       "path": [
@@ -970,7 +1117,19 @@
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
         "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks LinkedIn whether the mobile-app approval has happened; with --wait, keeps asking until it ends.",
+        "visible_to": "LinkedIn, and your Team once the Account is connected.",
+        "budget_rows": [],
+        "retry": "Safe: it only asks again.",
+        "undo": "Nothing to undo; disconnect with `curviate account disconnect <account_id>`."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again."
+      }
     },
     {
       "path": [
@@ -1009,7 +1168,20 @@
         "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
         "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Asks LinkedIn to send the challenge notification again, or with --challenge picks the verification method.",
+        "visible_to": "The Account's owner, who receives a new code or push.",
+        "budget_rows": [],
+        "retry": "A repeat sends another notification; the answer's `resent` says whether one went out.",
+        "undo": "Cannot be undone: the notification is sent."
+      },
+      "errors": {
+        "CHECKPOINT_NOT_FOUND": "the Account has no pending checkpoint.",
+        "CHECKPOINT_EXPIRED": "the checkpoint expired: connect again.",
+        "CHECKPOINT_UNSUPPORTED": "this challenge cannot be re-sent."
+      }
     },
     {
       "path": [
@@ -2596,7 +2768,7 @@
       "path": [
         "contact"
       ],
-      "description": "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. Subgroups: `contact lists` (Contact lists, including combining lists), `contact tags`, `contact imports`. Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
+      "description": "Contacts: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. Subgroups: `curviate contact lists` (Contact lists, including combining lists), `curviate contact tags`, `curviate contact imports`. Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2614,7 +2786,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -2624,7 +2796,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -2945,6 +3117,9 @@
         "budget_rows": [],
         "retry": "Safe: the same call leaves the same Contact.",
         "undo": "Update again with the old values."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no Contact has this id."
       }
     },
     {
@@ -2970,7 +3145,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -2980,7 +3155,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3064,7 +3239,7 @@
         "budget_rows": [],
         "retry": "Safe: a Contact already gone answers in `not_found`.",
         "undo": "Cannot be undone. Import or create them again; Enrollment history does not come back.",
-        "blast_radius": "Every Contact the filter matches, up to 100000. By id: 1000 per request."
+        "blast_radius": "Every Contact the filter matches. By id: 1000 per request."
       },
       "output": [
         "`deleted` (a count) and `not_found` (ids that did not exist)."
@@ -3158,7 +3333,7 @@
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "Safe to repeat: Contacts converge, a second run reports them `unchanged`. A run stopped part way: read `curviate contact imports list`, then import the rest.",
-        "undo": "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `contact tags remove` and `contact lists remove`."
+        "undo": "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `curviate contact tags remove` and `curviate contact lists remove`."
       },
       "output": [
         "One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --no-wait: the imports' ids and statuses only."
@@ -3189,7 +3364,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -3199,7 +3374,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3328,7 +3503,7 @@
         {
           "name": "max-age",
           "type": "string",
-          "description": "Refresh what is older than this many seconds (up to 31536000, one year)."
+          "description": "Refresh what is older than this many seconds (up to 31536000 seconds, one year)."
         }
       ],
       "globals": [
@@ -3362,6 +3537,9 @@
       "output": [
         "`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found) and `skipped` with a reason each."
       ],
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team."
+      },
       "seeAlso": [
         "curviate contact list",
         "curviate contact get"
@@ -3457,7 +3635,7 @@
         "lists",
         "create"
       ],
-      "description": "Create an empty Contact list. Fill it with `contact lists add`, `contact import --list`, or build it from other lists with `contact lists combine`. Needs Automate.",
+      "description": "Create an empty Contact list. Fill it with `curviate contact lists add`, `curviate contact import --list`, or build it from other lists with `curviate contact lists combine`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3517,7 +3695,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -3527,7 +3705,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3735,7 +3913,7 @@
         "lists",
         "add"
       ],
-      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3763,7 +3941,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3823,7 +4001,7 @@
         {
           "name": "from-list",
           "type": "string",
-          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -3871,7 +4049,7 @@
         "lists",
         "remove"
       ],
-      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3899,7 +4077,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -3959,7 +4137,7 @@
         {
           "name": "from-list",
           "type": "string",
-          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -4149,7 +4327,7 @@
         "tags",
         "add"
       ],
-      "description": "Put a Tag on Contacts, named by id or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Put a Tag on Contacts, named by id or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4172,7 +4350,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -4182,7 +4360,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -4285,7 +4463,7 @@
         "tags",
         "remove"
       ],
-      "description": "Take a Tag off Contacts, named by id or with filter flags (the same as `contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Take a Tag off Contacts, named by id or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4308,7 +4486,7 @@
         {
           "name": "list",
           "type": "string",
-          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list of up to 20. In any of them unless --list-match all."
+          "description": "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all."
         },
         {
           "name": "list-match",
@@ -4318,7 +4496,7 @@
         {
           "name": "not-list",
           "type": "string",
-          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list of up to 20."
+          "description": "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list."
         },
         {
           "name": "tag",
@@ -4634,6 +4812,10 @@
         "retry": "Safe: a person already on the list answers with their existing entry.",
         "undo": "`curviate do-not-contact remove <id>` (Owners and Managers)."
       },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "RESOURCE_NOT_FOUND": "no Contact has this id."
+      },
       "seeAlso": [
         "curviate do-not-contact list"
       ]
@@ -4682,6 +4864,10 @@
         "budget_rows": [],
         "retry": "Safe: the same call leaves the same reason.",
         "undo": "Update again with the old reason."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "RESOURCE_NOT_FOUND": "no such entry."
       }
     },
     {
@@ -5172,7 +5358,7 @@
         "unibox",
         "refresh"
       ],
-      "description": "Queue a re-read of the newest chats (up to 100) of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account every 2 minutes: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
+      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5206,7 +5392,7 @@
         "budget_rows": [
           "inbox_sync"
         ],
-        "retry": "A repeat within 2 minutes answers cooldown; nothing new is queued.",
+        "retry": "A repeat inside the cooldown answers cooldown; nothing new is queued.",
         "undo": "Nothing to undo: a refresh only reads."
       },
       "errors": {
@@ -5244,7 +5430,7 @@
         "unibox",
         "consent"
       ],
-      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them within 15 minutes.",
+      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them shortly after.",
       "usageOnly": false,
       "args": [
         {
@@ -5294,7 +5480,11 @@
       "errors": {
         "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
         "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
-      }
+      },
+      "seeAlso": [
+        "curviate unibox refresh",
+        "curviate unibox list"
+      ]
     },
     {
       "path": [
@@ -5318,7 +5508,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         },
         {
           "name": "query",
@@ -5373,7 +5563,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         }
       ],
       "globals": [
@@ -5406,7 +5596,7 @@
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         },
         {
           "name": "query",
@@ -5462,7 +5652,7 @@
         "network",
         "resync"
       ],
-      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per 24 hours; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
+      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5502,7 +5692,7 @@
         "budget_rows": [
           "connections_sync"
         ],
-        "retry": "A second call within 24 hours answers cooldown; nothing new starts.",
+        "retry": "A second call within the same day answers cooldown; nothing new starts.",
         "undo": "Cannot be stopped once queued; the walk ends on its own.",
         "blast_radius": "One Account, or with --all every Account you may operate."
       },
@@ -5834,7 +6024,7 @@
         "notification",
         "list"
       ],
-      "description": "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. --unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for 90 days.",
+      "description": "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. --unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for a limited time.",
       "usageOnly": false,
       "args": [
         {
@@ -5994,6 +6184,9 @@
       "output": [
         "`before` (the instant used, UTC), `marked`, and the `unread_count` that remains."
       ],
+      "errors": {
+        "INVALID_REQUEST": "--to is not an ISO 8601 instant with an offset."
+      },
       "seeAlso": [
         "curviate notification list",
         "curviate core notification"
@@ -6004,7 +6197,7 @@
         "notification",
         "archive"
       ],
-      "description": "Archive one or more of your notifications: marked read and moved out of `list` into `list --archived`. A notification that is not yours is reported and the rest still apply.",
+      "description": "Archive one or more of your notifications: marked read and moved out of `curviate notification list` into `curviate notification list --archived`. A notification that is not yours is reported and the rest still apply.",
       "usageOnly": false,
       "args": [
         {
@@ -6183,7 +6376,7 @@
       ],
       "errors": {
         "EXPORT_NOT_READY": "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
-        "EXPORT_EXPIRED": "the file expired 24 hours after it was ready: run the export again.",
+        "EXPORT_EXPIRED": "the file has expired: run the export again.",
         "EXPORT_REMOVED": "the export was removed because a Contact was deleted: run it again."
       }
     },
@@ -6404,7 +6597,18 @@
         "curviate team switch \"Acme (client)\" --profile work"
       ],
       "requires": [],
-      "risk": "write"
+      "risk": "write",
+      "rules": {
+        "changes": "Writes the Team to the local profile; later calls act in it unless --team or CURVIATE_TEAM says otherwise.",
+        "visible_to": "Nobody else: the profile stays on this machine.",
+        "budget_rows": [],
+        "retry": "Safe: the same result every time.",
+        "undo": "Switch back with `curviate team switch <team>` and the previous Team."
+      },
+      "errors": {
+        "TEAM_ACCESS_DENIED": "this key works only in its own Team: run `curviate setup --team <team_id>` for a key that reaches the other one.",
+        "INVALID_REQUEST": "the Team is not one of yours, or several share the name."
+      }
     },
     {
       "path": [
@@ -6439,7 +6643,14 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "retry": "Two identical calls create two Teams."
+        "changes": "Creates a Team with you as its Owner, with no subscription or seat.",
+        "visible_to": "You alone, until you invite people (`curviate team invites create`).",
+        "budget_rows": [],
+        "retry": "Two identical calls create two Teams.",
+        "undo": "The CLI cannot delete a Team: leave it with `curviate team leave --team <team_id>` once another Owner holds it."
+      },
+      "errors": {
+        "INVALID_REQUEST": "the name is empty or longer than allowed."
       }
     },
     {
@@ -6480,8 +6691,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Renames the Team, or names the Owner whose email receives invoices.",
+        "visible_to": "Everyone in the Team; the billing Owner receives the invoices.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the Team the same.",
+        "undo": "Run it again with the previous values."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "BILLING_OWNER_REQUIRED": "--billing-owner must name an Owner of this Team."
       }
     },
     {
@@ -6553,6 +6772,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Sets the member's role in this Team.",
+        "visible_to": "The member and the Team's Owners.",
+        "budget_rows": [],
+        "retry": "Safe: the same role written again changes nothing.",
+        "undo": "Set the previous role."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
         "LAST_OWNER": "the Team must keep one Owner.",
@@ -6591,11 +6817,23 @@
       ],
       "requires": [],
       "risk": "high",
+      "rules": {
+        "changes": "The member leaves the Team; their Accounts here are disconnected and their key and connectors for it stop working.",
+        "visible_to": "The member, who loses access at once.",
+        "budget_rows": [],
+        "retry": "Safe: a member already gone has nothing left to remove.",
+        "undo": "Cannot be undone for their Accounts, which are disconnected; invite them again with `curviate team invites create`.",
+        "blast_radius": "One member and every Account they connected to this Team."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
         "LAST_OWNER": "the Team must keep one Owner.",
         "DEFAULT_TEAM_PROTECTED": "nobody is removed from their own default Team."
-      }
+      },
+      "seeAlso": [
+        "curviate team members",
+        "curviate team invites create"
+      ]
     },
     {
       "path": [
@@ -6623,10 +6861,21 @@
       ],
       "requires": [],
       "risk": "high",
+      "rules": {
+        "changes": "You leave the Team; your Accounts here are disconnected and your key for it stops working.",
+        "visible_to": "The Team's members, who no longer see you.",
+        "budget_rows": [],
+        "retry": "Safe: once you have left, a repeat is refused.",
+        "undo": "Cannot be undone for your Accounts, which are disconnected; an Owner can invite you again.",
+        "blast_radius": "You and every Account you connected to this Team."
+      },
       "errors": {
         "DEFAULT_TEAM_PROTECTED": "you can never leave your own default Team.",
         "LAST_OWNER": "the Team must keep one Owner."
-      }
+      },
+      "seeAlso": [
+        "curviate team members"
+      ]
     },
     {
       "path": [
@@ -6646,7 +6895,7 @@
         "invites",
         "create"
       ],
-      "description": "Invite 1 to 20 people by email, comma-separated, each with --role (default member). Owners only.",
+      "description": "Invite people by email, comma-separated, each with --role (default member). Owners only.",
       "usageOnly": false,
       "args": [
         {
@@ -6679,9 +6928,18 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Emails an invite, with a link, to each address.",
+        "visible_to": "Each invitee, by email.",
+        "budget_rows": [],
+        "retry": "A repeat for an invite still pending answers INVITE_ALREADY_PENDING and sends nothing new.",
+        "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
-        "ALREADY_MEMBER": "that person is already in the Team."
+        "ALREADY_MEMBER": "that person is already in the Team.",
+        "INVITE_ALREADY_PENDING": "that person has a pending invite.",
+        "INVITE_LIMIT_REACHED": "the Team has as many pending invites as it may."
       }
     },
     {
@@ -6756,8 +7014,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Sends the invite email again, with a fresh link that replaces the old one.",
+        "visible_to": "The invitee, by email.",
+        "budget_rows": [],
+        "retry": "Each call sends another email.",
+        "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
     {
@@ -6793,8 +7059,16 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "The invite's link stops working.",
+        "visible_to": "The invitee, whose link no longer opens.",
+        "budget_rows": [],
+        "retry": "A second call answers INVITE_NOT_PENDING and changes nothing.",
+        "undo": "`curviate team invites create <email>` sends a new invite."
+      },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
     {
@@ -6815,13 +7089,13 @@
         "logo",
         "set"
       ],
-      "description": "Set the Team's logo from a PNG file of at most 1 MB; replaces the previous one. Owners only.",
+      "description": "Set the Team's logo from a PNG file; replaces the previous one. Owners only.",
       "usageOnly": false,
       "args": [
         {
           "name": "file",
           "type": "positional",
-          "description": "Path to a PNG, at most 1 MB."
+          "description": "Path to a PNG."
         }
       ],
       "globals": [
@@ -6842,6 +7116,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Replaces the Team's logo with the PNG.",
+        "visible_to": "Everyone in the Team, in the dashboard.",
+        "budget_rows": [],
+        "retry": "Safe: the same file written again leaves the logo the same.",
+        "undo": "`curviate team logo remove`; the previous logo is not kept."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
       }
@@ -6873,6 +7154,13 @@
       ],
       "requires": [],
       "risk": "write",
+      "rules": {
+        "changes": "Removes the Team's logo.",
+        "visible_to": "Everyone in the Team, in the dashboard.",
+        "budget_rows": [],
+        "retry": "Safe: removing a logo that is not set changes nothing.",
+        "undo": "`curviate team logo set <file>` with the PNG; the removed logo is not kept."
+      },
       "errors": {
         "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
       }
@@ -6930,6 +7218,9 @@
       "requires": [],
       "risk": "write",
       "rules": {
+        "changes": "One unused paid seat moves to the Team named by --to, at no charge; it stays on this Team's invoice.",
+        "visible_to": "Both Teams: the receiving Team gains a seat to connect an Account to.",
+        "budget_rows": [],
         "retry": "Each call lends one more seat.",
         "undo": "`curviate team seats return <seat_id>`."
       },
@@ -6970,7 +7261,18 @@
         "curviate team seats return seat_01HZY3K8Q2"
       ],
       "requires": [],
-      "risk": "write"
+      "risk": "write",
+      "rules": {
+        "changes": "Ends the loan: the seat goes back to the Team that lent it.",
+        "visible_to": "Both Teams.",
+        "budget_rows": [],
+        "retry": "A second call finds no loan to end.",
+        "undo": "`curviate team seats lend --to <team_id> --seat <seat_id>` lends it again."
+      },
+      "errors": {
+        "SEAT_NOT_FOUND": "no seat has this id.",
+        "SEAT_NOT_EMPTY": "an Account still uses the seat: disconnect it first."
+      }
     },
     {
       "path": [
@@ -7519,7 +7821,7 @@
         {
           "name": "name",
           "type": "string",
-          "description": "Human-readable name (1-100 chars)."
+          "description": "Human-readable name (up to 100 characters)."
         },
         {
           "name": "enabled",
@@ -7556,7 +7858,18 @@
         "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Registers a webhook endpoint: Curviate delivers the subscribed events to its URL.",
+        "visible_to": "Your endpoint, which receives event payloads. Nothing reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "Not safe: each call registers another webhook, with its own id and secret.",
+        "undo": "`curviate webhook delete <webhook_id>`."
+      },
+      "errors": {
+        "WEBHOOK_TEMPLATE_INVALID": "the body template is invalid: `curviate webhook lint` names every finding."
+      }
     },
     {
       "path": [
@@ -7586,7 +7899,8 @@
       "examples": [
         "curviate webhook list"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7611,7 +7925,8 @@
       "examples": [
         "curviate webhook events"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7642,7 +7957,8 @@
       "examples": [
         "curviate webhook get wh_YOUR_WEBHOOK_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -7721,7 +8037,19 @@
         "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
         "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the fields you pass on the webhook; its source cannot change.",
+        "visible_to": "Your endpoint, which receives the payloads the webhook now selects.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the webhook the same.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no webhook with this id.",
+        "WEBHOOK_TEMPLATE_INVALID": "the body template is invalid: `curviate webhook lint` names every finding."
+      }
     },
     {
       "path": [
@@ -7810,14 +8138,15 @@
       "examples": [
         "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --file payload.json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
         "webhook",
         "lint"
       ],
-      "description": "Check a webhook body template offline, every finding at once, as `webhook create` would answer it. Offline: no API call.",
+      "description": "Check a webhook body template offline, every finding at once, as `curviate webhook create` would answer it. Offline: no API call.",
       "usageOnly": false,
       "args": [
         {
@@ -7984,7 +8313,7 @@
         "webhook",
         "rotate"
       ],
-      "description": "Issue a new signing secret, printed once. For 24 hours every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that window.",
+      "description": "Issue a new signing secret, printed once. For a grace period every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that period.",
       "usageOnly": false,
       "args": [
         {
@@ -8012,8 +8341,8 @@
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "A new signing secret; the old one stops signing after 24 hours (at once on a second rotation inside the window).",
-        "visible_to": "Your endpoint, which must verify with the new secret within 24 hours.",
+        "changes": "A new signing secret; the old one stops signing when the grace period ends (at once on a second rotation inside it).",
+        "visible_to": "Your endpoint, which must verify with the new secret before the grace period ends.",
         "budget_rows": [],
         "retry": "A second rotation drops the oldest secret at once.",
         "undo": "Cannot be undone: rotate again for another new secret.",
@@ -8140,7 +8469,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody has read lately is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -8177,7 +8506,13 @@
       ],
       "requires": [
         "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers."
-      ]
+      ],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -8191,7 +8526,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody has read lately is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -8251,7 +8586,8 @@
       ],
       "requires": [
         "--all, --max-pages and --page-delay only with a list flag: --posts, --comments, --reactions or --followers."
-      ]
+      ],
+      "risk": "read"
     },
     {
       "path": [
@@ -8284,6 +8620,7 @@
         "curviate core profile relations --all"
       ],
       "requires": [],
+      "risk": "read",
       "seeAlso": [
         "curviate network list (the stored Connections of every Account, no LinkedIn call)"
       ]
@@ -8325,7 +8662,24 @@
       "examples": [
         "curviate core profile endorse janesmith --endorsement-id 12345"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds your endorsement to one skill on the member's profile.",
+        "visible_to": "The member, on their profile.",
+        "budget_rows": [
+          "endorsements"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read the member's skills with `curviate core profile <id> --sections skills` first.",
+        "undo": "Cannot be undone from the CLI: remove the endorsement on LinkedIn."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -8391,7 +8745,20 @@
       ],
       "requires": [
         "At least one of --first-name, --last-name, --headline, --bio, --skills, --picture, --background-picture."
-      ]
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "Overwrites the profile fields you pass; fields you omit stay as they are.",
+        "visible_to": "Everyone who can view your LinkedIn profile.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the profile the same.",
+        "undo": "Run it again with the previous values; the CLI keeps no copy of them."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action."
+      }
     },
     {
       "path": [
@@ -8424,7 +8791,24 @@
       "examples": [
         "curviate core profile follow janesmith"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Follows the member; for a private profile it sends a connection request instead.",
+        "visible_to": "The member.",
+        "budget_rows": [
+          "follows"
+        ],
+        "retry": "Following a member you already follow adds nothing; read `curviate core profile following me` first to be sure.",
+        "undo": "`curviate core profile unfollow <id>`; a connection request stays pending until you cancel it."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -8457,7 +8841,21 @@
       "examples": [
         "curviate core profile unfollow janesmith"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Stops following the member.",
+        "visible_to": "The member's follower count drops.",
+        "budget_rows": [],
+        "retry": "Safe: unfollowing a member you do not follow changes nothing.",
+        "undo": "`curviate core profile follow <id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -8495,7 +8893,8 @@
         "curviate core profile followers me",
         "curviate core profile followers janesmith --limit 20"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8533,7 +8932,8 @@
         "curviate core profile following me",
         "curviate core profile following me --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8559,7 +8959,8 @@
       "examples": [
         "curviate core profile subscription"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8585,7 +8986,8 @@
       "examples": [
         "curviate core profile analytics"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8617,7 +9019,8 @@
         "curviate core profile visitors",
         "curviate core profile visitors --limit 20"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8643,7 +9046,8 @@
       "examples": [
         "curviate core profile ssi"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8680,7 +9084,13 @@
         "curviate core company acmecorp",
         "curviate core company https://www.linkedin.com/company/acmecorp"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll"
+        ]
+      }
     },
     {
       "path": [
@@ -8728,7 +9138,8 @@
         "curviate core company employees acmecorp",
         "curviate core company employees 1234567 --keywords \"machine learning\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8766,7 +9177,8 @@
         "curviate core company posts acmecorp",
         "curviate core company posts 1234567 --limit 5"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8809,7 +9221,8 @@
         "curviate core company jobs acmecorp",
         "curviate core company jobs 1234567 --keywords engineer"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -8846,7 +9259,13 @@
       "examples": [
         "curviate core company invitable-followers 1234567"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll"
+        ]
+      }
     },
     {
       "path": [
@@ -8865,7 +9284,7 @@
         {
           "name": "invitee",
           "type": "string",
-          "description": "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+          "description": "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required.",
           "required": true
         }
       ],
@@ -8884,7 +9303,27 @@
       "examples": [
         "curviate core company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Invites the chosen connections to follow the company page you administer.",
+        "visible_to": "Each invitee, who gets the invitation from LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe: re-inviting a member who is already invited returns the same invitation and sends no second one.",
+        "undo": "An invitation cannot be withdrawn from the CLI.",
+        "blast_radius": "One invitation per --invitee, all from your Account in one call."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RESOURCE_ACCESS_RESTRICTED": "the Account does not administer the page."
+      },
+      "seeAlso": [
+        "curviate core company invitable-followers",
+        "curviate core company managed"
+      ]
     },
     {
       "path": [
@@ -8932,7 +9371,22 @@
       "examples": [
         "curviate core company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends a reply in a company-inbox conversation, as the page.",
+        "visible_to": "The person in the conversation, as the page.",
+        "budget_rows": [],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core company messages <company_id> <chat_id>` first.",
+        "undo": "Cannot be undone from the CLI: delete the message on LinkedIn."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RESOURCE_ACCESS_RESTRICTED": "the Account does not administer the page."
+      }
     },
     {
       "path": [
@@ -8963,7 +9417,8 @@
       "examples": [
         "curviate core company managed"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9001,7 +9456,13 @@
         "curviate core company followers 1234567",
         "curviate core company followers 1234567 --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll"
+        ]
+      }
     },
     {
       "path": [
@@ -9038,7 +9499,8 @@
       "examples": [
         "curviate core company chats 1234567"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9075,7 +9537,8 @@
       "examples": [
         "curviate core company chat 1234567 2-YTQ3ODU3Njgt"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9117,7 +9580,8 @@
       "examples": [
         "curviate core company messages 1234567 2-YTQ3ODU3Njgt"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9159,7 +9623,8 @@
       "examples": [
         "curviate core company message 1234567 2-YTQ3ODU3Njgt MSG_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9213,7 +9678,13 @@
         "curviate core company search-chats 1234567 sophie",
         "curviate core company search-chats 1234567 sophie --unread"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -9270,7 +9741,8 @@
         "curviate core job get 4100000000",
         "curviate core job get https://www.linkedin.com/jobs/view/4100000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9311,7 +9783,8 @@
       ],
       "requires": [
         "--max-pages and --page-delay only with --all."
-      ]
+      ],
+      "risk": "read"
     },
     {
       "path": [
@@ -9408,7 +9881,20 @@
         "--job-title or --job-title-id.",
         "--company or --company-id.",
         "--notification-email with --apply-method linkedin; --website-url with --apply-method external."
-      ]
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a classic job-posting draft; nothing is published and nothing is spent.",
+        "visible_to": "Only you, until you publish it.",
+        "budget_rows": [],
+        "retry": "Not safe: each call creates another draft.",
+        "undo": "The CLI cannot delete a draft: remove it on LinkedIn."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action."
+      }
     },
     {
       "path": [
@@ -9504,7 +9990,21 @@
       ],
       "requires": [
         "--notification-email with --apply-method linkedin; --website-url with --apply-method external."
-      ]
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the fields you pass on a job posting you own.",
+        "visible_to": "Only you while it is a draft; anyone who can see the posting once it is published.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the posting the same.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -9536,7 +10036,8 @@
       "examples": [
         "curviate core job budget 4100000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9592,6 +10093,25 @@
       ],
       "requires": [
         "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS."
+      ],
+      "risk": "high",
+      "rules": {
+        "changes": "Publishes the draft on LinkedIn; PROMOTED and PROMOTED_PLUS also spend the budget you pass.",
+        "visible_to": "Anyone on LinkedIn who can see job postings.",
+        "budget_rows": [],
+        "retry": "Not safe for a promoted posting: a repeat can spend again. Read `curviate core job budget <job_id>` and the posting first.",
+        "undo": "`curviate core job close <job_id>` stops applications; money spent is not returned by the CLI.",
+        "blast_radius": "One job posting; with PROMOTED or PROMOTED_PLUS, the --budget-amount in --budget-currency."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core job budget",
+        "curviate core job close"
       ]
     },
     {
@@ -9625,7 +10145,26 @@
       "examples": [
         "curviate core job close 4100000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Stops the posting from accepting applications.",
+        "visible_to": "Anyone viewing the posting: it no longer takes applications.",
+        "budget_rows": [],
+        "retry": "Read `curviate core job get <job_id>` first: a closed posting has nothing left to close.",
+        "undo": "Cannot be undone once the posting is listed.",
+        "blast_radius": "One job posting."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core job get",
+        "curviate core job applicants"
+      ]
     },
     {
       "path": [
@@ -9668,7 +10207,8 @@
         "curviate core job applicants 4100000000",
         "curviate core job applicants 4100000000 --ratings GOOD_FIT,MAYBE"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9731,7 +10271,8 @@
       "examples": [
         "curviate core job applicant get 4100000000 APPLICANT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9775,7 +10316,8 @@
       "examples": [
         "curviate core job applicant resume 4100000000 APPLICANT_ID -o resume.pdf"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9813,7 +10355,26 @@
         "curviate core connect janesmith",
         "curviate core connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends a connection invitation, with your note if you pass --note.",
+        "visible_to": "The person invited, who sees the invitation and the note.",
+        "budget_rows": [
+          "connection_requests_with_note",
+          "connection_requests_no_note"
+        ],
+        "retry": "Safe: an invitation already pending, or a person already connected, answers CONNECTION_REQUEST_CONFLICT and sends nothing.",
+        "undo": "`curviate core connect cancel <invitation_id>` withdraws it while it is pending."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "CONNECTION_REQUEST_CONFLICT": "already invited or already connected."
+      }
     },
     {
       "path": [
@@ -9845,7 +10406,8 @@
         "curviate core connect sent",
         "curviate core connect sent --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9877,7 +10439,8 @@
         "curviate core connect received",
         "curviate core connect received --json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -9909,7 +10472,24 @@
       "examples": [
         "curviate core connect accept INVITATION_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Accepts a received invitation: you and the sender become connections.",
+        "visible_to": "The sender.",
+        "budget_rows": [
+          "invite_responses"
+        ],
+        "retry": "A handled invitation is gone from `curviate core connect received`, so a retry has nothing to act on.",
+        "undo": "Cannot be undone from the CLI: remove the connection on LinkedIn."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -9941,7 +10521,24 @@
       "examples": [
         "curviate core connect decline INVITATION_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Declines a received invitation.",
+        "visible_to": "The sender's invitation is closed.",
+        "budget_rows": [
+          "invite_responses"
+        ],
+        "retry": "A handled invitation is gone from `curviate core connect received`, so a retry has nothing to act on.",
+        "undo": "Cannot be undone: the sender must invite you again."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -9973,7 +10570,24 @@
       "examples": [
         "curviate core connect cancel INVITATION_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Withdraws an invitation you sent.",
+        "visible_to": "The invited person no longer sees it.",
+        "budget_rows": [
+          "withdrawal_sweep"
+        ],
+        "retry": "A withdrawn invitation is gone from `curviate core connect sent`, so a retry has nothing to act on.",
+        "undo": "Send a new invitation with `curviate core connect <id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -10010,7 +10624,13 @@
       "examples": [
         "curviate core search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10111,7 +10731,13 @@
         "curviate core search people --keywords \"AI engineer\" --location 106967730",
         "curviate core search people --filters-file filters.json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10181,7 +10807,13 @@
         "curviate core search companies --keywords \"developer tools\"",
         "curviate core search companies --keywords robotics --headcount 11-50,51-200"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10286,7 +10918,13 @@
         "curviate core search posts --keywords \"agent infrastructure\"",
         "curviate core search posts --keywords \"agent infrastructure\" --date-posted past_week"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10426,7 +11064,13 @@
         "curviate core search jobs --keywords \"AI engineer\"",
         "curviate core search jobs --keywords \"AI engineer\" --location 106967730 --presence remote"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10471,7 +11115,8 @@
         "curviate core search parameters --type LOCATION --keywords Berlin",
         "curviate core search parameters --type COMPANY --keywords Acme"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10508,7 +11153,13 @@
       "examples": [
         "curviate core search groups \"gtm engineering\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10568,7 +11219,13 @@
       ],
       "requires": [
         "At least one of --keywords, --service-category or --location."
-      ]
+      ],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -10611,7 +11268,8 @@
       "examples": [
         "curviate core search service-parameters --type service_category --keywords marketing"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10671,7 +11329,8 @@
         "curviate core inbox list --unread",
         "curviate core inbox list --inbox archived --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10685,7 +11344,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody has read lately is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -10713,7 +11372,8 @@
       "examples": [
         "curviate core inbox get 2-YTQ3ODU3Njgt"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10746,7 +11406,21 @@
       "examples": [
         "curviate core inbox mark-read 2-YTQ3ODU3Njgt"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Marks the chat read on LinkedIn.",
+        "visible_to": "The other participants, as a read receipt where LinkedIn shows it.",
+        "budget_rows": [],
+        "retry": "Safe: marking a read chat read changes nothing.",
+        "undo": "Cannot be undone from the CLI: mark it unread on LinkedIn."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -10754,7 +11428,7 @@
         "inbox",
         "messages"
       ],
-      "description": "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+      "description": "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25 messages), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
       "usageOnly": false,
       "args": [
         {
@@ -10765,7 +11439,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody has read lately is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -10809,7 +11483,8 @@
         "curviate core inbox messages 2-YTQ3ODU3Njgt --limit 20",
         "curviate core inbox messages 2-YTQ3ODU3Njgt --after 2026-06-01T00:00:00Z"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10850,7 +11525,8 @@
       "examples": [
         "curviate core inbox search sophie"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10900,7 +11576,8 @@
         "curviate core inboxes list",
         "curviate core inboxes list --kind company"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10942,7 +11619,8 @@
         "curviate core inboxes chats CLASSIC_PRIMARY",
         "curviate core inboxes chats COMPANY_1234567_PRIMARY --limit 10"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -10987,7 +11665,26 @@
         "curviate core message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
         "curviate core message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends the text into the chat, as you, or as the page for a COMPANY_ chat id.",
+        "visible_to": "The other participants of the chat.",
+        "budget_rows": [
+          "messages_first_degree"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox messages <chat_id>` first.",
+        "undo": "`curviate core message delete <chat_id> <message_id>`; it may already have been read."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person.",
+        "CHAT_NOT_VISIBLE": "the chat is not visible to the Account."
+      }
     },
     {
       "path": [
@@ -11036,7 +11733,25 @@
       "examples": [
         "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Starts a chat with the recipient and sends the opening message from your Account.",
+        "visible_to": "The recipient, in their LinkedIn inbox.",
+        "budget_rows": [
+          "messages_first_degree"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+        "undo": "`curviate core message delete <chat_id> <message_id>` removes the message; the chat stays and the recipient may have read it."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
+      }
     },
     {
       "path": [
@@ -11079,7 +11794,26 @@
       "examples": [
         "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends the text into the chat, as you, or as the page for a COMPANY_ chat id.",
+        "visible_to": "The other participants of the chat.",
+        "budget_rows": [
+          "messages_first_degree"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox messages <chat_id>` first.",
+        "undo": "`curviate core message delete <chat_id> <message_id>`; it may already have been read."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person.",
+        "CHAT_NOT_VISIBLE": "the chat is not visible to the Account."
+      }
     },
     {
       "path": [
@@ -11116,7 +11850,8 @@
       "examples": [
         "curviate core message get 2-YTQ3ODU3Njgt MSG_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -11159,7 +11894,21 @@
       "examples": [
         "curviate core message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Replaces the text of one of your messages.",
+        "visible_to": "The other participants of the chat.",
+        "budget_rows": [],
+        "retry": "Safe: the same text written again leaves the message the same.",
+        "undo": "Edit it again with the previous text, while LinkedIn still allows edits."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11196,7 +11945,25 @@
       "examples": [
         "curviate core message delete 2-YTQ3ODU3Njgt MSG_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes one message from the chat.",
+        "visible_to": "The other participants no longer see it.",
+        "budget_rows": [],
+        "retry": "Safe: a deleted message is gone, so a repeat has nothing to delete.",
+        "undo": "Cannot be undone.",
+        "blast_radius": "One message."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core inbox messages"
+      ]
     },
     {
       "path": [
@@ -11247,7 +12014,24 @@
       ],
       "requires": [
         "The reaction: the <emoji> argument or --emoji."
-      ]
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds your emoji reaction to the message.",
+        "visible_to": "The other participants of the chat.",
+        "budget_rows": [
+          "post_likes"
+        ],
+        "retry": "Read the message first: a repeat with the same emoji may count against the budget again.",
+        "undo": "React again to change it; the CLI has no command to remove a reaction."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11295,7 +12079,8 @@
       "examples": [
         "curviate core message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -11340,7 +12125,25 @@
       "examples": [
         "curviate core message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends an InMail to the member.",
+        "visible_to": "The recipient.",
+        "budget_rows": [
+          "inmail"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
+      }
     },
     {
       "path": [
@@ -11366,7 +12169,8 @@
       "examples": [
         "curviate core message inmail-balance"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -11411,7 +12215,14 @@
         "curviate core post get 7290000000000000000",
         "curviate core post get urn:li:activity:7290000000000000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -11450,7 +12261,23 @@
         "curviate core post create \"We just shipped webhooks for inbox events.\"",
         "curviate core post create \"Our latest product update.\" --attach screenshot.png"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Publishes a post from your Account.",
+        "visible_to": "Everyone who can see your posts on LinkedIn.",
+        "budget_rows": [
+          "posts"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core post user-posts me` first.",
+        "undo": "`curviate core post delete <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets."
+      }
     },
     {
       "path": [
@@ -11500,7 +12327,24 @@
         "curviate core post react 7290000000000000000 like",
         "curviate core post react 7290000000000000000 celebrate --as-organization 1234567"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds your reaction to the post.",
+        "visible_to": "The post's author and anyone who can see its reactions.",
+        "budget_rows": [
+          "post_likes"
+        ],
+        "retry": "Reacting again replaces your reaction; it never adds a second.",
+        "undo": "`curviate core post unreact <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11538,7 +12382,14 @@
         "curviate core post reactions 7290000000000000000",
         "curviate core post reactions 7290000000000000000 --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -11571,7 +12422,25 @@
       "examples": [
         "curviate core post delete 7290000000000000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes one of your posts.",
+        "visible_to": "Everyone: the post disappears from LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe: a deleted post is gone, so a repeat has nothing to delete.",
+        "undo": "Cannot be undone.",
+        "blast_radius": "One post, with its comments and reactions."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core post user-posts"
+      ]
     },
     {
       "path": [
@@ -11609,7 +12478,22 @@
       "examples": [
         "curviate core post unreact 7290000000000000000 like"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Removes your reaction from the post.",
+        "visible_to": "The post's author and anyone who can see its reactions.",
+        "budget_rows": [],
+        "retry": "A second call answers REACTION_NOT_FOUND and changes nothing.",
+        "undo": "`curviate core post react <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "REACTION_NOT_FOUND": "you have no reaction on the post."
+      }
     },
     {
       "path": [
@@ -11617,7 +12501,7 @@
         "post",
         "saved"
       ],
-      "description": "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars).",
+      "description": "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview, not the full post body.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -11640,7 +12524,8 @@
       "examples": [
         "curviate core post saved"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -11673,7 +12558,21 @@
       "examples": [
         "curviate core post save 7290000000000000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds the post to your private saved list.",
+        "visible_to": "Only you.",
+        "budget_rows": [],
+        "retry": "Safe: saving a saved post changes nothing.",
+        "undo": "`curviate core post unsave <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11706,7 +12605,21 @@
       "examples": [
         "curviate core post unsave 7290000000000000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Removes the post from your private saved list.",
+        "visible_to": "Only you.",
+        "budget_rows": [],
+        "retry": "Safe: unsaving a post that is not saved changes nothing.",
+        "undo": "`curviate core post save <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11744,7 +12657,14 @@
         "curviate core post user-posts me",
         "curviate core post user-posts janesmith --limit 10"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -11782,7 +12702,14 @@
         "curviate core post user-reactions me",
         "curviate core post user-reactions me --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -11849,7 +12776,14 @@
         "curviate core comment list 7290000000000000000",
         "curviate core comment list 7290000000000000000 --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -11893,7 +12827,24 @@
       "examples": [
         "curviate core comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Publishes your comment on the post.",
+        "visible_to": "The post's author and everyone who can see its comments.",
+        "budget_rows": [
+          "comments"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core comment list <post_id>` first.",
+        "undo": "`curviate core comment delete <post_id> <comment_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11942,7 +12893,24 @@
       "examples": [
         "curviate core comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Publishes your reply to the comment.",
+        "visible_to": "The comment's author and everyone who can see the thread.",
+        "budget_rows": [
+          "comments"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core comment replies <post_id> <comment_id>` first.",
+        "undo": "`curviate core comment delete <post_id> <comment_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -11986,7 +12954,21 @@
       "examples": [
         "curviate core comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Replaces the text of your comment.",
+        "visible_to": "Everyone who can see the comment.",
+        "budget_rows": [],
+        "retry": "Safe: the same text written again leaves the comment the same.",
+        "undo": "Edit it again with the previous text."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -12024,7 +13006,25 @@
       "examples": [
         "curviate core comment delete 7290000000000000000 COMMENT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes one of your comments.",
+        "visible_to": "Everyone: the comment disappears from the post.",
+        "budget_rows": [],
+        "retry": "Safe: a deleted comment is gone, so a repeat has nothing to delete.",
+        "undo": "Cannot be undone.",
+        "blast_radius": "One comment, with its replies and reactions."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core comment list"
+      ]
     },
     {
       "path": [
@@ -12067,7 +13067,14 @@
         "curviate core comment replies 7290000000000000000 COMMENT_ID",
         "curviate core comment replies 7290000000000000000 COMMENT_ID --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -12110,7 +13117,24 @@
       "examples": [
         "curviate core comment react 7290000000000000000 COMMENT_ID insightful"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds your reaction to the comment.",
+        "visible_to": "The comment's author and anyone who can see its reactions.",
+        "budget_rows": [
+          "post_likes"
+        ],
+        "retry": "Reacting again replaces your reaction; it never adds a second.",
+        "undo": "`curviate core comment unreact <post_id> <comment_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -12152,7 +13176,14 @@
       "examples": [
         "curviate core comment reactions 7290000000000000000 COMMENT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -12195,7 +13226,22 @@
       "examples": [
         "curviate core comment unreact 7290000000000000000 COMMENT_ID insightful"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Removes your reaction from the comment.",
+        "visible_to": "The comment's author and anyone who can see its reactions.",
+        "budget_rows": [],
+        "retry": "A second call answers REACTION_NOT_FOUND and changes nothing.",
+        "undo": "`curviate core comment react <post_id> <comment_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "REACTION_NOT_FOUND": "you have no reaction on the comment."
+      }
     },
     {
       "path": [
@@ -12233,7 +13279,14 @@
         "curviate core comment user me",
         "curviate core comment user janesmith --limit 10"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "content_poll",
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -12324,17 +13377,17 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable, max 7 MiB each)."
+          "description": "File to attach (repeatable)."
         },
         {
           "name": "voice",
           "type": "string",
-          "description": "Voice message file (max 7 MiB)."
+          "description": "Voice message file."
         },
         {
           "name": "video",
           "type": "string",
-          "description": "Video message file (max 7 MiB)."
+          "description": "Video message file."
         }
       ],
       "globals": [
@@ -12352,7 +13405,26 @@
       "examples": [
         "curviate core sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Starts a Sales Navigator chat with the member and sends the opening message.",
+        "visible_to": "The recipient.",
+        "budget_rows": [
+          "inmail"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Sales Navigator subscription.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
+      }
     },
     {
       "path": [
@@ -12390,7 +13462,13 @@
       "examples": [
         "curviate core sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -12461,7 +13539,13 @@
         "curviate core sales-nav search people --keywords \"head of data\"",
         "curviate core sales-nav search people --filters-file filters.json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -12511,7 +13595,13 @@
       "examples": [
         "curviate core sales-nav search companies --keywords fintech"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -12555,7 +13645,8 @@
       "examples": [
         "curviate core sales-nav search parameters --type REGION --keywords Berlin"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -12587,7 +13678,13 @@
       "examples": [
         "curviate core sales-nav profile https://www.linkedin.com/in/janesmith"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -12625,7 +13722,22 @@
       "examples": [
         "curviate core sales-nav save-lead ACwAAA1234567 --list 987654"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds the member to a lead list in Sales Navigator.",
+        "visible_to": "Your Sales Navigator seat, and whoever the list is shared with.",
+        "budget_rows": [],
+        "retry": "Read the list with `curviate core sales-nav browse-lead-list <list_id>` first.",
+        "undo": "Remove the lead from the list in Sales Navigator; the CLI has no command for it."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Sales Navigator subscription."
+      }
     },
     {
       "path": [
@@ -12656,7 +13768,8 @@
       "examples": [
         "curviate core sales-nav account-lists"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -12687,7 +13800,8 @@
       "examples": [
         "curviate core sales-nav lead-lists"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -12740,7 +13854,8 @@
         "curviate core sales-nav browse-account-list 987654",
         "curviate core sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -12793,7 +13908,8 @@
         "curviate core sales-nav browse-lead-list 987654",
         "curviate core sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -12831,7 +13947,22 @@
       "examples": [
         "curviate core sales-nav save-account 1234567 --list 987654"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds the company to an account list in Sales Navigator.",
+        "visible_to": "Your Sales Navigator seat, and whoever the list is shared with.",
+        "budget_rows": [],
+        "retry": "Read the list with `curviate core sales-nav browse-account-list <list_id>` first.",
+        "undo": "Remove the company from the list in Sales Navigator; the CLI has no command for it."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Sales Navigator subscription."
+      }
     },
     {
       "path": [
@@ -12928,17 +14059,17 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable, max 7 MiB each)."
+          "description": "File to attach (repeatable)."
         },
         {
           "name": "voice",
           "type": "string",
-          "description": "Voice message file (max 7 MiB)."
+          "description": "Voice message file."
         },
         {
           "name": "video",
           "type": "string",
-          "description": "Video message file (max 7 MiB)."
+          "description": "Video message file."
         }
       ],
       "globals": [
@@ -12956,7 +14087,26 @@
       "examples": [
         "curviate core recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Starts a Recruiter chat with the member and sends the opening message.",
+        "visible_to": "The recipient.",
+        "budget_rows": [
+          "inmail"
+        ],
+        "retry": "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription.",
+        "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
+      }
     },
     {
       "path": [
@@ -12988,7 +14138,13 @@
       "examples": [
         "curviate core recruiter profile https://www.linkedin.com/in/janesmith"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "profile_views"
+        ]
+      }
     },
     {
       "path": [
@@ -13026,7 +14182,13 @@
       "examples": [
         "curviate core recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -13092,7 +14254,13 @@
         "curviate core recruiter search people --keywords \"staff engineer\"",
         "curviate core recruiter search people --filters-file filters.json"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -13150,7 +14318,8 @@
       ],
       "requires": [
         "--project-id with --source APPLICANTS or PIPELINE."
-      ]
+      ],
+      "risk": "read"
     },
     {
       "path": [
@@ -13182,7 +14351,8 @@
         "curviate core recruiter projects",
         "curviate core recruiter projects --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13214,7 +14384,8 @@
       "examples": [
         "curviate core recruiter project PROJECT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13294,7 +14465,22 @@
         "curviate core recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
         "curviate core recruiter project update PROJECT_ID --visibility PRIVATE"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the fields you pass on a Recruiter project.",
+        "visible_to": "Your Recruiter seat and the project's collaborators.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the project the same.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      }
     },
     {
       "path": [
@@ -13352,7 +14538,8 @@
         "curviate core recruiter pipeline PROJECT_ID",
         "curviate core recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13385,7 +14572,8 @@
       "examples": [
         "curviate core recruiter project-job PROJECT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13418,7 +14606,8 @@
       "examples": [
         "curviate core recruiter project-job get PROJECT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13532,6 +14721,21 @@
       "requires": [
         "Each job field from its flag or from --file: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method."
       ],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a job-posting draft on an existing project; nothing is published.",
+        "visible_to": "Your Recruiter seat, until you publish it.",
+        "budget_rows": [],
+        "retry": "Not safe: each call creates another draft.",
+        "undo": "The CLI cannot delete a draft: remove it in Recruiter."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      },
       "document": "core recruiter project-job create"
     },
     {
@@ -13570,7 +14774,8 @@
       "examples": [
         "curviate core recruiter project-job budget PROJECT_ID JOB_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13687,6 +14892,21 @@
         "curviate core recruiter project-job update PROJECT_ID JOB_ID --file - <<'EOF'\n{\"workplace_type\": \"HYBRID\", \"salary\": {\"currency\": \"EUR\", \"pay_frequency\": \"YEARLY\", \"min\": 90000, \"max\": 120000}}\nEOF"
       ],
       "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the fields you pass on the project's job posting.",
+        "visible_to": "Your Recruiter seat while it is a draft; anyone who can see the posting once it is published.",
+        "budget_rows": [],
+        "retry": "Safe: the same values written again leave the posting the same.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      },
       "document": "core recruiter project-job update"
     },
     {
@@ -13748,7 +14968,13 @@
         "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
         "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -13792,7 +15018,22 @@
       "examples": [
         "curviate core recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Adds the candidate to the project's pipeline at the given stage.",
+        "visible_to": "Your Recruiter seat and the project's collaborators.",
+        "budget_rows": [],
+        "retry": "Read `curviate core recruiter pipeline <project_id>` first.",
+        "undo": "Remove the candidate from the pipeline in Recruiter; the CLI has no command for it."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      }
     },
     {
       "path": [
@@ -13832,7 +15073,8 @@
       "examples": [
         "curviate core recruiter applicants PROJECT_ID --channel-id CHANNEL_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -13864,7 +15106,8 @@
         "curviate core recruiter jobs",
         "curviate core recruiter jobs --all"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14008,6 +15251,20 @@
       "requires": [
         "Each job field from its flag or from --file: --job-title-id with --job-title, --company-id or --company-name, --workplace-type, --location, --employment-status, --seniority-level, --description, --industry, --job-function, --apply-method."
       ],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a job-posting draft and a new hiring project for it; nothing is published.",
+        "visible_to": "Your Recruiter seat, until you publish it.",
+        "budget_rows": [],
+        "retry": "Not safe: each call creates another project and draft.",
+        "undo": "The CLI cannot delete a project or draft: remove them in Recruiter."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      },
       "document": "core recruiter job create"
     },
     {
@@ -14070,6 +15327,26 @@
       ],
       "requires": [
         "--budget-currency, --budget-amount and --budget-scope with --mode PROMOTED or PROMOTED_PLUS."
+      ],
+      "risk": "high",
+      "rules": {
+        "changes": "Publishes the draft on LinkedIn; PROMOTED and PROMOTED_PLUS also spend the budget you pass.",
+        "visible_to": "Anyone on LinkedIn who can see job postings.",
+        "budget_rows": [],
+        "retry": "Not safe for a promoted posting: a repeat can spend again. Read `curviate core recruiter project-job budget <project_id> <job_id>` and the posting first.",
+        "undo": "`curviate core recruiter job close <project_id> <job_id>` stops applications; money spent is not returned by the CLI.",
+        "blast_radius": "One job posting; with PROMOTED or PROMOTED_PLUS, the --budget-amount in --budget-currency."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      },
+      "seeAlso": [
+        "curviate core recruiter project-job budget",
+        "curviate core recruiter job close"
       ]
     },
     {
@@ -14109,7 +15386,27 @@
       "examples": [
         "curviate core recruiter job close PROJECT_ID JOB_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Stops the project's job posting from accepting applications.",
+        "visible_to": "Anyone viewing the posting: it no longer takes applications.",
+        "budget_rows": [],
+        "retry": "Read `curviate core recruiter project-job get <project_id>` first: a closed posting has nothing left to close.",
+        "undo": "Cannot be undone once the posting is listed.",
+        "blast_radius": "One job posting."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
+        "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription."
+      },
+      "seeAlso": [
+        "curviate core recruiter project-job get",
+        "curviate core recruiter applicants"
+      ]
     },
     {
       "path": [
@@ -14143,7 +15440,8 @@
         "curviate core recruiter job get 4100000000",
         "curviate core recruiter job get https://www.linkedin.com/jobs/view/4100000000"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14182,7 +15480,8 @@
       "examples": [
         "curviate core recruiter applicant PROJECT_ID APPLICANT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14226,7 +15525,8 @@
       "examples": [
         "curviate core recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14276,7 +15576,8 @@
         "curviate core group list",
         "curviate core group list --target janesmith"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14308,7 +15609,8 @@
       "examples": [
         "curviate core group get 12345678"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14351,7 +15653,13 @@
         "curviate core group members 12345678",
         "curviate core group members 12345678 --name sophie"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "budget_rows": [
+          "search"
+        ]
+      }
     },
     {
       "path": [
@@ -14402,7 +15710,8 @@
         "curviate core feed home --sort relevant",
         "curviate core feed home --all --max-pages 3"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14452,7 +15761,8 @@
         "curviate core notification list",
         "curviate core notification list --filter mentions"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14485,7 +15795,25 @@
       "examples": [
         "curviate core notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes one notification card from your LinkedIn account.",
+        "visible_to": "Only you.",
+        "budget_rows": [],
+        "retry": "Safe: repeating it changes nothing.",
+        "undo": "Cannot be undone; LinkedIn may bring editorial and promotional cards back.",
+        "blast_radius": "One notification card."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      },
+      "seeAlso": [
+        "curviate core notification list"
+      ]
     },
     {
       "path": [
@@ -14518,7 +15846,21 @@
       "examples": [
         "curviate core notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\""
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Tells LinkedIn to show less from the source of one notification card.",
+        "visible_to": "Only you.",
+        "budget_rows": [],
+        "retry": "Safe: repeating it changes nothing.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
+      }
     },
     {
       "path": [
@@ -14588,7 +15930,8 @@
         "curviate core draft list --status scheduled --account acc_YOUR_ACCOUNT_ID --order asc",
         "curviate core draft list --status scheduled,published --from 2026-10-01T00:00:00Z --to 2026-11-01T00:00:00Z"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14596,7 +15939,7 @@
         "draft",
         "get"
       ],
-      "description": "Get one Draft, with a fresh signed link (valid 1 hour) for each attachment.",
+      "description": "Get one Draft, with a fresh signed link for each attachment. The links expire: fetch the Draft again for new ones.",
       "usageOnly": false,
       "args": [
         {
@@ -14620,7 +15963,8 @@
       "examples": [
         "curviate core draft get drf_YOUR_DRAFT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -14628,7 +15972,7 @@
         "draft",
         "create"
       ],
-      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft. Needs Automate.",
+      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -14646,12 +15990,12 @@
         {
           "name": "schedule-at",
           "type": "string",
-          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text."
+          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. A time in the future, not too close to another scheduled Draft on the same account (SCHEDULE_CONFLICT). Needs an account and text."
         },
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+          "description": "File to attach, repeatable; keeps the order given. Several images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF, never mixed. A file over its size limit is refused."
         }
       ],
       "globals": [
@@ -14671,7 +16015,21 @@
         "curviate core draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
         "curviate core draft create \"Demo.\" --account acc_YOUR_ACCOUNT_ID --attach screenshot.png"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Stores a Draft; with --schedule-at, an account and text, Curviate publishes it at that time.",
+        "visible_to": "You and your Team; nothing reaches LinkedIn until it is published.",
+        "budget_rows": [],
+        "retry": "Not safe: each call creates another Draft.",
+        "undo": "`curviate core draft delete <draft_id>`."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "DRAFT_LIMIT_REACHED": "the bucket already holds as many Drafts as it may.",
+        "MEDIA_QUOTA_EXCEEDED": "the media quota is used.",
+        "SCHEDULE_CONFLICT": "another Draft is scheduled too close to this time."
+      }
     },
     {
       "path": [
@@ -14701,7 +16059,7 @@
         {
           "name": "schedule-at",
           "type": "string",
-          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text."
+          "description": "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. A time in the future, not too close to another scheduled Draft on the same account (SCHEDULE_CONFLICT). Needs an account and text."
         },
         {
           "name": "unschedule",
@@ -14711,7 +16069,7 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed."
+          "description": "File to attach, repeatable; keeps the order given. Several images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF, never mixed. A file over its size limit is refused."
         }
       ],
       "globals": [
@@ -14731,7 +16089,21 @@
         "curviate core draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
         "curviate core draft update drf_YOUR_DRAFT_ID --unschedule"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes the parts of the Draft you pass; --schedule-at schedules or reschedules it, --unschedule cancels.",
+        "visible_to": "You and your Team; nothing reaches LinkedIn until it is published.",
+        "budget_rows": [],
+        "retry": "Safe for the text and schedule: the same values written again leave the Draft the same. --attach appends the files again.",
+        "undo": "Run it again with the previous values."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "DRAFT_PUBLISHING": "the Draft is being published: read it again in a few seconds.",
+        "MEDIA_QUOTA_EXCEEDED": "the media quota is used.",
+        "SCHEDULE_CONFLICT": "another Draft is scheduled too close to this time."
+      }
     },
     {
       "path": [
@@ -14764,7 +16136,22 @@
       "examples": [
         "curviate core draft delete drf_YOUR_DRAFT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes the Draft and its stored media.",
+        "visible_to": "You and your Team.",
+        "budget_rows": [],
+        "retry": "Safe: a deleted Draft is gone, so a repeat has nothing to delete.",
+        "undo": "Cannot be undone.",
+        "blast_radius": "One Draft, with its stored media."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no such Draft."
+      },
+      "seeAlso": [
+        "curviate core draft list"
+      ]
     },
     {
       "path": [
@@ -14797,7 +16184,26 @@
       "examples": [
         "curviate core draft publish drf_YOUR_DRAFT_ID"
       ],
-      "requires": []
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Publishes the Draft as a post now and deletes the Draft.",
+        "visible_to": "Everyone who can see your posts on LinkedIn.",
+        "budget_rows": [
+          "posts"
+        ],
+        "retry": "A known failure leaves the Draft unchanged and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
+        "undo": "`curviate core post delete <post_id>`."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
+        "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "DRAFT_NOT_PUBLISHABLE": "the Draft lacks what a post needs.",
+        "DRAFT_PUBLISHING": "the Draft is already being published."
+      }
     }
   ]
 }

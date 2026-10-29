@@ -1773,6 +1773,7 @@ const accountListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List connected LinkedIn accounts.",
+    risk: "read",
     examples: [
       "curviate account list",
       "curviate account list --json --fields items.account_id,items.status",
@@ -1805,6 +1806,7 @@ const accountGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
+    risk: "read",
     examples: [
       "curviate account get acc_YOUR_ACCOUNT_ID",
     ],
@@ -1840,6 +1842,7 @@ const accountSeatsCommand = defineCommand({
       "occupied:false (free) is a seat_id `curviate account link --seat-id` accepts right now. Not paginated " +
       "(bounded by purchased seats), --all is not supported. An empty result can mean the workspace has " +
       "no seats, or that billing needs attention.",
+    risk: "read",
     examples: [
       "curviate account seats",
     ],
@@ -1871,6 +1874,17 @@ const accountLinkCommand = defineCommand({
       "AI agents: do not read, pass or ask for passwords, cookies or cookie exports; run `curviate account connect-request create` and hand the person its link instead. " +
       "--cookies-file takes an export of a live LinkedIn session; delete it after use. " +
       "If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
+    risk: "high",
+    rules: {
+      changes: "Connects a LinkedIn account to a seat, signing in with the credentials or session cookies you pass; with --account-id, signs an existing Account in again.",
+      visible_to: "Your Team gets the Account to operate; LinkedIn sees a sign-in from the chosen location.",
+      budget_rows: [],
+      retry: "Not safe for a new connect: each success takes another seat. Read `curviate account list` first.",
+      undo: "`curviate account disconnect <account_id>` disconnects it and releases the seat.",
+      blast_radius: "One LinkedIn account and one seat.",
+    },
+    errors: { NO_ACTIVE_SEAT: "no seat is free.", ACCOUNT_ALREADY_LINKED: "this LinkedIn account is already connected: reconnect it with --account-id.", CONNECTION_IN_PROGRESS: "a connect for this seat is still running.", LINKEDIN_AUTH_FAILED: "LinkedIn did not accept the credentials or cookies.", CONNECTION_LOCATION_REQUIRED: "a new connect named no location." },
+    seeAlso: ["curviate account seats", "curviate account connect-request create", "curviate account checkpoint solve"],
     examples: [
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --country US",
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
@@ -1941,6 +1955,15 @@ const accountConnectSessionPollCommand = defineCommand({
       "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single " +
       "poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
       "With --wait: block on the same adaptive cadence as `curviate account link` until a terminal state.",
+    risk: "write",
+    rules: {
+      changes: "Asks for the status of a connect that is still running; with --wait, keeps asking until it ends.",
+      visible_to: "Your Team; a connect that finishes makes the Account available.",
+      budget_rows: [],
+      retry: "Safe: it only asks again.",
+      undo: "Nothing to undo; a connected Account is released with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CONNECTION_IN_PROGRESS: "the connect has not ended yet." },
     examples: [
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait",
@@ -2001,6 +2024,15 @@ const accountUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Update an account's metadata, connection location or own proxy. Prints the updated account, with connection_location re-read after a location change.",
+    risk: "write",
+    rules: {
+      changes: "Changes the Account's metadata, connection location or own proxy.",
+      visible_to: "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the Account the same.",
+      undo: "Run it again with the previous values; metadata is replaced wholesale and the old map is not kept.",
+    },
+    errors: { ACCOUNT_NOT_FOUND: "the Account is not in your Team.", CONNECTION_LOCATION_UNAVAILABLE: "no connection is free in that country." },
     examples: [
       "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
       "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
@@ -2083,6 +2115,15 @@ const accountCheckpointSolveCommand = defineCommand({
   meta: {
     name: "solve",
     description: "Solve a checkpoint challenge with an OTP / 2FA code.",
+    risk: "write",
+    rules: {
+      changes: "Sends the verification code for the Account's pending checkpoint; on success the Account connects.",
+      visible_to: "LinkedIn, and your Team once the Account is connected.",
+      budget_rows: [],
+      retry: "Read `curviate account get <account_id>` first: a wrong code counts against the attempts the checkpoint allows.",
+      undo: "Nothing to undo; disconnect with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again.", CHECKPOINT_INVALID_CODE: "the code was not accepted.", CHECKPOINT_MAX_ATTEMPTS: "too many wrong codes: connect again.", CHECKPOINT_ALREADY_RESOLVED: "the checkpoint is already resolved." },
     examples: [
       "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456",
     ],
@@ -2123,6 +2164,15 @@ const accountCheckpointPollCommand = defineCommand({
     description:
       "Poll for mobile-app approval of a pending checkpoint challenge. " +
       "With --wait, blocks on an adaptive cadence until a terminal state (or --timeout elapses) instead of a single poll.",
+    risk: "write",
+    rules: {
+      changes: "Asks LinkedIn whether the mobile-app approval has happened; with --wait, keeps asking until it ends.",
+      visible_to: "LinkedIn, and your Team once the Account is connected.",
+      budget_rows: [],
+      retry: "Safe: it only asks again.",
+      undo: "Nothing to undo; disconnect with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again." },
     examples: [
       "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
       "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait",
@@ -2177,6 +2227,15 @@ const accountCheckpointRequestCommand = defineCommand({
       "app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new " +
       "notification actually went out; the command still exits 0 either way. With --challenge it instead " +
       "answers a challenge_selection checkpoint by picking the verification method.",
+    risk: "write",
+    rules: {
+      changes: "Asks LinkedIn to send the challenge notification again, or with --challenge picks the verification method.",
+      visible_to: "The Account's owner, who receives a new code or push.",
+      budget_rows: [],
+      retry: "A repeat sends another notification; the answer's `resent` says whether one went out.",
+      undo: "Cannot be undone: the notification is sent.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again.", CHECKPOINT_UNSUPPORTED: "this challenge cannot be re-sent." },
     examples: [
       "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
       "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms",
