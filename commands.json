@@ -6087,6 +6087,90 @@
     },
     {
       "path": [
+        "billing"
+      ],
+      "description": "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "billing",
+        "invoices"
+      ],
+      "description": "List your Team's issued invoices, newest first: number, amount (in the currency's smallest unit), status and service period. No links: download a PDF by its number. Owners only.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate billing invoices",
+        "curviate billing invoices --json --limit 12"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "`items` (number, created_at, period_start, period_end, total, currency, status) and a `cursor`; with --all, one invoice per line."
+      ]
+    },
+    {
+      "path": [
+        "billing",
+        "invoices",
+        "pdf"
+      ],
+      "description": "Download one invoice as a PDF, by its number from `curviate billing invoices`. Owners only. The file is written whole or not at all.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "number",
+          "type": "positional",
+          "description": "The invoice number, from the invoice list."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "required": true,
+          "description": "Write the PDF to this path, or - for stdout."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "team",
+        "base-url",
+        "timeout"
+      ],
+      "examples": [
+        "curviate billing invoices pdf INV-0001 -o invoice.pdf"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The PDF bytes, to -o <file> (replaced whole on success) or, with -o -, to stdout; a byte count on stderr."
+      ]
+    },
+    {
+      "path": [
         "tier"
       ],
       "description": "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",

@@ -52,6 +52,7 @@ export const main = defineCommand({
     analytics: lazy("analytics", () => import("./commands/analytics.js").then((m) => m.analyticsCommand)),
     notification: lazy("notification", () => import("./commands/notifications.js").then((m) => m.notificationsCommand)),
     export: lazy("export", () => import("./commands/export.js").then((m) => m.exportCommand)),
+    billing: lazy("billing", () => import("./commands/billing.js").then((m) => m.billingCommand)),
     tier: lazy("tier", () => import("./commands/tier.js").then((m) => m.tierCommand)),
     team: lazy("team", () => import("./commands/team.js").then((m) => m.teamCommand)),
     incoming: lazy("incoming", () => import("./commands/incoming.js").then((m) => m.incomingCommand)),

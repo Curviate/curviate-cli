@@ -662,8 +662,7 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  * shape. Each row now reports where the account stands (`used`), what it is
  * held to (`effective_ceiling`, which is `ceiling` with the warm-up ramp
  * already applied and the one to compare against), which band that puts it
- * in, and what happens at the ceiling (`posture`, default `warn`, which
- * reports rather than refuses).
+ * in. A limit is always enforced: at the ceiling the action is refused.
  *
  * `account_states` is slim for the same reason `status` is: it is the answer
  * to "why is this account behaving oddly". It carries platform conditions the

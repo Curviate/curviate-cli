@@ -336,18 +336,12 @@ export async function runAccountSeats(
     return;
   }
 
-  // Same precedence as the generic renderHuman (lib/output.ts): notices
-  // first, then safety_warning prepended to the body. A hand-rolled human
-  // body must not silently drop either — both are cross-cutting response
-  // fields, not seat data, and CHANGELOG 0.33.0 already fixed one path that
-  // dropped safety_warning; this one must not reintroduce it.
+  // Same precedence as the generic renderHuman (lib/output.ts): notices first.
+  // A hand-rolled human body must not silently drop them: they are a
+  // cross-cutting response field, not seat data.
   const notices = renderNotices((result as { notices?: unknown }).notices);
   if (notices) out.stdout.write(notices + "\n");
-  let body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
-  const safetyWarning = (result as { safety_warning?: unknown }).safety_warning;
-  if (typeof safetyWarning === "object" && safetyWarning !== null) {
-    body = `safety_warning: ${JSON.stringify(safetyWarning)}\n${body}`;
-  }
+  const body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
   out.stdout.write(body + "\n");
 }
 
