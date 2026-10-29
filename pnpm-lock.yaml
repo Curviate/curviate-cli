@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@curviate/sdk':
-        specifier: github:Curviate/curviate-sdk#1ba85d465ad4dea85f4a59374ffc87daddf8e05a
-        version: https://codeload.github.com/Curviate/curviate-sdk/tar.gz/1ba85d465ad4dea85f4a59374ffc87daddf8e05a
+        specifier: github:Curviate/curviate-sdk#9d78375db8739ca6349a3a5521f34c3061735c99
+        version: https://codeload.github.com/Curviate/curviate-sdk/tar.gz/9d78375db8739ca6349a3a5521f34c3061735c99
       citty:
         specifier: ^0.1.6
         version: 0.1.6
@@ -39,8 +39,8 @@ importers:
 
 packages:
 
-  '@curviate/sdk@https://codeload.github.com/Curviate/curviate-sdk/tar.gz/1ba85d465ad4dea85f4a59374ffc87daddf8e05a':
-    resolution: {gitHosted: true, integrity: sha512-Ka+1aXSTmEYjKZNm2cTvZkFOdYJQVHML4kLsevfsU191tX6F0dVnQWNUWq3SlLsBcebuhegY+x+r7O/Mnm9Sog==, tarball: https://codeload.github.com/Curviate/curviate-sdk/tar.gz/1ba85d465ad4dea85f4a59374ffc87daddf8e05a}
+  '@curviate/sdk@https://codeload.github.com/Curviate/curviate-sdk/tar.gz/9d78375db8739ca6349a3a5521f34c3061735c99':
+    resolution: {gitHosted: true, integrity: sha512-pEq4dZq13HcRo8ZMJZIS6BSI78S52uA4DM+TI5C7Q4MFfdGvJYfew/i+UNPlhlG4QMjr2ZRWOlYRVOWkqQbPCg==, tarball: https://codeload.github.com/Curviate/curviate-sdk/tar.gz/9d78375db8739ca6349a3a5521f34c3061735c99}
     version: 0.44.0
     engines: {node: '>=18'}
 
@@ -1214,7 +1214,7 @@ packages:
 
 snapshots:
 
-  '@curviate/sdk@https://codeload.github.com/Curviate/curviate-sdk/tar.gz/1ba85d465ad4dea85f4a59374ffc87daddf8e05a':
+  '@curviate/sdk@https://codeload.github.com/Curviate/curviate-sdk/tar.gz/9d78375db8739ca6349a3a5521f34c3061735c99':
     dependencies:
       zod: 3.25.76
 

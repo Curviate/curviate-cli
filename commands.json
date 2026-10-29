@@ -1155,6 +1155,108 @@
     },
     {
       "path": [
+        "account",
+        "warm-up"
+      ],
+      "description": "Turn an Account's warm-up ramp on or off.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "account",
+        "warm-up",
+        "on"
+      ],
+      "description": "Turn the Account's warm-up on: the ramp holds its ceilings below the limits after a connect or a quiet spell. Prints the resulting warm-up.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account warm-up on acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Account's warm-up switch is set on; every budget row's effective ceiling follows.",
+        "visible_to": "Everyone using this workspace's key. Nothing is posted on LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the switch ends in the same state.",
+        "undo": "Run `curviate account warm-up off <account>`.",
+        "blast_radius": "One Account's pace."
+      },
+      "seeAlso": [
+        "curviate account get"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "warm-up",
+        "off"
+      ],
+      "description": "Turn the Account's warm-up off: the connect and quiet ramps no longer apply (recovery after a LinkedIn restriction still does). Prints the resulting warm-up.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account warm-up off acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Account's warm-up switch is set off; every budget row's effective ceiling follows.",
+        "visible_to": "Everyone using this workspace's key. Nothing is posted on LinkedIn.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the switch ends in the same state.",
+        "undo": "Run `curviate account warm-up on <account>`.",
+        "blast_radius": "One Account's pace."
+      },
+      "seeAlso": [
+        "curviate account get"
+      ]
+    },
+    {
+      "path": [
         "motion"
       ],
       "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
