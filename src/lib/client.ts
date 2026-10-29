@@ -10,6 +10,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
+import { version } from "../../package.json";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
 import { getRecheck, getWriteKind, isPoll, type WriteKind } from "./global-flags.js";
@@ -285,6 +286,8 @@ export function createClient(config: ClientConfig): Curviate {
   return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,
+    // Replaces the SDK's own `sdk/<version>`: exactly one Curviate-Client header per request.
+    client: `cli/${version}`,
     ...(config.baseUrl !== undefined ? { baseUrl: config.baseUrl } : {}),
     ...(config.timeout !== undefined ? { timeout: config.timeout } : {}),
     ...teamOption(config.team === undefined ? resolvedTeam() : config.team),

@@ -1158,9 +1158,19 @@
         "motion",
         "list"
       ],
-      "description": "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+      "description": "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. A cursor belongs to its sort.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "description": "updated (default) or activity."
+        },
         {
           "name": "status",
           "type": "string",
@@ -1186,7 +1196,8 @@
       ],
       "examples": [
         "curviate motion list",
-        "curviate motion list --status active,paused"
+        "curviate motion list --status active,paused",
+        "curviate motion list --accounts acc_A,acc_B --sort activity"
       ],
       "requires": [],
       "risk": "read"
@@ -1901,6 +1912,11 @@
           "name": "relationship",
           "type": "string",
           "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+        },
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only Enrollments on one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
         }
       ],
       "globals": [
@@ -6531,6 +6547,493 @@
     },
     {
       "path": [
+        "incoming"
+      ],
+      "description": "Incoming events: a private URL any tool posts to. Curviate finds the Contact in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "incoming",
+        "create"
+      ],
+      "description": "Create an incoming event: a private URL, printed once, that any tool posts to. Treat the URL like a password. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "event-name",
+          "type": "string",
+          "description": "The fixed event name every post carries (for example reply_received). Exactly one of this and --event-name-field on create."
+        },
+        {
+          "name": "event-name-field",
+          "type": "string",
+          "description": "The path in the post the event name is read from (for example event_type)."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Only this Motion's Enrollments move (mot_...); empty for any Motion's."
+        },
+        {
+          "name": "match-enrollment-id",
+          "type": "string",
+          "description": "Path in the post to an Enrollment id (for example custom_variables.enrollment_id); empty removes it."
+        },
+        {
+          "name": "match-linkedin-url",
+          "type": "string",
+          "description": "Path in the post to the person's LinkedIn URL; empty removes it."
+        },
+        {
+          "name": "match-email",
+          "type": "string",
+          "description": "Path in the post to an email address the Contact already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
+        },
+        {
+          "name": "required-header",
+          "type": "string",
+          "description": "NAME:VALUE every post must carry, else 401; NAME alone keeps the stored value; empty removes it."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming create --event-name reply_received --match-email lead_email"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates the URL; posts to it move the matching Enrollments waiting for the event.",
+        "visible_to": "Your Team (the URL masked); whoever you give the URL to can post.",
+        "budget_rows": [],
+        "retry": "Each call creates another URL.",
+        "undo": "`curviate incoming delete <id>`."
+      },
+      "errors": {
+        "MOTION_NOT_FOUND": "no Motion with that id."
+      }
+    },
+    {
+      "path": [
+        "incoming",
+        "list"
+      ],
+      "description": "Your Team's incoming events, URLs masked, with the last arrival and the Motion steps waiting for each.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "event",
+          "type": "string",
+          "description": "Only incoming events with this event name."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming list",
+        "curviate incoming list --event reply_received"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "incoming",
+        "get"
+      ],
+      "description": "One incoming event, URL masked: its match paths, captured sample shape, arrivals and where it is used.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming get inc_YOUR_INCOMING_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "incoming",
+        "update"
+      ],
+      "description": "Change an incoming event's name, Motion, match paths, required header or turn it off; the URL stays.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        },
+        {
+          "name": "event-name",
+          "type": "string",
+          "description": "The fixed event name every post carries (for example reply_received). Exactly one of this and --event-name-field on create."
+        },
+        {
+          "name": "event-name-field",
+          "type": "string",
+          "description": "The path in the post the event name is read from (for example event_type)."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Only this Motion's Enrollments move (mot_...); empty for any Motion's."
+        },
+        {
+          "name": "match-enrollment-id",
+          "type": "string",
+          "description": "Path in the post to an Enrollment id (for example custom_variables.enrollment_id); empty removes it."
+        },
+        {
+          "name": "match-linkedin-url",
+          "type": "string",
+          "description": "Path in the post to the person's LinkedIn URL; empty removes it."
+        },
+        {
+          "name": "match-email",
+          "type": "string",
+          "description": "Path in the post to an email address the Contact already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
+        },
+        {
+          "name": "required-header",
+          "type": "string",
+          "description": "NAME:VALUE every post must carry, else 401; NAME alone keeps the stored value; empty removes it."
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "description": "--enabled turns it on, --no-enabled off (posts answer 404)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming update inc_YOUR_INCOMING_ID --no-enabled"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Changes how later posts are read.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same values again.",
+        "undo": "Update it back."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only its creator (or an Owner, when it has none) can change it."
+      }
+    },
+    {
+      "path": [
+        "incoming",
+        "delete"
+      ],
+      "description": "Delete an incoming event: its URL stops working at once, and Motion steps waiting for it wait until their timeout.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming delete inc_YOUR_INCOMING_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Deletes the URL; later posts answer 404.",
+        "visible_to": "The tools posting to it.",
+        "budget_rows": [],
+        "retry": "A second delete answers RESOURCE_NOT_FOUND.",
+        "undo": "Cannot be undone; create a new one (a new URL).",
+        "blast_radius": "One URL and every Enrollment that would have moved on it."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only its creator (or an Owner, when it has none) can change it."
+      },
+      "seeAlso": [
+        "curviate incoming list"
+      ]
+    },
+    {
+      "path": [
+        "incoming",
+        "rotate"
+      ],
+      "description": "Replace the URL's secret: the new URL is printed once and the old one stops working at once. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming rotate inc_YOUR_INCOMING_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "A new URL; posts to the old one answer 404.",
+        "visible_to": "Every tool posting to the old URL, until you give it the new one.",
+        "budget_rows": [],
+        "retry": "Each call issues another URL.",
+        "undo": "Cannot be undone.",
+        "blast_radius": "One URL and every tool posting to it."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only its creator (or an Owner, when it has none) can change it."
+      },
+      "seeAlso": [
+        "curviate incoming get"
+      ]
+    },
+    {
+      "path": [
+        "incoming",
+        "capture"
+      ],
+      "description": "Capture the next post as the sample: its field paths (never its values' meaning) become the shape the match paths and Sequences are checked against. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming capture inc_YOUR_INCOMING_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The next post's shape replaces the captured sample.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: it waits for the next post.",
+        "undo": "Capture again."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only its creator (or an Owner, when it has none) can change it."
+      }
+    },
+    {
+      "path": [
+        "incoming",
+        "arrivals"
+      ],
+      "description": "The latest posts to the URL: when, the event name, which Contact matched and how many Enrollments moved.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Incoming event id (inc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate incoming arrivals inc_YOUR_INCOMING_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "beta"
+      ],
+      "description": "Beta consent for your Team: whether beta operations run without --beta on each call. Owners change it.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "beta",
+        "status"
+      ],
+      "description": "Whether beta operations run for your Team without --beta.",
+      "usageOnly": false,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate beta status"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "beta",
+        "update"
+      ],
+      "description": "Turn the Team's beta consent on or off. Owners only. On: beta operations run without --beta for every key of the Team.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "enabled",
+          "type": "string",
+          "required": true,
+          "description": "true or false."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate beta update --enabled true"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sets the Team's beta consent.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same setting again.",
+        "undo": "Run it with the other value."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only an Owner can change it."
+      }
+    },
+    {
+      "path": [
         "webhook"
       ],
       "description": "Webhook management and signature verification.",
@@ -6548,6 +7051,22 @@
       "description": "Register a new webhook endpoint.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "template-file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "The delivery body as a JSON text with {{variables}} (`curviate webhook variables --source <source>`), from a path or - for stdin. Lint it offline first: `curviate webhook lint`."
+        },
+        {
+          "name": "custom-events",
+          "type": "string",
+          "description": "With motion.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
+        },
+        {
+          "name": "header",
+          "type": "string",
+          "description": "A custom header on every delivery, KEY:VALUE; repeatable, replaces the whole set. KEY alone keeps that header's stored value (values are never read back). Not covered by the signature."
+        },
         {
           "name": "source",
           "type": "string",
@@ -6647,7 +7166,7 @@
         "webhook",
         "events"
       ],
-      "description": "List the canonical webhook event catalogue.",
+      "description": "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -6740,6 +7259,22 @@
           "name": "account-ids",
           "type": "string",
           "description": "Replace targeted accounts (comma-separated)."
+        },
+        {
+          "name": "template-file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "The delivery body as a JSON text with {{variables}} (`curviate webhook variables --source <source>`), from a path or - for stdin. Lint it offline first: `curviate webhook lint`."
+        },
+        {
+          "name": "custom-events",
+          "type": "string",
+          "description": "With motion.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
+        },
+        {
+          "name": "header",
+          "type": "string",
+          "description": "A custom header on every delivery, KEY:VALUE; repeatable, replaces the whole set. KEY alone keeps that header's stored value (values are never read back). Not covered by the signature."
         }
       ],
       "globals": [
@@ -6852,6 +7387,269 @@
     },
     {
       "path": [
+        "webhook",
+        "lint"
+      ],
+      "description": "Check a webhook body template offline, every finding at once, as `webhook create` would answer it. Offline: no API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "template-file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "The template, from a path or - for stdin."
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "description": "The webhook's source, which decides the variables: messaging, user, account_status, post, motion (default motion)."
+        }
+      ],
+      "globals": [
+        "json"
+      ],
+      "examples": [
+        "curviate webhook lint --template-file body.json --source motion"
+      ],
+      "requires": [],
+      "risk": "read",
+      "rules": {
+        "notes": [
+          "Offline: no API call."
+        ]
+      },
+      "output": [
+        "Findings on stderr, one per line: <file>:<line>:<col> error <code>: <rule>. <hint> -> <docs_url>. With --json (or piped) stdout carries the WEBHOOK_TEMPLATE_INVALID shape, or {\"errors\": []}. Exit 2 on any finding."
+      ]
+    },
+    {
+      "path": [
+        "webhook",
+        "variables"
+      ],
+      "description": "The {{variables}} a body template may use for a source, with their types and an example.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "source",
+          "type": "string",
+          "description": "messaging, user, account_status, post, motion."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate webhook variables --source motion"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "webhook",
+        "deliveries"
+      ],
+      "description": "A webhook's deliveries, newest first: status, attempts, the response code and the next retry. With a delivery id: that one delivery.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Webhook id (wh_...)."
+        },
+        {
+          "name": "deliveryId",
+          "type": "positional",
+          "required": false,
+          "description": "One delivery's id, to read it alone."
+        },
+        {
+          "name": "failed",
+          "type": "boolean",
+          "description": "Only deliveries that failed."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate webhook deliveries wh_YOUR_WEBHOOK_ID --failed",
+        "curviate webhook deliveries wh_YOUR_WEBHOOK_ID YOUR_DELIVERY_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "webhook",
+        "redeliver"
+      ],
+      "description": "Send one past delivery again, with the body it was rendered with and a fresh signature.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Webhook id (wh_...)."
+        },
+        {
+          "name": "deliveryId",
+          "type": "positional",
+          "description": "The delivery id, from `curviate webhook deliveries`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate webhook redeliver wh_YOUR_WEBHOOK_ID YOUR_DELIVERY_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Posts the delivery to the webhook's URL again.",
+        "visible_to": "Your endpoint.",
+        "budget_rows": [],
+        "retry": "Each call posts again: your endpoint may record it twice.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "DELIVERY_IN_FLIGHT": "the delivery is being sent right now; read it again shortly.",
+        "REDELIVERY_EXPIRED": "the delivery is too old to send again."
+      }
+    },
+    {
+      "path": [
+        "webhook",
+        "rotate"
+      ],
+      "description": "Issue a new signing secret, printed once. For 24 hours every delivery carries both signatures (`v1=<new>,v1=<old>`), so a receiver on either secret keeps verifying; switch yours to the new one inside that window.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Webhook id (wh_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate webhook rotate wh_YOUR_WEBHOOK_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "A new signing secret; the old one stops signing after 24 hours (at once on a second rotation inside the window).",
+        "visible_to": "Your endpoint, which must verify with the new secret within 24 hours.",
+        "budget_rows": [],
+        "retry": "A second rotation drops the oldest secret at once.",
+        "undo": "Cannot be undone: rotate again for another new secret.",
+        "blast_radius": "One webhook's deliveries."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only the webhook's creator can do this."
+      },
+      "seeAlso": [
+        "curviate webhook verify"
+      ]
+    },
+    {
+      "path": [
+        "webhook",
+        "test"
+      ],
+      "description": "Send a sample delivery of one event to the webhook's URL now, rendered through its template and signed like a real one (`data.test_event: true`).",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Webhook id (wh_...)."
+        },
+        {
+          "name": "event",
+          "type": "string",
+          "description": "The event to sample (default: the first one subscribed)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate webhook test wh_YOUR_WEBHOOK_ID",
+        "curviate webhook test wh_YOUR_WEBHOOK_ID --event enrollment.finished"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Posts one sample delivery to the webhook's URL.",
+        "visible_to": "Your endpoint.",
+        "budget_rows": [],
+        "retry": "Each call sends another sample.",
+        "undo": "Cannot be undone."
+      },
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no webhook with this id."
+      }
+    },
+    {
+      "path": [
         "core"
       ],
       "description": "Curviate core: LinkedIn building blocks. Each command runs one action now, from one Account, and counts against that Account's budgets. Nothing is queued, paced or retried for you, except a Draft scheduled with `--schedule-at`, which Curviate publishes at that time (`curviate core draft create`).",
@@ -6915,7 +7713,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -6966,7 +7764,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -9460,7 +10258,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -9540,7 +10338,7 @@
         {
           "name": "mode",
           "type": "string",
-          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age, fetch only when nothing is stored), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
+          "description": "How willing this read is to reach LinkedIn: auto (default, a stored copy while it is fresh), live (always fetch), refill (a stored copy at any age: fetches at most once, until swept; a record nothing links to and nobody read for 90 days is deleted, and the next read fetches it again), cache_only (never fetch; a store miss is refused rather than fetched). Not combinable with --max-age under cache_only."
         },
         {
           "name": "max-age",
@@ -11015,7 +11813,7 @@
         "core",
         "sales-nav"
       ],
-      "description": "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+      "description": "Beta. Sales Navigator operations. Needs the LinkedIn account's own Sales Navigator subscription; no Curviate add-on. Beta operations can require consent: an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this call.",
       "usageOnly": true,
       "args": [],
       "globals": [
@@ -11613,7 +12411,7 @@
         "core",
         "recruiter"
       ],
-      "description": "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: a human enables beta in Settings, or pass --beta for this call.",
+      "description": "Beta. LinkedIn Recruiter operations. Needs the LinkedIn account's own Recruiter subscription; no Curviate add-on. Beta operations can require consent: an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this call.",
       "usageOnly": true,
       "args": [],
       "globals": [

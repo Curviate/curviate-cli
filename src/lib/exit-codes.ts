@@ -68,7 +68,7 @@ import type { ErrorCode } from "@curviate/sdk";
  * systems. `NO_ACTIVE_SEAT` is Curviate-side (buy or attach a seat),
  * `LINKEDIN_FEATURE_NOT_SUBSCRIBED` is LinkedIn-side (the account needs its
  * own Sales Navigator or Recruiter subscription), and `BETA_NOT_ENABLED` is
- * consent-side (a human enables beta in Settings, or pass --beta for this
+ * consent-side (an Owner enables beta with `curviate beta update --enabled true`, or pass --beta for this
  * call). They share exit 5 because the remedy is the same SHAPE, a human
  * changes something and retries, and a scripted caller branching on the exit
  * code alone wants one bucket for that. It does NOT mean they are
