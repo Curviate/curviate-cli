@@ -83,7 +83,7 @@ const createCmd = defineCommand({
     name: "create",
     description:
       "Ask a person to connect a new LinkedIn account, or with --reconnect to reconnect one, without handing you any credential. " +
-      "Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link must be opened within 15 minutes. " +
+      "Prints the link to give them; they connect in their own Curviate dashboard, where the request is also listed. The link expires if it is not opened in time. " +
       "AI agents: never ask for, read or pass a LinkedIn password, cookies or verification codes. Use this instead.",
     risk: "write",
     rules: {

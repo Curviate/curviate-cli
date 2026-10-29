@@ -452,6 +452,15 @@ const webhookCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Register a new webhook endpoint.",
+    risk: "write",
+    rules: {
+      changes: "Registers a webhook endpoint: Curviate delivers the subscribed events to its URL.",
+      visible_to: "Your endpoint, which receives event payloads. Nothing reaches LinkedIn.",
+      budget_rows: [],
+      retry: "Not safe: each call registers another webhook, with its own id and secret.",
+      undo: "`curviate webhook delete <webhook_id>`.",
+    },
+    errors: { WEBHOOK_TEMPLATE_INVALID: "the body template is invalid: `curviate webhook lint` names every finding." },
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
       "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
@@ -472,7 +481,7 @@ const webhookCreateCommand = defineCommand({
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target. Omit to cover every account you can operate, now and later." },
     "motion-ids": { type: "string", description: "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter." },
-    name: { type: "string", description: "Human-readable name (1-100 chars)." },
+    name: { type: "string", description: "Human-readable name (up to 100 characters)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
     data: { type: "string", description: "Comma-separated field-remapping keys." },
@@ -499,6 +508,7 @@ const webhookListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List registered webhooks.",
+    risk: "read",
     examples: [
       "curviate webhook list",
     ],
@@ -528,6 +538,7 @@ const webhookEventsCommand = defineCommand({
     description:
       "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. " +
       "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
+    risk: "read",
     examples: [
       "curviate webhook events",
     ],
@@ -555,6 +566,7 @@ const webhookGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a single webhook owned by the calling tenant.",
+    risk: "read",
     examples: [
       "curviate webhook get wh_YOUR_WEBHOOK_ID",
     ],
@@ -585,6 +597,15 @@ const webhookUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Update a webhook in place (source is immutable).",
+    risk: "write",
+    rules: {
+      changes: "Changes the fields you pass on the webhook; its source cannot change.",
+      visible_to: "Your endpoint, which receives the payloads the webhook now selects.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the webhook the same.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { RESOURCE_NOT_FOUND: "no webhook with this id.", WEBHOOK_TEMPLATE_INVALID: "the body template is invalid: `curviate webhook lint` names every finding." },
     examples: [
       "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
       "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2",
@@ -663,6 +684,7 @@ const webhookVerifyCommand = defineCommand({
   meta: {
     name: "verify",
     description: "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
+    risk: "read",
     examples: [
       "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --file payload.json",
     ],

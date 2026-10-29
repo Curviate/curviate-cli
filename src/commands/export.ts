@@ -1,7 +1,7 @@
 /**
  * `curviate export`: a background export job (started by `curviate analytics
  * export --job`): read its status, download its file. Only the person who
- * started it can; the file expires 24 hours after it is ready.
+ * started it can; the file expires some time after it is ready.
  */
 import { defineCommand } from "citty";
 import type { Curviate } from "@curviate/sdk";
@@ -16,7 +16,7 @@ type ExportFlags = RootFlags & { id?: string; output?: string };
 
 const ERRORS = {
   EXPORT_NOT_READY: "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
-  EXPORT_EXPIRED: "the file expired 24 hours after it was ready: run the export again.",
+  EXPORT_EXPIRED: "the file has expired: run the export again.",
   EXPORT_REMOVED: "the export was removed because a Contact was deleted: run it again.",
 };
 

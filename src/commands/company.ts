@@ -55,6 +55,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableId, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
@@ -836,6 +837,7 @@ const companyEmployeesCommand = defineCommand({
   meta: {
     name: "employees",
     description: "List people who currently work at the company.",
+    risk: "read",
     examples: [
       "curviate core company employees acmecorp",
       "curviate core company employees 1234567 --keywords \"machine learning\"",
@@ -870,6 +872,7 @@ const companyPostsCommand = defineCommand({
   meta: {
     name: "posts",
     description: "List the company's posts.",
+    risk: "read",
     examples: [
       "curviate core company posts acmecorp",
       "curviate core company posts 1234567 --limit 5",
@@ -902,6 +905,7 @@ const companyJobsCommand = defineCommand({
   meta: {
     name: "jobs",
     description: "List the company's open job postings.",
+    risk: "read",
     examples: [
       "curviate core company jobs acmecorp",
       "curviate core company jobs 1234567 --keywords engineer",
@@ -939,6 +943,10 @@ const companyInvitableFollowersCommand = defineCommand({
       "This is the read that seeds `curviate core company follow-invite`. Items carry no name or headline (a wire limitation), " +
       "so hydrate a candidate via `curviate core profile <id>` before deciding who to invite. " +
       "`invite_token` is always returned as base64 (the raw value can carry binary bytes unsafe to print).",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll"],
+    },
     examples: [
       "curviate core company invitable-followers 1234567",
     ],
@@ -975,6 +983,17 @@ const companyFollowInviteCommand = defineCommand({
       "Pass the AC... member ids from `curviate core company invitable-followers`, one --invitee per invitee. " +
       "All-or-nothing: for an all-valid request you get one outcome per invitee, in request order (invited/already_invited/ineligible/not_found); if any invitee id is invalid the whole request rejects with a 404, not a partial result. " +
       "Re-inviting an already-invited member is a safe no-op (the same invitation id, never a duplicate).",
+    risk: "high",
+    rules: {
+      changes: "Invites the chosen connections to follow the company page you administer.",
+      visible_to: "Each invitee, who gets the invitation from LinkedIn.",
+      budget_rows: [],
+      retry: "Safe: re-inviting a member who is already invited returns the same invitation and sends no second one.",
+      undo: "An invitation cannot be withdrawn from the CLI.",
+      blast_radius: "One invitation per --invitee, all from your Account in one call.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, RESOURCE_ACCESS_RESTRICTED: "the Account does not administer the page." },
+    seeAlso: ["curviate core company invitable-followers", "curviate core company managed"],
     examples: [
       "curviate core company follow-invite 1234567 --invitee ACoAAB1cDeFgHiJkLmNoP",
     ],
@@ -984,7 +1003,7 @@ const companyFollowInviteCommand = defineCommand({
     id: { type: "positional", description: "Company identifier (URL, slug, or numeric id), resolved to the numeric id first, including under --preview." },
     invitee: {
       type: "string",
-      description: "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required, max 50 per request.",
+      description: "AC... member id to invite (from `curviate core company invitable-followers`). Repeatable, at least one required.",
       required: true,
     },
   },
@@ -1011,6 +1030,7 @@ const companyManagedCommand = defineCommand({
   meta: {
     name: "managed",
     description: "List the company pages the connected account administers. An empty result is valid, the account administers no pages.",
+    risk: "read",
     examples: [
       "curviate core company managed",
     ],
@@ -1039,6 +1059,10 @@ const companyFollowersCommand = defineCommand({
   meta: {
     name: "followers",
     description: "List a company page's followers, newest first. Admin-gated: the account must administer the page (see `curviate core company managed`).",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll"],
+    },
     examples: [
       "curviate core company followers 1234567",
       "curviate core company followers 1234567 --all",
@@ -1072,6 +1096,7 @@ const companyChatsCommand = defineCommand({
     name: "chats",
     description:
       "List the conversations in a company page's admin message inbox, newest-activity-first. Admin-gated. Beta.",
+    risk: "read",
     examples: [
       "curviate core company chats 1234567",
     ],
@@ -1103,6 +1128,7 @@ const companyChatCommand = defineCommand({
   meta: {
     name: "chat",
     description: "Retrieve one conversation from a company page's admin inbox. Admin-gated.",
+    risk: "read",
     examples: [
       "curviate core company chat 1234567 2-YTQ3ODU3Njgt",
     ],
@@ -1135,6 +1161,7 @@ const companyMessagesCommand = defineCommand({
   meta: {
     name: "messages",
     description: "List a company-inbox conversation's messages, newest first. Admin-gated.",
+    risk: "read",
     examples: [
       "curviate core company messages 1234567 2-YTQ3ODU3Njgt",
     ],
@@ -1167,6 +1194,7 @@ const companyMessageCommand = defineCommand({
   meta: {
     name: "message",
     description: "Retrieve one message from a company-inbox conversation. Admin-gated. See also: `curviate core company reply` (send).",
+    risk: "read",
     examples: [
       "curviate core company message 1234567 2-YTQ3ODU3Njgt MSG_ID",
     ],
@@ -1202,6 +1230,10 @@ const companySearchChatsCommand = defineCommand({
     description:
       "Search or filter a company page's admin inbox. Exactly one mode per call: free-text <query>, --topic, " +
       "or --unread; mutually exclusive, enforced server-side. Admin-gated. Beta.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core company search-chats 1234567 sophie",
       "curviate core company search-chats 1234567 sophie --unread",
@@ -1241,6 +1273,15 @@ const companyReplyCommand = defineCommand({
       "the page). Takes the normal 2-... chat id from `curviate core company chats`; the endpoint resolves the page mailbox " +
       "internally from the company id. Reply-only, this cannot start a new conversation on the page's behalf. " +
       "See also: `curviate core company chats` (the read that returns the chat id) and `curviate core message send` (the personal equivalent).",
+    risk: "write",
+    rules: {
+      changes: "Sends a reply in a company-inbox conversation, as the page.",
+      visible_to: "The person in the conversation, as the page.",
+      budget_rows: [],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core company messages <company_id> <chat_id>` first.",
+      undo: "Cannot be undone from the CLI: delete the message on LinkedIn.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, RESOURCE_ACCESS_RESTRICTED: "the Account does not administer the page." },
     examples: [
       "curviate core company reply 1234567 2-YTQ3ODU3Njgt \"Thanks for reaching out, happy to help.\"",
     ],
@@ -1278,6 +1319,10 @@ export const companyCommand = defineCommand({
   meta: {
     name: "company",
     description: DESCRIPTIONS.company,
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll"],
+    },
     examples: [
       "curviate core company acmecorp",
       "curviate core company https://www.linkedin.com/company/acmecorp",

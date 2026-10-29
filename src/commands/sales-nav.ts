@@ -34,6 +34,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
@@ -779,6 +780,15 @@ const salesNavMessageNewCommand = defineCommand({
   meta: {
     name: "new",
     description: "Start a new Sales Navigator chat.",
+    risk: "write",
+    rules: {
+      changes: "Starts a Sales Navigator chat with the member and sends the opening message.",
+      visible_to: "The recipient.",
+      budget_rows: ["inmail"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+      undo: "Cannot be undone.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Sales Navigator subscription.", RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person." },
     examples: [
       "curviate core sales-nav message new --to ACwAAA1234567 --subject \"Quick question\" \"Hi Jane, a quick question about your team's tooling.\"",
     ],
@@ -794,9 +804,9 @@ const salesNavMessageNewCommand = defineCommand({
     },
     subject: { type: "string", description: "Message subject line (required for Sales Navigator messaging).", required: true },
     text: { type: "positional", description: "Opening message text." },
-    attach: { type: "string", description: "File to attach (repeatable, max 7 MiB each)." },
-    voice: { type: "string", description: "Voice message file (max 7 MiB)." },
-    video: { type: "string", description: "Video message file (max 7 MiB)." },
+    attach: { type: "string", description: "File to attach (repeatable)." },
+    voice: { type: "string", description: "Voice message file." },
+    video: { type: "string", description: "Video message file." },
   },
   async run({ args }) {
     const flags = args as SalesNavFlags;
@@ -832,6 +842,10 @@ const salesNavSearchPeopleCommand = defineCommand({
   meta: {
     name: "people",
     description: "Search Sales Navigator member profiles.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core sales-nav search people --keywords \"head of data\"",
       "curviate core sales-nav search people --filters-file filters.json",
@@ -870,6 +884,10 @@ const salesNavSearchCompaniesCommand = defineCommand({
   meta: {
     name: "companies",
     description: "Search Sales Navigator companies.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core sales-nav search companies --keywords fintech",
     ],
@@ -904,6 +922,7 @@ const salesNavSearchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve Sales Navigator filter parameter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    risk: "read",
     examples: [
       "curviate core sales-nav search parameters --type REGION --keywords Berlin",
     ],
@@ -941,6 +960,10 @@ const salesNavSearchCommand = defineCommand({
   meta: {
     name: "search",
     description: "Sales Navigator search operations. Also runs a pasted Sales Navigator search/list URL directly.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
     ],
@@ -993,6 +1016,10 @@ const salesNavProfileCommand = defineCommand({
   meta: {
     name: "profile",
     description: "Get a Sales Navigator enriched member profile.",
+    risk: "read",
+    rules: {
+      budget_rows: ["profile_views"],
+    },
     examples: [
       "curviate core sales-nav profile https://www.linkedin.com/in/janesmith",
     ],
@@ -1025,6 +1052,15 @@ const salesNavSaveLeadCommand = defineCommand({
   meta: {
     name: "save-lead",
     description: "Save a Sales Navigator member into a lead list.",
+    risk: "write",
+    rules: {
+      changes: "Adds the member to a lead list in Sales Navigator.",
+      visible_to: "Your Sales Navigator seat, and whoever the list is shared with.",
+      budget_rows: [],
+      retry: "Read the list with `curviate core sales-nav browse-lead-list <list_id>` first.",
+      undo: "Remove the lead from the list in Sales Navigator; the CLI has no command for it.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Sales Navigator subscription." },
     examples: [
       "curviate core sales-nav save-lead ACwAAA1234567 --list 987654",
     ],
@@ -1062,6 +1098,7 @@ const salesNavAccountListsCommand = defineCommand({
   meta: {
     name: "account-lists",
     description: "List the saved-account (company) lists on the operator's Sales Navigator seat.",
+    risk: "read",
     examples: [
       "curviate core sales-nav account-lists",
     ],
@@ -1090,6 +1127,7 @@ const salesNavLeadListsCommand = defineCommand({
   meta: {
     name: "lead-lists",
     description: "List the saved-lead (member) lists on the operator's Sales Navigator seat.",
+    risk: "read",
     examples: [
       "curviate core sales-nav lead-lists",
     ],
@@ -1118,6 +1156,7 @@ const salesNavBrowseAccountListCommand = defineCommand({
   meta: {
     name: "browse-account-list",
     description: "Browse the saved accounts (companies) in one account list.",
+    risk: "read",
     examples: [
       "curviate core sales-nav browse-account-list 987654",
       "curviate core sales-nav browse-account-list 987654 --sort-by DATE_ADDED --sort-order DESCENDING",
@@ -1153,6 +1192,7 @@ const salesNavBrowseLeadListCommand = defineCommand({
   meta: {
     name: "browse-lead-list",
     description: "Browse the saved leads (members) in one lead list.",
+    risk: "read",
     examples: [
       "curviate core sales-nav browse-lead-list 987654",
       "curviate core sales-nav browse-lead-list 987654 --spotlight RECENT_POSITION_CHANGE",
@@ -1188,6 +1228,15 @@ const salesNavSaveAccountCommand = defineCommand({
   meta: {
     name: "save-account",
     description: "Save a LinkedIn company into an account list.",
+    risk: "write",
+    rules: {
+      changes: "Adds the company to an account list in Sales Navigator.",
+      visible_to: "Your Sales Navigator seat, and whoever the list is shared with.",
+      budget_rows: [],
+      retry: "Read the list with `curviate core sales-nav browse-account-list <list_id>` first.",
+      undo: "Remove the company from the list in Sales Navigator; the CLI has no command for it.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Sales Navigator subscription." },
     examples: [
       "curviate core sales-nav save-account 1234567 --list 987654",
     ],

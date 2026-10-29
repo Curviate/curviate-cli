@@ -17,6 +17,7 @@
  */
 
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -428,16 +429,17 @@ const ACCOUNT_DESC =
   "Account the Draft publishes as (acc_...). Never defaulted: omit it for a Draft with no account yet.";
 const SCHEDULE_DESC =
   "Publish at this time: ISO 8601 with an offset (e.g. 2026-10-12T09:00:00+02:00), passed through unchanged. " +
-  "Between 5 minutes and 365 days ahead, at least 5 minutes from another scheduled Draft on the same account. Needs an account and text.";
+  "A time in the future, not too close to another scheduled Draft on the same account (SCHEDULE_CONFLICT). Needs an account and text.";
 const ATTACH_DESC =
-  "File to attach, repeatable; keeps the order given. Files up to 5 MiB go inline, larger ones upload separately. " +
-  "Up to 20 images (JPEG, PNG, GIF, WEBP, each up to 5 MiB), or one MP4 video, or one PDF (each up to 50 MiB), never mixed.";
+  "File to attach, repeatable; keeps the order given. Several images (JPEG, PNG, GIF, WEBP), or one MP4 video, or one PDF, never mixed. " +
+  "A file over its size limit is refused.";
 
 const draftListCommand = defineCommand({
   meta: {
     name: "list",
     description:
       "List Drafts, newest first. With --status published it lists publish records instead (post id, account, time; never Drafts).",
+    risk: "read",
     examples: [
       "curviate core draft list",
       "curviate core draft list --status scheduled --account acc_YOUR_ACCOUNT_ID --order asc",
@@ -460,7 +462,8 @@ const draftListCommand = defineCommand({
 const draftGetCommand = defineCommand({
   meta: {
     name: "get",
-    description: "Get one Draft, with a fresh signed link (valid 1 hour) for each attachment.",
+    description: "Get one Draft, with a fresh signed link for each attachment. The links expire: fetch the Draft again for new ones.",
+    risk: "read",
     examples: ["curviate core draft get drf_YOUR_DRAFT_ID"],
   },
   args: {
@@ -477,7 +480,16 @@ const draftCreateCommand = defineCommand({
     name: "create",
     description:
       "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. " +
-      "Up to 50 Drafts and 2 GiB of media per account, and per no-account. A retry creates a second Draft. Needs Automate.",
+      "Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Stores a Draft; with --schedule-at, an account and text, Curviate publishes it at that time.",
+      visible_to: "You and your Team; nothing reaches LinkedIn until it is published.",
+      budget_rows: [],
+      retry: "Not safe: each call creates another Draft.",
+      undo: "`curviate core draft delete <draft_id>`.",
+    },
+    errors: { TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_LIMIT_REACHED: "the bucket already holds as many Drafts as it may.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
     examples: [
       "curviate core draft create \"Three things we learned shipping our first agent integration.\"",
       "curviate core draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -502,6 +514,15 @@ const draftUpdateCommand = defineCommand({
     description:
       "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. " +
       "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Changes the parts of the Draft you pass; --schedule-at schedules or reschedules it, --unschedule cancels.",
+      visible_to: "You and your Team; nothing reaches LinkedIn until it is published.",
+      budget_rows: [],
+      retry: "Safe for the text and schedule: the same values written again leave the Draft the same. --attach appends the files again.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_PUBLISHING: "the Draft is being published: read it again in a few seconds.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
     examples: [
       "curviate core draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
       "curviate core draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -526,6 +547,17 @@ const draftDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete a Draft and its stored media.",
+    risk: "high",
+    rules: {
+      changes: "Deletes the Draft and its stored media.",
+      visible_to: "You and your Team.",
+      budget_rows: [],
+      retry: "Safe: a deleted Draft is gone, so a repeat has nothing to delete.",
+      undo: "Cannot be undone.",
+      blast_radius: "One Draft, with its stored media.",
+    },
+    errors: { RESOURCE_NOT_FOUND: "no such Draft." },
+    seeAlso: ["curviate core draft list"],
     examples: ["curviate core draft delete drf_YOUR_DRAFT_ID"],
   },
   args: {
@@ -543,6 +575,15 @@ const draftPublishCommand = defineCommand({
     description:
       "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
       "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Publishes the Draft as a post now and deletes the Draft.",
+      visible_to: "Everyone who can see your posts on LinkedIn.",
+      budget_rows: ["posts"],
+      retry: "A known failure leaves the Draft unchanged and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
+      undo: "`curviate core post delete <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_NOT_PUBLISHABLE: "the Draft lacks what a post needs.", DRAFT_PUBLISHING: "the Draft is already being published." },
     examples: ["curviate core draft publish drf_YOUR_DRAFT_ID"],
   },
   args: {

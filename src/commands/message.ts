@@ -30,6 +30,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
@@ -706,6 +707,15 @@ const messageNewCommand = defineCommand({
   meta: {
     name: "new",
     description: "Start a new chat with one or more members.",
+    risk: "write",
+    rules: {
+      changes: "Starts a chat with the recipient and sends the opening message from your Account.",
+      visible_to: "The recipient, in their LinkedIn inbox.",
+      budget_rows: ["messages_first_degree"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+      undo: "`curviate core message delete <chat_id> <message_id>` removes the message; the chat stays and the recipient may have read it.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person." },
     examples: [
       "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
     ],
@@ -750,6 +760,7 @@ const messageGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a message by ID.",
+    risk: "read",
     examples: [
       "curviate core message get 2-YTQ3ODU3Njgt MSG_ID",
     ],
@@ -783,6 +794,15 @@ const messageEditCommand = defineCommand({
   meta: {
     name: "edit",
     description: "Edit a message (within the allowed window).",
+    risk: "write",
+    rules: {
+      changes: "Replaces the text of one of your messages.",
+      visible_to: "The other participants of the chat.",
+      budget_rows: [],
+      retry: "Safe: the same text written again leaves the message the same.",
+      undo: "Edit it again with the previous text, while LinkedIn still allows edits.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core message edit 2-YTQ3ODU3Njgt MSG_ID \"Thanks, that makes sense to me.\"",
     ],
@@ -817,6 +837,17 @@ const messageDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete a message.",
+    risk: "high",
+    rules: {
+      changes: "Deletes one message from the chat.",
+      visible_to: "The other participants no longer see it.",
+      budget_rows: [],
+      retry: "Safe: a deleted message is gone, so a repeat has nothing to delete.",
+      undo: "Cannot be undone.",
+      blast_radius: "One message.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core inbox messages"],
     examples: [
       "curviate core message delete 2-YTQ3ODU3Njgt MSG_ID",
     ],
@@ -850,6 +881,15 @@ const messageReactCommand = defineCommand({
   meta: {
     name: "react",
     description: "Add an emoji reaction to a message.",
+    risk: "write",
+    rules: {
+      changes: "Adds your emoji reaction to the message.",
+      visible_to: "The other participants of the chat.",
+      budget_rows: ["post_likes"],
+      retry: "Read the message first: a repeat with the same emoji may count against the budget again.",
+      undo: "React again to change it; the CLI has no command to remove a reaction.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core message react 2-YTQ3ODU3Njgt MSG_ID 👍",
     ],
@@ -892,6 +932,7 @@ const messageAttachmentCommand = defineCommand({
   meta: {
     name: "attachment",
     description: "Download a message attachment.",
+    risk: "read",
     examples: [
       "curviate core message attachment 2-YTQ3ODU3Njgt MSG_ID ATTACHMENT_ID -o attachment.pdf",
     ],
@@ -932,6 +973,15 @@ const messageInMailCommand = defineCommand({
   meta: {
     name: "inmail",
     description: "Send an InMail to a member.",
+    risk: "write",
+    rules: {
+      changes: "Sends an InMail to the member.",
+      visible_to: "The recipient.",
+      budget_rows: ["inmail"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+      undo: "Cannot be undone.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person." },
     examples: [
       "curviate core message inmail --to janesmith --subject \"Agent tooling\" \"Hi Jane, a quick question about your eval setup.\"",
     ],
@@ -985,6 +1035,15 @@ const messageSendCommand = defineCommand({
       "identity: a company-page send prints \"Sent as <name> (company page)\", a personal send prints " +
       "nothing new. See also: `curviate core inboxes chats` (discover a COMPANY_ chat id) and the Reply as a company " +
       "page guide.",
+    risk: "write",
+    rules: {
+      changes: "Sends the text into the chat, as you, or as the page for a COMPANY_ chat id.",
+      visible_to: "The other participants of the chat.",
+      budget_rows: ["messages_first_degree"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox messages <chat_id>` first.",
+      undo: "`curviate core message delete <chat_id> <message_id>`; it may already have been read.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person.", CHAT_NOT_VISIBLE: "the chat is not visible to the Account." },
     examples: [
       "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
     ],
@@ -1024,6 +1083,7 @@ const messageInMailBalanceCommand = defineCommand({
   meta: {
     name: "inmail-balance",
     description: "Get InMail credit balance.",
+    risk: "read",
     examples: [
       "curviate core message inmail-balance",
     ],
@@ -1123,6 +1183,15 @@ export const messageCommand = defineCommand({
   meta: {
     name: "message",
     description: DESCRIPTIONS.message,
+    risk: "write",
+    rules: {
+      changes: "Sends the text into the chat, as you, or as the page for a COMPANY_ chat id.",
+      visible_to: "The other participants of the chat.",
+      budget_rows: ["messages_first_degree"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox messages <chat_id>` first.",
+      undo: "`curviate core message delete <chat_id> <message_id>`; it may already have been read.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person.", CHAT_NOT_VISIBLE: "the chat is not visible to the Account." },
     examples: [
       "curviate core message 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
       "curviate core message 2-YTQ3ODU3Njgt \"See the attached brief.\" --attach brief.pdf",
