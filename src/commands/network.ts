@@ -180,6 +180,7 @@ const exportCmd = defineCommand({
   args: {
     "api-key": GLOBAL_FLAGS["api-key"],
     profile: GLOBAL_FLAGS.profile,
+    team: GLOBAL_FLAGS.team,
     "base-url": GLOBAL_FLAGS["base-url"],
     timeout: GLOBAL_FLAGS.timeout,
     ...FILTERS,

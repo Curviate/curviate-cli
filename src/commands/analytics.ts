@@ -338,6 +338,7 @@ const exportCmd = defineCommand({
   args: {
     "api-key": GLOBAL_FLAGS["api-key"],
     profile: GLOBAL_FLAGS.profile,
+    team: GLOBAL_FLAGS.team,
     "base-url": GLOBAL_FLAGS["base-url"],
     timeout: GLOBAL_FLAGS.timeout,
     table: { type: "string" as const, description: "Comma list of daily, accounts, motions, enrollments (default all four); or, with --job, one of motion_activity, account_activity, account_metrics." },
