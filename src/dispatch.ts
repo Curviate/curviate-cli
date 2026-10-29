@@ -39,7 +39,7 @@ import {
   restoreLiteralDashes,
   type RestorableArgDef,
 } from "./lib/stdin.js";
-import { GLOBAL_FLAGS, STATE_WRITES, setWriteKind } from "./lib/global-flags.js";
+import { GLOBAL_FLAGS, STATE_WRITES, setTeamFlag, setWriteKind } from "./lib/global-flags.js";
 import { SECRET_FLAGS } from "./lib/preview.js";
 import { parseBetaFlag, setBetaOverride } from "./lib/beta.js";
 import { editDistance } from "./lib/bare-form-guard.js";
@@ -849,6 +849,8 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
               // `--limit` is a global flag read by ~60 handlers; checked once here.
               const limit = (ctx.args as Record<string, unknown>)["limit"];
               if (typeof limit === "string") intFlag("limit", limit);
+              // `--team` is resolved in lib/resolve.ts with the env and profile tiers.
+              setTeamFlag((ctx.args as Record<string, unknown>)["team"]);
               return originalRun(ctx);
             },
           }

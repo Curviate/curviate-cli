@@ -1036,7 +1036,8 @@ const profileMeCommand = defineCommand({
 const profileRelationsCommand = defineCommand({
   meta: {
     name: "relations",
-    description: "List your 1st-degree connections.",
+    description: "List your 1st-degree connections, live from LinkedIn.",
+    seeAlso: ["curviate network list (the stored Connections of every Account, no LinkedIn call)"],
     examples: [
       "curviate core profile relations",
       "curviate core profile relations --all",

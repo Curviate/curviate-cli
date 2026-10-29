@@ -26,7 +26,7 @@ type EnrollmentFlags = RootFlags & {
   motion?: string;
   contact?: string;
   status?: string;
-  step?: string;
+  step?: string | string[];
   version?: string;
   "done-step"?: string;
   outcome?: string;
@@ -64,10 +64,10 @@ function filters(f: EnrollmentFlags): Record_ {
   };
   one("motion", "motion_id");
   one("contact", "contact_id");
-  one("step", "step_id");
   one("done-step", "done_step");
   one("outcome", "outcome");
   one("variant", "variant_id");
+  if (f.step !== undefined) q["step_id"] = listFlag("step", f.step);
   if (f.status !== undefined) q["status"] = listFlag("status", f.status);
   if (f.reason !== undefined) q["reason"] = listFlag("reason", f.reason);
   if (f.relationship !== undefined) q["relationship_at_enrollment"] = listFlag("relationship", f.relationship);
@@ -262,7 +262,7 @@ const FILTER_ARGS = {
   motion: { type: "string" as const, description: "Only this Motion's Enrollments (mot_...)." },
   contact: { type: "string" as const, description: "Only this Contact's Enrollments (con_...)." },
   status: { type: "string" as const, description: "Comma list of pending, active, paused, finished, skipped." },
-  step: { type: "string" as const, description: "Only Enrollments now at this Step id." },
+  step: { type: "string" as const, description: "Only Enrollments now at one of these Step ids: repeatable or a comma list." },
   version: { type: "string" as const, description: "Only Enrollments running this Sequence version (1 or more)." },
   "done-step": { type: "string" as const, description: "Only Enrollments that ran this Step id. With --outcome: how it ended." },
   outcome: { type: "string" as const, description: "With --done-step: executed, skipped, failed, accepted, not_accepted, replied, no_reply or seen." },
@@ -323,7 +323,7 @@ const resumeCmd = defineCommand({
     description:
       "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. " +
       "The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. " +
-      "To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure.",
+      "To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs Automate.",
     risk: "high",
     rules: {
       changes: "The Enrollment runs again from its Account; with --at, from the named Step.",
@@ -421,7 +421,7 @@ const eventMeta = (name: "event" | "signal", description: string, example: strin
 const eventCmd = defineCommand({
   meta: eventMeta(
     "event",
-    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook.",
+    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook. Needs Automate.",
     "curviate enrollment event enr_YOUR_ENROLLMENT_ID research_ready",
   ),
   args: EVENT_ARGS,
@@ -431,7 +431,7 @@ const eventCmd = defineCommand({
 const signalCmd = defineCommand({
   meta: eventMeta(
     "signal",
-    "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event.",
+    "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs Automate.",
     "curviate enrollment signal enr_YOUR_ENROLLMENT_ID research_ready",
   ),
   args: EVENT_ARGS,
@@ -446,7 +446,7 @@ const reassignCmd = defineCommand({
     name: "reassign",
     description:
       "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). " +
-      "Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them.",
+      "Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
     risk: "high",
     rules: {
       changes: "The Enrollment restarts on the target Account; Steps already skipped are named in warnings.",

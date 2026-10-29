@@ -3,8 +3,8 @@
  *
  * Computes the authoritative values for a command invocation by merging,
  * in priority order (highest first):
- *   1. CLI flags (`--api-key`, `--base-url`, `--timeout`, `--account`)
- *   2. Environment variables (`CURVIATE_API_KEY`, `CURVIATE_BASE_URL`, `CURVIATE_ACCOUNT`)
+ *   1. CLI flags (`--api-key`, `--base-url`, `--timeout`, `--account`, `--team`)
+ *   2. Environment variables (`CURVIATE_API_KEY`, `CURVIATE_BASE_URL`, `CURVIATE_ACCOUNT`, `CURVIATE_TEAM`)
  *   3. Active (or `--profile`-selected) config-file profile
  *   4. SDK defaults (`https://api.curviate.com`, `30000 ms`)
  *
@@ -13,6 +13,7 @@
 
 import { profileValue, readConfigFile, type ProfileField } from "./config.js";
 import { isStdinToken } from "./stdin.js";
+import { getTeamFlag } from "./global-flags.js";
 
 export interface FlagInputs {
   /** `--api-key` flag value (citty parses `--api-key` to camelCase `apiKey`). */
@@ -41,7 +42,18 @@ export interface EffectiveConfig {
   apiKeySource: CredentialSource;
   /** Workspace name `setup` recorded, when the key came from the profile. */
   tenant: string | undefined;
+  /** The Team to act in, sent as `X-Curviate-Team`; `undefined` sends none. */
+  team: string | undefined;
+  /** Which tier the Team came from. */
+  teamSource: CredentialSource;
 }
+
+/**
+ * The Team the last resolve picked, for `createClient`: every API command
+ * resolves before it builds its client, so the ~120 call sites need no edit.
+ */
+let lastTeam: () => string | undefined = () => undefined;
+export const resolvedTeam = (): string | undefined => lastTeam();
 
 /** The precedence tier a credential resolved from. */
 export type CredentialSource = "flag" | "env" | "profile" | "none";
@@ -113,7 +125,16 @@ export async function resolveEffectiveConfig(
   };
   const timeout = timeoutFlag ?? profileTimeout() ?? DEFAULT_TIMEOUT_MS;
 
-  return {
+  // Team: --team > CURVIATE_TEAM > profile. An empty `--team` would name no
+  // Team at all, so it is refused; an empty env var is treated as unset.
+  const flagTeam = getTeamFlag();
+  if (flagTeam !== undefined && flagTeam.trim() === "") {
+    process.stderr.write("error: --team was given an empty value. Pass a Team id (tnt_...), or leave it out.\n");
+    process.exit(2);
+  }
+  const envTeam = process.env["CURVIATE_TEAM"] || undefined;
+
+  const effective: EffectiveConfig = {
     apiKey,
     baseUrl,
     timeout,
@@ -127,5 +148,14 @@ export async function resolveEffectiveConfig(
     get tenant() {
       return apiKeySource === "profile" ? fromProfile<string>("tenant") : undefined;
     },
+    // Read on access, like `account`: a command that sends nothing never reads it.
+    get team() {
+      return flagTeam?.trim() ?? envTeam ?? fromProfile<string>("team");
+    },
+    get teamSource(): CredentialSource {
+      return flagTeam !== undefined ? "flag" : envTeam !== undefined ? "env" : fromProfile<string>("team") !== undefined ? "profile" : "none";
+    },
   };
+  lastTeam = () => effective.team;
+  return effective;
 }

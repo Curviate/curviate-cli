@@ -324,7 +324,7 @@ const writeRules = (changes: string, undo: string, retry = "Safe: the same call 
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Add a Contact from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person.",
+    description: "Add a Contact from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs Automate.",
     risk: "write",
     rules: writeRules("Creates the Contact, or updates it and reports `outcome: updated` or `unchanged`.", "`curviate contact delete <id>`; an update is undone by updating again."),
     errors: { CONTACT_LIMIT_REACHED: "the Team is at its Contact, Tag or list-membership cap." },
@@ -344,7 +344,7 @@ const createCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change a Contact's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands.",
+    description: "Change a Contact's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs Automate.",
     risk: "write",
     rules: writeRules("The named fields change.", "Update again with the old values."),
     examples: ["curviate contact update con_YOUR_CONTACT_ID --email jane@example.com", "curviate contact update con_YOUR_CONTACT_ID --clear email"],
@@ -392,7 +392,7 @@ const enrichCmd = defineCommand({
     name: "enrich",
     description:
       "Fill Contacts from their LinkedIn profiles: from what Curviate already holds, and (modes auto, refill, live) by visiting the profile from an Account, " +
-      "which the person can see in their profile visitors. --mode cache_only never visits. Name Contacts by id or one --list.",
+      "which the person can see in their profile visitors. --mode cache_only never visits. Name Contacts by id or one --list. Needs Automate.",
     risk: "high",
     rules: {
       changes: "Contact fields are filled; a visit is queued per Contact that needs one.",

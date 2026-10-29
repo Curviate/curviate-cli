@@ -25,6 +25,19 @@ export const DESCRIPTIONS = {
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
   contactLists: "Contact lists: named sets of Contacts a Motion enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Contacts.",
   contactTags: "Tags: labels on Contacts. List, rename, delete, and add or remove one on Contacts named by id or by filter.",
+  unibox:
+    "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. " +
+    "An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
+  network:
+    "Network: each Account's LinkedIn Connections, synced and stored by Curviate. List, export, read the sync status, ask for a resync. " +
+    "Your Team's data, for the Accounts you may operate.",
+  analytics:
+    "Motion outcomes and the budget your Accounts used. Read-only; Motion numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
+  export: "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
+  tier: "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
+  team:
+    "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
+    "Owners manage; every role reads.",
   webhook: "Webhook management and signature verification.",
   core:
     "Curviate core: LinkedIn building blocks. Each command runs one action now, from one Account, and counts against that Account's budgets. " +
@@ -34,7 +47,7 @@ export const DESCRIPTIONS = {
   job: "Classic LinkedIn job-posting operations.",
   connect: "Send or manage connection invitations. Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
   search: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",
-  inbox: "Read LinkedIn message inbox.",
+  inbox: "Read one Account's LinkedIn message inbox, live. Every Account's chats in one inbox: `curviate unibox`.",
   inboxes: "Discover LinkedIn inboxes (personal + company pages) and list their conversations. Beta. See also: `curviate core inbox` (the account's own message-thread inbox), `curviate core message send` (reply to a chat).",
   message: "Send and manage LinkedIn messages. A COMPANY_ chat id (from `curviate core inboxes chats`) sends as that company page instead of yourself; see `curviate core message send --help`.",
   post: "Create and manage LinkedIn posts.",

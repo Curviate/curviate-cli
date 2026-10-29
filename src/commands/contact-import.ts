@@ -245,7 +245,7 @@ const importCmd = defineCommand({
     description:
       `Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
       "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --no-wait; the first refused or failed import stops the run. " +
-      "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is.",
+      "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Contacts are created or updated, joined to --list and tagged with --tag. Nothing is sent to LinkedIn or to the people.",

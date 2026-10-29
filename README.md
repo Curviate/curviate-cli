@@ -83,6 +83,13 @@ curviate --api-key <your-api-key> account list
 > history. Prefer `curviate login` or the `CURVIATE_API_KEY` environment
 > variable; reserve `--api-key` for one-off, low-trust contexts.
 
+**Teams.** A key works in one Team, or in all of your Teams. With a key for
+all your Teams, every call names the Team it acts in: `--team <team_id>`, then
+`CURVIATE_TEAM`, then the profile's `team` (which `curviate setup` stores when
+you pick "All my Teams"). The CLI sends it as `X-Curviate-Team`. A Team key acts
+only in its own Team, so leave the Team unset with one. `curviate doctor`
+reports the key's scope and checks the Team against your Teams.
+
 Get your API key from the [Curviate dashboard](https://app.curviate.com).
 
 ## Usage

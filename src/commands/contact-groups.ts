@@ -108,7 +108,7 @@ const listsGet = defineCommand({
 const listsCreate = defineCommand({
   meta: {
     name: "create",
-    description: "Create an empty Contact list. Fill it with `contact lists add`, `contact import --list`, or build it from other lists with `contact lists combine`.",
+    description: "Create an empty Contact list. Fill it with `contact lists add`, `contact import --list`, or build it from other lists with `contact lists combine`. Needs Automate.",
     risk: "write",
     rules: {
       changes: "A new, empty Contact list.",
@@ -142,7 +142,7 @@ const listsCombine = defineCommand({
     name: "combine",
     description:
       "Create a new Contact list from other lists: the Contacts in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). " +
-      "Any other filter flag narrows it too. The new list holds the Contacts that match now; it does not follow later changes to the source lists.",
+      "Any other filter flag narrows it too. The new list holds the Contacts that match now; it does not follow later changes to the source lists. Needs Automate.",
     risk: "write",
     rules: {
       changes: "A new Contact list holding every Contact the filter matches at this moment. The source lists are unchanged.",
@@ -180,7 +180,7 @@ const listsCombine = defineCommand({
 const listsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Contact list or change its description (--description \"\" clears it).",
+    description: "Rename a Contact list or change its description (--description \"\" clears it). Needs Automate.",
     risk: "write",
     rules: {
       changes: "The list's name or description.",
@@ -248,7 +248,7 @@ const membership = (verb: "add" | "remove") =>
       name: verb,
       description:
         `${verb === "add" ? "Add Contacts to" : "Remove Contacts from"} a Contact list. Name the Contacts by id, or with filter flags (the same as \`contact list\`) to act on every match. ` +
-        "Count a filter first: `curviate contact list <same filters> --total --limit 1`.",
+        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       risk: "high",
       rules: {
         changes: verb === "add" ? "The Contacts join the list." : "The Contacts leave the list; they are not deleted.",
@@ -306,7 +306,7 @@ const tagsList = defineCommand({
 const tagsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Tag on every Contact that carries it. A name another Tag has is refused.",
+    description: "Rename a Tag on every Contact that carries it. A name another Tag has is refused. Needs Automate.",
     risk: "write",
     rules: {
       changes: "The Tag's name, on all its Contacts.",
@@ -365,7 +365,7 @@ const tagging = (verb: "add" | "remove") =>
       name: verb,
       description:
         `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Contacts, named by id or with filter flags (the same as \`contact list\`) to act on every match. ` +
-        "Count a filter first: `curviate contact list <same filters> --total --limit 1`.",
+        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
       risk: "high",
       rules: {
         changes: verb === "add" ? "The Tag is put on the Contacts (created if new)." : "The Tag is taken off the Contacts.",
