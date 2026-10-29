@@ -235,6 +235,33 @@ const PARITY_MANIFEST: Record<string, string> = {
   "notification list":      "notifications.list",
   "notification delete":    "notifications.delete",
   "notification show-less": "notifications.showLess",
+
+  // network (3)
+  "network list":   "network.connections.list",
+  "network status": "network.syncStatus",
+  "network resync": "network.resync",
+
+  // unibox (8). `unibox messages|reply|mark` call messaging.* (convenience routes, no entry).
+  "unibox list":     "unibox.list",
+  "unibox get":      "unibox.get",
+  "unibox unread":   "unibox.unreadCount",
+  "unibox refresh":  "unibox.refresh",
+  "unibox tag":      "unibox.tagContact",
+  "unibox enroll":   "unibox.enroll",
+  "unibox accounts": "unibox.accounts.list",
+  "unibox consent":  "unibox.accounts.update",
+
+  // analytics (5) + exports (3) + account overview/metrics (2)
+  "analytics get":               "analytics.motions.list",
+  "analytics get --motion":      "analytics.motions.get",
+  "analytics get --view activity": "analytics.activity",
+  "analytics events list":       "analytics.events.list",
+  "analytics export":            "analytics.export",
+  "analytics export --job":      "exports.create",
+  "export get":                  "exports.get",
+  "export download":             "exports.download",
+  "account overview":            "accounts.overview",
+  "account metrics":             "accounts.metrics",
 };
 
 /**
@@ -263,13 +290,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "contacts.imports.create", "contacts.imports.list", "contacts.imports.get", "contacts.imports.rows",
   "contactLists.create", "contactLists.list", "contactLists.get", "contactLists.update", "contactLists.delete",
   "tags.list", "tags.update", "tags.delete",
-  // network, unibox, analytics (+ analytics export, export, account overview/metrics)
-  "network.syncStatus", "network.resync", "network.connections.list",
-  "unibox.list", "unibox.get", "unibox.unreadCount", "unibox.refresh", "unibox.tagContact", "unibox.enroll",
-  "unibox.accounts.list", "unibox.accounts.update",
-  "analytics.activity", "analytics.export", "analytics.motions.list", "analytics.motions.get", "analytics.events.list",
-  "exports.create", "exports.get", "exports.download",
-  "accounts.metrics", "accounts.overview",
   // team
   "teams.list", "teams.create", "teams.getCurrent", "teams.updateCurrent", "teams.setLogo", "teams.removeLogo",
   "teams.listMembers", "teams.updateMember", "teams.removeMember",

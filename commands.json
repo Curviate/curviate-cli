@@ -835,6 +835,146 @@
     },
     {
       "path": [
+        "account",
+        "overview"
+      ],
+      "description": "One Account's overview over a window: profile and status, latest metrics, outcomes so far (acceptance, reply, InMail reply), budget rows used today, its Motions, and flags with the next command to run. Each Contact counts once per Account.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Last day, YYYY-MM-DD, inclusive, in --timezone (default today). Same rules as --from."
+        },
+        {
+          "name": "range",
+          "type": "string",
+          "description": "Instead of --from/--to: 7d, 30d, 90d, 12m or all."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "IANA zone the days are read in (default UTC)."
+        },
+        {
+          "name": "bucket",
+          "type": "string",
+          "description": "Daily series grouping: auto, day, week or month."
+        },
+        {
+          "name": "motions",
+          "type": "string",
+          "description": "Only these Motions, comma list (mot_...)."
+        },
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+        },
+        {
+          "name": "include",
+          "type": "string",
+          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags)."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "description": "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "How many Motions and Accounts to return."
+        },
+        {
+          "name": "compare",
+          "type": "string",
+          "description": "previous_period: add the same number of days before --from to every rate (`previous`, `delta`)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account overview acc_YOUR_ACCOUNT_ID",
+        "curviate account overview acc_YOUR_ACCOUNT_ID --range 90d --compare previous_period"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "A compact table by default; --json (or piped) prints the API body."
+      ],
+      "seeAlso": [
+        "curviate account metrics",
+        "curviate analytics get"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "metrics"
+      ],
+      "description": "One Account's daily profile metrics, one row per day: connections, followers, profile viewers (90 days), search appearances (week), post impressions (7 days), SSI and its pillars.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Last day, YYYY-MM-DD, inclusive, in --timezone."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "IANA zone the days are read in (default UTC)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account metrics acc_YOUR_ACCOUNT_ID --from 2026-10-01 --to 2026-10-28"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
         "motion"
       ],
       "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
@@ -1549,7 +1689,7 @@
         {
           "name": "step",
           "type": "string",
-          "description": "Only Enrollments now at this Step id."
+          "description": "Only Enrollments now at one of these Step ids: repeatable or a comma list."
         },
         {
           "name": "version",
@@ -2049,7 +2189,7 @@
         {
           "name": "step",
           "type": "string",
-          "description": "Only Enrollments now at this Step id."
+          "description": "Only Enrollments now at one of these Step ids: repeatable or a comma list."
         },
         {
           "name": "version",
@@ -2131,6 +2271,1158 @@
         "curviate enrollment get",
         "curviate enrollment list"
       ]
+    },
+    {
+      "path": [
+        "unibox"
+      ],
+      "description": "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "unibox",
+        "list"
+      ],
+      "description": "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. An Account without full-inbox sync shows only its Motion chats; a disconnected Account's chats are listed read-only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Only chats linked to these Motions (mot_...), repeatable or a comma list; `none` for chats no Motion links."
+        },
+        {
+          "name": "person",
+          "type": "string",
+          "description": "Only chats with this person: a Contact id (con_...) or a LinkedIn id (ACo...)."
+        },
+        {
+          "name": "tag",
+          "type": "string",
+          "description": "Only chats whose Contact has this tag; repeatable or a comma list."
+        },
+        {
+          "name": "unread",
+          "type": "boolean",
+          "description": "--unread for unread chats only, --no-unread for read ones; omit for both."
+        },
+        {
+          "name": "last-from",
+          "type": "string",
+          "description": "Who wrote the last message: me or them."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "description": "classic, inmail, sales_navigator or recruiter."
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Person name or message text contains this (3 characters or more)."
+        },
+        {
+          "name": "total",
+          "type": "boolean",
+          "description": "Also count every chat that matches the filters (`total`)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox list --unread",
+        "curviate unibox list --person con_YOUR_CONTACT_ID --motion none --total"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Motion and tags; with --total the count of matching chats. --json (or piped) prints the API page."
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "get"
+      ],
+      "description": "One chat as the Unibox lists it, with `marked_unread` ({origin, at}, or null) and its Motion context.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox get acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "unibox",
+        "unread"
+      ],
+      "description": "Count unread chats (chats, not messages) across your Accounts; cheap to poll.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox unread",
+        "curviate unibox unread --accounts acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "unibox",
+        "messages"
+      ],
+      "description": "Read one chat's messages, newest first. Each message carries `origin` when known: motion, unibox, api or linkedin.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID",
+        "curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --all"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate core inbox messages"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "reply"
+      ],
+      "description": "Send a message into the chat from its Account. The send marks the chat read.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        },
+        {
+          "name": "text",
+          "type": "positional",
+          "description": "The message text (1 to 8000 characters)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox reply acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID \"Thanks, Tuesday works.\""
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sends one LinkedIn message and marks the chat read.",
+        "visible_to": "The other people in the chat, at once.",
+        "budget_rows": [],
+        "retry": "A retry after a timeout can send the message twice: read `curviate unibox messages` first.",
+        "undo": "`curviate core message delete` removes it on LinkedIn; it may have been read already."
+      },
+      "errors": {
+        "REAUTH_REQUIRED": "the Account is disconnected: reconnect it to write.",
+        "CHAT_NOT_VISIBLE": "the chat is not visible to you."
+      }
+    },
+    {
+      "path": [
+        "unibox",
+        "mark"
+      ],
+      "description": "Mark the chat read or unread on LinkedIn, for everyone who sees this Account's inbox.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "description": "Mark it read."
+        },
+        {
+          "name": "unread",
+          "type": "boolean",
+          "description": "Mark it unread."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox mark acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --read"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Sets the chat's read state on LinkedIn.",
+        "visible_to": "Your Team and the Account's own LinkedIn inbox; not the other person.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same state again.",
+        "undo": "Mark it the other way."
+      },
+      "errors": {
+        "REAUTH_REQUIRED": "the Account is disconnected: reconnect it to write."
+      }
+    },
+    {
+      "path": [
+        "unibox",
+        "tag"
+      ],
+      "description": "Save the other person of a one-to-one chat as a Contact (or find the one you hold) and add tags, never removing any.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        },
+        {
+          "name": "tag",
+          "type": "string",
+          "description": "A tag to add; repeatable or a comma list. Omit to only save the Contact."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox tag acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --tag warm"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates or finds the Contact and adds the tags.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same Contact, tags already there stay.",
+        "undo": "Remove the tags or the Contact with `curviate contact`."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "CHAT_NOT_ONE_TO_ONE": "the chat is a group chat: there is no one person to save."
+      }
+    },
+    {
+      "path": [
+        "unibox",
+        "enroll"
+      ],
+      "description": "Save the other person of a one-to-one chat as a Contact and enroll them in a Motion through this chat's Account (one of its sending Accounts). A direct add: the rule that skips people you already chat with does not apply; every other rule does.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
+        },
+        {
+          "name": "chatId",
+          "type": "positional",
+          "description": "The chat id, as `curviate unibox list` prints it."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "required": true,
+          "description": "The Motion (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --motion mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Creates the Enrollment; the Motion's Steps run for this person from this Account.",
+        "visible_to": "The person, once a Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "A second call answers that the person is already enrolled.",
+        "undo": "`curviate enrollment stop <enrollment_id>`; what was sent stays sent.",
+        "blast_radius": "One person, from one Account."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "CHAT_NOT_ONE_TO_ONE": "the chat is a group chat: there is no one person to save.",
+        "ALREADY_ENROLLED_ON_ACCOUNT": "the person is already in this Motion on this Account."
+      },
+      "seeAlso": [
+        "curviate enrollment get"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "refresh"
+      ],
+      "description": "Queue a re-read of the newest chats (up to 100) of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account every 2 minutes: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox refresh",
+        "curviate unibox refresh --accounts acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Queues one read of each Account's newest chats.",
+        "visible_to": "Nobody: reads only.",
+        "budget_rows": [
+          "inbox_sync"
+        ],
+        "retry": "A repeat within 2 minutes answers cooldown; nothing new is queued.",
+        "undo": "Nothing to undo: a refresh only reads."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate)."
+      }
+    },
+    {
+      "path": [
+        "unibox",
+        "accounts"
+      ],
+      "description": "For every Account you may operate: whether Sync full inbox is on, and how far the chat-list sync is. Read `sync` before trusting an empty Unibox.",
+      "usageOnly": false,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox accounts"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "unibox",
+        "consent"
+      ],
+      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them within 15 minutes.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "Your Account (acc_...)."
+        },
+        {
+          "name": "on",
+          "type": "boolean",
+          "description": "Turn Sync full inbox on."
+        },
+        {
+          "name": "off",
+          "type": "boolean",
+          "description": "Turn Sync full inbox off."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox consent acc_YOUR_ACCOUNT_ID --on"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Copies the Account's whole inbox into the Unibox (on), or removes the non-Motion chats from it (off).",
+        "visible_to": "Your Team: every teammate who may operate the Account reads its whole inbox while on.",
+        "budget_rows": [
+          "inbox_sync"
+        ],
+        "retry": "Safe to repeat: the same setting again.",
+        "undo": "Run it with the other flag; chats removed by off are listed again by a new sync.",
+        "blast_radius": "One Account's whole inbox."
+      },
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
+      }
+    },
+    {
+      "path": [
+        "network"
+      ],
+      "description": "Network: each Account's LinkedIn Connections, synced and stored by Curviate. List, export, read the sync status, ask for a resync. Your Team's data, for the Accounts you may operate.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "network",
+        "list"
+      ],
+      "description": "List the stored Connections of the Accounts you may operate, newest first: one item per Account and person. Read from Curviate's store: no LinkedIn call, no budget. An empty list with incomplete coverage means not synced yet, never no Connections.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Name or headline contains this text (3 to 100 characters)."
+        },
+        {
+          "name": "include-removed",
+          "type": "boolean",
+          "description": "Also list Connections that have left (removed_at set)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate network list",
+        "curviate network list --query founder --accounts acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "A table of name, headline, Account and connection time; --json (or piped) prints the API page with `coverage`."
+      ],
+      "seeAlso": [
+        "curviate network status",
+        "curviate network export"
+      ]
+    },
+    {
+      "path": [
+        "network",
+        "status"
+      ],
+      "description": "How far each Account's Connection sync is: state, why it is paused, Connections stored, the last full sync, the next read, when a manual resync is allowed again, and the read window.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate network status",
+        "curviate network status --accounts acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "network",
+        "export"
+      ],
+      "description": "Export the stored Connections, every page, with the list filters. Writes ndjson (default), json or csv to stdout or a file (mode 0600). A count goes to stderr, and a warning when an Account in scope has not finished its first sync (exit 0).",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...), up to 50. Never filled from your profile's default Account."
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "description": "Name or headline contains this text (3 to 100 characters)."
+        },
+        {
+          "name": "include-removed",
+          "type": "boolean",
+          "description": "Also list Connections that have left (removed_at set)."
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "description": "csv, json or ndjson (default ndjson)."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "description": "File to write (mode 0600; replaced only when the export completes), or - for stdout (default)."
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "description": "Columns, comma-separated, in order (default: account_id, member_id, public_identifier, public_profile_url, first_name, last_name, headline, job_title, company, location, profile_picture_url, connected_at, first_seen_at, removed_at, observed_at)."
+        },
+        {
+          "name": "json",
+          "type": "boolean",
+          "description": "Not taken by exports: pass --format json."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout"
+      ],
+      "examples": [
+        "curviate network export --format csv -o connections.csv",
+        "curviate network export --accounts acc_YOUR_ACCOUNT_ID --fields first_name,last_name,public_profile_url"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "Data only on stdout or the --output file; the count and warnings on stderr. CSV is UTF-8 with a BOM; a cell starting with = + - @ or ' gets a leading '."
+      ]
+    },
+    {
+      "path": [
+        "network",
+        "resync"
+      ],
+      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per 24 hours; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "required": false,
+          "description": "The Account to resync (acc_...). Omit it with --all."
+        },
+        {
+          "name": "all",
+          "type": "boolean",
+          "description": "Resync every Account you may operate."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate network resync --all",
+        "curviate network resync acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "Opens a sync walk; Curviate reads the Account's Connections from LinkedIn over the next hours.",
+        "visible_to": "Nobody: reads only.",
+        "budget_rows": [
+          "connections_sync"
+        ],
+        "retry": "A second call within 24 hours answers cooldown; nothing new starts.",
+        "undo": "Cannot be stopped once queued; the walk ends on its own.",
+        "blast_radius": "One Account, or with --all every Account you may operate."
+      },
+      "errors": {
+        "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Account.",
+        "ACCOUNT_NOT_SHARED": "the Account is not shared with you.",
+        "TIER_REQUIRED": "your plan does not include Network."
+      },
+      "seeAlso": [
+        "curviate network status"
+      ]
+    },
+    {
+      "path": [
+        "analytics"
+      ],
+      "description": "Motion outcomes and the budget your Accounts used. Read-only; Motion numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "analytics",
+        "get"
+      ],
+      "description": "Motion outcomes over a window: invitations, acceptance, messages, reply and InMail reply as outcomes so far, with each Motion and Account. With --motion: one Motion's steps, paths and Accounts. With --view activity: the budget rows your Accounts used. Each Contact counts once per Account.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "view",
+          "type": "string",
+          "description": "motions (default): Motion outcomes; activity: budget rows used, not with --motion."
+        },
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "One Motion (mot_...): its steps, paths and Accounts."
+        },
+        {
+          "name": "motions",
+          "type": "string",
+          "description": "Without --motion: only these Motions, comma list (mot_...)."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "description": "With --motion: only this Sequence version."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Last day, YYYY-MM-DD, inclusive, in --timezone (default today). Same rules as --from."
+        },
+        {
+          "name": "range",
+          "type": "string",
+          "description": "Instead of --from/--to: 7d, 30d, 90d, 12m or all."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "IANA zone the days are read in (default UTC)."
+        },
+        {
+          "name": "bucket",
+          "type": "string",
+          "description": "Daily series grouping: auto, day, week or month."
+        },
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        },
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+        },
+        {
+          "name": "include",
+          "type": "string",
+          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags)."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "description": "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "How many Motions and Accounts to return."
+        },
+        {
+          "name": "compare",
+          "type": "string",
+          "description": "previous_period: add the same number of days before --from to every rate (`previous`, `delta`)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate analytics get --range 30d",
+        "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths --range 90d",
+        "curviate analytics get --view activity --from 2026-10-01 --to 2026-10-28"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "acceptance: invitations accepted over invitations sent in the window, so far.",
+        "reply: people who replied over people messaged; InMail reply the same for InMails. Rates move as replies and acceptances arrive; `maturing` counts what was sent under 7 days ago and `low_sample` marks fewer than 30.",
+        "seen (--motion): messages read or replied over messages sent, per message step.",
+        "A compact table by default; --json (or piped) prints the API body."
+      ],
+      "seeAlso": [
+        "curviate analytics events list",
+        "curviate account overview",
+        "Judgement on reading the numbers: https://github.com/curviate/curviate-plugin"
+      ]
+    },
+    {
+      "path": [
+        "analytics",
+        "events"
+      ],
+      "description": "The records behind the analytics numbers.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "analytics",
+        "events",
+        "list"
+      ],
+      "description": "The records behind the numbers, newest first: steps executed or failed, invitations accepted, replies; each reason with its sentence. Metadata only, never message text.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "motion",
+          "type": "string",
+          "description": "Only this Motion's records (mot_...)."
+        },
+        {
+          "name": "step",
+          "type": "string",
+          "description": "With --motion: only this step's records."
+        },
+        {
+          "name": "contact",
+          "type": "string",
+          "description": "Only this Contact's records (con_...): its Motion records and its direct ones."
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "description": "Comma list of step.executed, step.failed, invite.accepted, message.replied."
+        },
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        },
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "limit",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate analytics events list --motion mot_YOUR_MOTION_ID --step opener",
+        "curviate analytics events list --contact con_YOUR_CONTACT_ID --origin unibox,api --all"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "analytics",
+        "export"
+      ],
+      "description": "Export the Analytics tables (daily, accounts, motions, enrollments) under the same window and filters: streamed now, or with --job built in the background (then `curviate export get` and `curviate export download`). One table is one file; several are one ZIP. Never message text. Owners and Managers only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "table",
+          "type": "string",
+          "description": "Comma list of daily, accounts, motions, enrollments (default all four); or, with --job, one of motion_activity, account_activity, account_metrics."
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "description": "csv (default), json or ndjson (ndjson takes one table)."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "description": "File to write (mode 0600), or - for stdout (default)."
+        },
+        {
+          "name": "job",
+          "type": "boolean",
+          "description": "Build it in the background and print the export record instead of streaming it."
+        },
+        {
+          "name": "motions",
+          "type": "string",
+          "description": "Only these Motions, comma list (mot_...)."
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "description": "Last day, YYYY-MM-DD, inclusive, in --timezone (default today). Same rules as --from."
+        },
+        {
+          "name": "range",
+          "type": "string",
+          "description": "Instead of --from/--to: 7d, 30d, 90d, 12m or all."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "IANA zone the days are read in (default UTC)."
+        },
+        {
+          "name": "bucket",
+          "type": "string",
+          "description": "Daily series grouping: auto, day, week or month."
+        },
+        {
+          "name": "accounts",
+          "type": "string",
+          "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
+        },
+        {
+          "name": "origin",
+          "type": "string",
+          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+        },
+        {
+          "name": "json",
+          "type": "boolean",
+          "description": "Not taken by exports: pass --format json."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout"
+      ],
+      "examples": [
+        "curviate analytics export --table enrollments --format csv --range 30d -o enrollments.csv",
+        "curviate analytics export --table daily,accounts,motions,enrollments --format csv --range 90d --job"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "Data only on stdout or the --output file (mode 0600); with --job the export record."
+      ],
+      "errors": {
+        "INSUFFICIENT_ROLE": "Members cannot export: ask an Owner or Manager.",
+        "EXPORT_IN_PROGRESS": "your Team already has an export running; read it with `curviate export get <export_id>`."
+      },
+      "seeAlso": [
+        "curviate export get",
+        "curviate export download"
+      ]
+    },
+    {
+      "path": [
+        "export"
+      ],
+      "description": "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "export",
+        "get"
+      ],
+      "description": "One export job: status (queued, running, ready, failed, expired, removed), rows, bytes and when the file expires.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The export id (exp_...), from `curviate analytics export --job`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate export get exp_YOUR_EXPORT_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "errors": {
+        "RESOURCE_NOT_FOUND": "no export with this id that you started."
+      }
+    },
+    {
+      "path": [
+        "export",
+        "download"
+      ],
+      "description": "Download a ready export's file, byte for byte, to a file (mode 0600) or stdout.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The export id (exp_...), from `curviate analytics export --job`."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "description": "File to write (mode 0600), or - for stdout."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "base-url",
+        "timeout"
+      ],
+      "examples": [
+        "curviate export download exp_YOUR_EXPORT_ID -o analytics.zip"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The file's bytes only: CSV, JSON, NDJSON or a ZIP of several tables."
+      ],
+      "errors": {
+        "EXPORT_NOT_READY": "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
+        "EXPORT_EXPIRED": "the file expired 24 hours after it was ready: run the export again.",
+        "EXPORT_REMOVED": "the export was removed because a Contact was deleted: run it again."
+      }
     },
     {
       "path": [
@@ -2629,7 +3921,7 @@
         "profile",
         "relations"
       ],
-      "description": "List your 1st-degree connections.",
+      "description": "List your 1st-degree connections, live from LinkedIn.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -2652,7 +3944,10 @@
         "curviate core profile relations",
         "curviate core profile relations --all"
       ],
-      "requires": []
+      "requires": [],
+      "seeAlso": [
+        "curviate network list (the stored Connections of every Account, no LinkedIn call)"
+      ]
     },
     {
       "path": [
@@ -4933,7 +6228,7 @@
         "core",
         "inbox"
       ],
-      "description": "Read LinkedIn message inbox.",
+      "description": "Read one Account's LinkedIn message inbox, live. Every Account's chats in one inbox: `curviate unibox`.",
       "usageOnly": true,
       "args": [],
       "globals": [],
