@@ -1,8 +1,8 @@
 {
-  "sdkVersion": "github:Curviate/curviate-sdk#9d78375db8739ca6349a3a5521f34c3061735c99",
-  "sha256": "4841c6efe41682223c168503e278b9ac286b04ae3cdf3cba266621b7ca99f7a3",
-  "vendoredAt": "2026-10-28T23:49:21.580Z",
+  "sdkVersion": "github:Curviate/curviate-sdk#d78b6830d9ad6eaba363b97bc1ad0c5dacb879a9",
+  "sha256": "53a404921adfcfbd581c15238fd78e422a6265bf5be093f869469f0b209603a2",
+  "vendoredAt": "2026-10-29T08:45:20.426Z",
   "sourceFile": "packages/sdk/fixtures/openapi.json",
-  "sourceServerGitSha": "4bfed637ce80287e38f90d9f6adad86773212207",
+  "sourceServerGitSha": "154d5d3b2ebcc55d20b9a7b1a833fdf9af040b77",
   "note": "Copied so flag-field-guard.test.ts runs on a standalone clone (qa BLOCKER: the sibling-repo path reds gate 4 on a fresh `git clone`). scripts/check-fixture-pin.mjs fails loudly if sdkVersion here stops matching the exact @curviate/sdk pin in package.json, OR if sha256 here stops matching sha256(sdkVersion + openapi.json's actual bytes) (see fixtureHash in scripts/check-fixture-pin.mjs) — the hash is salted with sdkVersion so bumping the version label alone, without re-copying the file, also invalidates the recorded hash. Refresh by re-copying packages/sdk/fixtures/openapi.json from a sibling checkout at the new pinned version, then recompute and update BOTH sdkVersion and sha256 below (`node -e \"const{createHash}=require('node:crypto');const{readFileSync}=require('node:fs');const v=require('./test/fixtures/VENDORED_FROM.json').sdkVersion;console.log(createHash('sha256').update(v).update('\\n').update(readFileSync('test/fixtures/openapi.json')).digest('hex'))\"` after updating sdkVersion in this file). Updating sdkVersion without recomputing sha256 (or vice versa) will fail the guard. Do not hand-edit openapi.json itself."
 }

@@ -173,7 +173,7 @@
     },
     {
       "name": "Seats",
-      "description": "Buy or manage the seats a workspace's subscription holds: add seats, schedule or revert a seat's cancellation, and lend an unused seat to another of your Teams or move it back. Use GET /v1/accounts/seats to find a free seat to connect an account into."
+      "description": "Read and manage the seats a Team's subscription holds: list them with the billing summary, add seats, schedule or revert a seat's cancellation, and lend an unused seat to another of your Teams or move it back. Use GET /v1/accounts/seats to find a free seat to connect an account into."
     },
     {
       "name": "Tier",
@@ -486,7 +486,7 @@
           },
           "errors": {
             "type": "array",
-            "description": "Present on SEQUENCE_INVALID: every failure of the refused Sequence document, not only the first (the first 100; the message counts them all), in step order, so one fix round covers them all, each compiler-style with code, message, pointer, hint and docs_url. Also on MOTION_NOT_STARTABLE: every gap that keeps the Motion from starting, as path and rule only. path is relative to the document (for example opener.variants.opener_named.text or invite.with.withdraw_after); rule says what to change. The message repeats the first entry.",
+            "description": "Present on SEQUENCE_INVALID: every failure of the refused Sequence document, not only the first (the first 100; the message counts them all), in step order, so one fix round covers them all, each compiler-style with code, message, pointer, hint and docs_url. Also on WEBHOOK_TEMPLATE_INVALID: every finding of the refused body_template, in template order, in the same shape plus line and col. Also on MOTION_NOT_STARTABLE: every gap that keeps the Motion from starting, as path and rule only. path is relative to the document (for example opener.variants.opener_named.text or invite.with.withdraw_after); rule says what to change. The message repeats the first entry.",
             "items": {
               "type": "object",
               "required": [
@@ -496,7 +496,7 @@
               "properties": {
                 "path": {
                   "type": "string",
-                  "description": "Where in the Sequence document: step id, then field."
+                  "description": "Where in the Sequence document: step id, then field. On WEBHOOK_TEMPLATE_INVALID: always body_template."
                 },
                 "rule": {
                   "type": "string",
@@ -504,38 +504,47 @@
                 },
                 "code": {
                   "type": "string",
-                  "description": "On SEQUENCE_INVALID: the rule id, R1 to R29."
+                  "description": "On SEQUENCE_INVALID: the rule id, R1 to R29. On WEBHOOK_TEMPLATE_INVALID: the rule id, T1 to T10."
                 },
                 "message": {
                   "type": "string",
-                  "description": "On SEQUENCE_INVALID: equal to rule."
+                  "description": "On SEQUENCE_INVALID and WEBHOOK_TEMPLATE_INVALID: equal to rule."
                 },
                 "pointer": {
                   "type": "string",
-                  "description": "On SEQUENCE_INVALID: an RFC 6901 JSON Pointer into the document you sent (for example /steps/5/with/withdraw_after), so a tool finds the line without parsing path. A missing key points at the object that lacks it."
+                  "description": "On SEQUENCE_INVALID: an RFC 6901 JSON Pointer into the document you sent (for example /steps/5/with/withdraw_after), so a tool finds the line without parsing path. A missing key points at the object that lacks it. On WEBHOOK_TEMPLATE_INVALID: /body_template; line and col place the finding inside it."
                 },
                 "hint": {
                   "type": "string",
-                  "description": "On SEQUENCE_INVALID: one sentence saying what to do."
+                  "description": "On SEQUENCE_INVALID and WEBHOOK_TEMPLATE_INVALID: one sentence saying what to do."
                 },
                 "docs_url": {
                   "type": "string",
-                  "description": "On SEQUENCE_INVALID: the rule's entry on the Sequence rules page."
+                  "description": "On SEQUENCE_INVALID: the rule's entry on the Sequence rules page. On WEBHOOK_TEMPLATE_INVALID: the rule's entry on the body templates page."
                 },
                 "severity": {
                   "type": "string",
                   "enum": [
-                    "error",
-                    "warning"
+                    "error"
                   ],
-                  "description": "On SEQUENCE_INVALID: error (an R rule refuses the document) or warning."
+                  "description": "On SEQUENCE_INVALID and WEBHOOK_TEMPLATE_INVALID: always error here, an entry that refuses the document. Warnings never refuse; they come back in warnings[] on the success response."
                 },
                 "candidates": {
                   "type": "array",
                   "items": {
                     "type": "string"
                   },
-                  "description": "On SEQUENCE_INVALID, when there are some: did-you-mean replacements, best first."
+                  "description": "On SEQUENCE_INVALID and WEBHOOK_TEMPLATE_INVALID, when there are some: did-you-mean replacements, best first."
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "On WEBHOOK_TEMPLATE_INVALID: the line in the body_template where the finding starts, counting from 1."
+                },
+                "col": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "On WEBHOOK_TEMPLATE_INVALID: the column in that line, counting from 1."
                 }
               }
             }
@@ -4685,6 +4694,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list, and this read would view their profile live (LinkedIn records a view). Nothing was read and no limit was spent. A read Curviate answers from stored data is not refused. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "The account is restricted and cannot be queried (ACCOUNT_RESTRICTED). Nothing is stored for this resource and `mode=cache_only` never fetches (NOT_STORED). Not the same as a 404: the resource may exist, and this API holds no copy of it. Re-read with `mode=refill` or `mode=auto` to fetch it.",
             "content": {
@@ -6088,6 +6118,27 @@
                       "code": "RESOURCE_NOT_FOUND",
                       "message": "The referenced resource does not exist for this tenant.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -9333,6 +9384,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "The account is restricted, or is already following this user.",
             "content": {
@@ -12003,6 +12075,27 @@
                       "code": "RESOURCE_NOT_FOUND",
                       "message": "The referenced resource does not exist for this tenant.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -23670,7 +23763,7 @@
             }
           },
           "409": {
-            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected. Or REAUTH_REQUIRED: the account is disconnected; reconnect it.",
+            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected. Or REAUTH_REQUIRED: the account is disconnected; reconnect it. Or DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -23683,6 +23776,15 @@
                       "code": "CHAT_NOT_VISIBLE",
                       "message": "A private conversation with this person exists on this Account. Ask Ada to reply, or to sync the full inbox.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -25886,11 +25988,22 @@
             }
           },
           "409": {
-            "description": "REAUTH_REQUIRED: the account is disconnected, so its conversations are read-only. Nothing was sent or changed. Reconnect the account.",
+            "description": "REAUTH_REQUIRED: the account is disconnected, so its conversations are read-only. Nothing was sent or changed. Reconnect the account. Or DO_NOT_CONTACT: this is a first message to a person on your Team's do-not-contact list (a reply in a conversation they have written in is still allowed). Nothing was sent and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -28527,7 +28640,7 @@
             }
           },
           "409": {
-            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected.",
+            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected. Or DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28540,6 +28653,15 @@
                       "code": "CHAT_NOT_VISIBLE",
                       "message": "A private conversation with this person exists on this Account. Ask Ada to reply, or to sync the full inbox.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -32320,6 +32442,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "413": {
             "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help.",
             "content": {
@@ -34056,6 +34199,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "413": {
             "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help.",
             "content": {
@@ -35284,6 +35448,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "413": {
             "description": "Payload too large, the request body exceeds the size limit.",
             "content": {
@@ -36019,7 +36204,7 @@
             }
           },
           "409": {
-            "description": "A connect-request to this member already exists, or you are already connected (CONNECTION_REQUEST_CONFLICT). Do not re-send.",
+            "description": "A connect-request to this member already exists, or you are already connected (CONNECTION_REQUEST_CONFLICT). Do not re-send. Or DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -36036,6 +36221,15 @@
                       "retry_hint": {
                         "kind": "never"
                       }
+                    }
+                  },
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
                     }
                   }
                 }
@@ -49975,6 +50169,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "413": {
             "description": "Payload too large, the request body exceeds the size limit.",
             "content": {
@@ -57230,6 +57445,27 @@
               }
             }
           },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list, and this read would view their profile live (LinkedIn records a view). Nothing was read and no limit was spent. A read Curviate answers from stored data is not refused. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "ACCOUNT_RESTRICTED, the connected LinkedIn account is restricted.",
             "content": {
@@ -57567,7 +57803,7 @@
             }
           },
           "409": {
-            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected.",
+            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected. Or DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -57580,6 +57816,15 @@
                       "code": "CHAT_NOT_VISIBLE",
                       "message": "A private conversation with this person exists on this Account. Ask Ada to reply, or to sync the full inbox.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -71704,7 +71949,7 @@
             }
           },
           "409": {
-            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected.",
+            "description": "CHAT_NOT_VISIBLE: this Account already has a private conversation with this person that you may not read. Nothing was sent. Ask the person who connected the Account to reply, or to sync the full inbox. Detected from what Curviate stored; a thread older than 90 days that Curviate never touched is not detected. Or DO_NOT_CONTACT: the person is on your Team's do-not-contact list. Nothing was sent or read and no limit was spent. Do not retry; an Owner or Manager can remove them from the list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -71717,6 +71962,15 @@
                       "code": "CHAT_NOT_VISIBLE",
                       "message": "A private conversation with this person exists on this Account. Ask Ada to reply, or to sync the full inbox.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -72657,6 +72911,27 @@
                       "code": "RESOURCE_NOT_FOUND",
                       "message": "The referenced resource does not exist for this tenant.",
                       "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DO_NOT_CONTACT: the person is on your Team's do-not-contact list, and this read would view their profile live (LinkedIn records a view). Nothing was read and no limit was spent. A read Curviate answers from stored data is not refused. Do not retry; an Owner or Manager can remove them from the list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "do_not_contact": {
+                    "summary": "On the do-not-contact list",
+                    "value": {
+                      "code": "DO_NOT_CONTACT",
+                      "message": "This person is on your Team's do-not-contact list.",
+                      "user_fixable": false,
                       "retry_likely_to_succeed": false
                     }
                   }
@@ -86384,7 +86659,7 @@
                             "inmailed": 3,
                             "rate": 0
                           },
-                          "next": "curviate analytics motion mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 --include steps,variants"
+                          "next": "curviate analytics get --motion mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 --include steps,variants"
                         }
                       ],
                       "motions_truncated": false,
@@ -87162,7 +87437,7 @@
             }
           },
           "409": {
-            "description": "ACCOUNT_ALREADY_LINKED: this LinkedIn account is already linked. It names your own account_id when your tenant owns it; otherwise no id is named, it is not one you can manage here, and retrying will not help. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire. LINKEDIN_ACCOUNT_MISMATCH (a reconnect, account_id given): the sign-in is a different LinkedIn account than the one being reconnected, which is unchanged; sign in to LinkedIn as that account's person, then try again.",
+            "description": "ACCOUNT_ALREADY_LINKED: this LinkedIn account is already linked. It names your own account_id when your tenant owns it; otherwise no id is named, it is not one you can manage here, and retrying will not help. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire. LINKEDIN_ACCOUNT_MISMATCH (a reconnect, account_id given): the sign-in is a different LinkedIn account than the one being reconnected, which is unchanged; sign in to LinkedIn as that account's person, then try again. Or SEAT_LENT: the seat chosen for this connection is lent to another Team, or was lent while the sign-in was open (the connection is rolled back and nothing is attached). Move the seat back first (POST /v1/billing/seats/{seat_id}/return), or connect on another seat.",
             "content": {
               "application/json": {
                 "schema": {
@@ -87195,6 +87470,15 @@
                     "value": {
                       "code": "CONNECTION_IN_PROGRESS",
                       "message": "A connection attempt for this LinkedIn account is already open. Wait for it to finish or expire before starting another.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "seat_lent": {
+                    "summary": "The seat is lent out",
+                    "value": {
+                      "code": "SEAT_LENT",
+                      "message": "This seat is lent to another Team. Move it back first.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -88063,11 +88347,22 @@
             }
           },
           "409": {
-            "description": "CHECKPOINT_EXPIRED or CHECKPOINT_ALREADY_RESOLVED: restart the connection. ACCOUNT_ALREADY_LINKED: the LinkedIn identity is already connected; it names your own account_id when you own it, otherwise it is not one you can manage here. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire.",
+            "description": "CHECKPOINT_EXPIRED or CHECKPOINT_ALREADY_RESOLVED: restart the connection. ACCOUNT_ALREADY_LINKED: the LinkedIn identity is already connected; it names your own account_id when you own it, otherwise it is not one you can manage here. CONNECTION_IN_PROGRESS: another connection attempt for this identity is open; wait for it to finish or expire. Or SEAT_LENT: the seat chosen for this connection is lent to another Team, or was lent while the sign-in was open (the connection is rolled back and nothing is attached). Move the seat back first (POST /v1/billing/seats/{seat_id}/return), or connect on another seat.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "seat_lent": {
+                    "summary": "The seat is lent out",
+                    "value": {
+                      "code": "SEAT_LENT",
+                      "message": "This seat is lent to another Team. Move it back first.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -89090,11 +89385,22 @@
             }
           },
           "409": {
-            "description": "CHECKPOINT_EXPIRED: the sign-in passed its expires_at; start the connection again. ACCOUNT_ALREADY_LINKED. The approved LinkedIn identity is already connected and is not one you can manage here; not retryable. CONNECTION_IN_PROGRESS. Another connection attempt for this identity is open; wait for it to finish or expire.",
+            "description": "CHECKPOINT_EXPIRED: the sign-in passed its expires_at; start the connection again. ACCOUNT_ALREADY_LINKED. The approved LinkedIn identity is already connected and is not one you can manage here; not retryable. CONNECTION_IN_PROGRESS. Another connection attempt for this identity is open; wait for it to finish or expire. Or SEAT_LENT: the seat chosen for this connection is lent to another Team, or was lent while the sign-in was open (the connection is rolled back and nothing is attached). Move the seat back first (POST /v1/billing/seats/{seat_id}/return), or connect on another seat.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "seat_lent": {
+                    "summary": "The seat is lent out",
+                    "value": {
+                      "code": "SEAT_LENT",
+                      "message": "This seat is lent to another Team. Move it back first.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
                 }
               }
             }
@@ -99170,10 +99476,8 @@
                     "description": "Which set of Curviate defaults this account's rows resolve from: `basic`, `premium`, `sales_navigator` or `recruiter`. Each inherits the one before it and raises a few rows. This is the platform product active on the account, NOT the Curviate seat entitlement, and the two can disagree: a lapsed subscription leaves the seat untouched. Curviate detects it from the platform when the account connects, re-detects it on every reconnect and, at most once a day, on an account read; setting it here pins it, and the pin wins over detection from then on. None of those paths moves a pinned value, so it holds until you release it. To release the pin, send `limit_profile_source: \"default\"` on its own: Curviate re-reads the value from LinkedIn on the account's next read or connect. Changing `limit_profile` and releasing it in the same request is refused with `INVALID_REQUEST`, because those are opposite intents. Sending the value the account already holds changes nothing and pins nothing. The change is recorded in the ledger and it moves the defaults under every row at once, so any row you have configured explicitly keeps your value. The elevated Sales Navigator and Recruiter figures apply only to calls made through the matching interface, the Sales Navigator and Recruiter operations, and Curviate holds each call to the figure for the interface it goes through. The numbers here are therefore the ones a standard-interface call is held to, on every profile; a call through one of those operations resolves from the elevated set instead, and each row publishes that figure as `interface_ceiling`."
                   },
                   "timezone": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "description": "Not a setting: the time zone follows where this account connects from (activity_window shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a document read before this change can be sent back once its zone is null.",
-                    "nullable": true
+                    "type": "null",
+                    "description": "Not a setting: the time zone follows where this account connects from (activity_window shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a document read before this change can be sent back once its zone is null."
                   },
                   "tenant_default_posture": {
                     "type": "string",
@@ -99317,10 +99621,8 @@
                           "nullable": true
                         },
                         "activity_window_timezone": {
-                          "type": "string",
-                          "maxLength": 64,
-                          "description": "Not a setting: the time zone follows where this account connects from (activity_window on the policy shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a row read before this change can be sent back once its zone is null.",
-                          "nullable": true
+                          "type": "null",
+                          "description": "Not a setting: the time zone follows where this account connects from (activity_window on the policy shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a row read before this change can be sent back once its zone is null."
                         },
                         "activity_window_applies_to": {
                           "type": "string",
@@ -102316,10 +102618,8 @@
                                 "nullable": true
                               },
                               "activity_window_timezone": {
-                                "type": "string",
-                                "maxLength": 64,
-                                "description": "Not a setting: the time zone follows where this account connects from (activity_window on the policy shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a row read before this change can be sent back once its zone is null.",
-                                "nullable": true
+                                "type": "null",
+                                "description": "Not a setting: the time zone follows where this account connects from (activity_window on the policy shows it). Any value but null is a 400 INVALID_REQUEST; change where the account connects instead (its `country`, or your own `proxy`). Null is accepted and ignored, so a row read before this change can be sent back once its zone is null."
                               },
                               "activity_window_applies_to": {
                                 "type": "string",
@@ -137011,7 +137311,7 @@
                             "maturing": 5,
                             "maturing_share": 0.3125
                           },
-                          "next": "curviate analytics motion mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 --include steps,variants"
+                          "next": "curviate analytics get --motion mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8 --include steps,variants"
                         }
                       ],
                       "motions_truncated": false,
@@ -137106,7 +137406,7 @@
                             "denominator": 16,
                             "threshold": 30
                           },
-                          "next": "curviate analytics team --range 12m"
+                          "next": "curviate analytics get --range 12m"
                         }
                       ]
                     }
@@ -144809,6 +145109,500 @@
         "x-order": 3
       }
     },
+    "/v1/billing/seats": {
+      "get": {
+        "operationId": "getV1BillingSeats",
+        "tags": [
+          "Seats"
+        ],
+        "summary": "List seats and billing summary",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The seat and billing summary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billing_period": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "monthly",
+                        "annual"
+                      ],
+                      "description": "How the subscription is billed; none before any purchase."
+                    },
+                    "bought_tier": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "build",
+                        "automate",
+                        "enhance",
+                        null
+                      ],
+                      "description": "The Tier the subscription buys, or null."
+                    },
+                    "seat_total": {
+                      "type": "integer",
+                      "description": "Seats counted, trial and lent-in seats included."
+                    },
+                    "seats_used": {
+                      "type": "integer",
+                      "description": "Seats with an Account."
+                    },
+                    "seats_empty": {
+                      "type": "integer",
+                      "description": "Seats without an Account."
+                    },
+                    "seats_pending_cancel": {
+                      "type": "integer",
+                      "description": "Seats with a scheduled cancellation."
+                    },
+                    "seats_provisional": {
+                      "type": "integer",
+                      "description": "Seats bought and not confirmed yet."
+                    },
+                    "monthly_cost_eur": {
+                      "type": "number",
+                      "description": "The recurring monthly cost in euros: the sum of the seats' monthly_eur."
+                    },
+                    "next_invoice_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the next invoice is due, or null."
+                    },
+                    "pending_charge_eur": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "The prorated charge waiting on the next invoice, in euros, or null."
+                    },
+                    "subscription_trial_end": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the subscription's own trial ends, only while it is trialing; null otherwise."
+                    },
+                    "payment_method_display": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The card on file as text (for example `Visa ending 4242`), or null."
+                    },
+                    "billing_status": {
+                      "type": "string",
+                      "description": "The billing state: none, trialing, active, past_due, payment_failed or disputed_fraud."
+                    },
+                    "trial_status": {
+                      "type": "string",
+                      "description": "The free trial state: none, active, converted, expired or ended_abuse."
+                    },
+                    "trial_expires_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the free trial ends or ended; null when there was none."
+                    },
+                    "pending_period_switch": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "monthly"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "annual"
+                          ]
+                        },
+                        "effective_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "effective_at"
+                      ],
+                      "description": "A scheduled switch from monthly to annual billing, or null."
+                    },
+                    "seats": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "seat_id": {
+                            "type": "string",
+                            "description": "The seat id (`seat_...`)."
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "pending_cancel",
+                              "provisional",
+                              "trial",
+                              "trial_expired",
+                              "expired"
+                            ],
+                            "description": "active: paid and usable. pending_cancel: ends at cancellation_effective_at. provisional: bought, not confirmed yet. trial and trial_expired: the free trial seat. expired: the cancellation date has passed."
+                          },
+                          "cancellation_effective_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time",
+                            "description": "When a scheduled cancellation takes effect, or null."
+                          },
+                          "cancellation_source": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "seat_decrement",
+                              "subscription_cancel",
+                              null
+                            ],
+                            "description": "seat_decrement: this seat alone was cancelled (revert it with POST /v1/billing/seats/{seat_id}/cancel/revert). subscription_cancel: the whole subscription is ending. Null when nothing is scheduled."
+                          },
+                          "attached_account_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The Account on the seat, or null when it is empty."
+                          },
+                          "attached_account_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "That Account's name, or null."
+                          },
+                          "monthly_eur": {
+                            "type": "number",
+                            "description": "What the seat costs per month, in euros. 0 for a trial, provisional or lent-in seat."
+                          },
+                          "lent_to": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "team_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The other Team's id, or null when you are not a member of it."
+                              },
+                              "team_name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The other Team's name, or null when you are not a member of it."
+                              }
+                            },
+                            "required": [
+                              "team_id",
+                              "team_name"
+                            ],
+                            "description": "Set on a seat this Team lent out: the Team using it. Null when the seat is not lent out. team_id and team_name are null inside it when you are not a member of that Team."
+                          },
+                          "lent_from": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "team_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The other Team's id, or null when you are not a member of it."
+                              },
+                              "team_name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The other Team's name, or null when you are not a member of it."
+                              }
+                            },
+                            "required": [
+                              "team_id",
+                              "team_name"
+                            ],
+                            "description": "Set on a seat this Team received: the Team that lent it. Null on a seat of its own. team_id and team_name are null inside it when you are not a member of that Team."
+                          }
+                        },
+                        "required": [
+                          "seat_id",
+                          "status",
+                          "cancellation_effective_at",
+                          "cancellation_source",
+                          "attached_account_id",
+                          "attached_account_name",
+                          "monthly_eur",
+                          "lent_to",
+                          "lent_from"
+                        ]
+                      },
+                      "description": "One row per seat."
+                    },
+                    "subscription_cancels_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "When the whole subscription ends, if it is scheduled to; null otherwise."
+                    },
+                    "is_churned": {
+                      "type": "boolean",
+                      "description": "True when an entitlement existed and is gone."
+                    },
+                    "has_stripe_customer": {
+                      "type": "boolean",
+                      "description": "True once a payment profile exists for the Team."
+                    }
+                  },
+                  "required": [
+                    "billing_period",
+                    "bought_tier",
+                    "seat_total",
+                    "seats_used",
+                    "seats_empty",
+                    "seats_pending_cancel",
+                    "seats_provisional",
+                    "monthly_cost_eur",
+                    "next_invoice_at",
+                    "pending_charge_eur",
+                    "subscription_trial_end",
+                    "payment_method_display",
+                    "billing_status",
+                    "trial_status",
+                    "trial_expires_at",
+                    "pending_period_switch",
+                    "seats",
+                    "subscription_cancels_at",
+                    "is_churned",
+                    "has_stripe_customer"
+                  ]
+                },
+                "examples": {
+                  "lent": {
+                    "summary": "Two seats, one lent to another Team",
+                    "value": {
+                      "billing_period": "monthly",
+                      "bought_tier": "automate",
+                      "seat_total": 2,
+                      "seats_used": 1,
+                      "seats_empty": 1,
+                      "seats_pending_cancel": 0,
+                      "seats_provisional": 0,
+                      "monthly_cost_eur": 120,
+                      "next_invoice_at": "2026-11-29T00:00:00Z",
+                      "pending_charge_eur": null,
+                      "subscription_trial_end": null,
+                      "payment_method_display": "Visa ending 4242",
+                      "billing_status": "active",
+                      "trial_status": "none",
+                      "trial_expires_at": null,
+                      "pending_period_switch": null,
+                      "seats": [
+                        {
+                          "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "status": "active",
+                          "cancellation_effective_at": null,
+                          "cancellation_source": null,
+                          "attached_account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7YA",
+                          "attached_account_name": "Ada Lovelace",
+                          "monthly_eur": 60,
+                          "lent_to": null,
+                          "lent_from": null
+                        },
+                        {
+                          "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7YB",
+                          "status": "active",
+                          "cancellation_effective_at": null,
+                          "cancellation_source": null,
+                          "attached_account_id": null,
+                          "attached_account_name": null,
+                          "monthly_eur": 60,
+                          "lent_to": {
+                            "team_id": "tnt_01J8Z3K9P0Q1R2S3T4V5W6X7YC",
+                            "team_name": "Northwind Sales"
+                          },
+                          "lent_from": null
+                        }
+                      ],
+                      "subscription_cancels_at": null,
+                      "is_churned": false,
+                      "has_stripe_customer": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "In a team, only an Owner reads billing. INSUFFICIENT_ROLE for anyone else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Returns the Team's seats and billing state: each seat's status, Account and cost, the Tier bought, the next invoice, and trial state while the Team is on a free trial. A seat lent to another Team carries lent_to; a seat received from another Team carries lent_from. Owners only."
+      }
+    },
     "/v1/billing/seats/add": {
       "post": {
         "operationId": "postV1BillingSeatsAdd",
@@ -145408,7 +146202,7 @@
             }
           },
           "409": {
-            "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first.",
+            "description": "The workspace is on a free trial and cannot change seats. Buy a seat to convert to a paid subscription first. Or SEAT_LENT: the seat is lent to another Team, so it cannot be cancelled on its own. Nothing changed. Move it back first (POST /v1/billing/seats/{seat_id}/return).",
             "content": {
               "application/json": {
                 "schema": {
@@ -145423,6 +146217,15 @@
                       "retry_hint": {
                         "kind": "never"
                       },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "seat_lent": {
+                    "summary": "The seat is lent out",
+                    "value": {
+                      "code": "SEAT_LENT",
+                      "message": "This seat is lent to another Team. Move it back first.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
