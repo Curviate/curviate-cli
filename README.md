@@ -360,7 +360,7 @@ paid seat entitles every command here. What these commands do need is the Linked
 own Sales Navigator subscription. A refusal is **exit code `5`** with one of three codes in
 the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). Branch on the exit code the same way as example 4 above, and read the code for the
 remedy. Write commands (`curviate core sales-nav save-lead`, `curviate core sales-nav save-account`, `curviate core sales-nav message new`) accept `--preview` to
 render the request without sending it.
@@ -460,7 +460,7 @@ entitles every command here. What these commands do need is the LinkedIn account
 subscription. A refusal is **exit code `5`** with one of three codes in the JSON body:
 `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). The surface is project-centric: most
 operations are scoped to a hiring project id. Write commands (`curviate core recruiter save-candidate`, `curviate core recruiter project update`,
 `curviate core recruiter project-job create`, `curviate core recruiter project-job update`, `curviate core recruiter job create`,

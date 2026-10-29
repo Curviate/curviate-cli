@@ -49,6 +49,8 @@ export const main = defineCommand({
     network: lazy("network", () => import("./commands/network.js").then((m) => m.networkCommand)),
     analytics: lazy("analytics", () => import("./commands/analytics.js").then((m) => m.analyticsCommand)),
     export: lazy("export", () => import("./commands/export.js").then((m) => m.exportCommand)),
+    incoming: lazy("incoming", () => import("./commands/incoming.js").then((m) => m.incomingCommand)),
+    beta: lazy("beta", () => import("./commands/beta-consent.js").then((m) => m.betaCommand)),
     webhook: lazy("webhook", () => import("./commands/webhook.js").then((m) => m.webhookCommand)),
     // The LinkedIn building blocks. Reserved product groups
     // (contact, unibox, network, analytics, notification, team) land

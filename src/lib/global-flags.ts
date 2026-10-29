@@ -91,7 +91,7 @@ export const GLOBAL_FLAGS = {
   beta: {
     type: "boolean" as const,
     description:
-      "Allow beta operations for THIS call only (--beta, --beta=false). A gated operation refuses BETA_NOT_ENABLED (exit 5) until a human enables beta in Settings, or you pass --beta for this call. Persists nothing.",
+      "Allow beta operations for THIS call only (--beta, --beta=false). A gated operation refuses BETA_NOT_ENABLED (exit 5) until beta is enabled for the Team (`curviate beta update --enabled true`, an Owner; `PATCH /v1/tenant/beta`), or you pass --beta for this call. Persists nothing.",
   },
 } as const;
 
