@@ -5,8 +5,6 @@
  * the Team's: no `--account` narrows it.
  */
 import { defineCommand } from "citty";
-import { closeSync, openSync, renameSync, unlinkSync, writeSync, fchmodSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
 import type { Curviate } from "@curviate/sdk";
 import { DESCRIPTIONS, lazy } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -17,6 +15,7 @@ import { intFlag } from "../lib/int-flag.js";
 import { sendInChunks } from "../lib/chunks.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import { FILTER_ARGS, hasFilter, readFilter, type FilterFlags } from "../lib/contact-filter.js";
+import { writeAtomic } from "../lib/write-atomic.js";
 import { slimContact, slimContactPage } from "../lib/contact-slim.js";
 
 /** The most ids one bulk request takes (the operations' `x-curviate-limits.items`). */
@@ -218,28 +217,6 @@ async function runEnrich(c: Curviate, f: ContactFlags): Promise<void> {
 }
 
 const FORMATS = ["csv", "json", "ndjson"];
-
-/** Write `bytes` to `path` the way an export must be: a 0600 temp file in the same directory, renamed over the target on success. */
-function writeAtomic(path: string, bytes: Buffer): void {
-  const tmp = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`);
-  let fd: number | undefined;
-  try {
-    fd = openSync(tmp, "wx", 0o600);
-    fchmodSync(fd, 0o600);
-    writeSync(fd, bytes);
-    closeSync(fd);
-    fd = undefined;
-    renameSync(tmp, path);
-  } catch (err) {
-    if (fd !== undefined) closeSync(fd);
-    try {
-      unlinkSync(tmp);
-    } catch {
-      /* no temp file to remove */
-    }
-    throw err;
-  }
-}
 
 async function runExport(c: Curviate, f: ContactFlags): Promise<void> {
   if (f.json) usage("export takes no --json: its data is the file. Use --format json for JSON.");

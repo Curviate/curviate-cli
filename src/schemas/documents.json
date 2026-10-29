@@ -1054,8 +1054,7 @@
       "updated_at",
       "started_at",
       "completed_at",
-      "archived_at",
-      "safety_warning"
+      "archived_at"
     ]
   },
   "motion update": {
@@ -1230,8 +1229,7 @@
       "updated_at",
       "started_at",
       "completed_at",
-      "archived_at",
-      "safety_warning"
+      "archived_at"
     ]
   }
 }

@@ -221,6 +221,7 @@ describe("the Tier", () => {
     ["contact import", "post", "/v1/contacts/imports"], ["contact tags add", "post", "/v1/contacts/update"], ["contact lists remove", "post", "/v1/contacts/update"],
     ["contact tags update", "patch", "/v1/tags/{id}"], ["contact lists create", "post", "/v1/contact-lists"], ["contact lists combine", "post", "/v1/contact-lists"],
     ["contact lists update", "patch", "/v1/contact-lists/{id}"],
+    ["do-not-contact add", "post", "/v1/do-not-contact"], ["do-not-contact update", "patch", "/v1/do-not-contact/{id}"],
     ["incoming create", "post", "/v1/incoming-events"], ["incoming rotate", "post", "/v1/incoming-events/{id}/rotate"], ["incoming capture", "post", "/v1/incoming-events/{id}/capture"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],
   ])("%s (%s %s) says it needs Automate", (cmd, method, path) => {

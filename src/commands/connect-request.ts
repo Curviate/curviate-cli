@@ -12,7 +12,7 @@ import { buildPreviewOutput } from "../lib/preview.js";
 import { readableObject } from "../lib/paginate.js";
 import { fail, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 
-type Flags = RootFlags & { id?: string; reconnect?: string };
+type Flags = RootFlags & { id?: string; reconnect?: string; "warm-up"?: boolean };
 
 type Request = { id?: string; url?: string; expires_at?: string; status?: string };
 
@@ -39,7 +39,9 @@ const requestId = (f: Flags): string => {
 
 async function runCreate(c: Curviate, f: Flags): Promise<void> {
   if (f.reconnect !== undefined && f.reconnect.trim() === "") usage("--reconnect was given an empty value. Pass the acc_... id of the account to reconnect, or omit it to connect a new account.");
+  if (f["warm-up"] === false && f.reconnect !== undefined) usage("--no-warm-up applies to a new connect. A connected account's ramp is switched with `curviate account warm-up`.");
   const body: Record<string, unknown> = f.reconnect !== undefined ? { account_id: f.reconnect } : {};
+  if (f["warm-up"] === false) body["warm_up"] = false;
   if (f.preview) return preview("connectRequests.create", {}, body);
   try {
     const req = (await c.connectRequests.create(body as never)) as Request;
@@ -97,11 +99,12 @@ const createCmd = defineCommand({
       ACCOUNT_NOT_SHARED: "the account you named is not shared with you.",
     },
     seeAlso: ["curviate account connect-request get", "curviate account connect-request cancel"],
-    examples: ["curviate account connect-request create", "curviate account connect-request create --reconnect acc_YOUR_ACCOUNT_ID"],
+    examples: ["curviate account connect-request create", "curviate account connect-request create --no-warm-up", "curviate account connect-request create --reconnect acc_YOUR_ACCOUNT_ID"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     reconnect: { type: "string", description: "Reconnect this account (acc_...) instead of connecting a new one." },
+    "warm-up": { type: "boolean", description: "--no-warm-up: the new account skips the ramp (its first weeks at lower limits) once the person connects it. A new connect only. Default on." },
   },
   run: online(runCreate),
 });
