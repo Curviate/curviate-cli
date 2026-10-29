@@ -37,6 +37,7 @@
  * keeps all pagination flags).
  */
 
+import { accountMetricsCommand, accountOverviewCommand } from "./account-insights.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -2077,11 +2078,13 @@ export const accountCommand = defineCommand({
     update: accountUpdateCommand,
     disconnect: accountDisconnectCommand,
     checkpoint: accountCheckpointCommand,
+    overview: accountOverviewCommand,
+    metrics: accountMetricsCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate account <subcommand>\n" +
-      "  list | get | seats | link | connect-session poll | update | disconnect | checkpoint\n",
+      "  list | get | seats | link | connect-session poll | update | disconnect | checkpoint | overview | metrics\n",
     );
   },
 });
