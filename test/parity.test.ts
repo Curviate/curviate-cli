@@ -262,6 +262,26 @@ const PARITY_MANIFEST: Record<string, string> = {
   "export download":             "exports.download",
   "account overview":            "accounts.overview",
   "account metrics":             "accounts.metrics",
+
+  // teams (15). `team switch` reuses teams.list; `team leave` reuses removeMember.
+  "team list":           "teams.list",
+  "team create":         "teams.create",
+  "team get":            "teams.getCurrent",
+  "team update":         "teams.updateCurrent",
+  "team logo set":       "teams.setLogo",
+  "team logo remove":    "teams.removeLogo",
+  "team members":        "teams.listMembers",
+  "team role":           "teams.updateMember",
+  "team remove":         "teams.removeMember",
+  "team invites create": "teams.createInvites",
+  "team invites list":   "teams.listInvites",
+  "team invites resend": "teams.resendInvite",
+  "team invites revoke": "teams.revokeInvite",
+  "team seats lend":     "billing.seats.lend",
+  "team seats return":   "billing.seats.return",
+
+  // tier (1)
+  "tier": "tier.get",
 };
 
 /**
@@ -290,13 +310,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "contacts.imports.create", "contacts.imports.list", "contacts.imports.get", "contacts.imports.rows",
   "contactLists.create", "contactLists.list", "contactLists.get", "contactLists.update", "contactLists.delete",
   "tags.list", "tags.update", "tags.delete",
-  // team
-  "teams.list", "teams.create", "teams.getCurrent", "teams.updateCurrent", "teams.setLogo", "teams.removeLogo",
-  "teams.listMembers", "teams.updateMember", "teams.removeMember",
-  "teams.createInvites", "teams.listInvites", "teams.resendInvite", "teams.revokeInvite",
-  "billing.seats.lend", "billing.seats.return",
-  // tier
-  "tier.get",
   // invoices
   "billing.invoices.list", "billing.invoices.pdf",
   // do-not-contact

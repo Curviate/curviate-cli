@@ -530,6 +530,12 @@ export function renderError(
       // current_country is where it is right now; country is only what it is set to.
       msg += `\nConnects from now: ${loc.current_country ?? loc.country ?? "unknown"} (${mode}${loc.strict ? ", strict" : ""})`;
     }
+    // The feature, the Tier that has it, and the way out for this caller's role:
+    // an Owner gets the upgrade link, anyone else is sent to an Owner.
+    if (errJson.code === "TIER_REQUIRED") {
+      msg += `\nNeeds: ${errJson.feature ?? "this feature"} is part of ${errJson.requiredTier ?? "a Tier not on sale yet"}; this Team has ${errJson.currentTier ?? "no Tier"}.`;
+      msg += errJson.upgradeUrl ? `\nUpgrade: ${errJson.upgradeUrl}` : "\nAsk an Owner of your Team to change the Tier (`curviate team members` lists them).";
+    }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;
     }

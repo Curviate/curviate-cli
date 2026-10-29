@@ -321,7 +321,7 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it.",
+    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
@@ -350,7 +350,7 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
-      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since.",
+      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
@@ -389,7 +389,7 @@ const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete",
   });
 
 const startCmd = lifecycleCmd("start", {
-  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed.",
+  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
@@ -418,7 +418,7 @@ const pauseCmd = lifecycleCmd("pause", {
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Motion. Runs the start checks again.",
+  description: "Resume a paused Motion. Runs the start checks again. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion's Steps run again from its sending Accounts.",
@@ -483,7 +483,7 @@ const membershipCmd = (kind: "add" | "remove") =>
     meta: {
       name: kind,
       description: kind === "add"
-        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order."
+        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
         : "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       risk: "high",
       rules: kind === "add"
