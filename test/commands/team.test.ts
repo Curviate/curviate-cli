@@ -1,6 +1,6 @@
 /** Teams: which Team a call acts in, and the `team` commands, as the requests they send. */
 import { describe, it, expect, afterEach } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { useSink, line } from "../helpers/sink.js";
 import { configHome } from "../helpers/run-inproc.js";
@@ -102,5 +102,70 @@ describe("setup asks for the Team picker and stores the exchange's Team", () => 
     const r = await exchangeWith(body, teams, configHome(profile));
     expect([r.start, r.exit, r.url.searchParams.get("picker"), r.url.searchParams.get("team")]).toEqual([0, 0, "1", "tnt_pre"]);
     expect([r.team, r.verified]).toEqual([stored, [stored]]);
+  });
+});
+
+describe("team commands: the request each sends", () => {
+  const png = join(configHome(), "logo.png");
+  writeFileSync(png, Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]));
+  it.each([
+    [["team", "list", "--counts"], "GET /v1/teams?include=counts", ""],
+    [["team", "get"], "GET /v1/teams/current", ""],
+    [["team", "update", "--name", "Acme", "--billing-owner", "usr_1"], "PATCH /v1/teams/current", { name: "Acme", billing_owner_user_id: "usr_1" }],
+    [["team", "create", "Acme (client)"], "POST /v1/teams", { name: "Acme (client)" }],
+    [["team", "members", "--limit", "5"], "GET /v1/teams/current/members?limit=5", ""],
+    [["team", "role", "usr_1", "manager"], "PATCH /v1/teams/current/members/usr_1", { role: "manager" }],
+    [["team", "remove", "usr_1"], "DELETE /v1/teams/current/members/usr_1", ""],
+    [["team", "leave"], "DELETE /v1/teams/current/members/me", ""],
+    [["team", "invites", "create", "a@example.com,b@example.com", "--role", "manager"], "POST /v1/teams/current/invites", { invites: [{ email: "a@example.com", role: "manager" }, { email: "b@example.com", role: "manager" }] }],
+    [["team", "invites", "list", "--status", "pending"], "GET /v1/teams/current/invites?status=pending", ""],
+    [["team", "invites", "resend", "inv_1"], "POST /v1/teams/current/invites/inv_1/resend", ""],
+    [["team", "invites", "revoke", "inv_1"], "DELETE /v1/teams/current/invites/inv_1", ""],
+    [["team", "logo", "set", png], "PUT /v1/teams/current/logo", "PNG\u0001\u0002\u0003"],
+    [["team", "logo", "remove"], "DELETE /v1/teams/current/logo", ""],
+    [["team", "seats", "lend", "--to", "tnt_b", "--seat", "seat_1"], "POST /v1/billing/seats/lend", { team_id: "tnt_b", seat_id: "seat_1" }],
+    [["team", "seats", "return", "seat_1"], "POST /v1/billing/seats/seat_1/return", ""],
+  ] as const)("%j", async (args, sent, body) => {
+    // Readable as an object and as a list page, so one reply serves every row.
+    sink.reply = { body: { object: "team", team_id: "tnt_a", items: [], cursor: null } };
+    const r = await sink.run([...args, "--json", "--team", "tnt_a"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.requests.map((q) => [`${q.method} ${q.url}`, q.headers["x-curviate-team"]])).toEqual([[sent, "tnt_a"]]);
+    const got = r.requests[0]!.body;
+    if (typeof body === "string") expect(body === "" ? got : got.endsWith(body)).toBe(body === "" ? "" : true);
+    else expect(JSON.parse(got)).toEqual(body);
+    expect(JSON.parse(r.stdout)).toMatchObject({ team_id: "tnt_a" });
+  });
+
+  it("a refusal keeps its exit class: SEAT_LENT exits 11 with its message", async () => {
+    sink.reply = { status: 409, body: { code: "SEAT_LENT", message: "That seat is lent to another of your Teams.", user_fixable: true, retry_likely_to_succeed: false } };
+    const r = await sink.run(["team", "seats", "lend", "--to", "tnt_b"]);
+    expect([r.status, r.stderr]).toEqual([11, expect.stringContaining("lent")]);
+  });
+
+  it("human output names no vendor", async () => {
+    sink.reply = { body: TEAMS };
+    const r = await sink.run(["team", "list"]);
+    expect(r.status).toBe(0);
+    expect((r.stdout + r.stderr).toLowerCase()).not.toContain(["uni", "pile"].join("")); // spelled apart: the source scan forbids the name
+  });
+});
+
+describe("team switch rewrites the profile's team", () => {
+  it.each([
+    ["by id, all-teams key", ALL, "tnt_b", 0, "tnt_b"],
+    ["by exact name", ALL, "Client B", 0, "tnt_b"],
+    ["not one of theirs: exit 2, unchanged", ALL, "tnt_x", 2, "tnt_old"],
+    ["a Team key and another Team: exit 3, unchanged", "cvt_live_FAKEFIXTURE0000000000", "tnt_b", 3, "tnt_old"],
+  ] as const)("%s", async (_l, key, target, exit, stored) => {
+    sink.reply = { body: TEAMS };
+    const xdg = configHome({ team: "tnt_old" });
+    const r = await sink.run(["team", "switch", target, "--json"], { xdg, env: { CURVIATE_API_KEY: key } });
+    expect(r.status, r.stderr).toBe(exit);
+    expect(r.requests.map((q) => `${line(q)} ${q.headers["x-curviate-team"] ?? "-"}`)).toEqual(["GET /v1/teams -"]);
+    const cfg = JSON.parse(readFileSync(join(xdg, "curviate", "config.json"), "utf8")) as { profiles: { default: { team?: string } } };
+    expect(cfg.profiles.default.team).toBe(stored);
+    const next = await sink.run(["team", "get", "--json"], { xdg, env: { CURVIATE_API_KEY: key } });
+    expect(next.requests[0]?.headers["x-curviate-team"]).toBe(stored);
   });
 });

@@ -235,6 +235,23 @@ const PARITY_MANIFEST: Record<string, string> = {
   "notification list":      "notifications.list",
   "notification delete":    "notifications.delete",
   "notification show-less": "notifications.showLess",
+
+  // teams (15). `team switch` reuses teams.list; `team leave` reuses removeMember.
+  "team list":           "teams.list",
+  "team create":         "teams.create",
+  "team get":            "teams.getCurrent",
+  "team update":         "teams.updateCurrent",
+  "team logo set":       "teams.setLogo",
+  "team logo remove":    "teams.removeLogo",
+  "team members":        "teams.listMembers",
+  "team role":           "teams.updateMember",
+  "team remove":         "teams.removeMember",
+  "team invites create": "teams.createInvites",
+  "team invites list":   "teams.listInvites",
+  "team invites resend": "teams.resendInvite",
+  "team invites revoke": "teams.revokeInvite",
+  "team seats lend":     "billing.seats.lend",
+  "team seats return":   "billing.seats.return",
 };
 
 /**
@@ -270,11 +287,6 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "analytics.activity", "analytics.export", "analytics.motions.list", "analytics.motions.get", "analytics.events.list",
   "exports.create", "exports.get", "exports.download",
   "accounts.metrics", "accounts.overview",
-  // team
-  "teams.list", "teams.create", "teams.getCurrent", "teams.updateCurrent", "teams.setLogo", "teams.removeLogo",
-  "teams.listMembers", "teams.updateMember", "teams.removeMember",
-  "teams.createInvites", "teams.listInvites", "teams.resendInvite", "teams.revokeInvite",
-  "billing.seats.lend", "billing.seats.return",
   // tier
   "tier.get",
   // invoices
