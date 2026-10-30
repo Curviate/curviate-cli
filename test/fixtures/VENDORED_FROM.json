@@ -1,6 +1,6 @@
 {
-  "sdkVersion": "github:Curviate/curviate-sdk#74b63f1f2b4abaa9d16bf6c9daf44b5d8480a252",
-  "sha256": "5e0b0ad01860bae7a29408d921faaf00df2c85d356b9f60a7afb30bfc71dec68",
+  "sdkVersion": "0.45.0-next.0",
+  "sha256": "a52edc929f14e1f4c3fef90f0fee7980a7a2003a88c92174e24c4e4f6382c1f2",
   "vendoredAt": "2026-10-30T11:15:51.480Z",
   "sourceFile": "packages/sdk/fixtures/openapi.json",
   "sourceServerGitSha": "21b253175db1bb80cc75126fe3f31e622f0ad930",

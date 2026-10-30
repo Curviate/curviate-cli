@@ -63,7 +63,7 @@ function pick(cands: Candidate[], nowSec: number): { live?: Candidate; expired?:
 }
 
 export function parseCookieExport(raw: string, nowMs: number): CookieExportResult {
-  const text = raw.replace(/^﻿/, "").trim();
+  const text = raw.replace(/^\uFEFF/, "").trim();
   if (text === "") return fail("empty");
   if (/^#\s?Netscape HTTP Cookie File/i.test(text) || /^[^\t\n]*\t(TRUE|FALSE)\t/m.test(text)) return fail("netscape");
   if (Buffer.byteLength(text, "utf8") > COOKIE_EXPORT_MAX_BYTES) return fail("too_large");
