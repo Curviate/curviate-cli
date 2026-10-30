@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { useSink, line, type Hit } from "../helpers/sink.js";
 
-const CON = { object: "contact", id: "con_1", linkedin_url: "https://www.linkedin.com/in/jane", full_name: "Jane", tags: ["a"], list_ids: [], connected_account_ids: [], enrichment: { status: "none" } };
+const CON = { object: "contact", id: "con_1", company_linkedin_url: "https://www.linkedin.com/company/1/", linkedin_url: "https://www.linkedin.com/in/jane", full_name: "Jane", tags: ["a"], list_ids: [], connected_account_ids: [], enrichment: { status: "none" } };
 const PAGE = { object: "contact_page", items: [CON], cursor: null, total: 1 };
 const IMP = (counts = { created: 1, updated: 0, unchanged: 0, skipped: 0 }) => ({ object: "contact_import", id: "imp_1", status: "completed", counts, report: [] });
 let imports = 0;
@@ -31,6 +31,10 @@ const dir = mkdtempSync(join(tmpdir(), "contact-"));
 const file = (name: string, content: string | Buffer) => (writeFileSync(join(dir, name), content), join(dir, name));
 
 describe("contact list filters", () => {
+  it("contact get --json carries company_linkedin_url", async () => {
+    expect(JSON.parse((await sink.run(["contact", "get", "con_1", "--json"])).stdout)).toMatchObject({ company_linkedin_url: "https://www.linkedin.com/company/1/" });
+  });
+
   it("--no-connected --tag a --tag b --import imp_1 is one request with connected=false&tag=a,b&import_id=imp_1", async () => {
     const r = await sink.run(["contact", "list", "--no-connected", "--tag", "a", "--tag", "b", "--import", "imp_1", "--json"]);
     expect(r.status, r.stderr).toBe(0);

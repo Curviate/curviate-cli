@@ -695,6 +695,8 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
     account_states: d["account_states"] ?? [],
+    // absent without Automate: shown only when the API sends them
+    ...(d["save_connections_as_contacts"] !== undefined ? { save_connections_as_contacts: d["save_connections_as_contacts"], save_connections_paused_reason: d["save_connections_paused_reason"] ?? null } : {}),
   };
 }
 

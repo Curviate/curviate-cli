@@ -14,7 +14,7 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 - `curviate account update --save-connections-as-contacts` (and `--no-save-connections-as-contacts`): whether the Account's Connections are saved as Contacts (Automate). `account get` shows `save_connections_as_contacts` and `save_connections_paused_reason` (`contact_limit_reached`).
 - `curviate contact list|export|update|delete --connected-account` takes several Accounts (repeat the flag, or a comma list, up to 50): Connections of any of them.
-- `contact get --json` carries the read-only `company_linkedin_url`; `analytics events` and `account overview` items carry `person_name` for a direct action (JSON output).
+- `contact get|list --json` carries the read-only `company_linkedin_url`; `account get --json` carries `save_connections_as_contacts` and `save_connections_paused_reason` when the API sends them (Automate); `analytics events` and `account overview` items carry `person_name` for a direct action.
 
 ### Changed
 

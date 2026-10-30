@@ -220,5 +220,9 @@ describe("warm-up and zone", () => {
     sink.reply = { body: acc };
     const r = await sink.run(["account", "get", "acc_1", "--json"]);
     expect(JSON.parse(r.stdout)).toMatchObject({ warm_up: acc.warm_up, activity_window: acc.activity_window, connection_location: acc.connection_location });
+    sink.reply = { body: { ...acc, save_connections_as_contacts: true, save_connections_paused_reason: "contact_limit_reached" } };
+    expect(JSON.parse((await sink.run(["account", "get", "acc_1", "--json"])).stdout)).toMatchObject({ save_connections_as_contacts: true, save_connections_paused_reason: "contact_limit_reached" });
+    sink.reply = { body: acc };
+    expect(JSON.parse((await sink.run(["account", "get", "acc_1", "--json"])).stdout)).not.toHaveProperty("save_connections_as_contacts");
   });
 });
