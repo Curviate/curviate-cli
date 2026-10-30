@@ -281,7 +281,7 @@ const FILTER_ARGS = {
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account.",
+    description: "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account. A pending Enrollment waiting in its Motion's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
     risk: "read",
     output: ["Each reason code comes with its sentence beside it (`skip_reason` and `skip_message`, `finish_reason` and `finish_message`)."],
     examples: [

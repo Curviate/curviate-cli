@@ -408,7 +408,7 @@
         "account",
         "get"
       ],
-      "description": "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
+      "description": "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected), its per-action quotas (the strict rows carry a target and an effective_target; connection_requests_no_note counts every invitation) and its health (state healthy, watch, slowed or stopped; factor; reasons). Curviate cannot see actions sent by hand or by another tool on the Account. --verbose adds cached profile fields, which may be null.",
       "usageOnly": false,
       "args": [
         {
@@ -1450,7 +1450,7 @@
         "safety",
         "get"
       ],
-      "description": "One Account's safety policy: every budget row with its ceiling and effective_ceiling, Active hours, warm-up and pacing. A read: no LinkedIn call.",
+      "description": "One Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing and auto_withdraw. A read: no LinkedIn call.",
       "usageOnly": false,
       "args": [
         {
@@ -1488,7 +1488,7 @@
         "safety",
         "update"
       ],
-      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, and `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, and `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
       "usageOnly": false,
       "args": [
         {
@@ -1751,7 +1751,7 @@
         "motion",
         "create"
       ],
-      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. Needs Automate.",
+      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's share of each Account's daily allowance. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1806,7 +1806,7 @@
         "motion",
         "update"
       ],
-      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
+      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) gives the Motion twice a normal Motion's share of each Account's daily allowance; settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -2125,7 +2125,7 @@
         "motion",
         "preview"
       ],
-      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection. A read: never reaches LinkedIn, spends nothing.",
+      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day, and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
       "usageOnly": false,
       "args": [
         {
@@ -2363,7 +2363,7 @@
         "enrollment",
         "list"
       ],
-      "description": "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account.",
+      "description": "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account. A pending Enrollment waiting in its Motion's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
       "usageOnly": false,
       "args": [
         {
@@ -10553,7 +10553,7 @@
         {
           "name": "note",
           "type": "string",
-          "description": "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account and a note on about 5 invitations a month (budget row `connection_requests_with_note`, see `curviate account get`). Omit it to send the invitation without a note."
+          "description": "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account, and a free account has a monthly limit on invitations with a note (budget row `connection_requests_with_note`, 3 a month by default; paid profiles have none). Every invitation, noted or not, counts on `connection_requests_no_note`, the invitation total (see `curviate account get`). Omit it to send the invitation without a note."
         }
       ],
       "globals": [

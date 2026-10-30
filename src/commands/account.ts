@@ -1808,7 +1808,7 @@ const accountListCommand = defineCommand({
 const accountGetCommand = defineCommand({
   meta: {
     name: "get",
-    description: "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
+    description: "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected), its per-action quotas (the strict rows carry a target and an effective_target; connection_requests_no_note counts every invitation) and its health (state healthy, watch, slowed or stopped; factor; reasons). Curviate cannot see actions sent by hand or by another tool on the Account. --verbose adds cached profile fields, which may be null.",
     risk: "read",
     examples: [
       "curviate account get acc_YOUR_ACCOUNT_ID",

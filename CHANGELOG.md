@@ -14,6 +14,16 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 - `curviate account safety get|update <account>`: read and change one Account's limits and Active hours. `curviate account team-access on|off <account>`: share an Account with its Team or keep it to its person.
 
+### Account orchestration
+
+- `motion create` / `motion update --file` accept `settings.priority` (`normal` | `prioritized`): the Motion's weighted share (1 : 2) of each sending Account's daily allowance. The vendored Motion schemas carry it.
+- `settings.new_enrollments_per_account_per_day` and `settings.assign: even` are retired: still accepted, ignored by the API until 2027-01-28; its `SETTING_REMOVED` notice is printed. A read never returns them.
+- `account get` shows `health` (`{state, factor, reasons, until}`; absent on an Account you can see but not operate); it was dropped by the default view. Strict rows in `quotas` carry `target` and `effective_target`.
+- `account safety get|update` carry `auto_withdraw` and the rows' `target`; a row's `green` is its target.
+- Same shape, new meaning: `connection_requests_no_note` counts every invitation; `used` is the invitation total. `connect --note` help names the noted limit (3 a month on a free profile, none on a paid one).
+- `motion preview` help: the projection names the binding pool, `expected_actions_per_day` and `warnings[]` (`hours_below_share`, `no_sending_account`). `enrollment list`: `account_id` is null while an Enrollment waits in its Motion's pool.
+- Help names the blind spot: actions sent by hand, or by another tool on the same Account, are invisible to Curviate.
+
 ### Fixed
 
 - `curviate contact export` no longer fails with exit 7 on any answer of more than one row.

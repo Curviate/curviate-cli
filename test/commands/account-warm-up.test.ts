@@ -37,7 +37,7 @@ describe("account safety and team-access", () => {
   it("get reads the policy; update PATCHes the document as written, and --preview sends nothing", async () => {
     const got = await sink.run(["account", "safety", "get", "acc_1", "--json"]);
     expect(got.requests.map(line)).toEqual(["GET /v1/acc_1/safety-policy"]);
-    const doc = { rows: [{ budget_row: "profile_views", ceiling: 40 }] };
+    const doc = { rows: [{ budget_row: "profile_views", ceiling: 40 }], auto_withdraw: false };
     const file = join(mkdtempSync(join(tmpdir(), "safety-")), "p.json");
     writeFileSync(file, JSON.stringify(doc));
     const put = await sink.run(["account", "safety", "update", "acc_1", "--file", file, "--json"]);

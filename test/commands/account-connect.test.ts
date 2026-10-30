@@ -225,4 +225,13 @@ describe("warm-up and zone", () => {
     sink.reply = { body: acc };
     expect(JSON.parse((await sink.run(["account", "get", "acc_1", "--json"])).stdout)).not.toHaveProperty("save_connections_as_contacts");
   });
+
+  it("account get shows health and the rows' target; an Account you can only see has no health", async () => {
+    const health = { state: "slowed", factor: 0.5, reasons: [{ code: "pushback", since: "2026-10-28" }], until: "2026-11-04T00:00:00Z" };
+    const quotas = [{ budget_row: "connection_requests_no_note", used: 12, ceiling: 200, effective_ceiling: 200, target: 150, effective_target: 75 }];
+    sink.reply = { body: { object: "account", account_id: "acc_1", status: "active", quotas, health } };
+    expect(JSON.parse((await sink.run(["account", "get", "acc_1", "--json"])).stdout)).toMatchObject({ health, quotas });
+    sink.reply = { body: { object: "account", account_id: "acc_1", status: "active", quotas: [] } };
+    expect(JSON.parse((await sink.run(["account", "get", "acc_1", "--json"])).stdout)).not.toHaveProperty("health");
+  });
 });

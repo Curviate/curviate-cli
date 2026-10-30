@@ -635,8 +635,8 @@ export const connectCommand = defineCommand({
     note: {
       type: "string",
       description:
-        "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account and a note on about 5 invitations a month " +
-        "(budget row `connection_requests_with_note`, see `curviate account get`). Omit it to send the invitation without a note.",
+        "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account, and a free account has a monthly limit on invitations with a note " +
+        "(budget row `connection_requests_with_note`, 3 a month by default; paid profiles have none). Every invitation, noted or not, counts on `connection_requests_no_note`, the invitation total (see `curviate account get`). Omit it to send the invitation without a note.",
     },
   },
   subCommands: {

@@ -349,7 +349,7 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. Needs Automate.",
+    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's share of each Account's daily allowance. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
@@ -378,6 +378,7 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
+      "settings.priority (normal or prioritized) gives the Motion twice a normal Motion's share of each Account's daily allowance; settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
       "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
@@ -493,7 +494,7 @@ const deleteCmd = lifecycleCmd("delete", {
 const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection. A read: never reaches LinkedIn, spends nothing.",
+    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day, and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
     risk: "read",
     examples: ["curviate motion preview mot_YOUR_MOTION_ID", "curviate motion preview mot_YOUR_MOTION_ID --sample 3"],
   },

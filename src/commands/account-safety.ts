@@ -16,7 +16,7 @@ const ACCOUNT = { type: "positional" as const, description: "The Account (acc_..
 const getCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One Account's safety policy: every budget row with its ceiling and effective_ceiling, Active hours, warm-up and pacing. A read: no LinkedIn call.",
+    description: "One Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing and auto_withdraw. A read: no LinkedIn call.",
     risk: "read",
     seeAlso: ["curviate account safety update", "curviate account get"],
     examples: ["curviate account safety get acc_YOUR_ACCOUNT_ID", "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up"],
@@ -36,7 +36,7 @@ const getCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, and `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, and `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
     risk: "write",
     rules: {
       changes: "The Account's limits or Active hours, from the next action on.",

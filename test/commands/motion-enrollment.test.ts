@@ -60,3 +60,19 @@ describe("motion create: schedule.timezone is retired", () => {
     expect([ok.status, lines(ok.sent).map((l) => l.call)]).toEqual([0, ["POST /v1/motions"]]);
   });
 });
+
+describe("motion create and update: settings.priority, and the retired keys the API still accepts", () => {
+  it.each([["create"], ["update mot_1"]])("%s sends priority and the retired keys as written, and prints the API's SETTING_REMOVED notice", async (verb) => {
+    const settings = { priority: "prioritized", new_enrollments_per_account_per_day: 15, assign: "even" };
+    const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+    writeFileSync(p, JSON.stringify({ name: "M", settings }));
+    const notices = [{ code: "SETTING_REMOVED", message: "settings.assign even is retired" }];
+    const r = await wire(["motion", ...verb.split(" "), "--file", p], () => ({ body: { object: "motion", id: "mot_1", notices } }));
+    expect(r.status, r.stderr).toBe(0);
+    expect((r.sent[0]!.body as { settings: unknown }).settings).toEqual(settings);
+    expect(r.stderr + r.stdout).toContain("SETTING_REMOVED");
+    writeFileSync(p, JSON.stringify({ name: "M", settings: { priority: "high" } }));
+    const refused = await wire(["motion", ...verb.split(" "), "--file", p], () => ({ body: {} }));
+    expect([refused.status, refused.sent]).toEqual([2, []]);
+  });
+});
