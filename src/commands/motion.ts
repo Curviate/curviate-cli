@@ -73,9 +73,26 @@ const shownFile = (f: MotionFlags) => (f.file === undefined || isStdinToken(f.fi
  * mode the server's refusal shape on stdout. Errors exit 2 (SEQUENCE_INVALID),
  * nothing sent; warnings print and never block.
  */
-async function checkSequence(f: MotionFlags, text: string, sequence: unknown, prefix: string): Promise<{ warnings: unknown[] }> {
+/**
+ * W17, offline where the file holds both the Sequence and `settings.assign`. The rest is server-side.
+ * ponytail: written here because this CLI pins a published SDK; move into the SDK's validator at its next release
+ * (the API's copy is `motionWarnings`; apps/server/test/cli/document-schema-drift.test.ts holds the words equal).
+ */
+function assignWarning(sequence: unknown, assign: unknown) {
+  if (assign !== "already_connected" || !sequence || typeof sequence !== "object") return [];
+  const steps = (sequence as Body)["steps"];
+  if (!Array.isArray(steps)) return [];
+  const at = steps.findIndex((s: Body | null) => s?.["do"] === "invite.send" && typeof s["id"] === "string");
+  if (at < 0) return [];
+  const rule = "settings.assign is already_connected, so anyone not already connected to a sending Account is skipped and this invitation never runs for them; use assign: auto";
+  const hint = "Set settings.assign to auto, the default: it prefers an Account already connected and invites everyone else. Keep already_connected only for a Motion that writes to existing Connections.";
+  return [{ code: "W17" as const, path: `${(steps[at] as Body)["id"]}.do`, rule, message: rule, pointer: `/steps/${at}/do`, hint, docs_url: "https://docs.curviate.com/reference/sequence-rules#w17", severity: "warning" as const }];
+}
+
+async function checkSequence(f: MotionFlags, text: string, sequence: unknown, prefix: string, settings?: unknown): Promise<{ warnings: unknown[] }> {
   const { validateSequence } = await import("@curviate/sdk");
   const verdict = validateSequence(sequence);
+  verdict.warnings.push(...assignWarning(sequence, (settings as Body | null | undefined)?.["assign"]));
   const lines = compilerLines(shownFile(f), text, verdict, prefix);
   if (verdict.errors.length) {
     const first = verdict.errors[0]!;
@@ -104,7 +121,7 @@ async function readMotionFile(f: MotionFlags, command: "motion create" | "motion
   }
   const issues = validate(schema, body);
   if (issues.length) reportIssues(issues, outputOpts(f).json);
-  if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence");
+  if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence", body["settings"]);
   return { body, text };
 }
 
@@ -246,7 +263,7 @@ export async function runLint(f: MotionFlags): Promise<void> {
   const doc = parseDocument("file", text) as Body | null;
   const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
   if (motionFile && doc["sequence"] == null) usage("--file: the Motion file has no sequence; there is nothing to lint.");
-  const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "");
+  const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "", motionFile ? doc["settings"] : undefined);
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
 }
 

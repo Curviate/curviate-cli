@@ -73,6 +73,14 @@ describe("offline lints (no request, exit 2 on a finding)", () => {
     expect(bad.stderr).toMatch(/bad\.json:1:\d+ error T6/);
   });
 
+  it("motion lint reads a Motion file's settings.assign: W17 with an invitation and already_connected, none with auto, none on a bare Sequence", async () => {
+    const sequence = { on_reply: "end", steps: [{ id: "c", if: { "contact.connected": true }, then: "t", else: "i" }, { id: "t", tag: "warm", next: "end" }, { id: "i", do: "invite.send", next: "end" }] };
+    const codes = async (doc: unknown) => (JSON.parse((await wire(["motion", "lint", "--file", file("m.json", JSON.stringify(doc)), "--json"])).stdout) as { warnings: { code: string; pointer: string }[] }).warnings;
+    expect(await codes({ name: "m", sequence, settings: { assign: "already_connected" } })).toMatchObject([{ code: "W17", pointer: "/steps/2/do" }]);
+    expect(await codes({ name: "m", sequence, settings: { assign: "auto" } })).toEqual([]);
+    expect(await codes(sequence)).toEqual([]);
+  });
+
   it("motion lint inherits the Enrollment value rules: save outside an until step is R25", async () => {
     const seq = file("s.json", JSON.stringify({ version: 1, steps: [{ id: "invite", do: "invite.send", save: { score: "lead.score" } }] }));
     const r = await wire(["motion", "lint", "--file", seq]);
