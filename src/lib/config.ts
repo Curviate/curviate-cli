@@ -21,7 +21,7 @@ import { join, dirname } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { CurviateError } from "@curviate/sdk";
-import { assertNoStdinPlaceholder } from "./stdin.js";
+import { assertNoStdinPlaceholder, STDIN_SENTINEL } from "./stdin.js";
 
 /** A single named profile's fields. */
 export interface ProfileEntry {
@@ -127,6 +127,19 @@ export interface ConfigFile {
 }
 
 /** The parsed file, unvalidated. Null when there is no file; throws on read errors. */
+/**
+ * An old `login --api-key -` saved the stdin placeholder as a profile's key. It was never a key: drop it on read,
+ * so the profile reads as having none and the next write heals the file. Left in, the write backstop refuses every
+ * write to every profile.
+ */
+function withoutStaleKeys(root: unknown): unknown {
+  const profiles = isPlainObject(root) ? root["profiles"] : undefined;
+  if (isPlainObject(profiles)) {
+    for (const p of Object.values(profiles)) if (isPlainObject(p) && p["apiKey"] === STDIN_SENTINEL) delete p["apiKey"];
+  }
+  return root;
+}
+
 export async function readConfigFile(): Promise<ConfigFile | null> {
   let raw: string;
   try {
@@ -137,7 +150,7 @@ export async function readConfigFile(): Promise<ConfigFile | null> {
   }
   try {
     // A leading UTF-8 byte order mark (some Windows editors write one) is not JSON.
-    return { root: JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown };
+    return { root: withoutStaleKeys(JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown) };
   } catch {
     // Kept, not thrown: a command whose every value comes from flags or env
     // never reads the file, so it must still run. The parser's text quotes the

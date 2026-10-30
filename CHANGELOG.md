@@ -18,6 +18,7 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 - `curviate contact export` no longer fails with exit 7 on any answer of more than one row.
 - A write answering a JSON object with no `object` key (`contact tags add`, `contact lists add`, `motion remove`) no longer warns about an unexpected shape.
+- A stored profile holding the stdin placeholder as its key no longer blocks every write to the config file: the placeholder is dropped on read, and the next write heals the file.
 - `motion create` and `motion update` refuse `schedule.timezone` (exit 2) and no longer list it: the API ignores it, hours read in each Account's own zone.
 - `contact lists delete` help: any role may delete a Contact list. `BUDGET_EXHAUSTED` help names `account safety update`.
 
