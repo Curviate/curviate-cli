@@ -75,8 +75,7 @@ const shownFile = (f: MotionFlags) => (f.file === undefined || isStdinToken(f.fi
  */
 /**
  * W17, offline where the file holds both the Sequence and `settings.assign`. The rest is server-side.
- * ponytail: written here because this CLI pins a published SDK; move into the SDK's validator at its next release
- * (the API's copy is `motionWarnings`; apps/server/test/cli/document-schema-drift.test.ts holds the words equal).
+ * ponytail: written here because this CLI pins a published SDK; move into the SDK's validator at its next release.
  */
 function assignWarning(sequence: unknown, assign: unknown) {
   if (assign !== "already_connected" || !sequence || typeof sequence !== "object") return [];
