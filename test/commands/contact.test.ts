@@ -12,7 +12,7 @@ let imports = 0;
 const sink = useSink((h: Hit) => {
   const [path] = h.url.split("?");
   if (path === "/v1/contacts" && h.method === "GET") return { body: PAGE };
-  if (path === "/v1/contacts/export") return { type: "application/x-ndjson", body: JSON.stringify(CON) + "\n" };
+  if (path === "/v1/contacts/export") return { type: "application/x-ndjson", body: `${JSON.stringify(CON)}\n${JSON.stringify(CON)}\n` };
   if (path === "/v1/contacts/update") return { body: { updated: 2, unchanged: 0, not_found: [], refused: [] } };
   if (path === "/v1/contacts/delete") return { body: { deleted: 2, not_found: [] } };
   if (path === "/v1/contacts/imports/imp_q") return { body: { ...IMP(), id: "imp_q", status: h.method === "GET" ? "completed" : "queued" } };
@@ -176,12 +176,12 @@ describe("contact import", () => {
 describe("contact export", () => {
   it("default ndjson to stdout carries data only; --output leaves a 0600 file and replaces an existing 0644 one", async () => {
     const r = await sink.run(["contact", "export", "--tag", "hot"]);
-    expect(r.stdout).toBe(JSON.stringify(CON) + "\n");
+    expect(r.stdout).toBe(`${JSON.stringify(CON)}\n${JSON.stringify(CON)}\n`); // several rows: a body that is not one JSON document
     expect(q(r.requests[0]!)).toEqual({ tag: "hot", format: "ndjson" });
     const out = file("out.ndjson", "old");
     chmodSync(out, 0o644);
     await sink.run(["contact", "export", "--output", out]);
-    expect([readFileSync(out, "utf8"), (statSync(out).mode & 0o777).toString(8)]).toEqual([JSON.stringify(CON) + "\n", "600"]);
+    expect([readFileSync(out, "utf8"), (statSync(out).mode & 0o777).toString(8)]).toEqual([`${JSON.stringify(CON)}\n${JSON.stringify(CON)}\n`, "600"]);
   });
 
   it("a failure leaves the existing file byte-identical and no temp file; --json exits 2 naming --format json", async () => {

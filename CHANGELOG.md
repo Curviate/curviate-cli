@@ -12,6 +12,15 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 ### Added
 
+- `curviate account safety get|update <account>`: read and change one Account's limits and Active hours. `curviate account team-access on|off <account>`: share an Account with its Team or keep it to its person.
+
+### Fixed
+
+- `curviate contact export` no longer fails with exit 7 on any answer of more than one row.
+- A write answering a JSON object with no `object` key (`contact tags add`, `contact lists add`, `motion remove`) no longer warns about an unexpected shape.
+
+### Added (earlier)
+
 - `curviate account update --save-connections-as-contacts` (and `--no-save-connections-as-contacts`): whether the Account's Connections are saved as Contacts (Automate). `account get` shows `save_connections_as_contacts` and `save_connections_paused_reason` (`contact_limit_reached`).
 - `curviate contact list|export|update|delete --connected-account` takes several Accounts (repeat the flag, or a comma list, up to 50): Connections of any of them.
 - `contact get|list --json` carries the read-only `company_linkedin_url`; `account get --json` carries `save_connections_as_contacts` and `save_connections_paused_reason` when the API sends them (Automate); `analytics events` and `account overview` items carry `person_name` for a direct action.

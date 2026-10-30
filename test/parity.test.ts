@@ -26,6 +26,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account update":     "accounts.update",
   "account disconnect": "accounts.disconnect",
   "account warm-up on|off": "accounts.updateSafetyPolicy",
+  "account safety get":    "accounts.getSafetyPolicy",
+  "account team-access on|off": "accounts.setTeamAccess",
 
   // webhooks (6)
   "webhook create": "webhooks.create",
@@ -360,13 +362,9 @@ const PARITY_MANIFEST: Record<string, string> = {
 const KNOWN_GAP_METHODS: readonly string[] = [
   // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
   "enrollments.signal",
-  // Team access lands with the teams commands.
-  "accounts.setTeamAccess",
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
-  // Safety commands land with their own spec; `account warm-up` writes through updateSafetyPolicy.
-  "accounts.getSafetyPolicy",
 ];
 
 // ---------------------------------------------------------------------------

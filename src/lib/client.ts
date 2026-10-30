@@ -151,7 +151,7 @@ function fault(res: Response, message: string, retryLikely: boolean): Response {
  * passes through verbatim; a non-JSON one becomes `{}`. An empty, unreadable
  * or unexpected body (not an API object) also warns on stderr. A 204 is the
  * documented bodyless success and passes silently.
- * ponytail: "expected" = a JSON object carrying `object`, upgrade to the
+ * ponytail: "expected" = a JSON object (bulk results carry no `object` key), upgrade to the
  * operation's response schema when the CLI vendors response schemas.
  */
 function acceptedWrite(res: Response, text: string, body: unknown): Response {
@@ -161,7 +161,7 @@ function acceptedWrite(res: Response, text: string, body: unknown): Response {
     headers.delete("content-type");
     return new Response(null, { status: res.status, statusText: res.statusText, headers });
   }
-  const expected = body !== null && typeof body === "object" && !Array.isArray(body) && "object" in body;
+  const expected = body !== null && typeof body === "object" && !Array.isArray(body);
   if (!expected) {
     const what = body === undefined ? "a body that is not JSON" : "a body of an unexpected shape";
     process.stderr.write(`warning: the API accepted this write (HTTP ${res.status}) with ${what}. The write happened: do not retry it.\n`);

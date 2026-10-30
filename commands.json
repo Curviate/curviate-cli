@@ -1434,6 +1434,219 @@
     },
     {
       "path": [
+        "account",
+        "safety"
+      ],
+      "description": "Read or change one Account's safety policy: limits per budget row and Active hours.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "account",
+        "safety",
+        "get"
+      ],
+      "description": "One Account's safety policy: every budget row with its ceiling and effective_ceiling, Active hours, warm-up and pacing. A read: no LinkedIn call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account safety get acc_YOUR_ACCOUNT_ID",
+        "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate account safety update",
+        "curviate account get"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "safety",
+        "update"
+      ],
+      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, and `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "required": true,
+          "description": "The JSON document: a path, or - to read it from stdin."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account safety update acc_YOUR_ACCOUNT_ID --file policy.json"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Account's limits or Active hours, from the next action on.",
+        "visible_to": "Your Team. Nothing is posted on LinkedIn; a higher limit lets more actions reach it.",
+        "budget_rows": [],
+        "retry": "Safe: the same document leaves the same policy.",
+        "undo": "Send the previous values, or null to fall back to the Team's default.",
+        "blast_radius": "One Account's pace, in every Motion and every direct action."
+      },
+      "errors": {
+        "INVALID_REQUEST": "a field is unknown or not settable; the message names it."
+      },
+      "seeAlso": [
+        "curviate account safety get",
+        "curviate account warm-up"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "team-access"
+      ],
+      "description": "Share an Account with its Team, or keep it to the person who connected it.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "account",
+        "team-access",
+        "on"
+      ],
+      "description": "Share the Account with its Team again (it does not rejoin a Motion). Only the person who connected it can.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account team-access on acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Team may use the Account again.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the switch ends in the same state.",
+        "undo": "Run `curviate account team-access off <account>`."
+      },
+      "errors": {
+        "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
+      },
+      "seeAlso": [
+        "curviate account get",
+        "curviate team members"
+      ]
+    },
+    {
+      "path": [
+        "account",
+        "team-access",
+        "off"
+      ],
+      "description": "Keep the Account to its person: it leaves every Motion that held it and its queued enrichment visits are dropped. Only the person who connected it can.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "accountId",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate account team-access off acc_YOUR_ACCOUNT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The Team loses the Account; it leaves every Motion that held it.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the switch ends in the same state.",
+        "undo": "Run `curviate account team-access on <account>`, then add it back to its Motions."
+      },
+      "errors": {
+        "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
+      },
+      "seeAlso": [
+        "curviate account get",
+        "curviate team members"
+      ]
+    },
+    {
+      "path": [
         "motion"
       ],
       "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",

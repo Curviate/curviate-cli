@@ -16,6 +16,7 @@ import { sendInChunks } from "../lib/chunks.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import { FILTER_ARGS, hasFilter, readFilter, type FilterFlags } from "../lib/contact-filter.js";
 import { writeAtomic } from "../lib/write-atomic.js";
+import { downloadBinary } from "../lib/client.js";
 import { slimContact, slimContactPage } from "../lib/contact-slim.js";
 
 /** The most ids one bulk request takes (the operations' `x-curviate-limits.items`). */
@@ -230,7 +231,7 @@ async function runExport(c: Curviate, f: ContactFlags): Promise<void> {
   if (f.preview) return preview("contacts.export", {}, params);
   let bytes: Buffer;
   try {
-    const got = await c.contacts.export(params as never);
+    const got = await downloadBinary(() => c.contacts.export(params as never));
     bytes = got instanceof ArrayBuffer ? Buffer.from(got) : Buffer.from(JSON.stringify(got) + "\n");
   } catch (err) {
     return fail(err, f);

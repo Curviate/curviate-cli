@@ -40,6 +40,7 @@
 
 import { accountMetricsCommand, accountOverviewCommand } from "./account-insights.js";
 import { accountWarmUpCommand } from "./account-warm-up.js";
+import { accountSafetyCommand, accountTeamAccessCommand } from "./account-safety.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -2303,11 +2304,13 @@ export const accountCommand = defineCommand({
     overview: accountOverviewCommand,
     metrics: accountMetricsCommand,
     "warm-up": accountWarmUpCommand,
+    safety: accountSafetyCommand,
+    "team-access": accountTeamAccessCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate account <subcommand>\n" +
-      "  list | get | seats | link | connect-request | connect-session poll | update | disconnect | checkpoint | overview | metrics | warm-up\n",
+      "  list | get | seats | link | connect-request | connect-session poll | update | disconnect | checkpoint | overview | metrics | warm-up | safety | team-access\n",
     );
   },
 });
