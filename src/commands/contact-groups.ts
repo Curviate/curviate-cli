@@ -216,7 +216,7 @@ const listsUpdate = defineCommand({
 const listsDelete = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete a Contact list. Its Contacts stay; a Motion that enrolls from it needs another list. Owners and Managers only.",
+    description: "Delete a Contact list. Its Contacts stay; a Motion that enrolls from it needs another list. Any role may.",
     risk: "high",
     rules: {
       changes: "The list and its memberships are deleted; the Contacts are not.",
@@ -226,7 +226,7 @@ const listsDelete = defineCommand({
       undo: "Cannot be undone for the list itself: create it again and add the Contacts.",
       blast_radius: "One list and its membership; no Contact is deleted.",
     },
-    errors: { RESOURCE_IN_USE: "a Motion still uses the list (409).", INSUFFICIENT_ROLE: "deleting lists is for Owners and Managers." },
+    errors: { RESOURCE_IN_USE: "a Motion still uses the list (409)." },
     seeAlso: SEE_LISTS,
     examples: ["curviate contact lists delete cl_YOUR_LIST_ID"],
   },

@@ -4081,7 +4081,7 @@
         "lists",
         "delete"
       ],
-      "description": "Delete a Contact list. Its Contacts stay; a Motion that enrolls from it needs another list. Owners and Managers only.",
+      "description": "Delete a Contact list. Its Contacts stay; a Motion that enrolls from it needs another list. Any role may.",
       "usageOnly": false,
       "args": [
         {
@@ -4117,8 +4117,7 @@
         "blast_radius": "One list and its membership; no Contact is deleted."
       },
       "errors": {
-        "RESOURCE_IN_USE": "a Motion still uses the list (409).",
-        "INSUFFICIENT_ROLE": "deleting lists is for Owners and Managers."
+        "RESOURCE_IN_USE": "a Motion still uses the list (409)."
       },
       "seeAlso": [
         "curviate contact lists get",
@@ -8895,7 +8894,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -9024,7 +9023,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -10589,7 +10588,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "CONNECTION_REQUEST_CONFLICT": "already invited or already connected."
       }
@@ -10705,7 +10704,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -10754,7 +10753,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -10803,7 +10802,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -11898,7 +11897,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person.",
         "CHAT_NOT_VISIBLE": "the chat is not visible to the Account."
@@ -11966,7 +11965,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
       }
@@ -12027,7 +12026,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person.",
         "CHAT_NOT_VISIBLE": "the chat is not visible to the Account."
@@ -12247,7 +12246,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -12358,7 +12357,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
       }
@@ -12494,7 +12493,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets."
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit."
       }
     },
     {
@@ -12560,7 +12559,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -13060,7 +13059,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -13126,7 +13125,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -13350,7 +13349,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it."
       }
     },
@@ -13638,7 +13637,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Sales Navigator subscription.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
@@ -14320,7 +14319,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "RESOURCE_NOT_FOUND": "the target does not exist, or the Account cannot see it.",
         "LINKEDIN_FEATURE_NOT_SUBSCRIBED": "the Account has no Recruiter subscription.",
         "RECIPIENT_UNREACHABLE": "LinkedIn will not let the Account message this person."
@@ -16417,7 +16416,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team.",
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
-        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+        "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
         "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
         "DRAFT_NOT_PUBLISHABLE": "the Draft lacks what a post needs.",
         "DRAFT_PUBLISHING": "the Draft is already being published."

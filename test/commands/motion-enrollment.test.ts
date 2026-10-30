@@ -3,6 +3,9 @@
  * lists stay lists.
  */
 import { describe, it, expect, afterEach } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { lines, wire } from "../helpers/wire.js";
 
 describe("motion and enrollment lists: the request each filter sends", () => {
@@ -39,4 +42,21 @@ describe("enrollment get: history_truncated", () => {
 it("motion list --sort outside updated|activity exits 2 with no request", async () => {
   const r = await wire(["motion", "list", "--sort", "name"]);
   expect([r.status, r.sent.length]).toEqual([2, 0]);
+});
+
+describe("motion create: schedule.timezone is retired", () => {
+  it("is refused locally, nothing sent; the same file without it is sent", async () => {
+    const file = (schedule: object) => {
+      const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+      writeFileSync(p, JSON.stringify({ name: "M", schedule }));
+      return p;
+    };
+    const hours = { days: ["mon"], hours: { start: "09:00", end: "17:00" } };
+    const send = (schedule: object) => wire(["motion", "create", "--file", file(schedule)], () => ({ body: { object: "motion", id: "mot_1" } }));
+    const bad = await send({ ...hours, timezone: "Europe/Berlin" });
+    expect([bad.status, bad.sent]).toEqual([2, []]);
+    expect(bad.stderr + bad.stdout).toContain("timezone");
+    const ok = await send(hours);
+    expect([ok.status, lines(ok.sent).map((l) => l.call)]).toEqual([0, ["POST /v1/motions"]]);
+  });
 });

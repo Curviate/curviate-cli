@@ -14,7 +14,7 @@ export const AS_ACCOUNT = {
 
 /** The command counts against a budget row. */
 export const BUDGET = {
-  BUDGET_EXHAUSTED: "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets.",
+  BUDGET_EXHAUSTED: "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
 };
 
 /** The command names a thing on LinkedIn. */

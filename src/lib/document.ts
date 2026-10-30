@@ -26,7 +26,14 @@ export const ANNOTATIONS = new Set(["description", "title", "default", "discrimi
 export function documentSchema(key: string): Schema {
   const s = (SCHEMAS as Record<string, Schema>)[key];
   if (!s) throw new Error(`no document schema for ${key}`);
-  return s;
+  return key === "motion create" || key === "motion update" ? withoutScheduleTimezone(s) : s;
+}
+
+/** The API still takes `schedule.timezone` and ignores it (hours read in each Account's zone): never offered, refused locally. */
+function withoutScheduleTimezone(s: Schema): Schema {
+  const copy = structuredClone(s) as { properties: { schedule: { properties: Schema } } };
+  delete copy.properties.schedule.properties["timezone"];
+  return copy as unknown as Schema;
 }
 
 /** The largest document a file flag reads; past it, exit 2 instead of reading on (`--file /dev/zero`). */
