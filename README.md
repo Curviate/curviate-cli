@@ -83,6 +83,13 @@ curviate --api-key <your-api-key> account list
 > history. Prefer `curviate login` or the `CURVIATE_API_KEY` environment
 > variable; reserve `--api-key` for one-off, low-trust contexts.
 
+**Teams.** A key works in one Team, or in all of your Teams. With a key for
+all your Teams, every call names the Team it acts in: `--team <team_id>`, then
+`CURVIATE_TEAM`, then the profile's `team` (which `curviate setup` stores when
+you pick "All my Teams"). The CLI sends it as `X-Curviate-Team`. A Team key acts
+only in its own Team, so leave the Team unset with one. `curviate doctor`
+reports the key's scope and checks the Team against your Teams.
+
 Get your API key from the [Curviate dashboard](https://app.curviate.com).
 
 ## Usage
@@ -353,7 +360,7 @@ paid seat entitles every command here. What these commands do need is the Linked
 own Sales Navigator subscription. A refusal is **exit code `5`** with one of three codes in
 the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). Branch on the exit code the same way as example 4 above, and read the code for the
 remedy. Write commands (`curviate core sales-nav save-lead`, `curviate core sales-nav save-account`, `curviate core sales-nav message new`) accept `--preview` to
 render the request without sending it.
@@ -453,7 +460,7 @@ entitles every command here. What these commands do need is the LinkedIn account
 subscription. A refusal is **exit code `5`** with one of three codes in the JSON body:
 `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). The surface is project-centric: most
 operations are scoped to a hiring project id. Write commands (`curviate core recruiter save-candidate`, `curviate core recruiter project update`,
 `curviate core recruiter project-job create`, `curviate core recruiter project-job update`, `curviate core recruiter job create`,
@@ -701,9 +708,9 @@ rather than parsing the message:
   LinkedIn regrants on its own schedule. Null-check it before scheduling on it.
 - `safetyHint.parameter` is addressable on the safety policy, so an agent can
   choose between waiting, escalating and reconfiguring without reading prose.
-- On the default posture nothing is refused at all: the action goes through and
-  the same payload rides the SUCCESS body under `safety_warning` with
-  `blocked: false`.
+- A limit is always enforced: at the ceiling, or outside the activity window,
+  the action is refused with this error. Nothing is sent and nothing rides a
+  success body.
 
 A `429` that carries `budgetRow` under `PLATFORM_RATE_LIMIT` is a third thing:
 that row is PAUSED because LinkedIn refused a recent call on it. The pause is

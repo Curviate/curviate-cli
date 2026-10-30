@@ -28,6 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveJobIdentifier } from "../lib/identifier.js";
@@ -739,6 +740,7 @@ const jobGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Retrieve one public LinkedIn job posting's full detail.",
+    risk: "read",
     examples: [
       "curviate core job get 4100000000",
       "curviate core job get https://www.linkedin.com/jobs/view/4100000000",
@@ -757,6 +759,7 @@ const jobListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List your own classic job postings by state.",
+    risk: "read",
     examples: [
       "curviate core job list --state OPEN",
       "curviate core job list --state DRAFT --all",
@@ -778,6 +781,15 @@ const jobCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Create a classic job-posting draft (never publishes, never spends).",
+    risk: "write",
+    rules: {
+      changes: "Creates a classic job-posting draft; nothing is published and nothing is spent.",
+      visible_to: "Only you, until you publish it.",
+      budget_rows: [],
+      retry: "Not safe: each call creates another draft.",
+      undo: "The CLI cannot delete a draft: remove it on LinkedIn.",
+    },
+    errors: { ...AS_ACCOUNT },
     examples: [
       "curviate core job create --job-title \"Staff Engineer\" --company \"Acme\" --workplace-type REMOTE --location 106967730 --employment-status FULL_TIME --apply-method external --website-url https://acme.example/jobs/1 --description \"$(cat description.txt)\"",
     ],
@@ -807,6 +819,15 @@ const jobUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Apply a partial update to a job posting you own.",
+    risk: "write",
+    rules: {
+      changes: "Changes the fields you pass on a job posting you own.",
+      visible_to: "Only you while it is a draft; anyone who can see the posting once it is published.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the posting the same.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core job update 4100000000 --workplace-type HYBRID",
       "curviate core job update 4100000000 --description \"$(cat description.txt)\"",
@@ -829,6 +850,7 @@ const jobBudgetCommand = defineCommand({
   meta: {
     name: "budget",
     description: "Price a publish before committing any money.",
+    risk: "read",
     examples: [
       "curviate core job budget 4100000000",
     ],
@@ -846,6 +868,17 @@ const jobPublishCommand = defineCommand({
   meta: {
     name: "publish",
     description: "Publish a draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
+    risk: "high",
+    rules: {
+      changes: "Publishes the draft on LinkedIn; PROMOTED and PROMOTED_PLUS also spend the budget you pass.",
+      visible_to: "Anyone on LinkedIn who can see job postings.",
+      budget_rows: [],
+      retry: "Not safe for a promoted posting: a repeat can spend again. Read `curviate core job budget <job_id>` and the posting first.",
+      undo: "`curviate core job close <job_id>` stops applications; money spent is not returned by the CLI.",
+      blast_radius: "One job posting; with PROMOTED or PROMOTED_PLUS, the --budget-amount in --budget-currency.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core job budget", "curviate core job close"],
     examples: [
       "curviate core job publish 4100000000 --mode FREE",
     ],
@@ -870,6 +903,17 @@ const jobCloseCommand = defineCommand({
   meta: {
     name: "close",
     description: "Stop a posting from accepting applications (irreversible once LISTED).",
+    risk: "high",
+    rules: {
+      changes: "Stops the posting from accepting applications.",
+      visible_to: "Anyone viewing the posting: it no longer takes applications.",
+      budget_rows: [],
+      retry: "Read `curviate core job get <job_id>` first: a closed posting has nothing left to close.",
+      undo: "Cannot be undone once the posting is listed.",
+      blast_radius: "One job posting.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core job get", "curviate core job applicants"],
     examples: [
       "curviate core job close 4100000000",
     ],
@@ -887,6 +931,7 @@ const jobApplicantsCommand = defineCommand({
   meta: {
     name: "applicants",
     description: "List applicants to a posting you own (POST-as-search).",
+    risk: "read",
     examples: [
       "curviate core job applicants 4100000000",
       "curviate core job applicants 4100000000 --ratings GOOD_FIT,MAYBE",
@@ -906,6 +951,7 @@ const jobApplicantGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get one applicant's full detail, including contact info.",
+    risk: "read",
     examples: [
       "curviate core job applicant get 4100000000 APPLICANT_ID",
     ],
@@ -924,6 +970,7 @@ const jobApplicantResumeCommand = defineCommand({
   meta: {
     name: "resume",
     description: "Download an applicant's résumé (binary).",
+    risk: "read",
     examples: [
       "curviate core job applicant resume 4100000000 APPLICANT_ID -o resume.pdf",
     ],

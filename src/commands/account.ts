@@ -6,8 +6,9 @@
  *   account get <account_id>: get one account
  *   account seats: list the workspace's live seats and whether each is free or bound
  *   account link <body...>: link a new account (write)
+ *   account connect-request create|get|cancel: the credential-free connect link (src/commands/connect-request.ts)
  *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
- *   account update <account_id> <body...>: update metadata / connection location / proxy (write)
+ *   account update <account_id> <body...>: update metadata / connection location / proxy / Save Connections as Contacts (write)
  *   account disconnect <account_id>: hard-disconnect an account (write)
  *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (write)
  *   account checkpoint poll <account_id>: poll mobile-app approval (write)
@@ -37,6 +38,8 @@
  * keeps all pagination flags).
  */
 
+import { accountMetricsCommand, accountOverviewCommand } from "./account-insights.js";
+import { accountWarmUpCommand } from "./account-warm-up.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -46,8 +49,10 @@ import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem, isJ
 import { buildPreviewOutput } from "../lib/preview.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, readableObject, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { slimAccountList, slimAccountListItem, slimAccountGet } from "../lib/slim.js";
-import { readlineSync } from "../lib/readline.js";
-import { defaultReadStdin } from "../lib/stdin.js";
+import { readlineSync, readHiddenToEof } from "../lib/readline.js";
+import { defaultReadStdin, isStdinToken } from "../lib/stdin.js";
+import { cookieExportMessage, parseCookieExport } from "../lib/cookie-export.js";
+import { statSync, readFileSync } from "node:fs";
 import {
   resolveSecret,
   checkCredentialConflicts,
@@ -56,6 +61,7 @@ import { AUTH_NEEDED } from "../lib/exit-codes.js";
 import {
   printChallengeCopy,
   printResendHintIfApplicable,
+  printAnotherWayHintIfApplicable,
   type ChallengeType,
 } from "../lib/checkpoint-copy.js";
 import {
@@ -67,6 +73,7 @@ import {
 // helpers, not a single typed literal.
 import type { AuthIntentBody, Curviate, CurviateError, SeatList } from "@curviate/sdk";
 import { intFlag } from "../lib/int-flag.js";
+import { connectRequestCommand } from "./connect-request.js";
 
 // ps/shell-history warning template (mirrors the --api-key warning in global-flags.ts).
 const PW_WARNING = (stdinFlag: string, envVar: string) =>
@@ -90,6 +97,7 @@ type AccountFlags = {
   "li-at"?: string;
   "li-at-stdin"?: boolean;
   "li-a"?: string;
+  "cookies-file"?: string;
   "no-interactive"?: boolean;
   country?: string;
   ip?: string;
@@ -103,12 +111,14 @@ type AccountFlags = {
   "recruiter-contract-id"?: string;
   "linkedin-premium"?: string;
   "external-id"?: string;  // link: your own end-user id (also the list filter)
-  timezone?: string;       // link: IANA zone for the account
+  timezone?: string;       // link: accepted and ignored
+  "warm-up"?: boolean;     // link: false (--no-warm-up) skips the new account's ramp
   products?: string;       // link: comma-separated premium allow-list
   challenge?: string;      // checkpoint request: a challenge_selection id
   // update body fields
   metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
+  "save-connections-as-contacts"?: boolean; // update: save the account's Connections as Contacts (Automate)
   // connect-link / reconnect-link body fields
   "expires-in-seconds"?: string;
   "redirect-url"?: string;
@@ -220,6 +230,10 @@ export async function runAccountList(
       const result = await client.accounts.list(params);
       readablePage(result);
       renderSuccess(result, { ...outOpts, slim: slimAccountList }, out);
+      // Zero on the first unfiltered page is zero Accounts; a filter or a later page is not.
+      if (!isJsonMode(outOpts) && !result.items?.length && !cursor && flags["external-id"] === undefined) {
+        out.stderr.write("No Account connected: ask your user to connect one in the dashboard, or create a Connect request.\n");
+      }
     }
   } catch (err) {
     await handleError(err, outOpts, out);
@@ -324,18 +338,12 @@ export async function runAccountSeats(
     return;
   }
 
-  // Same precedence as the generic renderHuman (lib/output.ts): notices
-  // first, then safety_warning prepended to the body. A hand-rolled human
-  // body must not silently drop either — both are cross-cutting response
-  // fields, not seat data, and CHANGELOG 0.33.0 already fixed one path that
-  // dropped safety_warning; this one must not reintroduce it.
+  // Same precedence as the generic renderHuman (lib/output.ts): notices first.
+  // A hand-rolled human body must not silently drop them: they are a
+  // cross-cutting response field, not seat data.
   const notices = renderNotices((result as { notices?: unknown }).notices);
   if (notices) out.stdout.write(notices + "\n");
-  let body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
-  const safetyWarning = (result as { safety_warning?: unknown }).safety_warning;
-  if (typeof safetyWarning === "object" && safetyWarning !== null) {
-    body = `safety_warning: ${JSON.stringify(safetyWarning)}\n${body}`;
-  }
+  const body = result.items.length === 0 ? "(no seats)" : result.items.map(renderSeatLineHuman).join("\n");
   out.stdout.write(body + "\n");
 }
 
@@ -373,6 +381,8 @@ export interface CredentialIO {
    * never the non-mask fallback, which does not suppress echo.
    */
   readSingleLine?: (cue: string) => Promise<string>;
+  /** Injectable no-echo multi-line reader (to Ctrl-D) for a `--cookies-file -` paste on a terminal. Defaults to lib/readline.ts's readHiddenToEof. */
+  readToEof?: (cue: string) => Promise<string>;
   /** Injectable sleep for the interactive mobile-app-approval poll sub-loop. Defaults to a real setTimeout. */
   sleep?: (ms: number) => Promise<void>;
   /** Injectable clock for the poll sub-loop's elapsed-time/timeout arithmetic. Defaults to Date.now. */
@@ -440,6 +450,42 @@ function managedLocationBody(flags: AccountFlags): Record<string, unknown> {
   };
 }
 
+const COOKIES_FILE_CUE = "Paste the export, then press Ctrl-D. It won't be shown.";
+
+type CookieExportBody = { li_at: string; li_a?: string };
+
+/**
+ * `--cookies-file <path|->`: the Cookie-Editor export, parsed here. Exit 2
+ * with no request for an unreadable path (named, never its content) or an
+ * export the parser refuses (its reason, never a quote of the input). Only
+ * `li_at` / `li_a` come out; a note (an expired `li_a`) goes to stderr.
+ */
+async function loadCookieExport(
+  value: string,
+  ctx: { out: OutputStreams; isTTY: boolean; readStdin: () => Promise<string>; readToEof: (cue: string) => Promise<string>; now: () => number },
+): Promise<CookieExportBody> {
+  const stop = (message: string): never => {
+    ctx.out.stderr.write(`error: ${message}\n`);
+    return process.exit(2);
+  };
+  let text: string;
+  if (isStdinToken(value)) {
+    text = ctx.isTTY ? await ctx.readToEof(COOKIES_FILE_CUE) : await ctx.readStdin();
+  } else {
+    try {
+      // ponytail: read whole, parser caps at 1 MiB after; a multi-GB path is read before it is refused
+      if (statSync(value).isDirectory()) throw new Error("directory");
+      text = readFileSync(value, "utf8");
+    } catch {
+      return stop(`--cookies-file: cannot read ${value}.`);
+    }
+  }
+  const parsed = parseCookieExport(text, ctx.now());
+  if (!parsed.ok) return stop(cookieExportMessage(parsed));
+  for (const note of parsed.notes) ctx.out.stderr.write(`note: ${note}\n`);
+  return { li_at: parsed.liAt, ...(parsed.liA !== undefined ? { li_a: parsed.liA } : {}) };
+}
+
 /**
  * Build the auth body for link/reconnect. Resolves the LinkedIn-account
  * secrets (password, li_at, li_a, proxy password) through the flag > stdin >
@@ -460,6 +506,8 @@ async function buildAuthBody(
     readStdin: () => Promise<string>;
     readSingleLine: (cue: string) => Promise<string>;
     previewMode: boolean;
+    /** The parsed `--cookies-file`; absent under --preview on a terminal paste. */
+    cookieExport?: CookieExportBody;
   },
 ): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {};
@@ -496,7 +544,8 @@ async function buildAuthBody(
 
   // Passed through as given; the API validates both and names the field.
   if (flags["external-id"] !== undefined) body["external_id"] = flags["external-id"];
-  if (flags.timezone !== undefined) body["timezone"] = flags.timezone;
+  // --timezone is accepted and ignored: the account's zone follows its connection location, so none is sent.
+  if (flags["warm-up"] === false) body["warm_up"] = false;
   // Closed set, validated here for the same silent-narrowing reason as
   // --linkedin-premium: `--products "$P"` with P unset must not become [].
   // ponytail: `[]` (ask for no premium product) is not expressible from the
@@ -546,8 +595,11 @@ async function buildAuthBody(
     }
   }
 
+  // The export's cookies; the env tiers below do not apply when --cookies-file is given.
+  if (ctx.cookieExport) body["cookie"] = ctx.cookieExport;
+
   // cookie object (auth-method === "cookie"), no interactive prompt, by design.
-  if (flags["auth-method"] === "cookie") {
+  if (flags["auth-method"] === "cookie" && flags["cookies-file"] === undefined) {
     const liAt = await resolveSecret({
       flagValue: flags["li-at"],
       stdinRequested: flags["li-at-stdin"],
@@ -613,6 +665,7 @@ function resolveCredentialIO(io: CredentialIO): {
   readline: (prompt: string, opts?: { mask?: boolean }) => Promise<string>;
   readStdin: () => Promise<string>;
   readSingleLine: (cue: string) => Promise<string>;
+  readToEof: (cue: string) => Promise<string>;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
   open: (url: string) => Promise<unknown>;
@@ -629,6 +682,7 @@ function resolveCredentialIO(io: CredentialIO): {
     // readlineSync itself writes its `prompt` argument to stderr too, the
     // cue text would otherwise print twice on a real terminal.
     readSingleLine: io.readSingleLine ?? (() => readlineSync("", { mask: true })),
+    readToEof: io.readToEof ?? ((cue) => readHiddenToEof(cue)),
     sleep: io.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms))),
     now: io.now ?? (() => Date.now()),
     open: io.open ?? defaultOpen,
@@ -645,6 +699,7 @@ interface CheckpointEnvelope {
   status?: string;
   account_id?: string;
   challenge_type?: string;
+  channel?: "email" | "sms" | "whatsapp" | null;
   expires_at?: string;
 }
 
@@ -654,8 +709,12 @@ function printConnected(
   result: unknown,
   ctx: { out: OutputStreams; outOpts: ReturnType<typeof resolveOutputOpts>; successVerb: "linked" | "reconnected" },
 ): void {
-  const r = result as { account_id?: string };
+  const r = result as { account_id?: string; contract_selected?: boolean };
   ctx.out.stderr.write(`Account ${ctx.successVerb}: ${r.account_id ?? ""}\n`);
+  // Connected is not selected: a Recruiter contract named at connect is chosen afterwards, and may not have been.
+  if (r.contract_selected === false) {
+    ctx.out.stderr.write("note: the account is connected, but the Recruiter contract you named was not selected. Check the account in your dashboard.\n");
+  }
   renderSuccess(result, ctx.outOpts, ctx.out);
 }
 
@@ -671,13 +730,21 @@ function printInvalidCodeRetryHint(err: unknown, out: OutputStreams): void {
 
 type MobileApprovalOutcome =
   | { kind: "active"; result: unknown }
+  | { kind: "chained"; result: CheckpointEnvelope }
   | { kind: "terminal_failure"; status: "expired" | "failed" }
   | { kind: "timeout" };
 
+/** A CHECKPOINT_EXPIRED answer (409): past `expires_at` the API refuses every checkpoint call; the wait is over, not a fault. */
+function isCheckpointExpired(err: unknown, CurviateError: typeof import("@curviate/sdk").CurviateError): boolean {
+  return err instanceof CurviateError && err.code === "CHECKPOINT_EXPIRED";
+}
+
 /**
- * Wait for mobile-app-approval by polling on the same adaptive cadence as
- * the checkpoint poll wait loop, bounded by the checkpoint's expiry (or a
- * 10-minute default when the response carries no expiry hint).
+ * Wait for mobile-app-approval (or a `checking` wait) by polling on the same
+ * adaptive cadence as the checkpoint poll wait loop, bounded by the
+ * checkpoint's expiry (or a 10-minute default when the response carries no
+ * expiry hint). A poll that answers `checkpoint_required` is the next
+ * checkpoint of a chain; a 409 CHECKPOINT_EXPIRED ends the wait as expired.
  */
 async function waitForMobileApproval(
   client: Curviate,
@@ -690,6 +757,7 @@ async function waitForMobileApproval(
     now: () => number;
   },
 ): Promise<MobileApprovalOutcome> {
+  const { CurviateError } = await import("@curviate/sdk");
   const startedAt = ctx.now();
   const timeoutAt = expiresAt ? new Date(expiresAt).getTime() : startedAt + 10 * 60_000;
 
@@ -701,24 +769,32 @@ async function waitForMobileApproval(
       result = await client.auth.pollCheckpoint(accountId);
       readableObject(result);
     } catch (err) {
+      if (isCheckpointExpired(err, CurviateError)) return { kind: "terminal_failure", status: "expired" };
       return await handleError(err, ctx.outOpts, ctx.out);
     }
     const status = (result as { status?: string }).status;
     if (status === "active") return { kind: "active", result };
-    if (status === "expired" || status === "failed") {
-      return { kind: "terminal_failure", status };
-    }
+    if (status === "checkpoint_required") return { kind: "chained", result: { ...(result as CheckpointEnvelope), account_id: (result as CheckpointEnvelope).account_id ?? accountId } };
+    if (status === "failed") return { kind: "terminal_failure", status };
     const n = ctx.now();
     if (n >= timeoutAt) return { kind: "timeout" };
     await ctx.sleep(nextCheckpointPollDelayMs(n - startedAt));
   }
 }
 
+/** The number as `(+CC)number`, digits only after the bracket; spaces and dashes are dropped. Anything else: undefined. */
+function phoneCode(input: string): string | undefined {
+  const m = /^\(\+(\d{1,3})\)([\d\s-]+)$/.exec(input.trim());
+  const rest = m?.[2]?.replace(/[\s-]/g, "") ?? "";
+  return m && rest.length >= 4 ? `(+${m[1]})${rest}` : undefined;
+}
+
 /**
  * Resolve a 202 checkpoint_required response in-process: print the
- * challenge copy and the resend hint, then either read/submit a code
- * (looping through 422 retries and chained challenges) or wait out a
- * codeless mobile-app-approval challenge.
+ * challenge copy (naming the channel a code went to) and the footer hints,
+ * then read/submit a code (looping through 422 retries and chained
+ * challenges), take a mobile number for a phone step, or wait out a codeless
+ * approval or `checking` wait.
  */
 async function runInteractiveCheckpointLoop(
   client: Curviate,
@@ -739,22 +815,61 @@ async function runInteractiveCheckpointLoop(
     const challengeType = current.challenge_type as ChallengeType;
     const accountId = current.account_id ?? "";
 
-    // A method choice, not a code: there is nothing to type at a prompt. Show
-    // the choices and hand off to the command that answers it.
-    if ((current.challenge_type as string) === "challenge_selection") {
+    // A method or contract choice, not a code: there is nothing to type at a
+    // prompt. Show the choices and hand off to the command that answers it.
+    if (challengeType === "challenge_selection" || challengeType === "contract_selection") {
       readableObject(current);
       renderSuccess(current, ctx.outOpts, ctx.out);
       ctx.out.stderr.write(
-        `Choose how LinkedIn verifies this sign-in: curviate account checkpoint request ${accountId} --challenge <id> (an id from challenges).\n`,
+        challengeType === "challenge_selection"
+          ? `Choose how LinkedIn verifies this sign-in: curviate account checkpoint request ${accountId} --challenge <id> (an id from challenges).\n`
+          : `Choose the contract to send from: curviate account checkpoint solve ${accountId} --code <id> (an id from contracts).\n`,
       );
       process.exit(AUTH_NEEDED);
       return;
     }
 
-    printChallengeCopy(challengeType, ctx.out);
+    printChallengeCopy(challengeType, ctx.out, current.channel);
     printResendHintIfApplicable(challengeType, accountId, ctx.out);
+    printAnotherWayHintIfApplicable(challengeType, accountId, ctx.out);
 
-    if (challengeType === "mobile_app_approval") {
+    // Codeless: wait on the poll; with code-or-approve the person may type the code instead.
+    let wait = challengeType === "mobile_app_approval" || challengeType === "checking";
+    if (!wait) {
+      for (;;) {
+        const either = challengeType === "otp_or_mobile_app_approval";
+        const prompt = challengeType === "phone_register" ? "Mobile number, as (+CC)number: " : either ? "Enter the code (or press Enter once you approved in the app): " : "Enter the code: ";
+        const typed = (await ctx.readline(prompt)).trim();
+        if (either && typed === "") {
+          wait = true;
+          break;
+        }
+        const code = challengeType === "phone_register" ? phoneCode(typed) : typed;
+        if (code === undefined) {
+          ctx.out.stderr.write("That is not a number in the form (+CC)number, for example (+49)1701234567.\n");
+          continue;
+        }
+        try {
+          const result = await client.auth.solveCheckpoint(accountId, { code });
+          const r = result as CheckpointEnvelope;
+          if (r.status === "checkpoint_required") {
+            current = { ...r, account_id: r.account_id ?? accountId };
+            break;
+          }
+          printConnected(result, { out: ctx.out, outOpts: ctx.outOpts, successVerb: ctx.successVerb });
+          return;
+        } catch (err) {
+          if (err instanceof CurviateError && err.code === "CHECKPOINT_INVALID_CODE") {
+            printInvalidCodeRetryHint(err, ctx.out);
+            continue;
+          }
+          if (isCheckpointExpired(err, CurviateError)) return expiredExit(ctx.out);
+          await handleError(err, ctx.outOpts, ctx.out);
+        }
+      }
+    }
+
+    if (wait) {
       const outcome = await waitForMobileApproval(client, accountId, current.expires_at, {
         out: ctx.out,
         outOpts: ctx.outOpts,
@@ -765,10 +880,13 @@ async function runInteractiveCheckpointLoop(
         printConnected(outcome.result, { out: ctx.out, outOpts: ctx.outOpts, successVerb: ctx.successVerb });
         return;
       }
+      if (outcome.kind === "chained") {
+        current = outcome.result;
+        continue;
+      }
       if (outcome.kind === "terminal_failure") {
-        ctx.out.stderr.write(
-          `This checkpoint has ${outcome.status}. Run the connect command again to restart.\n`,
-        );
+        if (outcome.status === "expired") return expiredExit(ctx.out);
+        ctx.out.stderr.write(`This checkpoint has ${outcome.status}. Run the connect command again to restart.\n`);
         process.exit(9);
         return;
       }
@@ -779,30 +897,13 @@ async function runInteractiveCheckpointLoop(
       process.exit(AUTH_NEEDED);
       return;
     }
-
-    // Code-based challenge: inner retry loop (422 re-prompts without
-    // re-printing the challenge copy; a chained 202 breaks out to the
-    // outer loop, which prints the new stage's copy).
-    for (;;) {
-      const code = await ctx.readline("Enter the code: ");
-      try {
-        const result = await client.auth.solveCheckpoint(accountId, { code });
-        const r = result as CheckpointEnvelope;
-        if (r.status === "checkpoint_required") {
-          current = { ...r, account_id: r.account_id ?? accountId };
-          break;
-        }
-        printConnected(result, { out: ctx.out, outOpts: ctx.outOpts, successVerb: ctx.successVerb });
-        return;
-      } catch (err) {
-        if (err instanceof CurviateError && err.code === "CHECKPOINT_INVALID_CODE") {
-          printInvalidCodeRetryHint(err, ctx.out);
-          continue;
-        }
-        await handleError(err, ctx.outOpts, ctx.out);
-      }
-    }
   }
+}
+
+/** The checkpoint ran past `expires_at`: nothing more can be answered; the sign-in starts over. */
+function expiredExit(out: OutputStreams): never {
+  out.stderr.write("This sign-in timed out (the checkpoint expired). Run the connect command again to start over.\n");
+  return process.exit(9);
 }
 
 /**
@@ -935,9 +1036,25 @@ export async function runAccountLink(
   out: OutputStreams,
   io: CredentialIO = {},
 ): Promise<void> {
+  // --cookies-file implies the cookie method and takes no other credential source.
+  const cookiesFile = flags["cookies-file"];
+  if (cookiesFile !== undefined) {
+    if (cookiesFile.trim() === "") {
+      out.stderr.write("error: --cookies-file was given an empty value. Pass the path of the Cookie-Editor JSON export, or - to read it from stdin.\n");
+      process.exit(2);
+    }
+    const clash = (["li-at", "li-at-stdin", "li-a", "email", "password", "password-stdin"] as const).find((k) => flags[k] !== undefined && flags[k] !== false);
+    const named = clash ? `--${clash}` : flags["auth-method"] === "credentials" ? "--auth-method credentials" : undefined;
+    if (named) {
+      out.stderr.write(`error: --cookies-file cannot be combined with ${named}: the export carries the session cookies, so pass one source.\n`);
+      process.exit(2);
+    }
+    flags = { ...flags, "auth-method": "cookie" };
+  }
+
   // Validate required fields
   if (!flags["auth-method"]) {
-    out.stderr.write("error: --auth-method is required for account link (credentials | cookie).\n");
+    out.stderr.write("error: --auth-method is required for account link (credentials | cookie), or pass --cookies-file.\n");
     process.exit(2);
   }
 
@@ -952,13 +1069,25 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  if (flags["warm-up"] === false && flags["account-id"] !== undefined) {
+    out.stderr.write("error: --no-warm-up applies to a new connect. A connected account's ramp is switched with `curviate account warm-up`.\n");
+    process.exit(2);
+  }
+
   checkCredentialConflicts(flags, out);
 
   // Cookie auth requires a User-Agent (the session cookie must be paired with
   // the browser UA it was minted under). Optional for credentials auth. Skipped
   // under --preview, a client-side render must never exit (mirrors the
   // credential-resolution fail-fast's own preview carve-out).
-  if (!flags.preview && flags["auth-method"] === "cookie" && !flags["user-agent"]) {
+  if (!flags.preview && cookiesFile !== undefined && !flags["user-agent"]) {
+    out.stderr.write(
+      "error: --user-agent is required with --cookies-file. Pass --user-agent with the exact user agent of the browser you exported from. " +
+        "In that browser's console, run navigator.userAgent.\n",
+    );
+    process.exit(2);
+  }
+  if (!flags.preview && cookiesFile === undefined && flags["auth-method"] === "cookie" && !flags["user-agent"]) {
     out.stderr.write(
       "error: --user-agent is required when --auth-method=cookie. Pass the User-Agent string of the " +
         "browser the li_at cookie was copied from; the cookie only works paired with it.\n",
@@ -992,6 +1121,12 @@ export async function runAccountLink(
     process.exit(2);
   }
 
+  const resolvedIo = resolveCredentialIO(io);
+  // A path or a pipe is read now (an unreadable one costs no request); a terminal paste waits until the seat is settled.
+  const pasteExport = cookiesFile !== undefined && isStdinToken(cookiesFile) && resolvedIo.isTTY;
+  const exportCtx = { out, isTTY: resolvedIo.isTTY, readStdin: resolvedIo.readStdin, readToEof: resolvedIo.readToEof, now: resolvedIo.now };
+  let cookieExport = cookiesFile !== undefined && !pasteExport ? await loadCookieExport(cookiesFile, exportCtx) : undefined;
+
   let seatId = flags["seat-id"];
   if (!seatId) {
     if (flags.preview) {
@@ -1011,8 +1146,9 @@ export async function runAccountLink(
     seatId = await soleFreeSeat(client, out, outOpts);
   }
 
-  const resolvedIo = resolveCredentialIO(io);
+  if (pasteExport && !flags.preview) cookieExport = await loadCookieExport(cookiesFile!, exportCtx);
   const authBody = await buildAuthBody(flags, {
+    cookieExport,
     out,
     isTTY: resolvedIo.isTTY,
     readline: resolvedIo.readline,
@@ -1279,6 +1415,7 @@ export async function runAccountUpdate(
 
   assertLocationFlags(flags, out, { requireOne: false, fallbackAlone: true });
   Object.assign(body, managedLocationBody(flags));
+  if (flags["save-connections-as-contacts"] !== undefined) body["save_connections_as_contacts"] = flags["save-connections-as-contacts"];
 
   if (flags["proxy-host"]) {
     // Proxy password is optional: flag > env > omitted, no prompt, no fail-fast.
@@ -1457,6 +1594,7 @@ export async function runAccountCheckpointRequest(
 /** Terminal outcome of the `checkpoint poll --wait` adaptive-cadence loop. */
 type PollWaitOutcome =
   | { kind: "active"; result: unknown }
+  | { kind: "chained"; result: unknown }
   | { kind: "terminal_failure"; status: "expired" | "failed"; result: unknown }
   | { kind: "timeout"; result: unknown };
 
@@ -1494,16 +1632,23 @@ async function runCheckpointPollWaitLoop(
     ctx.timeoutOverrideMs !== undefined ? startedAt + ctx.timeoutOverrideMs : undefined;
 
   await ctx.sleep(CHECKPOINT_POLL_FIRST_DELAY_MS);
+  const { CurviateError } = await import("@curviate/sdk");
 
   for (;;) {
-    const result = await client.auth.pollCheckpoint(accountId);
+    let result: unknown;
+    try {
+      result = await client.auth.pollCheckpoint(accountId);
+    } catch (err) {
+      // Past expires_at the API answers 409 CHECKPOINT_EXPIRED, no longer a 200 with a status.
+      if (isCheckpointExpired(err, CurviateError)) return { kind: "terminal_failure", status: "expired", result: { status: "expired" } };
+      throw err;
+    }
     readableObject(result);
     const r = result as { status?: string; expires_at?: string };
 
     if (r.status === "active") return { kind: "active", result };
-    if (r.status === "expired" || r.status === "failed") {
-      return { kind: "terminal_failure", status: r.status, result };
-    }
+    if (r.status === "checkpoint_required") return { kind: "chained", result };
+    if (r.status === "failed") return { kind: "terminal_failure", status: r.status, result };
 
     if (timeoutAt === undefined) {
       const expiresAtMs = r.expires_at ? new Date(r.expires_at).getTime() : NaN;
@@ -1514,7 +1659,7 @@ async function runCheckpointPollWaitLoop(
     if (n >= timeoutAt) return { kind: "timeout", result };
 
     if (ctx.showTicker) {
-      ctx.out.stderr.write(`\rWaiting for approval... ${formatRemaining(timeoutAt - n)} remaining`);
+      ctx.out.stderr.write(`\rWaiting for LinkedIn... ${formatRemaining(timeoutAt - n)} remaining`);
     }
 
     await ctx.sleep(nextCheckpointPollDelayMs(n - startedAt));
@@ -1596,7 +1741,19 @@ export async function runAccountCheckpointPoll(
     printConnected(outcome.result, { out, outOpts, successVerb: "linked" });
     return;
   }
+  if (outcome.kind === "chained") {
+    // Another checkpoint came after this one: resolvable, so render it and exit 12 like a chained solve.
+    renderSuccess(outcome.result, outOpts, out);
+    out.stderr.write(`LinkedIn asks for another step. Answer it: curviate account checkpoint solve ${accountId} --code <code> (see challenge_type).\n`);
+    process.exit(AUTH_NEEDED);
+    return;
+  }
   if (outcome.kind === "terminal_failure") {
+    if (outcome.status === "expired") {
+      out.stderr.write("This sign-in timed out (the checkpoint expired). Start over: curviate account link --auth-method <m> --country <CC>, or add --account-id <acc_...> to reconnect an existing account.\n");
+      process.exit(9);
+      return;
+    }
     renderSuccess(outcome.result, outOpts, out);
     out.stderr.write(`This checkpoint has ${outcome.status}. Start over: curviate account link --auth-method <m> --country <CC>, or add --account-id <acc_...> to reconnect an existing account.\n`);
     process.exit(9);
@@ -1618,6 +1775,7 @@ const accountListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List connected LinkedIn accounts.",
+    risk: "read",
     examples: [
       "curviate account list",
       "curviate account list --json --fields items.account_id,items.status",
@@ -1650,6 +1808,7 @@ const accountGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a connected LinkedIn account: its status (active, reconnect_needed, restricted, connecting or disconnected) and its per-action quotas. --verbose adds cached profile fields, which may be null.",
+    risk: "read",
     examples: [
       "curviate account get acc_YOUR_ACCOUNT_ID",
     ],
@@ -1685,6 +1844,7 @@ const accountSeatsCommand = defineCommand({
       "occupied:false (free) is a seat_id `curviate account link --seat-id` accepts right now. Not paginated " +
       "(bounded by purchased seats), --all is not supported. An empty result can mean the workspace has " +
       "no seats, or that billing needs attention.",
+    risk: "read",
     examples: [
       "curviate account seats",
     ],
@@ -1713,14 +1873,28 @@ const accountLinkCommand = defineCommand({
     name: "link",
     description:
       "Connect a LinkedIn account to an empty seat. " +
+      "AI agents: do not read, pass or ask for passwords, cookies or cookie exports; run `curviate account connect-request create` and hand the person its link instead. " +
+      "--cookies-file takes an export of a live LinkedIn session; delete it after use. " +
       "If LinkedIn requires verification you'll be prompted for the code interactively. Given --auth-method and its credentials, a non-interactive shell exits 12 at that step and you finish with `curviate account checkpoint solve <account_id> --code`.",
+    risk: "high",
+    rules: {
+      changes: "Connects a LinkedIn account to a seat, signing in with the credentials or session cookies you pass; with --account-id, signs an existing Account in again.",
+      visible_to: "Your Team gets the Account to operate; LinkedIn sees a sign-in from the chosen location.",
+      budget_rows: [],
+      retry: "Not safe for a new connect: each success takes another seat. Read `curviate account list` first.",
+      undo: "`curviate account disconnect <account_id>` disconnects it and releases the seat.",
+      blast_radius: "One LinkedIn account and one seat.",
+    },
+    errors: { NO_ACTIVE_SEAT: "no seat is free.", ACCOUNT_ALREADY_LINKED: "this LinkedIn account is already connected: reconnect it with --account-id.", CONNECTION_IN_PROGRESS: "a connect for this seat is still running.", LINKEDIN_AUTH_FAILED: "LinkedIn did not accept the credentials or cookies.", CONNECTION_LOCATION_REQUIRED: "a new connect named no location." },
+    seeAlso: ["curviate account seats", "curviate account connect-request create", "curviate account checkpoint solve"],
     examples: [
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --country US",
       "curviate account link --auth-method credentials --email jane@example.com --password-stdin --account-id acc_YOUR_ACCOUNT_ID --seat-id SEAT_ID",
+      "curviate account link --cookies-file linkedin-cookies.json --user-agent \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" --country US",
     ],
     requires: [
       "Exactly one of --country, --ip or --proxy-host on a new connect; a reconnect (--account-id) may omit it to keep the account's location.",
-      "--user-agent with --auth-method cookie.",
+      "--user-agent with --auth-method cookie or --cookies-file.",
       "--seat-id with --preview or --account-id, and when zero or several seats are free.",
       "--password-stdin only with --auth-method credentials; --li-at-stdin only with --auth-method cookie.",
     ],
@@ -1728,7 +1902,8 @@ const accountLinkCommand = defineCommand({
   args: {
     ...WRITE_SINGLE_FLAGS,
     "seat-id": { type: "string", description: "Empty seat to bind the account to, listed by `curviate account seats` (a free seat there is one this call accepts right now). Omit it and the only free seat is used; with zero or several free the command says so and connects nothing. Required with --preview (which calls nothing) and with --account-id (a reconnect keeps the seat that account already holds)." },
-    "auth-method": { type: "string", description: "Authentication method: credentials | cookie.", required: true },
+    "auth-method": { type: "string", description: "Authentication method: credentials | cookie. Not needed with --cookies-file, which implies cookie." },
+    "cookies-file": { type: "string", stdinArg: true, description: "The Cookie-Editor JSON export of a signed-in linkedin.com tab: a path, or - to read it from stdin (on a terminal: paste, then Ctrl-D; nothing is shown). The file holds a live LinkedIn session: delete it after use. Only li_at and li_a are sent. Needs --user-agent. Not with --li-at, --li-at-stdin, --li-a, --email, --password or --password-stdin." },
     email: { type: "string", description: "LinkedIn email (credentials method)." },
     password: { type: "string", description: `LinkedIn password (credentials method). ${PW_WARNING("--password-stdin", "CURVIATE_LINKEDIN_PASSWORD")}` },
     "password-stdin": { type: "boolean", description: "Read the LinkedIn password from stdin (one line, trimmed).", default: false },
@@ -1744,11 +1919,12 @@ const accountLinkCommand = defineCommand({
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
     "user-agent": { type: "string", description: "Browser User-Agent to pin for this account. Required with --auth-method cookie: a session cookie only works paired with the User-Agent of the browser it was copied from, and the command exits 2 without it. Optional with --auth-method credentials, where it is still pinned for the account when given." },
-    "recruiter-contract-id": { type: "string", description: "Recruiter contract to bind to. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
+    "recruiter-contract-id": { type: "string", description: "Recruiter contract to select once the account is connected, so a connected account may still have none selected: `contract_selected: false` in the answer means connected, not selected. Only meaningful when the LinkedIn account holds a Recruiter subscription." },
     "linkedin-premium": { type: "string", description: "Narrow this connection to one LinkedIn premium surface: sales_navigator | recruiter. Omit it and the connect asks for every product and LinkedIn activates what the account holds. Applies to THIS call only and is never remembered, so restate it on every connect and reconnect where Recruiter must win." },
     products: { type: "string", description: "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included." },
     "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `curviate account list --external-id`. Use an opaque id, not an email." },
-    timezone: { type: "string", description: "IANA time zone for the account, e.g. Europe/Berlin. A UTC offset is refused." },
+    timezone: { type: "string", description: "Ignored: the account's time zone follows its connection location. Accepted so existing scripts keep working; nothing is sent." },
+    "warm-up": { type: "boolean", description: "--no-warm-up skips the ramp a new account starts on (its first weeks at lower limits). A new connect only; for a connected account use `curviate account warm-up`. Default on." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",
@@ -1781,6 +1957,15 @@ const accountConnectSessionPollCommand = defineCommand({
       "Poll the status of an in-progress connect (auth intent) for completion. Without --wait: a single " +
       "poll. The JSON `status` field (pending | resolved | expired | failed) tells you what to do next. " +
       "With --wait: block on the same adaptive cadence as `curviate account link` until a terminal state.",
+    risk: "write",
+    rules: {
+      changes: "Asks for the status of a connect that is still running; with --wait, keeps asking until it ends.",
+      visible_to: "Your Team; a connect that finishes makes the Account available.",
+      budget_rows: [],
+      retry: "Safe: it only asks again.",
+      undo: "Nothing to undo; a connected Account is released with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CONNECTION_IN_PROGRESS: "the connect has not ended yet." },
     examples: [
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID",
       "curviate account connect-session poll --session acc_YOUR_ACCOUNT_ID --wait",
@@ -1840,7 +2025,16 @@ const accountConnectSessionCommand = defineCommand({
 const accountUpdateCommand = defineCommand({
   meta: {
     name: "update",
-    description: "Update an account's metadata, connection location or own proxy. Prints the updated account, with connection_location re-read after a location change.",
+    description: "Update an account's metadata, connection location, own proxy or whether its Connections are saved as Contacts. Prints the updated account, with connection_location re-read after a location change.",
+    risk: "write",
+    rules: {
+      changes: "Changes the Account's metadata, connection location, own proxy or Save Connections as Contacts.",
+      visible_to: "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the Account the same.",
+      undo: "Run it again with the previous values; metadata is replaced wholesale and the old map is not kept.",
+    },
+    errors: { ACCOUNT_NOT_FOUND: "the Account is not in your Team.", CONNECTION_LOCATION_UNAVAILABLE: "no connection is free in that country." },
     examples: [
       "curviate account update acc_YOUR_ACCOUNT_ID --metadata '{\"team\":\"growth\"}'",
       "curviate account update acc_YOUR_ACCOUNT_ID --country DE",
@@ -1859,6 +2053,7 @@ const accountUpdateCommand = defineCommand({
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
+    "save-connections-as-contacts": { type: "boolean", description: "Save this account's Connections as Contacts (Automate; on by default): each person becomes one Contact in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-contacts stops it and keeps the Contacts saved so far." },
   },
   async run({ args }) {
     const flags = args as AccountFlags;
@@ -1923,6 +2118,15 @@ const accountCheckpointSolveCommand = defineCommand({
   meta: {
     name: "solve",
     description: "Solve a checkpoint challenge with an OTP / 2FA code.",
+    risk: "write",
+    rules: {
+      changes: "Sends the verification code for the Account's pending checkpoint; on success the Account connects.",
+      visible_to: "LinkedIn, and your Team once the Account is connected.",
+      budget_rows: [],
+      retry: "Read `curviate account get <account_id>` first: a wrong code counts against the attempts the checkpoint allows.",
+      undo: "Nothing to undo; disconnect with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again.", CHECKPOINT_INVALID_CODE: "the code was not accepted.", CHECKPOINT_MAX_ATTEMPTS: "too many wrong codes: connect again.", CHECKPOINT_ALREADY_RESOLVED: "the checkpoint is already resolved." },
     examples: [
       "curviate account checkpoint solve acc_YOUR_ACCOUNT_ID --code 123456",
     ],
@@ -1963,6 +2167,15 @@ const accountCheckpointPollCommand = defineCommand({
     description:
       "Poll for mobile-app approval of a pending checkpoint challenge. " +
       "With --wait, blocks on an adaptive cadence until a terminal state (or --timeout elapses) instead of a single poll.",
+    risk: "write",
+    rules: {
+      changes: "Asks LinkedIn whether the mobile-app approval has happened; with --wait, keeps asking until it ends.",
+      visible_to: "LinkedIn, and your Team once the Account is connected.",
+      budget_rows: [],
+      retry: "Safe: it only asks again.",
+      undo: "Nothing to undo; disconnect with `curviate account disconnect <account_id>`.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again." },
     examples: [
       "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID",
       "curviate account checkpoint poll acc_YOUR_ACCOUNT_ID --wait",
@@ -2017,6 +2230,15 @@ const accountCheckpointRequestCommand = defineCommand({
       "app code has nothing to re-send. The response's `resent` boolean tells you honestly whether a new " +
       "notification actually went out; the command still exits 0 either way. With --challenge it instead " +
       "answers a challenge_selection checkpoint by picking the verification method.",
+    risk: "write",
+    rules: {
+      changes: "Asks LinkedIn to send the challenge notification again, or with --challenge picks the verification method.",
+      visible_to: "The Account's owner, who receives a new code or push.",
+      budget_rows: [],
+      retry: "A repeat sends another notification; the answer's `resent` says whether one went out.",
+      undo: "Cannot be undone: the notification is sent.",
+    },
+    errors: { CHECKPOINT_NOT_FOUND: "the Account has no pending checkpoint.", CHECKPOINT_EXPIRED: "the checkpoint expired: connect again.", CHECKPOINT_UNSUPPORTED: "this challenge cannot be re-sent." },
     examples: [
       "curviate account checkpoint request acc_YOUR_ACCOUNT_ID",
       "curviate account checkpoint request acc_YOUR_ACCOUNT_ID --challenge sms",
@@ -2073,15 +2295,19 @@ export const accountCommand = defineCommand({
     get: accountGetCommand,
     seats: accountSeatsCommand,
     link: accountLinkCommand,
+    "connect-request": connectRequestCommand,
     "connect-session": accountConnectSessionCommand,
     update: accountUpdateCommand,
     disconnect: accountDisconnectCommand,
     checkpoint: accountCheckpointCommand,
+    overview: accountOverviewCommand,
+    metrics: accountMetricsCommand,
+    "warm-up": accountWarmUpCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate account <subcommand>\n" +
-      "  list | get | seats | link | connect-session poll | update | disconnect | checkpoint\n",
+      "  list | get | seats | link | connect-request | connect-session poll | update | disconnect | checkpoint | overview | metrics | warm-up\n",
     );
   },
 });

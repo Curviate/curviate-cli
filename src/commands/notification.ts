@@ -21,6 +21,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
@@ -196,7 +197,8 @@ export async function runNotificationShowLess(
 const notificationListCommand = defineCommand({
   meta: {
     name: "list",
-    description: "List the connected account's notification cards, newest first, plus the unread badge and a poll watermark.",
+    description: "List the connected account's LinkedIn notification cards, newest first, plus the unread badge and a poll watermark. Curviate's own Notifications are `curviate notification list`.",
+    risk: "read",
     examples: [
       "curviate core notification list",
       "curviate core notification list --filter mentions",
@@ -232,6 +234,17 @@ const notificationDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete one of your notification cards by its card urn. Self-action, safe to repeat, cannot be undone. An injected card (injected: true) has no card urn and cannot be deleted. LinkedIn may bring editorial and promotional cards back after a delete; `curviate core notification show-less` is the reliable way to suppress those.",
+    risk: "high",
+    rules: {
+      changes: "Deletes one notification card from your LinkedIn account.",
+      visible_to: "Only you.",
+      budget_rows: [],
+      retry: "Safe: repeating it changes nothing.",
+      undo: "Cannot be undone; LinkedIn may bring editorial and promotional cards back.",
+      blast_radius: "One notification card.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core notification list"],
     examples: [
       "curviate core notification delete \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],
@@ -265,6 +278,15 @@ const notificationShowLessCommand = defineCommand({
     description:
       "Apply 'show less like this' to the source of one of your notification cards. For network-activity cards " +
       "this removes the card, same as delete. Self-action, safe to repeat, cannot be undone.",
+    risk: "write",
+    rules: {
+      changes: "Tells LinkedIn to show less from the source of one notification card.",
+      visible_to: "Only you.",
+      budget_rows: [],
+      retry: "Safe: repeating it changes nothing.",
+      undo: "Cannot be undone.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core notification show-less \"urn:li:fsd_notificationCard:(urn:li:fsd_notification:9999,ALL)\"",
     ],

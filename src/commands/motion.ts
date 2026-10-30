@@ -48,6 +48,8 @@ type MotionFlags = RootFlags & {
   sample?: string;
   contact?: string | string[];
   account?: string;
+  accounts?: string;
+  sort?: string;
   template?: string;
   output?: string;
   limit?: string;
@@ -133,6 +135,12 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
     const bad = status.filter((s) => !STATUSES.includes(s));
     if (bad.length) usage(`--status takes a comma list of ${STATUSES.join(", ")}.`);
     params["status"] = status;
+  }
+  const accounts = f.accounts ?? f.account;
+  if (accounts !== undefined) params["account_id"] = listFlag("accounts", accounts);
+  if (f.sort !== undefined) {
+    if (!["updated", "activity"].includes(f.sort)) usage("--sort takes updated or activity.");
+    params["sort"] = f.sort;
   }
   if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
   const cursor = readCursorFlag(f, process);
@@ -279,12 +287,16 @@ const SEE_LIFECYCLE = ["curviate motion get", "curviate enrollment list"];
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+    description:
+      "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. " +
+      "A cursor belongs to its sort.",
     risk: "read",
-    examples: ["curviate motion list", "curviate motion list --status active,paused"],
+    examples: ["curviate motion list", "curviate motion list --status active,paused", "curviate motion list --accounts acc_A,acc_B --sort activity"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    accounts: { type: "string", description: "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
+    sort: { type: "string", description: "updated (default) or activity." },
     status: { type: "string", description: `Comma list of ${STATUSES.join(", ")}. Default: all but archived.` },
   },
   run: online(runList),
@@ -321,7 +333,7 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it.",
+    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
@@ -350,7 +362,7 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
-      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since.",
+      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
@@ -389,7 +401,7 @@ const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete",
   });
 
 const startCmd = lifecycleCmd("start", {
-  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed.",
+  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
@@ -418,7 +430,7 @@ const pauseCmd = lifecycleCmd("pause", {
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Motion. Runs the start checks again.",
+  description: "Resume a paused Motion. Runs the start checks again. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion's Steps run again from its sending Accounts.",
@@ -483,7 +495,7 @@ const membershipCmd = (kind: "add" | "remove") =>
     meta: {
       name: kind,
       description: kind === "add"
-        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order."
+        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
         : "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       risk: "high",
       rules: kind === "add"
