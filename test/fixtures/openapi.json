@@ -153,7 +153,7 @@
     },
     {
       "name": "Teams",
-      "description": "Your teams and the current team's members and invites: list your teams, rename the team, change roles, remove members or leave, and invite people by email; read and set the team's beta consent. Owners manage; every member reads the member list."
+      "description": "Your teams and the current team's members and invites: list your teams, rename the team, change roles, remove members or leave, and invite people by email; read and set the team's beta consent. Owners manage; Managers rename, set the logo, invite and remove Members; every member reads the member list."
     },
     {
       "name": "Contacts",
@@ -3338,7 +3338,7 @@
       "apiKeyAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Send your API key as a bearer token: `Authorization: Bearer cvt_live_YOUR_KEY`. Reveal, rotate, and revoke your key under Settings › API & Webhooks in the dashboard."
+        "description": "Send your API key as a bearer token: `Authorization: Bearer cvt_live_YOUR_KEY`. Copy and rotate your key under Integrations › API in the dashboard."
       }
     }
   },
@@ -80650,7 +80650,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The account's LinkedIn profile photo URL. LinkedIn's photo URLs expire; null when none is known."
+                            "description": "The account's profile photo, a copy we store and refresh daily, so the URL does not expire; null when none is known."
                           },
                           "profile_url": {
                             "type": [
@@ -81355,7 +81355,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The account's LinkedIn profile photo URL. LinkedIn's photo URLs expire; null when none is known."
+                      "description": "The account's profile photo, a copy we store and refresh daily, so the URL does not expire; null when none is known."
                     },
                     "profile_url": {
                       "type": [
@@ -81446,6 +81446,21 @@
                           "description": "True while the cap is biting and incoming events are not being retained. Delivery to a registered webhook is unaffected."
                         }
                       }
+                    },
+                    "save_connections_as_contacts": {
+                      "type": "boolean",
+                      "description": "Whether Curviate saves this account's Connections as Contacts: each person becomes one Contact in your team, an existing Contact is only filled in, do-not-contact people are skipped. On by default. Absent when the account's plan has no Automate: nothing is saved then. Change it with PATCH."
+                    },
+                    "save_connections_paused_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "contact_limit_reached",
+                        null
+                      ],
+                      "description": "Why saving is stopped while save_connections_as_contacts is true: contact_limit_reached, your team holds its 100,000 Contacts. Delete Contacts you no longer need and saving resumes with the next synced Connections. null while saving. Absent with save_connections_as_contacts."
                     },
                     "metrics": {
                       "type": [
@@ -81623,12 +81638,12 @@
                           "window_start": "2026-06-01T00:00:00.000Z",
                           "resets_at": "2026-07-01T00:00:00.000Z",
                           "used": 2,
-                          "ceiling": 5,
-                          "effective_ceiling": 5,
-                          "remaining": 3,
+                          "ceiling": 3,
+                          "effective_ceiling": 3,
+                          "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
-                          "band": "green",
+                          "band": "amber",
                           "over_default": false,
                           "halt": null,
                           "observed_at": null,
@@ -82069,12 +82084,12 @@
                           "window_start": "2026-06-01T00:00:00.000Z",
                           "resets_at": "2026-07-01T00:00:00.000Z",
                           "used": 2,
-                          "ceiling": 5,
-                          "effective_ceiling": 5,
-                          "remaining": 3,
+                          "ceiling": 3,
+                          "effective_ceiling": 3,
+                          "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
-                          "band": "green",
+                          "band": "amber",
                           "over_default": false,
                           "halt": null,
                           "observed_at": null,
@@ -82656,7 +82671,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The updated account: the object GET /v1/accounts/{account_id} returns, without quotas and event_log (read those on GET). After a location change, connection_location is re-read from LinkedIn's side, so it shows where the account really connects from now. metadata and external_id are stored by Curviate; a PATCH carrying only those makes no LinkedIn call.",
+            "description": "The updated account: the object GET /v1/accounts/{account_id} returns, without quotas and event_log (read those on GET). After a location change, connection_location is re-read from LinkedIn's side, so it shows where the account really connects from now. metadata, external_id and save_connections_as_contacts are stored by Curviate; a PATCH carrying only those makes no LinkedIn call.",
             "content": {
               "application/json": {
                 "schema": {
@@ -82933,7 +82948,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The account's LinkedIn profile photo URL. LinkedIn's photo URLs expire; null when none is known."
+                      "description": "The account's profile photo, a copy we store and refresh daily, so the URL does not expire; null when none is known."
                     },
                     "profile_url": {
                       "type": [
@@ -83006,6 +83021,21 @@
                           "description": "The candidate zones while zone_state is unknown, empty otherwise. Empty while unknown means the window is closed."
                         }
                       }
+                    },
+                    "save_connections_as_contacts": {
+                      "type": "boolean",
+                      "description": "Whether Curviate saves this account's Connections as Contacts: each person becomes one Contact in your team, an existing Contact is only filled in, do-not-contact people are skipped. On by default. Absent when the account's plan has no Automate: nothing is saved then. Change it with PATCH."
+                    },
+                    "save_connections_paused_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "contact_limit_reached",
+                        null
+                      ],
+                      "description": "Why saving is stopped while save_connections_as_contacts is true: contact_limit_reached, your team holds its 100,000 Contacts. Delete Contacts you no longer need and saving resumes with the next synced Connections. null while saving. Absent with save_connections_as_contacts."
                     }
                   }
                 },
@@ -83087,6 +83117,27 @@
                     "value": {
                       "code": "TEAM_REQUIRED",
                       "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "TIER_REQUIRED: save_connections_as_contacts on an account without Automate (details.account_id names it). INSUFFICIENT_ROLE or ACCOUNT_NOT_SHARED: only the account's person, Owners and Managers change it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -83291,7 +83342,7 @@
             }
           }
         },
-        "description": "Updates metadata, external_id, the connection location (country) or your own proxy (null plus a country returns to the Curviate proxy). Returns the account; connection_location is re-read after a location change.",
+        "description": "Updates metadata, external_id, whether its Connections are saved as Contacts, the connection location (country) or your own proxy (null plus a country returns to the Curviate proxy). Returns the account; connection_location is re-read after a location change.",
         "requestBody": {
           "required": true,
           "content": {
@@ -83421,6 +83472,10 @@
                   "allow_country_fallback": {
                     "type": "boolean",
                     "description": "Optional. false (the default with country or ip): only ever connect from that country; a connect fails when no connection is free there. true: a connection from another country may be used when none is free in the chosen one. Not accepted with proxy."
+                  },
+                  "save_connections_as_contacts": {
+                    "type": "boolean",
+                    "description": "Save this account's Connections as Contacts (Automate; on by default): each person becomes one Contact in your team, an existing Contact is only filled in, do-not-contact people are skipped. true also saves the Connections already synced; false keeps the Contacts saved so far."
                   }
                 },
                 "additionalProperties": false
@@ -83468,6 +83523,12 @@
                   "summary": "Set your own id for this account's end user",
                   "value": {
                     "external_id": "usr_42"
+                  }
+                },
+                "saveConnections": {
+                  "summary": "Stop saving this account's Connections as Contacts",
+                  "value": {
+                    "save_connections_as_contacts": false
                   }
                 }
               }
@@ -84980,7 +85041,7 @@
                             "string",
                             "null"
                           ],
-                          "description": "The account's LinkedIn profile photo URL. LinkedIn's photo URLs expire; null when none is known."
+                          "description": "The account's profile photo, a copy we store and refresh daily, so the URL does not expire; null when none is known."
                         },
                         "profile_url": {
                           "type": [
@@ -85397,6 +85458,13 @@
                                 "description": "LinkedIn profile URL."
                               }
                             }
+                          },
+                          "person_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "A direct action's person, name only (they may not be a Contact); null for a Motion action or a person LinkedIn never named."
                           }
                         },
                         "required": [
@@ -85406,7 +85474,8 @@
                           "origin",
                           "action",
                           "motion",
-                          "contact"
+                          "contact",
+                          "person_name"
                         ]
                       }
                     },
@@ -96858,7 +96927,7 @@
                         "end",
                         "source"
                       ],
-                      "description": "This account's active hours in force for an action type with no edges of its own: its own `active_hours` when set (source `account`), else the Team's (`team`), else Curviate's default, 07:00 to 22:00 every day (`default`). Set it here; null falls back to the Team's. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
+                      "description": "This account's active hours in force for an action type with no edges of its own: its own `active_hours` when set (source `account`), else the Team's (`team`), else Curviate's default, Monday to Friday 07:00 to 22:00 (`default`). Set it here; null falls back to the Team's. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -98315,7 +98384,7 @@
                         "end",
                         "source"
                       ],
-                      "description": "This account's active hours in force for an action type with no edges of its own: its own `active_hours` when set (source `account`), else the Team's (`team`), else Curviate's default, 07:00 to 22:00 every day (`default`). Set it here; null falls back to the Team's. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
+                      "description": "This account's active hours in force for an action type with no edges of its own: its own `active_hours` when set (source `account`), else the Team's (`team`), else Curviate's default, Monday to Friday 07:00 to 22:00 (`default`). Set it here; null falls back to the Team's. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -100318,7 +100387,7 @@
                         "end",
                         "source"
                       ],
-                      "description": "The Team default active hours every account without its own uses: the Team's `active_hours` when set (source `team`), else Curviate's default, 07:00 to 22:00 every day (`default`). A Team created from 2026-10 on starts with Monday to Friday, 07:00 to 22:00. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
+                      "description": "The Team default active hours every account without its own uses: the Team's `active_hours` when set (source `team`), else Curviate's default, Monday to Friday 07:00 to 22:00 (`default`). A Team created from 2026-10 on starts with the same, set on the Team. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -101403,7 +101472,7 @@
                         "end",
                         "source"
                       ],
-                      "description": "The Team default active hours every account without its own uses: the Team's `active_hours` when set (source `team`), else Curviate's default, 07:00 to 22:00 every day (`default`). A Team created from 2026-10 on starts with Monday to Friday, 07:00 to 22:00. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
+                      "description": "The Team default active hours every account without its own uses: the Team's `active_hours` when set (source `team`), else Curviate's default, Monday to Friday 07:00 to 22:00 (`default`). A Team created from 2026-10 on starts with the same, set on the Team. Live writes happen only on these days, between start and end, in each account's own time zone; each edge varies by up to 45 minutes a day. Write `{days, start, end}` (at least one day, start and end different, an end before the start wraps past midnight) or null to clear; no days, equal edges, an unknown day or a time that is not HH:MM is a 400. `source` is read-only: sending the read back changes nothing.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -102425,7 +102494,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: in a team, only an Owner changes the tenant safety defaults. Not fixed by retrying.",
+            "description": "INSUFFICIENT_ROLE: in a team, only an Owner or a Manager changes the tenant safety defaults. Not fixed by retrying.",
             "content": {
               "application/json": {
                 "schema": {
@@ -102751,7 +102820,7 @@
                       "end"
                     ],
                     "additionalProperties": false,
-                    "description": "The Team default active hours: the days and local hours live writes happen in. Null falls back to Curviate's default, 07:00-22:00 every day. The read reports the hours in force and their source; sent back, it changes nothing.",
+                    "description": "The Team default active hours: the days and local hours live writes happen in. Null falls back to Curviate's default, 07:00-22:00 Monday to Friday. The read reports the hours in force and their source; sent back, it changes nothing.",
                     "nullable": true
                   },
                   "object": {
@@ -103170,7 +103239,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                            "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                           },
                           "tier": {
                             "type": [
@@ -103398,7 +103467,7 @@
             }
           }
         },
-        "description": "The teams you are a member of, with your role in each. is_current marks the team this credential acts in; a team API key acts in exactly one team. include=counts adds tier, trial, accounts and active_motions, each what you would read in that team, and seats where you are an Owner: on every team for a dashboard session or an all-teams credential, on its own team only for a team API key or a one-team token.",
+        "description": "The teams you are a member of, with your role in each. is_current marks the team this call acts in: a Team key's own team, or, with an All-Teams key, your default team (this call needs no team header; the calls that act in one team take X-Curviate-Team). include=counts adds tier, trial, accounts and active_motions, each what you would read in that team, and seats where you are an Owner: on every team for a dashboard session or an All-Teams credential, on its own team only for a Team key or a one-team token.",
         "x-order": 1
       },
       "post": {
@@ -103472,11 +103541,11 @@
                         "string",
                         "null"
                       ],
-                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                     },
                     "next_step": {
                       "type": "object",
-                      "description": "What to do next. An all-teams API key gets team_header; a team API key or a token gets command and url.",
+                      "description": "What to do next. An All-Teams key gets team_header; a Team key or a token gets command and url.",
                       "properties": {
                         "team_header": {
                           "type": "string",
@@ -103484,11 +103553,11 @@
                         },
                         "command": {
                           "type": "string",
-                          "description": "Team API key or token: the CLI command that sets up a key in the new team."
+                          "description": "Team key or token: the CLI command that sets up a key in the new team."
                         },
                         "url": {
                           "type": "string",
-                          "description": "Team API key or token: the dashboard page with your teams."
+                          "description": "Team key or token: the dashboard page with your teams."
                         }
                       }
                     }
@@ -103506,7 +103575,7 @@
                 },
                 "examples": {
                   "allTeams": {
-                    "summary": "With an all-teams API key",
+                    "summary": "With an All-Teams key",
                     "value": {
                       "object": "team",
                       "team_id": "tnt_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
@@ -103521,7 +103590,7 @@
                     }
                   },
                   "team": {
-                    "summary": "With a team API key or a token",
+                    "summary": "With a Team key or a token",
                     "value": {
                       "object": "team",
                       "team_id": "tnt_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
@@ -103644,7 +103713,7 @@
             }
           }
         },
-        "description": "Creates a team with you as its Owner and the Owner who receives its invoices, with no subscription or seat. Any role may call it; two identical calls create two teams. next_step: an all-teams API key gets team_header, usable at once; a team API key or a token gets command (CLI setup) and url.",
+        "description": "Creates a team with you as its Owner and the Owner who receives its invoices, with no subscription or seat. Any role may call it; two identical calls create two teams. next_step: an All-Teams key gets team_header, usable at once; a Team key or a token gets command (CLI setup) and url.",
         "requestBody": {
           "required": true,
           "content": {
@@ -103759,7 +103828,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                     },
                     "billing_owner_user_id": {
                       "type": [
@@ -103864,7 +103933,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager renames the team; only an Owner sets billing_owner_user_id.",
             "content": {
               "application/json": {
                 "schema": {
@@ -104000,7 +104069,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                     },
                     "billing_owner_user_id": {
                       "type": [
@@ -104105,7 +104174,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager renames the team; only an Owner sets billing_owner_user_id.",
             "content": {
               "application/json": {
                 "schema": {
@@ -104179,7 +104248,7 @@
             }
           }
         },
-        "description": "Renames the team, or sets billing_owner_user_id: the Owner whose email receives invoices. The user named must be an Owner of this team. Owners only.",
+        "description": "Renames the team (Owners and Managers), or sets billing_owner_user_id: the Owner whose email receives invoices (Owners only). The user named must be an Owner of this team.",
         "requestBody": {
           "required": true,
           "content": {
@@ -104303,7 +104372,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                     },
                     "billing_owner_user_id": {
                       "type": [
@@ -104399,7 +104468,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this.",
             "content": {
               "application/json": {
                 "schema": {
@@ -104494,7 +104563,7 @@
             }
           }
         },
-        "description": "Sets the team's logo from the raw request body: a PNG of at most 1 MB. The file's own bytes are checked, whatever Content-Type says; anything that is not a PNG answers 415 and a larger file 413. Replaces the previous logo. Returns the team with its logo_url. Owners only.",
+        "description": "Sets the team's logo from the raw request body: a PNG of at most 1 MB. The file's own bytes are checked, whatever Content-Type says; anything that is not a PNG answers 415 and a larger file 413. Replaces the previous logo. Returns the team with its logo_url. Owners and Managers.",
         "requestBody": {
           "required": true,
           "content": {
@@ -104589,7 +104658,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners set it with PUT /v1/teams/current/logo."
+                      "description": "The team's logo, a public PNG URL, or null when it has none. Owners and Managers set it with PUT /v1/teams/current/logo."
                     },
                     "billing_owner_user_id": {
                       "type": [
@@ -104685,7 +104754,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this.",
             "content": {
               "application/json": {
                 "schema": {
@@ -104780,7 +104849,7 @@
             }
           }
         },
-        "description": "Removes the team's logo, and its file. Returns the team with logo_url null; removing a logo that is not set changes nothing. Owners only.",
+        "description": "Removes the team's logo, and its file. Returns the team with logo_url null; removing a logo that is not set changes nothing. Owners and Managers.",
         "x-order": 13
       }
     },
@@ -104881,7 +104950,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The member's name, when they set one."
+                            "description": "The member's name; their email when they set no name (null only when neither is known)."
                           },
                           "role": {
                             "type": "string",
@@ -105125,7 +105194,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The member's name, when they set one."
+                      "description": "The member's name; their email when they set no name (null only when neither is known)."
                     },
                     "role": {
                       "type": "string",
@@ -105517,7 +105586,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner may remove someone else.",
+            "description": "INSUFFICIENT_ROLE: only an Owner removes someone else; a Manager removes Members only.",
             "content": {
               "application/json": {
                 "schema": {
@@ -105601,7 +105670,7 @@
             }
           }
         },
-        "description": "An Owner removes a member; anyone leaves with user_id me. Nobody leaves or is removed from their own default team, the last Owner stays, and the Owner who receives invoices stays until billing_owner_user_id names another Owner. The member's API key and connectors for this team stop working at once.",
+        "description": "An Owner removes a member, a Manager removes a Member; anyone leaves with user_id me. Nobody leaves or is removed from their own default team, the last Owner stays, and the Owner who receives invoices stays until billing_owner_user_id names another Owner. The member's API key and connectors for this team stop working at once.",
         "x-order": 7
       }
     },
@@ -105694,7 +105763,7 @@
                           },
                           "invited_by_user_id": {
                             "type": "string",
-                            "description": "The Owner who sent it last."
+                            "description": "The Owner or Manager who sent it last."
                           },
                           "expires_at": {
                             "type": "string",
@@ -105816,7 +105885,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this, and a Manager acts on Member invites only.",
             "content": {
               "application/json": {
                 "schema": {
@@ -105900,7 +105969,7 @@
             }
           }
         },
-        "description": "Invites up to 20 people by email, each with a role (member by default), and emails each a link valid for 7 days. All or nothing: if any row fails, nothing is created or sent, and the error names the row. The invitee accepts in the dashboard, signed in with the invited email. Owners only.",
+        "description": "Invites up to 20 people by email, each with a role (member by default), and emails each a link valid for 7 days. All or nothing: if any row fails, nothing is created or sent, and the error names the row. The invitee accepts in the dashboard, signed in with the invited email. Owners invite any role, Managers invite Members.",
         "requestBody": {
           "required": true,
           "content": {
@@ -106086,7 +106155,7 @@
                           },
                           "invited_by_user_id": {
                             "type": "string",
-                            "description": "The Owner who sent it last."
+                            "description": "The Owner or Manager who sent it last."
                           },
                           "expires_at": {
                             "type": "string",
@@ -106208,7 +106277,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this.",
             "content": {
               "application/json": {
                 "schema": {
@@ -106261,7 +106330,7 @@
             }
           }
         },
-        "description": "Invites of the current team, newest first. Never includes the invite link. Owners only.",
+        "description": "Invites of the current team, newest first. Never includes the invite link. Owners and Managers.",
         "x-order": 9
       }
     },
@@ -106351,7 +106420,7 @@
                     },
                     "invited_by_user_id": {
                       "type": "string",
-                      "description": "The Owner who sent it last."
+                      "description": "The Owner or Manager who sent it last."
                     },
                     "expires_at": {
                       "type": "string",
@@ -106442,7 +106511,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this, and a Manager acts on Member invites only.",
             "content": {
               "application/json": {
                 "schema": {
@@ -106526,7 +106595,7 @@
             }
           }
         },
-        "description": "Emails a pending or expired invite again with a new link; the previous link stops working and the 7 days start again. Owners only.",
+        "description": "Emails a pending or expired invite again with a new link; the previous link stops working and the 7 days start again. Owners, and Managers for Member invites.",
         "x-order": 10
       }
     },
@@ -106616,7 +106685,7 @@
                     },
                     "invited_by_user_id": {
                       "type": "string",
-                      "description": "The Owner who sent it last."
+                      "description": "The Owner or Manager who sent it last."
                     },
                     "expires_at": {
                       "type": "string",
@@ -106707,7 +106776,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: only an Owner of the team may do this.",
+            "description": "INSUFFICIENT_ROLE: only an Owner or a Manager of the team may do this, and a Manager acts on Member invites only.",
             "content": {
               "application/json": {
                 "schema": {
@@ -106791,7 +106860,7 @@
             }
           }
         },
-        "description": "Revokes a pending or expired invite; its link stops working. Owners only.",
+        "description": "Revokes a pending or expired invite; its link stops working. Owners, and Managers for Member invites.",
         "x-order": 11
       }
     },
@@ -110189,12 +110258,19 @@
                       ],
                       "description": "Current company."
                     },
+                    "company_linkedin_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                    },
                     "email": {
                       "type": [
                         "string",
                         "null"
                       ],
-                      "description": "Email, only ever what you supplied."
+                      "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                     },
                     "location": {
                       "type": [
@@ -110319,6 +110395,7 @@
                     "headline",
                     "job_title",
                     "company",
+                    "company_linkedin_url",
                     "email",
                     "location",
                     "about",
@@ -110438,12 +110515,19 @@
                       ],
                       "description": "Current company."
                     },
+                    "company_linkedin_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                    },
                     "email": {
                       "type": [
                         "string",
                         "null"
                       ],
-                      "description": "Email, only ever what you supplied."
+                      "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                     },
                     "location": {
                       "type": [
@@ -110568,6 +110652,7 @@
                     "headline",
                     "job_title",
                     "company",
+                    "company_linkedin_url",
                     "email",
                     "location",
                     "about",
@@ -110597,6 +110682,7 @@
                       "headline": null,
                       "job_title": "Head of Platform",
                       "company": "Acme",
+                      "company_linkedin_url": null,
                       "email": null,
                       "location": null,
                       "about": null,
@@ -110856,7 +110942,7 @@
                   },
                   "email": {
                     "type": "string",
-                    "description": "Email address, only ever what you supply (Curviate never fills it), up to 320 characters.",
+                    "description": "Email address: what you supply, else filled from the first email a LinkedIn profile read returns (yours is never overwritten), up to 320 characters.",
                     "nullable": true
                   },
                   "location": {
@@ -111043,7 +111129,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Only Contacts that are Connections of this account (acc_...)."
+            "description": "Only Contacts that are Connections of any of these accounts: a comma list of up to 50 account ids (acc_...). One id is one account. It implies connected=true."
           },
           {
             "name": "motion_id",
@@ -111263,12 +111349,19 @@
                             ],
                             "description": "Current company."
                           },
+                          "company_linkedin_url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                          },
                           "email": {
                             "type": [
                               "string",
                               "null"
                             ],
-                            "description": "Email, only ever what you supplied."
+                            "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                           },
                           "location": {
                             "type": [
@@ -111385,6 +111478,7 @@
                           "headline",
                           "job_title",
                           "company",
+                          "company_linkedin_url",
                           "email",
                           "location",
                           "about",
@@ -111436,6 +111530,7 @@
                           "headline": null,
                           "job_title": "Head of Platform",
                           "company": "Acme",
+                          "company_linkedin_url": null,
                           "email": null,
                           "location": null,
                           "about": null,
@@ -111726,7 +111821,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "Only Contacts that are Connections of this account (acc_...)."
+            "description": "Only Contacts that are Connections of any of these accounts: a comma list of up to 50 account ids (acc_...). One id is one account. It implies connected=true."
           },
           {
             "name": "motion_id",
@@ -111930,12 +112025,19 @@
                         ],
                         "description": "Current company."
                       },
+                      "company_linkedin_url": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                      },
                       "email": {
                         "type": [
                           "string",
                           "null"
                         ],
-                        "description": "Email, only ever what you supplied."
+                        "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                       },
                       "location": {
                         "type": [
@@ -112052,6 +112154,7 @@
                       "headline",
                       "job_title",
                       "company",
+                      "company_linkedin_url",
                       "email",
                       "location",
                       "about",
@@ -112085,6 +112188,7 @@
                         "headline": null,
                         "job_title": "Head of Platform",
                         "company": "Acme",
+                        "company_linkedin_url": null,
                         "email": null,
                         "location": null,
                         "about": null,
@@ -112620,9 +112724,20 @@
                         "description": "true: Connections of your accounts only; false: everyone else."
                       },
                       "account_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Only Contacts that are Connections of this account (acc_...)."
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        ],
+                        "description": "Only Contacts that are Connections of this account (acc_...), or of any of up to 50."
                       },
                       "motion_id": {
                         "type": "string",
@@ -113039,9 +113154,20 @@
                         "description": "true: Connections of your accounts only; false: everyone else."
                       },
                       "account_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Only Contacts that are Connections of this account (acc_...)."
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        ],
+                        "description": "Only Contacts that are Connections of this account (acc_...), or of any of up to 50."
                       },
                       "motion_id": {
                         "type": "string",
@@ -115665,12 +115791,19 @@
                       ],
                       "description": "Current company."
                     },
+                    "company_linkedin_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                    },
                     "email": {
                       "type": [
                         "string",
                         "null"
                       ],
-                      "description": "Email, only ever what you supplied."
+                      "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                     },
                     "location": {
                       "type": [
@@ -115787,6 +115920,7 @@
                     "headline",
                     "job_title",
                     "company",
+                    "company_linkedin_url",
                     "email",
                     "location",
                     "about",
@@ -115816,6 +115950,7 @@
                       "headline": null,
                       "job_title": "Head of Platform",
                       "company": "Acme",
+                      "company_linkedin_url": null,
                       "email": null,
                       "location": null,
                       "about": null,
@@ -116093,12 +116228,19 @@
                       ],
                       "description": "Current company."
                     },
+                    "company_linkedin_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "`https://www.linkedin.com/company/<id>/`, the current company's LinkedIn page, filled with `company` from a profile read at no extra LinkedIn call. Read-only. Null when LinkedIn gave no company id, or when `company` is a value you supplied."
+                    },
                     "email": {
                       "type": [
                         "string",
                         "null"
                       ],
-                      "description": "Email, only ever what you supplied."
+                      "description": "Email: what you supplied, else the first email a LinkedIn profile read returned. Yours is never overwritten."
                     },
                     "location": {
                       "type": [
@@ -116215,6 +116357,7 @@
                     "headline",
                     "job_title",
                     "company",
+                    "company_linkedin_url",
                     "email",
                     "location",
                     "about",
@@ -116244,6 +116387,7 @@
                       "headline": null,
                       "job_title": "Head of Platform",
                       "company": "Acme",
+                      "company_linkedin_url": null,
                       "email": null,
                       "location": null,
                       "about": null,
@@ -116486,7 +116630,7 @@
                   },
                   "email": {
                     "type": "string",
-                    "description": "Email address, only ever what you supply (Curviate never fills it), up to 320 characters.",
+                    "description": "Email address: what you supply, else filled from the first email a LinkedIn profile read returns (yours is never overwritten), up to 320 characters.",
                     "nullable": true
                   },
                   "location": {
@@ -117797,9 +117941,20 @@
                         "description": "true: Connections of your accounts only; false: everyone else."
                       },
                       "account_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Only Contacts that are Connections of this account (acc_...)."
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        ],
+                        "description": "Only Contacts that are Connections of this account (acc_...), or of any of up to 50."
                       },
                       "motion_id": {
                         "type": "string",
@@ -118751,27 +118906,6 @@
                     "value": {
                       "code": "UNAUTHORIZED",
                       "message": "Missing or invalid API key.",
-                      "user_fixable": true,
-                      "retry_likely_to_succeed": false
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "INSUFFICIENT_ROLE: in a team, only an Owner or a Manager deletes. Not fixed by retrying.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "examples": {
-                  "error": {
-                    "summary": "403 error",
-                    "value": {
-                      "code": "NO_ACTIVE_SEAT",
-                      "message": "The targeted account is not on an active seat.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -143506,6 +143640,13 @@
                               "full_name",
                               "linkedin_url"
                             ]
+                          },
+                          "person_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "A direct action's person (origin unibox or api), name only: they may not be a Contact. Null for a Motion event or a person LinkedIn never named."
                           }
                         },
                         "required": [
@@ -143524,7 +143665,8 @@
                           "outcome",
                           "reason",
                           "reason_message",
-                          "contact"
+                          "contact",
+                          "person_name"
                         ]
                       }
                     },
@@ -143567,7 +143709,8 @@
                             "id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                             "full_name": "Grace Hopper",
                             "linkedin_url": "https://www.linkedin.com/in/grace-hopper"
-                          }
+                          },
+                          "person_name": null
                         }
                       ],
                       "cursor": null

@@ -50,6 +50,8 @@ describe("contact list filters", () => {
     expect(q(none.requests[0]!)).not.toHaveProperty("account_id");
     const some = await sink.run(["contact", "list", "--connected-account", "acc_1", "--json"], { env: { CURVIATE_ACCOUNT: "acc_env" } });
     expect(q(some.requests[0]!)["account_id"]).toBe("acc_1");
+    const several = await sink.run(["contact", "list", "--connected-account", "acc_1", "--connected-account", "acc_2,acc_3", "--json"]);
+    expect(q(several.requests[0]!)["account_id"]).toBe("acc_1,acc_2,acc_3");
   });
 
   it.each([

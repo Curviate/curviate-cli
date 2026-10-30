@@ -2826,7 +2826,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -3185,7 +3185,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -3404,7 +3404,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -3735,7 +3735,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -3971,7 +3971,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -4107,7 +4107,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -4390,7 +4390,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -4526,7 +4526,7 @@
         {
           "name": "connected-account",
           "type": "string",
-          "description": "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account."
+          "description": "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account."
         },
         {
           "name": "import",
@@ -6499,7 +6499,7 @@
       "path": [
         "team"
       ],
-      "description": "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. Owners manage; every role reads.",
+      "description": "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. Owners and Managers manage (a Manager invites Members only); every role reads.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6663,7 +6663,7 @@
         "team",
         "update"
       ],
-      "description": "Rename the Team, or name the Owner whose email receives invoices. Owners only.",
+      "description": "Rename the Team (Owners and Managers), or name the Owner whose email receives invoices (Owners only).",
       "usageOnly": false,
       "args": [
         {
@@ -6704,7 +6704,7 @@
         "undo": "Run it again with the previous values."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager renames the Team; only an Owner sets --billing-owner.",
         "BILLING_OWNER_REQUIRED": "--billing-owner must name an Owner of this Team."
       }
     },
@@ -6713,7 +6713,7 @@
         "team",
         "members"
       ],
-      "description": "Everyone in the Team, oldest membership first, with their role. Every role may read it.",
+      "description": "Everyone in the Team, oldest membership first, with their role and name (their email when they set no name). Every role may read it.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -6795,7 +6795,7 @@
         "team",
         "remove"
       ],
-      "description": "Remove a member from the Team. Their Accounts here are disconnected and their key and connectors for this Team stop working at once. Owners only.",
+      "description": "Remove a member from the Team. Their Accounts here are disconnected and their key and connectors for this Team stop working at once. An Owner removes anyone; a Manager removes Members.",
       "usageOnly": false,
       "args": [
         {
@@ -6831,7 +6831,7 @@
         "blast_radius": "One member and every Account they connected to this Team."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INSUFFICIENT_ROLE": "only an Owner removes someone else; a Manager removes Members only.",
         "LAST_OWNER": "the Team must keep one Owner.",
         "DEFAULT_TEAM_PROTECTED": "nobody is removed from their own default Team."
       },
@@ -6887,7 +6887,7 @@
         "team",
         "invites"
       ],
-      "description": "Invite people to the Team, list, resend or revoke invites. Owners only.",
+      "description": "Invite people to the Team, list, resend or revoke invites. Owners and Managers (a Manager invites Members only).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6900,7 +6900,7 @@
         "invites",
         "create"
       ],
-      "description": "Invite people by email, comma-separated, each with --role (default member). Owners only.",
+      "description": "Invite people by email, comma-separated, each with --role (default member). Owners and Managers (a Manager invites Members only).",
       "usageOnly": false,
       "args": [
         {
@@ -6941,7 +6941,7 @@
         "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager of the Team can do this, and a Manager acts on Member invites only.",
         "ALREADY_MEMBER": "that person is already in the Team.",
         "INVITE_ALREADY_PENDING": "that person has a pending invite.",
         "INVITE_LIMIT_REACHED": "the Team has as many pending invites as it may."
@@ -6953,7 +6953,7 @@
         "invites",
         "list"
       ],
-      "description": "The Team's invites, newest first; never the invite link. Owners only.",
+      "description": "The Team's invites, newest first; never the invite link. Owners and Managers.",
       "usageOnly": false,
       "args": [
         {
@@ -6992,7 +6992,7 @@
         "invites",
         "resend"
       ],
-      "description": "Send a pending invite's email again, with a fresh link. Owners only.",
+      "description": "Send a pending invite's email again, with a fresh link. Owners, and Managers for Member invites.",
       "usageOnly": false,
       "args": [
         {
@@ -7027,7 +7027,7 @@
         "undo": "`curviate team invites revoke <invite_id>` makes the link stop working."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager of the Team can do this, and a Manager acts on Member invites only.",
         "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
@@ -7037,7 +7037,7 @@
         "invites",
         "revoke"
       ],
-      "description": "Revoke a pending invite: its link stops working. Owners only.",
+      "description": "Revoke a pending invite: its link stops working. Owners, and Managers for Member invites.",
       "usageOnly": false,
       "args": [
         {
@@ -7072,7 +7072,7 @@
         "undo": "`curviate team invites create <email>` sends a new invite."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this.",
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager of the Team can do this, and a Manager acts on Member invites only.",
         "INVITE_NOT_PENDING": "the invite was accepted, revoked or has expired."
       }
     },
@@ -7081,7 +7081,7 @@
         "team",
         "logo"
       ],
-      "description": "Set or remove the Team's logo. Owners only.",
+      "description": "Set or remove the Team's logo. Owners and Managers.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -7094,7 +7094,7 @@
         "logo",
         "set"
       ],
-      "description": "Set the Team's logo from a PNG file; replaces the previous one. Owners only.",
+      "description": "Set the Team's logo from a PNG file; replaces the previous one. Owners and Managers.",
       "usageOnly": false,
       "args": [
         {
@@ -7129,7 +7129,7 @@
         "undo": "`curviate team logo remove`; the previous logo is not kept."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager of the Team can do this."
       }
     },
     {
@@ -7138,7 +7138,7 @@
         "logo",
         "remove"
       ],
-      "description": "Remove the Team's logo. Removing a logo that is not set changes nothing. Owners only.",
+      "description": "Remove the Team's logo. Removing a logo that is not set changes nothing. Owners and Managers.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -7167,7 +7167,7 @@
         "undo": "`curviate team logo set <file>` with the PNG; the removed logo is not kept."
       },
       "errors": {
-        "INSUFFICIENT_ROLE": "only an Owner of the Team can do this."
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager of the Team can do this."
       }
     },
     {

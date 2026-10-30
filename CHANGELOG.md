@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## Unreleased
+
+Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is published; `check:sdk-pin` refuses a publish until the pin is a version). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the deployed staging document.
+
+### Added
+
+- `curviate account update --save-connections-as-contacts` (and `--no-save-connections-as-contacts`): whether the Account's Connections are saved as Contacts (Automate). `account get` shows `save_connections_as_contacts` and `save_connections_paused_reason` (`contact_limit_reached`).
+- `curviate contact list|export|update|delete --connected-account` takes several Accounts (repeat the flag, or a comma list, up to 50): Connections of any of them.
+- `contact get --json` carries the read-only `company_linkedin_url`; `analytics events` and `account overview` items carry `person_name` for a direct action (JSON output).
+
+### Changed
+
+- Owners and Managers: `team update` (rename; `--billing-owner` stays Owners only), `team invites create|list|resend|revoke` (a Manager invites Members only), `team logo set|remove` and `team remove` (a Manager removes Members) say so in their help and errors; the `team` group reads "Owners and Managers manage".
+- `team members` `name` falls back to the member's email.
+
 ## [0.49.0] - 2026-10-22
 
 A minor: Motions and Enrollments arrive as top-level groups. Requires

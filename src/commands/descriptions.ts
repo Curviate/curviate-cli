@@ -41,7 +41,7 @@ export const DESCRIPTIONS = {
   tier: "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
-    "Owners manage; every role reads.",
+    "Owners and Managers manage (a Manager invites Members only); every role reads.",
   incoming:
     "Incoming events: a private URL any tool posts to. Curviate finds the Contact in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
   beta: "Beta consent for your Team: whether beta operations run without --beta on each call. Owners change it.",

@@ -16,7 +16,7 @@ export type FilterFlags = {
   motion?: string;
   status?: string;
   connected?: boolean;
-  "connected-account"?: string;
+  "connected-account"?: string | string[];
   import?: string;
   "enrichment-status"?: string;
   query?: string;
@@ -33,7 +33,7 @@ export const FILTER_ARGS = {
   motion: { type: "string" as const, description: "Only Contacts with an Enrollment in this Motion (mot_...)." },
   status: { type: "string" as const, description: "With --motion: comma list of Enrollment statuses (queued, active, paused, finished, failed, skipped)." },
   connected: { type: "boolean" as const, description: "Only Connections of your Accounts (--no-connected: everyone else)." },
-  "connected-account": { type: "string" as const, description: "Only Connections of this Account (acc_... or its name). Explicit: never filled from the default Account." },
+  "connected-account": { type: "string" as const, description: "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account." },
   import: { type: "string" as const, description: "Only Contacts in this import's report (imp_...), while the import exists." },
   "enrichment-status": { type: "string" as const, description: "none, queued, done or failed." },
   query: { type: "string" as const, description: "Text match on names, headline, job title, company, email, location and profile slug." },
@@ -46,6 +46,7 @@ export const FILTER_ARGS = {
 export const hasFilter = (f: FilterFlags): boolean => Object.keys(FILTER_ARGS).some((k) => (f as Record<string, unknown>)[k] !== undefined);
 
 const MAX_LISTS = 20;
+const MAX_ACCOUNTS = 50;
 const ENRICHMENT = ["none", "queued", "done", "failed"];
 
 const text = (flag: string, v: string | undefined): string | undefined => {
@@ -91,7 +92,11 @@ export async function readFilter(c: Curviate, f: FilterFlags & RootFlags, shape:
   if (f["connected-account"] !== undefined) {
     if (f.connected === false) usage("--connected-account and --no-connected cannot be combined.");
     // Explicit only: the resolver is handed this flag, never CURVIATE_ACCOUNT or the profile's Account.
-    q["account_id"] = await requireAccount(c, { account: text("connected-account", f["connected-account"]), preview: f.preview }, process);
+    const accounts = listFlag("connected-account", f["connected-account"]);
+    if (accounts.length > MAX_ACCOUNTS) usage(`--connected-account takes up to ${MAX_ACCOUNTS} Accounts.`);
+    const ids: string[] = [];
+    for (const a of accounts) ids.push(await requireAccount(c, { account: text("connected-account", a), preview: f.preview }, process));
+    q["account_id"] = join(ids);
   }
   const imp = text("import", f.import);
   if (imp) q["import_id"] = imp;

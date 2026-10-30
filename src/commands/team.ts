@@ -135,6 +135,8 @@ async function runSwitch({ args: raw }: { args: unknown }): Promise<void> {
 const USER = { type: "positional" as const, description: "The member's user id (usr_...)." };
 const INVITE = { type: "positional" as const, description: "Invite id (inv_...)." };
 const OWNERS = { INSUFFICIENT_ROLE: "only an Owner of the Team can do this." };
+const OWNERS_MANAGERS = { INSUFFICIENT_ROLE: "only an Owner or a Manager of the Team can do this." };
+const INVITE_ROLES = { INSUFFICIENT_ROLE: "only an Owner or a Manager of the Team can do this, and a Manager acts on Member invites only." };
 const PAGE_FLAGS = readOnly(GLOBAL_FLAGS);
 
 const listCmd = defineCommand({
@@ -157,7 +159,7 @@ const getCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Rename the Team, or name the Owner whose email receives invoices. Owners only.",
+    description: "Rename the Team (Owners and Managers), or name the Owner whose email receives invoices (Owners only).",
     risk: "write",
     rules: {
       changes: "Renames the Team, or names the Owner whose email receives invoices.",
@@ -166,7 +168,7 @@ const updateCmd = defineCommand({
       retry: "Safe: the same values written again leave the Team the same.",
       undo: "Run it again with the previous values.",
     },
-    errors: { ...OWNERS, BILLING_OWNER_REQUIRED: "--billing-owner must name an Owner of this Team." },
+    errors: { INSUFFICIENT_ROLE: "only an Owner or a Manager renames the Team; only an Owner sets --billing-owner.", BILLING_OWNER_REQUIRED: "--billing-owner must name an Owner of this Team." },
     examples: ["curviate team update --name \"Acme (client)\"", "curviate team update --billing-owner usr_01HZY3K8Q2"],
   },
   args: {
@@ -221,7 +223,7 @@ const switchCmd = defineCommand({
 });
 
 const membersCmd = defineCommand({
-  meta: { name: "members", description: "Everyone in the Team, oldest membership first, with their role. Every role may read it.", risk: "read", examples: ["curviate team members", "curviate team members --all"] },
+  meta: { name: "members", description: "Everyone in the Team, oldest membership first, with their role and name (their email when they set no name). Every role may read it.", risk: "read", examples: ["curviate team members", "curviate team members --all"] },
   args: PAGE_FLAGS,
   run: list((c, p) => c.teams.listMembers(p as never)),
 });
@@ -248,7 +250,7 @@ const roleCmd = defineCommand({
 const removeCmd = defineCommand({
   meta: {
     name: "remove",
-    description: "Remove a member from the Team. Their Accounts here are disconnected and their key and connectors for this Team stop working at once. Owners only.",
+    description: "Remove a member from the Team. Their Accounts here are disconnected and their key and connectors for this Team stop working at once. An Owner removes anyone; a Manager removes Members.",
     risk: "high",
     rules: {
       changes: "The member leaves the Team; their Accounts here are disconnected and their key and connectors for it stop working.",
@@ -258,7 +260,7 @@ const removeCmd = defineCommand({
       undo: "Cannot be undone for their Accounts, which are disconnected; invite them again with `curviate team invites create`.",
       blast_radius: "One member and every Account they connected to this Team.",
     },
-    errors: { ...OWNERS, LAST_OWNER: "the Team must keep one Owner.", DEFAULT_TEAM_PROTECTED: "nobody is removed from their own default Team." },
+    errors: { INSUFFICIENT_ROLE: "only an Owner removes someone else; a Manager removes Members only.", LAST_OWNER: "the Team must keep one Owner.", DEFAULT_TEAM_PROTECTED: "nobody is removed from their own default Team." },
     seeAlso: ["curviate team members", "curviate team invites create"],
     examples: ["curviate team remove usr_01HZY3K8Q2"],
   },
@@ -288,12 +290,12 @@ const leaveCmd = defineCommand({
 });
 
 const invitesCmd = defineCommand({
-  meta: { name: "invites", description: "Invite people to the Team, list, resend or revoke invites. Owners only." },
+  meta: { name: "invites", description: "Invite people to the Team, list, resend or revoke invites. Owners and Managers (a Manager invites Members only)." },
   subCommands: {
     create: defineCommand({
       meta: {
         name: "create",
-        description: "Invite people by email, comma-separated, each with --role (default member). Owners only.",
+        description: "Invite people by email, comma-separated, each with --role (default member). Owners and Managers (a Manager invites Members only).",
         risk: "write",
         rules: {
           changes: "Emails an invite, with a link, to each address.",
@@ -302,21 +304,21 @@ const invitesCmd = defineCommand({
           retry: "A repeat for an invite still pending answers INVITE_ALREADY_PENDING and sends nothing new.",
           undo: "`curviate team invites revoke <invite_id>` makes the link stop working.",
         },
-        errors: { ...OWNERS, ALREADY_MEMBER: "that person is already in the Team.", INVITE_ALREADY_PENDING: "that person has a pending invite.", INVITE_LIMIT_REACHED: "the Team has as many pending invites as it may." },
+        errors: { ...INVITE_ROLES, ALREADY_MEMBER: "that person is already in the Team.", INVITE_ALREADY_PENDING: "that person has a pending invite.", INVITE_LIMIT_REACHED: "the Team has as many pending invites as it may." },
         examples: ["curviate team invites create dana@example.com", "curviate team invites create dana@example.com,lee@example.com --role manager"],
       },
       args: { ...WRITE_SINGLE_FLAGS, emails: { type: "positional", description: "Email addresses, comma-separated." }, role: { type: "string", description: "owner, manager or member (default)." } },
       run: call("teams.createInvites", () => ({}), (f) => inviteBody(f), (c, f) => c.teams.createInvites(inviteBody(f) as never)),
     }),
     list: defineCommand({
-      meta: { name: "list", description: "The Team's invites, newest first; never the invite link. Owners only.", risk: "read", examples: ["curviate team invites list", "curviate team invites list --status pending"] },
+      meta: { name: "list", description: "The Team's invites, newest first; never the invite link. Owners and Managers.", risk: "read", examples: ["curviate team invites list", "curviate team invites list --status pending"] },
       args: { ...PAGE_FLAGS, status: { type: "string", description: "pending, expired, accepted or revoked." } },
       run: list((c, p) => c.teams.listInvites(p as never), (f) => (f.status !== undefined ? { status: nonEmpty("--status", f.status) } : {})),
     }),
     resend: defineCommand({
       meta: {
         name: "resend",
-        description: "Send a pending invite's email again, with a fresh link. Owners only.",
+        description: "Send a pending invite's email again, with a fresh link. Owners, and Managers for Member invites.",
         risk: "write",
         rules: {
           changes: "Sends the invite email again, with a fresh link that replaces the old one.",
@@ -325,7 +327,7 @@ const invitesCmd = defineCommand({
           retry: "Each call sends another email.",
           undo: "`curviate team invites revoke <invite_id>` makes the link stop working.",
         },
-        errors: { ...OWNERS, INVITE_NOT_PENDING: "the invite was accepted, revoked or has expired." },
+        errors: { ...INVITE_ROLES, INVITE_NOT_PENDING: "the invite was accepted, revoked or has expired." },
         examples: ["curviate team invites resend inv_01HZY3K8Q2"],
       },
       args: { ...WRITE_SINGLE_FLAGS, id: INVITE },
@@ -334,7 +336,7 @@ const invitesCmd = defineCommand({
     revoke: defineCommand({
       meta: {
         name: "revoke",
-        description: "Revoke a pending invite: its link stops working. Owners only.",
+        description: "Revoke a pending invite: its link stops working. Owners, and Managers for Member invites.",
         risk: "write",
         rules: {
           changes: "The invite's link stops working.",
@@ -343,7 +345,7 @@ const invitesCmd = defineCommand({
           retry: "A second call answers INVITE_NOT_PENDING and changes nothing.",
           undo: "`curviate team invites create <email>` sends a new invite.",
         },
-        errors: { ...OWNERS, INVITE_NOT_PENDING: "the invite was accepted, revoked or has expired." },
+        errors: { ...INVITE_ROLES, INVITE_NOT_PENDING: "the invite was accepted, revoked or has expired." },
         examples: ["curviate team invites revoke inv_01HZY3K8Q2"],
       },
       args: { ...WRITE_SINGLE_FLAGS, id: INVITE },
@@ -358,12 +360,12 @@ function inviteBody(f: TeamFlags): Rec {
 }
 
 const logoCmd = defineCommand({
-  meta: { name: "logo", description: "Set or remove the Team's logo. Owners only." },
+  meta: { name: "logo", description: "Set or remove the Team's logo. Owners and Managers." },
   subCommands: {
     set: defineCommand({
       meta: {
         name: "set",
-        description: "Set the Team's logo from a PNG file; replaces the previous one. Owners only.",
+        description: "Set the Team's logo from a PNG file; replaces the previous one. Owners and Managers.",
         risk: "write",
         rules: {
           changes: "Replaces the Team's logo with the PNG.",
@@ -372,7 +374,7 @@ const logoCmd = defineCommand({
           retry: "Safe: the same file written again leaves the logo the same.",
           undo: "`curviate team logo remove`; the previous logo is not kept.",
         },
-        errors: OWNERS,
+        errors: OWNERS_MANAGERS,
         examples: ["curviate team logo set ./logo.png"],
       },
       args: { ...WRITE_SINGLE_FLAGS, file: { type: "positional", description: "Path to a PNG." } },
@@ -390,7 +392,7 @@ const logoCmd = defineCommand({
     remove: defineCommand({
       meta: {
         name: "remove",
-        description: "Remove the Team's logo. Removing a logo that is not set changes nothing. Owners only.",
+        description: "Remove the Team's logo. Removing a logo that is not set changes nothing. Owners and Managers.",
         risk: "write",
         rules: {
           changes: "Removes the Team's logo.",
@@ -399,7 +401,7 @@ const logoCmd = defineCommand({
           retry: "Safe: removing a logo that is not set changes nothing.",
           undo: "`curviate team logo set <file>` with the PNG; the removed logo is not kept.",
         },
-        errors: OWNERS,
+        errors: OWNERS_MANAGERS,
         examples: ["curviate team logo remove"],
       },
       args: WRITE_SINGLE_FLAGS,
