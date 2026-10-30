@@ -968,6 +968,13 @@
       "settings": {
         "type": "object",
         "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "prioritized"
+            ]
+          },
           "accounts_per_contact": {
             "type": "integer",
             "minimum": 1,
@@ -1155,6 +1162,13 @@
       "settings": {
         "type": "object",
         "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "prioritized"
+            ]
+          },
           "accounts_per_contact": {
             "type": "integer",
             "minimum": 1,

@@ -443,7 +443,7 @@
           },
           "hint": {
             "type": "object",
-            "description": "Present on BUDGET_EXHAUSTED: the exact setting to change, as a field rather than as prose. Limits are always enforced: to send more, raise the limit. parameter is addressable on PATCH /v1/{account_id}/safety-policy (update_safety_policy in MCP), so an agent can decide between waiting until reset_at, escalating to a human, and raising the limit, without parsing the message. The one exception is inmail_credits: not a policy field, LinkedIn's own InMail balance. Wait for LinkedIn to regrant credits, or buy more on LinkedIn.",
+            "description": "Present on BUDGET_EXHAUSTED: the exact setting to change, as a field rather than as prose. Limits are always enforced: to send more, raise the limit. parameter is addressable on PATCH /v1/{account_id}/safety-policy (update_safety_policy in MCP), so an agent can decide between waiting until reset_at, escalating to a human, and raising the limit, without parsing the message. The one exception is inmail_credits: not a policy field, LinkedIn's own InMail balance. Wait for LinkedIn to regrant credits; a reply to an InMail refunds its credit.",
             "properties": {
               "parameter": {
                 "type": "string",
@@ -38295,7 +38295,7 @@
                                   "string",
                                   "null"
                                 ],
-                                "description": "The last observed picture link. LinkedIn picture links expire, so tolerate a dead image."
+                                "description": "The person's picture: a copy we store once a read has delivered one, so the link does not expire. Null when none is held."
                               },
                               "connected_at": {
                                 "type": [
@@ -38420,7 +38420,7 @@
                                   "string",
                                   "null"
                                 ],
-                                "description": "The last observed picture link. LinkedIn picture links expire, so tolerate a dead image."
+                                "description": "The person's picture: a copy we store once a read has delivered one, so the link does not expire. Null when none is held."
                               },
                               "observed_at": {
                                 "type": [
@@ -42561,7 +42561,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -42599,6 +42599,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -55445,7 +55446,7 @@
                           },
                           "type": {
                             "type": "string",
-                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
+                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
                           },
                           "subject": {
                             "type": "object",
@@ -56134,7 +56135,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
+                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
                     },
                     "subject": {
                       "type": "object",
@@ -80459,6 +80460,20 @@
                                   ],
                                   "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                                 },
+                                "target": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                                },
+                                "effective_target": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "`target` with the account's warm-up and health applied, rounded down. Null where `target` is null."
+                                },
                                 "interface_ceiling": {
                                   "type": [
                                     "integer",
@@ -80499,7 +80514,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "An active pause on this row because the platform refused a recent request on it, or `null`. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
+                                  "description": "An active pause on this row because the platform refused a recent request on it, or `null`. Motion work on other rows keeps running. A Motion also waits longer than this pause after LinkedIn refuses invitations or views for going too fast: 6 hours, then 24, then 72, at most 7 days on each repeat, resetting after 7 clean days; `health` on the account shows it. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
                                   "properties": {
                                     "reason": {
                                       "type": "string",
@@ -81164,6 +81179,20 @@
                             ],
                             "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                           },
+                          "target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                          },
+                          "effective_target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "`target` with the account's warm-up and health applied, rounded down. Null where `target` is null."
+                          },
                           "interface_ceiling": {
                             "type": [
                               "integer",
@@ -81204,7 +81233,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "An active pause on this row because the platform refused a recent request on it, or `null`. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
+                            "description": "An active pause on this row because the platform refused a recent request on it, or `null`. Motion work on other rows keeps running. A Motion also waits longer than this pause after LinkedIn refuses invitations or views for going too fast: 6 hours, then 24, then 72, at most 7 days on each repeat, resetting after 7 clean days; `health` on the account shows it. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
                             "properties": {
                               "reason": {
                                 "type": "string",
@@ -81389,6 +81418,45 @@
                           "profile_view_limited"
                         ]
                       }
+                    },
+                    "health": {
+                      "type": "object",
+                      "description": "Curviate's inference of how LinkedIn sees this account; LinkedIn publishes no score. `state`: `healthy`; `watch` (a sign to look at, nothing slowed); `slowed` (fewer invitations and views, or one action paused, while other work keeps running); `stopped` (a restriction stops all Motion work, or 650 or more waiting invitations stop new invitations while withdrawals still run). It is per account, and nothing moves work between Motions by itself. One Notification announces each worsening, none an improvement.",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "healthy",
+                            "watch",
+                            "slowed",
+                            "stopped"
+                          ]
+                        },
+                        "factor": {
+                          "type": "number",
+                          "description": "The lowest factor in force, from 0 to 1, multiplying the account's invitation and view targets with warm-up. 1 is unaffected. Recovers +0.15 every 4 days once its cause clears; the factor from waiting invitations follows their number."
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Why, and what to do, in plain words. For people, not for branching: branch on `state`."
+                        },
+                        "until": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "ISO-8601 UTC time the limits in force are expected to lift. Null when nothing is limited or the end is not known."
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "factor",
+                        "reasons",
+                        "until"
+                      ]
                     },
                     "activity_window": {
                       "type": "object",
@@ -81640,6 +81708,8 @@
                           "used": 2,
                           "ceiling": 3,
                           "effective_ceiling": 3,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81658,6 +81728,8 @@
                           "used": 41,
                           "ceiling": 150,
                           "effective_ceiling": 150,
+                          "target": 100,
+                          "effective_target": 100,
                           "remaining": 109,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81674,9 +81746,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 12,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 88,
+                          "ceiling": 150,
+                          "effective_ceiling": 150,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 138,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -81694,6 +81768,8 @@
                           "used": 0,
                           "ceiling": 0,
                           "effective_ceiling": 0,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 0,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81712,6 +81788,8 @@
                           "used": 0,
                           "ceiling": null,
                           "effective_ceiling": null,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81730,6 +81808,8 @@
                           "used": 37,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": 60,
+                          "effective_target": 60,
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81748,6 +81828,8 @@
                           "used": 250,
                           "ceiling": 1000,
                           "effective_ceiling": 1000,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 750,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81764,9 +81846,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 3,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 97,
+                          "ceiling": 300,
+                          "effective_ceiling": 300,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 297,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -81784,6 +81868,8 @@
                           "used": 8,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 92,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81802,6 +81888,8 @@
                           "used": 1,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 99,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81820,6 +81908,8 @@
                           "used": 37,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81838,6 +81928,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81856,6 +81948,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81872,9 +81966,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 0,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 100,
+                          "ceiling": 60,
+                          "effective_ceiling": 60,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -81892,6 +81988,8 @@
                           "used": 5,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 95,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81910,6 +82008,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81928,6 +82028,8 @@
                           "used": 12,
                           "ceiling": 48,
                           "effective_ceiling": 48,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 36,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81946,6 +82048,8 @@
                           "used": 41,
                           "ceiling": 400,
                           "effective_ceiling": 400,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 359,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81964,6 +82068,8 @@
                           "used": 1,
                           "ceiling": 2,
                           "effective_ceiling": 2,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -81982,6 +82088,8 @@
                           "used": 383,
                           "ceiling": null,
                           "effective_ceiling": null,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82000,6 +82108,8 @@
                           "used": 214,
                           "ceiling": 650,
                           "effective_ceiling": 650,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 436,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82011,6 +82121,12 @@
                         }
                       ],
                       "account_states": [],
+                      "health": {
+                        "state": "healthy",
+                        "factor": 1,
+                        "reasons": [],
+                        "until": null
+                      },
                       "activity_window": {
                         "effective_timezone": "Europe/Berlin",
                         "source": "country",
@@ -82086,6 +82202,8 @@
                           "used": 2,
                           "ceiling": 3,
                           "effective_ceiling": 3,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82104,6 +82222,8 @@
                           "used": 41,
                           "ceiling": 150,
                           "effective_ceiling": 150,
+                          "target": 100,
+                          "effective_target": 100,
                           "remaining": 109,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82120,9 +82240,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 12,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 88,
+                          "ceiling": 150,
+                          "effective_ceiling": 150,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 138,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -82140,6 +82262,8 @@
                           "used": 0,
                           "ceiling": 0,
                           "effective_ceiling": 0,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 0,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82158,6 +82282,8 @@
                           "used": 0,
                           "ceiling": null,
                           "effective_ceiling": null,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82176,6 +82302,8 @@
                           "used": 37,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": 60,
+                          "effective_target": 60,
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82194,6 +82322,8 @@
                           "used": 250,
                           "ceiling": 1000,
                           "effective_ceiling": 1000,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 750,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82210,9 +82340,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 3,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 97,
+                          "ceiling": 300,
+                          "effective_ceiling": 300,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 297,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -82230,6 +82362,8 @@
                           "used": 8,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 92,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82248,6 +82382,8 @@
                           "used": 1,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 99,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82266,6 +82402,8 @@
                           "used": 37,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82284,6 +82422,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82302,6 +82442,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82318,9 +82460,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 0,
-                          "ceiling": 100,
-                          "effective_ceiling": 100,
-                          "remaining": 100,
+                          "ceiling": 60,
+                          "effective_ceiling": 60,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -82338,6 +82482,8 @@
                           "used": 5,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 95,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82356,6 +82502,8 @@
                           "used": 0,
                           "ceiling": 100,
                           "effective_ceiling": 100,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82374,6 +82522,8 @@
                           "used": 12,
                           "ceiling": 48,
                           "effective_ceiling": 48,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 36,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82392,6 +82542,8 @@
                           "used": 41,
                           "ceiling": 400,
                           "effective_ceiling": 400,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 359,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82410,6 +82562,8 @@
                           "used": 1,
                           "ceiling": 2,
                           "effective_ceiling": 2,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82428,6 +82582,8 @@
                           "used": 383,
                           "ceiling": null,
                           "effective_ceiling": null,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82446,6 +82602,8 @@
                           "used": 214,
                           "ceiling": 650,
                           "effective_ceiling": 650,
+                          "target": null,
+                          "effective_target": null,
                           "remaining": 436,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
@@ -82459,6 +82617,12 @@
                       "account_states": [
                         "commercial_use_limited"
                       ],
+                      "health": {
+                        "state": "healthy",
+                        "factor": 1,
+                        "reasons": [],
+                        "until": null
+                      },
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "country",
@@ -82983,6 +83147,45 @@
                         ]
                       }
                     },
+                    "health": {
+                      "type": "object",
+                      "description": "Curviate's inference of how LinkedIn sees this account; LinkedIn publishes no score. `state`: `healthy`; `watch` (a sign to look at, nothing slowed); `slowed` (fewer invitations and views, or one action paused, while other work keeps running); `stopped` (a restriction stops all Motion work, or 650 or more waiting invitations stop new invitations while withdrawals still run). It is per account, and nothing moves work between Motions by itself. One Notification announces each worsening, none an improvement.",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "healthy",
+                            "watch",
+                            "slowed",
+                            "stopped"
+                          ]
+                        },
+                        "factor": {
+                          "type": "number",
+                          "description": "The lowest factor in force, from 0 to 1, multiplying the account's invitation and view targets with warm-up. 1 is unaffected. Recovers +0.15 every 4 days once its cause clears; the factor from waiting invitations follows their number."
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Why, and what to do, in plain words. For people, not for branching: branch on `state`."
+                        },
+                        "until": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "ISO-8601 UTC time the limits in force are expected to lift. Null when nothing is limited or the end is not known."
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "factor",
+                        "reasons",
+                        "until"
+                      ]
+                    },
                     "activity_window": {
                       "type": "object",
                       "description": "The time zone the account's activity window is read in, derived from where it connects; outside the window Curviate refuses live writes to LinkedIn. Reads and anything served from Curviate's own store are never affected, at any hour. Set the hours on the account's safety policy.",
@@ -83066,6 +83269,12 @@
                         "strict": true
                       },
                       "account_states": [],
+                      "health": {
+                        "state": "healthy",
+                        "factor": 1,
+                        "reasons": [],
+                        "until": null
+                      },
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "none",
@@ -96880,6 +97089,10 @@
                         }
                       }
                     },
+                    "auto_withdraw": {
+                      "type": "boolean",
+                      "description": "Whether Curviate withdraws this account's old Motion-sent invitations on its own (default true). Past 400 pending invitations, those over 14 days old go oldest first, at most the larger of 25 and the day's invitation allowance a day, one at a time inside the account's working hours, each after a check that it is still pending. Invitations sent by hand or through the API are never withdrawn, and a withdrawn person is never invited again by a Motion. It runs while invitations are stopped at 650 pending. Set it with PATCH /v1/{account_id}/safety-policy and `auto_withdraw`; a change is recorded in the account's ledger."
+                    },
                     "activity_window": {
                       "type": "object",
                       "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
@@ -97093,6 +97306,20 @@
                             ],
                             "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Read this one, not `ceiling`, to know where the next call will be stopped. On an account in warm-up the two differ, and in the first week after connect they differ by a factor of about seven. Null when the row has no ceiling to ramp. `warm_up_state` and `warm_up_factor` beside it are the values ACTIVE on this row, not the seeded ones."
                           },
+                          "target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio. Read-only."
+                          },
+                          "effective_target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "`target` with the account's warm-up and health factor applied, rounded down: LinkedIn pushback, forced sign-ins and low acceptance lower it, waiting invitations slow invitations separately. Null where `target` is null. Read-only."
+                          },
                           "interface_ceiling": {
                             "type": [
                               "integer",
@@ -97169,7 +97396,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97223,7 +97450,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97277,7 +97504,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97331,7 +97558,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97385,7 +97612,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97439,7 +97666,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97493,7 +97720,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97547,7 +97774,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97601,7 +97828,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97655,7 +97882,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97709,7 +97936,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -97805,6 +98032,7 @@
                         "triggers": [],
                         "dormant": false
                       },
+                      "auto_withdraw": true,
                       "activity_window": {
                         "effective_timezone": "Europe/Berlin",
                         "source": "country",
@@ -97856,13 +98084,13 @@
                           "character_cap": null,
                           "subject_character_cap": null,
                           "per_query_cap": null,
-                          "ceiling": 100,
-                          "green": 60,
-                          "amber": 85,
+                          "ceiling": 300,
+                          "green": 180,
+                          "amber": 255,
                           "window_kind": "day",
                           "source_class": "substrate",
                           "budget_row": "comments",
-                          "effective_ceiling": 100,
+                          "effective_ceiling": 300,
                           "activity_window_source": "team",
                           "over_default": []
                         },
@@ -97890,8 +98118,8 @@
                       ],
                       "pacing": {
                         "invite.send": {
-                          "min_gap_seconds": 360,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 180,
+                          "jitter_seconds": 240,
                           "over_default": []
                         },
                         "post.comment": {
@@ -97900,8 +98128,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 240,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 150,
+                          "jitter_seconds": 300,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -97941,6 +98169,7 @@
                         },
                         "global": {
                           "min_gap_seconds": 30,
+                          "jitter_seconds": 25,
                           "over_default": []
                         }
                       }
@@ -97965,6 +98194,7 @@
                         ],
                         "dormant": false
                       },
+                      "auto_withdraw": true,
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "none",
@@ -98034,13 +98264,13 @@
                           "character_cap": null,
                           "subject_character_cap": null,
                           "per_query_cap": null,
-                          "ceiling": 100,
-                          "green": 60,
-                          "amber": 85,
+                          "ceiling": 300,
+                          "green": 180,
+                          "amber": 255,
                           "window_kind": "day",
                           "source_class": "substrate",
                           "budget_row": "comments",
-                          "effective_ceiling": 100,
+                          "effective_ceiling": 300,
                           "activity_window_source": "team",
                           "over_default": []
                         }
@@ -98048,12 +98278,12 @@
                       "pacing": {
                         "invite.send": {
                           "min_gap_seconds": 120,
-                          "jitter_seconds": 360,
+                          "jitter_seconds": 240,
                           "over_default": [
                             {
                               "field": "min_gap_seconds",
                               "value": 120,
-                              "default": 360,
+                              "default": 180,
                               "source_class": "inferred"
                             }
                           ]
@@ -98064,8 +98294,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 240,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 150,
+                          "jitter_seconds": 300,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -98105,6 +98335,7 @@
                         },
                         "global": {
                           "min_gap_seconds": 30,
+                          "jitter_seconds": 25,
                           "over_default": []
                         }
                       }
@@ -98337,6 +98568,10 @@
                         }
                       }
                     },
+                    "auto_withdraw": {
+                      "type": "boolean",
+                      "description": "Whether Curviate withdraws this account's old Motion-sent invitations on its own (default true). Past 400 pending invitations, those over 14 days old go oldest first, at most the larger of 25 and the day's invitation allowance a day, one at a time inside the account's working hours, each after a check that it is still pending. Invitations sent by hand or through the API are never withdrawn, and a withdrawn person is never invited again by a Motion. It runs while invitations are stopped at 650 pending. Set it with PATCH /v1/{account_id}/safety-policy and `auto_withdraw`; a change is recorded in the account's ledger."
+                    },
                     "activity_window": {
                       "type": "object",
                       "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
@@ -98550,6 +98785,20 @@
                             ],
                             "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Read this one, not `ceiling`, to know where the next call will be stopped. On an account in warm-up the two differ, and in the first week after connect they differ by a factor of about seven. Null when the row has no ceiling to ramp. `warm_up_state` and `warm_up_factor` beside it are the values ACTIVE on this row, not the seeded ones."
                           },
+                          "target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio. Read-only."
+                          },
+                          "effective_target": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "`target` with the account's warm-up and health factor applied, rounded down: LinkedIn pushback, forced sign-ins and low acceptance lower it, waiting invitations slow invitations separately. Null where `target` is null. Read-only."
+                          },
                           "interface_ceiling": {
                             "type": [
                               "integer",
@@ -98626,7 +98875,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98680,7 +98929,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98734,7 +98983,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98788,7 +99037,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98842,7 +99091,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98896,7 +99145,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -98950,7 +99199,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -99004,7 +99253,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -99058,7 +99307,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -99112,7 +99361,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -99166,7 +99415,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -99264,6 +99513,7 @@
                         ],
                         "dormant": false
                       },
+                      "auto_withdraw": true,
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "none",
@@ -99333,13 +99583,13 @@
                           "character_cap": null,
                           "subject_character_cap": null,
                           "per_query_cap": null,
-                          "ceiling": 100,
-                          "green": 60,
-                          "amber": 85,
+                          "ceiling": 300,
+                          "green": 180,
+                          "amber": 255,
                           "window_kind": "day",
                           "source_class": "substrate",
                           "budget_row": "comments",
-                          "effective_ceiling": 100,
+                          "effective_ceiling": 300,
                           "activity_window_source": "team",
                           "over_default": []
                         }
@@ -99347,12 +99597,12 @@
                       "pacing": {
                         "invite.send": {
                           "min_gap_seconds": 120,
-                          "jitter_seconds": 360,
+                          "jitter_seconds": 240,
                           "over_default": [
                             {
                               "field": "min_gap_seconds",
                               "value": 120,
-                              "default": 360,
+                              "default": 180,
                               "source_class": "inferred"
                             }
                           ]
@@ -99363,8 +99613,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 240,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 150,
+                          "jitter_seconds": 300,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -99404,6 +99654,7 @@
                         },
                         "global": {
                           "min_gap_seconds": 30,
+                          "jitter_seconds": 25,
                           "over_default": []
                         }
                       }
@@ -99754,6 +100005,12 @@
                         "effective_ceiling": {
                           "description": "READ-ONLY. `ceiling` with the account's warm-up ramp applied, which is what this row is actually held to. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
+                        "target": {
+                          "description": "READ-ONLY. What this Account aims at per window on this row (invitations, InMail, profile views only; null elsewhere): the row's `green` when set, otherwise `ceiling` times the profile's seeded ratio, so raising a ceiling alone moves it. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                        },
+                        "effective_target": {
+                          "description": "READ-ONLY. `target` with the account's warm-up and health applied, rounded down. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                        },
                         "interface_ceiling": {
                           "description": "READ-ONLY. What a call through the matching elevated interface (the Sales Navigator and Recruiter operations) is held to on this row, or null when this row and limit profile have no such figure. `ceiling`, `effective_ceiling`, `band` and `over_default` are all the STANDARD-interface figure, so on a `sales_navigator` or `recruiter` account a row can report `over` while a call through the elevated interface still succeeds. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
@@ -99786,7 +100043,7 @@
                           "description": "Whole seconds, 0 to 86400. Null clears it."
                         },
                         "jitter_seconds": {
-                          "description": "Whole seconds, 0 to 86400. Not on `global`. Null clears it."
+                          "description": "Whole seconds, 0 to 86400. On `global` it defaults to 25. Null clears it."
                         },
                         "over_default": {
                           "description": "READ-ONLY. The over-default warnings (a value below the default). Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
@@ -99866,6 +100123,10 @@
                       }
                     },
                     "description": "The account's warm-up. Only `enabled` is settable; its other keys are derived on every read, accepted and ignored, so the read's object can be sent back unchanged."
+                  },
+                  "auto_withdraw": {
+                    "type": "boolean",
+                    "description": "Automatic withdrawal of old invitations Curviate sent for this account's Motions, default true. While this account has more than 400 pending invitations, Curviate withdraws the Motion-sent ones older than 14 days, oldest first, a few a day (at most the larger of 25 and the day's invitation allowance), inside its working hours and one at a time with the usual gaps, after checking each is still pending. It never touches an invitation you sent by hand or through the API, and never invites a withdrawn person again. It keeps working while invitations are stopped at 650 pending, which is how the account comes back under. Set false to keep every old invitation pending; the level then falls only as people accept or you withdraw."
                   },
                   "activity_window": {
                     "description": "Read-only: the time zone the activity window is read in, from where this account connects. Accepted and ignored, so the read's object can be sent back unchanged. The window's settable inputs are per row: `activity_window_start`, `activity_window_end`, `activity_window_applies_to`."
@@ -100628,7 +100889,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100682,7 +100943,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100736,7 +100997,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100790,7 +101051,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100844,7 +101105,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100898,7 +101159,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -100952,7 +101213,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101006,7 +101267,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101060,7 +101321,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101114,7 +101375,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101168,7 +101429,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101266,7 +101527,7 @@
                       "pacing": {
                         "invite.send": {
                           "min_gap_seconds": 600,
-                          "jitter_seconds": 360,
+                          "jitter_seconds": 240,
                           "over_default": []
                         },
                         "post.comment": {
@@ -101275,8 +101536,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 240,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 150,
+                          "jitter_seconds": 300,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -101316,6 +101577,7 @@
                         },
                         "global": {
                           "min_gap_seconds": 30,
+                          "jitter_seconds": 25,
                           "over_default": []
                         }
                       },
@@ -101713,7 +101975,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101767,7 +102029,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101821,7 +102083,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101875,7 +102137,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101929,7 +102191,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -101983,7 +102245,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102037,7 +102299,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102091,7 +102353,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102145,7 +102407,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102199,7 +102461,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102253,7 +102515,7 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 86400,
-                              "description": "A random extra of up to this many seconds added to each gap. Absent on `global`, which has no jitter."
+                              "description": "A random extra of up to this many seconds added to each gap. On `global` it defaults to 25: the wait after any action is at least `min_gap_seconds` plus a random part of this."
                             },
                             "over_default": {
                               "type": "array",
@@ -102365,7 +102627,7 @@
                       "pacing": {
                         "invite.send": {
                           "min_gap_seconds": 600,
-                          "jitter_seconds": 360,
+                          "jitter_seconds": 240,
                           "over_default": []
                         },
                         "post.comment": {
@@ -102374,8 +102636,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 240,
-                          "jitter_seconds": 360,
+                          "min_gap_seconds": 150,
+                          "jitter_seconds": 300,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -102415,6 +102677,7 @@
                         },
                         "global": {
                           "min_gap_seconds": 30,
+                          "jitter_seconds": 25,
                           "over_default": []
                         }
                       },
@@ -102773,7 +103036,7 @@
                           "description": "Whole seconds, 0 to 86400. Null clears it."
                         },
                         "jitter_seconds": {
-                          "description": "Whole seconds, 0 to 86400. Not on `global`. Null clears it."
+                          "description": "Whole seconds, 0 to 86400. On `global` it defaults to 25. Null clears it."
                         },
                         "over_default": {
                           "description": "READ-ONLY. The over-default warnings (a value below the default). Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
@@ -102834,7 +103097,7 @@
               },
               "examples": {
                 "lowerDefault": {
-                  "summary": "Cap invitations without a note at 50 a day on every basic account",
+                  "summary": "Cap invitations at 50 a week on every basic account",
                   "value": {
                     "profiles": [
                       {
@@ -110214,7 +110477,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                     },
                     "full_name": {
                       "type": [
@@ -110471,7 +110734,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                     },
                     "full_name": {
                       "type": [
@@ -111305,7 +111568,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                            "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                           },
                           "full_name": {
                             "type": [
@@ -111981,7 +112244,7 @@
                           "string",
                           "null"
                         ],
-                        "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                        "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                       },
                       "full_name": {
                         "type": [
@@ -115747,7 +116010,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                     },
                     "full_name": {
                       "type": [
@@ -116184,7 +116447,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. The link is signed and expires: show initials when it fails to load."
+                      "description": "The person's LinkedIn photo, read from the profile data your team already holds when you ask, so it costs no LinkedIn call. Read-only, and not part of exports or webhooks. Null when none is held. A copy we store, so the link does not expire; show initials when null."
                     },
                     "full_name": {
                       "type": [
@@ -120775,12 +121038,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -120843,9 +121111,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -120931,7 +121199,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -121019,6 +121287,35 @@
                         "null"
                       ],
                       "description": "When it was archived."
+                    },
+                    "notices": {
+                      "type": "array",
+                      "description": "Present on a write only, and only when it sent a retired setting: one SETTING_REMOVED entry per key, naming it and the last day it is accepted (2027-01-28). Nothing was stored for it; the response carries a Deprecation: true header. Branch on code, never on message.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "field",
+                          "message"
+                        ],
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "enum": [
+                              "SETTING_REMOVED"
+                            ]
+                          },
+                          "field": {
+                            "type": "string",
+                            "enum": [
+                              "settings.new_enrollments_per_account_per_day"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   },
                   "required": [
@@ -121078,9 +121375,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -121531,6 +121828,14 @@
                   "settings": {
                     "type": "object",
                     "properties": {
+                      "priority": {
+                        "type": "string",
+                        "enum": [
+                          "normal",
+                          "prioritized"
+                        ],
+                        "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. Default normal."
+                      },
                       "accounts_per_contact": {
                         "type": "integer",
                         "minimum": 1,
@@ -121544,13 +121849,13 @@
                           "even",
                           "already_connected"
                         ],
-                        "description": "How Contacts are assigned to sending accounts: auto, even or already_connected. Default auto."
+                        "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them; anyone else is skipped. Default auto. even is retired: accepted and ignored with a SETTING_REMOVED notice and a Deprecation: true header until 2027-01-28, never stored or returned; a 400 after that day."
                       },
                       "new_enrollments_per_account_per_day": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 1000,
-                        "description": "New Enrollments per sending account per day (1 to 1000). Default 15."
+                        "description": "Retired: new people now start at each sending account's daily allowance. Accepted and ignored with a SETTING_REMOVED notice and a Deprecation: true header until 2027-01-28, never stored or returned; a 400 after that day."
                       },
                       "exclude": {
                         "type": "object",
@@ -122037,12 +122342,17 @@
                                 "type": "string",
                                 "enum": [
                                   "auto",
-                                  "even",
                                   "already_connected"
-                                ]
+                                ],
+                                "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                               },
-                              "new_enrollments_per_account_per_day": {
-                                "type": "integer"
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "normal",
+                                  "prioritized"
+                                ],
+                                "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                               },
                               "exclude": {
                                 "type": "object",
@@ -122105,9 +122415,9 @@
                               }
                             },
                             "required": [
+                              "priority",
                               "accounts_per_contact",
                               "assign",
-                              "new_enrollments_per_account_per_day",
                               "exclude",
                               "acceptance_floor",
                               "variables"
@@ -122292,9 +122602,9 @@
                             "end_at": null
                           },
                           "settings": {
+                            "priority": "normal",
                             "accounts_per_contact": 1,
                             "assign": "auto",
-                            "new_enrollments_per_account_per_day": 15,
                             "exclude": {
                               "other_motions": true,
                               "known_chats": true
@@ -122647,12 +122957,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -122715,9 +123030,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -122803,7 +123118,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -122950,9 +123265,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -123384,12 +123699,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -123452,9 +123772,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -123540,7 +123860,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -123636,6 +123956,35 @@
                         "copy",
                         "structural"
                       ]
+                    },
+                    "notices": {
+                      "type": "array",
+                      "description": "Present on a write only, and only when it sent a retired setting: one SETTING_REMOVED entry per key, naming it and the last day it is accepted (2027-01-28). Nothing was stored for it; the response carries a Deprecation: true header. Branch on code, never on message.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "field",
+                          "message"
+                        ],
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "enum": [
+                              "SETTING_REMOVED"
+                            ]
+                          },
+                          "field": {
+                            "type": "string",
+                            "enum": [
+                              "settings.new_enrollments_per_account_per_day"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   },
                   "required": [
@@ -123696,9 +124045,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -124150,6 +124499,14 @@
                   "settings": {
                     "type": "object",
                     "properties": {
+                      "priority": {
+                        "type": "string",
+                        "enum": [
+                          "normal",
+                          "prioritized"
+                        ],
+                        "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. Default normal."
+                      },
                       "accounts_per_contact": {
                         "type": "integer",
                         "minimum": 1,
@@ -124163,13 +124520,13 @@
                           "even",
                           "already_connected"
                         ],
-                        "description": "How Contacts are assigned to sending accounts: auto, even or already_connected. Default auto."
+                        "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them; anyone else is skipped. Default auto. even is retired: accepted and ignored with a SETTING_REMOVED notice and a Deprecation: true header until 2027-01-28, never stored or returned; a 400 after that day."
                       },
                       "new_enrollments_per_account_per_day": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 1000,
-                        "description": "New Enrollments per sending account per day (1 to 1000). Default 15."
+                        "description": "Retired: new people now start at each sending account's daily allowance. Accepted and ignored with a SETTING_REMOVED notice and a Deprecation: true header until 2027-01-28, never stored or returned; a 400 after that day."
                       },
                       "exclude": {
                         "type": "object",
@@ -124267,7 +124624,7 @@
                   "summary": "Change one setting, keep the rest",
                   "value": {
                     "settings": {
-                      "assign": "even"
+                      "assign": "auto"
                     }
                   }
                 },
@@ -124673,12 +125030,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -124741,9 +125103,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -124829,7 +125191,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -124976,9 +125338,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -125485,12 +125847,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -125553,9 +125920,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -125641,7 +126008,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -125788,9 +126155,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -126264,12 +126631,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -126332,9 +126704,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -126420,7 +126792,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -126567,9 +126939,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -127076,12 +127448,17 @@
                           "type": "string",
                           "enum": [
                             "auto",
-                            "even",
                             "already_connected"
-                          ]
+                          ],
+                          "description": "Which sending account takes a Contact. auto: one already connected or chatting with them, else whichever has room first. already_connected: only an account connected to them."
                         },
-                        "new_enrollments_per_account_per_day": {
-                          "type": "integer"
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "normal",
+                            "prioritized"
+                          ],
+                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -127144,9 +127521,9 @@
                         }
                       },
                       "required": [
+                        "priority",
                         "accounts_per_contact",
                         "assign",
-                        "new_enrollments_per_account_per_day",
                         "exclude",
                         "acceptance_floor",
                         "variables"
@@ -127232,7 +127609,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -127379,9 +127756,9 @@
                         "end_at": null
                       },
                       "settings": {
+                        "priority": "normal",
                         "accounts_per_contact": 1,
                         "assign": "auto",
-                        "new_enrollments_per_account_per_day": 15,
                         "exclude": {
                           "other_motions": true,
                           "known_chats": true
@@ -128122,7 +128499,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The sending account this Contact would be assigned, from stored data; null when none can act or assignment needs LinkedIn."
+                            "description": "A sending account to render this sample with, not a promise: the account is set when one takes the Contact. null when none can act or assignment needs LinkedIn."
                           },
                           "excluded": {
                             "type": [
@@ -128239,7 +128616,7 @@
                       "properties": {
                         "audience": {
                           "type": "object",
-                          "description": "The Contacts of the source lists, counted from stored data (nothing is read from LinkedIn), each once. A Contact that would be skipped for several reasons counts under the first: do_not_contact, excluded, other_motion, known_chat, filtered. Present even when the Motion has no Sequence.",
+                          "description": "The Contacts of the source lists, counted from stored data (nothing is read from LinkedIn), each once. A Contact that would be skipped for several reasons counts under the first: do_not_contact, excluded, other_motion, known_chat, filtered, not_connected. Present even when the Motion has no Sequence.",
                           "properties": {
                             "total": {
                               "type": "integer",
@@ -128267,6 +128644,10 @@
                                 "filtered": {
                                   "type": "integer",
                                   "description": "Fail a where filter on stored Contact data (fields, extra fields, tags). A filter only LinkedIn can answer, such as degree or premium, is checked when the Contact enrolls and does not count here."
+                                },
+                                "not_connected": {
+                                  "type": "integer",
+                                  "description": "With settings.assign already_connected: no sending account is connected to them, so the Motion will skip them. 0 for any other assign, and while a sending account has not finished reading its Connections."
                                 }
                               },
                               "required": [
@@ -128274,7 +128655,8 @@
                                 "excluded",
                                 "other_motion",
                                 "known_chat",
-                                "filtered"
+                                "filtered",
+                                "not_connected"
                               ]
                             },
                             "to_enroll": {
@@ -128316,14 +128698,19 @@
                               },
                               "binding": {
                                 "type": "string",
-                                "description": "The limit that set this account's pace: daily_cap, or a budget row such as connection_requests_no_note."
+                                "description": "The limit that set this account's pace: the pool whose share sets the start rate (invitations, views), pace for a Motion with no invitation or profile view (about 60 new people a day), or a budget row such as messages_first_degree."
+                              },
+                              "expected_actions_per_day": {
+                                "type": "integer",
+                                "description": "The LinkedIn actions a day this Motion is expected to make on this account at that pace, every budgeted step of the costliest route counted. An estimate; 0 when the account carries no Contact."
                               }
                             },
                             "required": [
                               "account_id",
                               "contacts",
                               "enroll_days",
-                              "binding"
+                              "binding",
+                              "expected_actions_per_day"
                             ]
                           }
                         },
@@ -128346,7 +128733,7 @@
                             "boolean",
                             "null"
                           ],
-                          "description": "Whether every Contact finishes before schedule.end_at, counting schedule days from now (or schedule.start_at if later). null when the schedule has no end_at or the Motion has no Sequence. schedule.hours is not modelled: the estimate assumes each day's actions fit the daily window."
+                          "description": "Whether every Contact finishes before schedule.end_at, counting schedule days from now (or schedule.start_at if later). null when the schedule has no end_at or the Motion has no Sequence. schedule.hours does not slow the estimate; warnings says where the hours cannot use the Motion's share."
                         },
                         "binding": {
                           "type": [
@@ -128367,9 +128754,47 @@
                           ],
                           "description": "The slowest account and its limiter; null when no sending account can act."
                         },
+                        "warnings": {
+                          "type": "array",
+                          "description": "hours_below_share: the Motion's schedule.hours cannot use its share (a session runs in at most 90% of the hours and 8 hours a day, one action per the pool's mean gap). no_sending_account: every route of the Sequence sends an InMail and no sending account has Sales Navigator or Recruiter, so no account can take anyone; it has only code and message. Empty when none.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "hours_below_share",
+                                  "no_sending_account"
+                                ]
+                              },
+                              "account_id": {
+                                "type": "string"
+                              },
+                              "pool": {
+                                "type": "string",
+                                "description": "The pool that sets the rate: invitations or views."
+                              },
+                              "share_per_day": {
+                                "type": "integer",
+                                "description": "This Motion's share of that pool, a day."
+                              },
+                              "fits_per_day": {
+                                "type": "integer",
+                                "description": "What its hours fit, a day."
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
                         "summary": {
                           "type": "string",
-                          "description": "One line that says it is an estimate at the account's steady-state ceiling, for example: 100 Contacts finish in 27 working days; binding row daily_cap (an estimate at each Account's steady-state ceiling). When fits_before_end_at is false it says the Motion ends first and how many Contacts can enroll by then."
+                          "description": "One line that says it is an estimate at the account's steady-state pace, for example: 100 Contacts finish in 27 working days; bound by invitations (an estimate at each Account's steady-state pace). When fits_before_end_at is false it says the Motion ends first and how many Contacts can enroll by then."
                         }
                       },
                       "required": [
@@ -128380,7 +128805,8 @@
                         "finish_working_days",
                         "fits_before_end_at",
                         "binding",
-                        "summary"
+                        "summary",
+                        "warnings"
                       ]
                     },
                     "warnings": {
@@ -128391,7 +128817,7 @@
                         "properties": {
                           "code": {
                             "type": "string",
-                            "description": "The warning id, W1 to W16."
+                            "description": "The warning id, W1 to W17."
                           },
                           "path": {
                             "type": "string",
@@ -128521,7 +128947,8 @@
                             "excluded": 3,
                             "other_motion": 3,
                             "known_chat": 2,
-                            "filtered": 3
+                            "filtered": 3,
+                            "not_connected": 0
                           },
                           "to_enroll": 100
                         },
@@ -128531,7 +128958,8 @@
                             "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                             "contacts": 100,
                             "enroll_days": 5,
-                            "binding": "daily_cap"
+                            "binding": "invitations",
+                            "expected_actions_per_day": 20
                           }
                         ],
                         "longest_path_days": 30,
@@ -128539,9 +128967,10 @@
                         "fits_before_end_at": null,
                         "binding": {
                           "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
-                          "limiter": "daily_cap"
+                          "limiter": "invitations"
                         },
-                        "summary": "100 Contacts finish in 27 working days; binding row daily_cap (an estimate at each Account's steady-state ceiling)"
+                        "summary": "100 Contacts finish in 27 working days; bound by invitations (an estimate at each Account's steady-state pace)",
+                        "warnings": []
                       },
                       "warnings": []
                     }
@@ -129605,7 +130034,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "The sending account (acc_...); null until one is assigned."
+                            "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                           },
                           "sequence_version": {
                             "type": "integer",
@@ -129643,6 +130072,7 @@
                                   "wait",
                                   "event",
                                   "queue",
+                                  "budget",
                                   "account_unavailable",
                                   "motion_paused",
                                   "halt",
@@ -130084,7 +130514,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -130122,6 +130552,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -130694,7 +131125,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -130732,6 +131163,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -131158,7 +131590,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -131196,6 +131628,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -131626,7 +132059,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -131664,6 +132097,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -132160,7 +132594,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -132198,6 +132632,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -132701,7 +133136,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -132739,6 +133174,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -133292,7 +133728,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "The sending account (acc_...); null until one is assigned."
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
                     },
                     "sequence_version": {
                       "type": "integer",
@@ -133330,6 +133766,7 @@
                             "wait",
                             "event",
                             "queue",
+                            "budget",
                             "account_unavailable",
                             "motion_paused",
                             "halt",
@@ -142795,7 +143232,7 @@
                               "inbox_sync",
                               "profile_snapshot"
                             ],
-                            "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note; connection_requests_no_note, one invitation sent without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
+                            "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
                           },
                           "used": {
                             "type": "integer",
@@ -142887,7 +143324,7 @@
                                     "inbox_sync",
                                     "profile_snapshot"
                                   ],
-                                  "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note; connection_requests_no_note, one invitation sent without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
+                                  "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
                                 },
                                 "used": {
                                   "type": "integer",
@@ -143000,6 +143437,20 @@
                                   ],
                                   "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                                 },
+                                "target": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                                },
+                                "effective_target": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "`target` with the account's warm-up and health applied, rounded down. Null where `target` is null."
+                                },
                                 "interface_ceiling": {
                                   "type": [
                                     "integer",
@@ -143040,7 +143491,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "An active pause on this row because the platform refused a recent request on it, or `null`. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
+                                  "description": "An active pause on this row because the platform refused a recent request on it, or `null`. Motion work on other rows keeps running. A Motion also waits longer than this pause after LinkedIn refuses invitations or views for going too fast: 6 hours, then 24, then 72, at most 7 days on each repeat, resetting after 7 clean days; `health` on the account shows it. A halt is not a ceiling: no limit you raise lifts it, and it clears itself when it expires. To lift one before it expires, send this row in `clear_halts` on `PATCH /v1/{account_id}/safety-policy`; that is recorded, and the pause returns if the platform refuses the account again.",
                                   "properties": {
                                     "reason": {
                                       "type": "string",
