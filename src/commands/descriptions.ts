@@ -12,8 +12,10 @@ export const DESCRIPTIONS = {
   account: "LinkedIn account connection management.",
   motion:
     "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. " +
-    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. " +
+    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate motion voice-clip`). " +
     "Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
+  motionVoiceClip:
+    "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Motion that uses it is started. Uploads need the Automate plan.",
   enrollment:
     "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",

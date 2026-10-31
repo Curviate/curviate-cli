@@ -12,6 +12,7 @@
  */
 import { defineCommand } from "citty";
 import { writeFile } from "node:fs/promises";
+import { basename } from "node:path";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -23,6 +24,7 @@ import { intFlag } from "../lib/int-flag.js";
 import { isStdinToken } from "../lib/stdin.js";
 import { compilerLines } from "../lib/sequence-report.js";
 import { sendInChunks } from "../lib/chunks.js";
+import { AttachError, readAttachment } from "../lib/attach.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import connectAndConverse from "../templates/connect-and-converse.json";
 import engageThenConnect from "../templates/engage-then-connect.json";
@@ -255,6 +257,36 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
       };
   renderSuccess(merged, outputOpts(f), process);
 };
+
+/** `voice-clip upload <file>`: the file's bytes as the raw body (Content-Length set), one clip back. */
+async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
+  const path = f.file ?? "";
+  if (path.trim() === "") usage("the audio file is missing. Pass its path: `curviate motion voice-clip upload intro.mp3`.");
+  const filename = basename(path);
+  let bytes: Buffer;
+  try {
+    bytes = await readAttachment(path);
+  } catch (err) {
+    if (err instanceof AttachError) usage(err.message);
+    throw err;
+  }
+  if (f.preview) {
+    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "motions.voiceClips.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
+  }
+  try {
+    renderSuccess(await c.motions.voiceClips.upload(bytes, { filename }), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runVoiceClipGet(c: Curviate, f: MotionFlags): Promise<void> {
+  try {
+    renderSuccess(await c.motions.voiceClips.get(f.id ?? ""), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
 
 /** `lint`: offline. A Motion file's Sequence (under `/sequence`) or a bare Sequence document. */
 export async function runLint(f: MotionFlags): Promise<void> {
@@ -586,6 +618,61 @@ const initCmd = defineCommand({
   },
 });
 
+const voiceClipUploadCmd = defineCommand({
+  meta: {
+    name: "upload",
+    description:
+      "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. " +
+      "The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Stores one converted clip for your Team. No Motion changes and nothing is sent to anyone.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "A retry stores a second clip (it counts toward the 24-hour cap); an unused clip is deleted 30 days after its upload.",
+      undo: "Not needed: a clip no Sequence uses is deleted after 30 days.",
+    },
+    output: ["The clip: `id`, `duration_ms`, `bytes`, `filename`, `created_at`. No download link."],
+    errors: {
+      VOICE_CLIP_INVALID: "the file is empty, is not audio, cannot be decoded, is under 1 second or is over 120 seconds; the message names the reason. A clip is never shortened.",
+      PAYLOAD_TOO_LARGE: "the file is over 20 MiB.",
+      RATE_LIMIT_TENANT: "100 uploads in the last 24 hours; Retry-After is the wait.",
+      TIER_REQUIRED: "Voice clips need the Automate plan.",
+      ...ROLE_ERRORS,
+    },
+    seeAlso: ["curviate motion voice-clip get", "curviate motion lint", "curviate motion create"],
+    examples: ["curviate motion voice-clip upload intro.mp3", "curviate motion voice-clip upload intro.m4a --preview"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    file: { type: "positional", required: true, description: "The audio file's path." },
+  },
+  run: online(runVoiceClipUpload),
+});
+
+const voiceClipGetCmd = defineCommand({
+  meta: {
+    name: "get",
+    description: "One Voice clip: duration, size, file name and upload time. No download link. Another Team's clip is RESOURCE_NOT_FOUND, like an unknown id.",
+    risk: "read",
+    examples: ["curviate motion voice-clip get vc_YOUR_CLIP_ID"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    id: { type: "positional", description: "Voice clip id (vc_...)." },
+  },
+  run: online(runVoiceClipGet),
+});
+
+const voiceClipCommand = defineCommand({
+  meta: { name: "voice-clip", description: DESCRIPTIONS.motionVoiceClip },
+  subCommands: { upload: voiceClipUploadCmd, get: voiceClipGetCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(voiceClipCommand, ["curviate", "motion", "voice-clip"]);
+  },
+});
+
 export const motionCommand = defineCommand({
   meta: { name: "motion", description: DESCRIPTIONS.motion },
   subCommands: {
@@ -603,6 +690,7 @@ export const motionCommand = defineCommand({
     remove: membershipCmd("remove"),
     lint: lintCmd,
     init: initCmd,
+    "voice-clip": voiceClipCommand,
   },
   async run() {
     const { showHelp } = await import("../lib/examples.js");

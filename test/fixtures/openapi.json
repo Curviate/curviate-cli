@@ -1503,6 +1503,90 @@
                     },
                     "do": {
                       "type": "string",
+                      "const": "voice.send"
+                    },
+                    "with": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "fallback"
+                      ],
+                      "properties": {
+                        "clip_id": {
+                          "type": "string",
+                          "pattern": "^vc_[0-9A-HJKMNP-TV-Z]{26}$",
+                          "description": "A Voice clip of this Team: the id from POST /v1/motions/voice-clips."
+                        },
+                        "fallback": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Required. Variable-free text sent instead when the audio cannot go: the clip cannot be read, or the platform states it was not sent and retries are spent."
+                        }
+                      }
+                    },
+                    "variants": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 5,
+                      "description": "A/B variants: exactly 2, split evenly and sticky per Enrollment. Exclusive with the clip_id in with. More than 2 (up to 5) is deprecated: accepted with warning W13 until 2027-01-19.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "clip_id"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^(?!end$)[a-z][a-z0-9_]{0,39}$",
+                            "description": "Step id, unique in the document. \"end\" is reserved."
+                          },
+                          "clip_id": {
+                            "type": "string",
+                            "pattern": "^vc_[0-9A-HJKMNP-TV-Z]{26}$",
+                            "description": "A Voice clip of this Team: the id from POST /v1/motions/voice-clips."
+                          }
+                        }
+                      }
+                    },
+                    "event": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_.]{0,63}$",
+                      "description": "Custom event sent once each time this step runs (not when skipped or failed), for example invite_sent."
+                    },
+                    "next": {
+                      "type": "string",
+                      "pattern": "^(end|[a-z][a-z0-9_]{0,39})$",
+                      "description": "A step id, or \"end\"."
+                    },
+                    "else": {
+                      "type": "string",
+                      "pattern": "^(end|[a-z][a-z0-9_]{0,39})$",
+                      "description": "Taken when the action cannot run or fails. Absent: same as success."
+                    },
+                    "note": {
+                      "type": "string",
+                      "maxLength": 500,
+                      "description": "Annotation shown in the builder graph. Never sent."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "do"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^(?!end$)[a-z][a-z0-9_]{0,39}$",
+                      "description": "Step id, unique in the document. \"end\" is reserved."
+                    },
+                    "do": {
+                      "type": "string",
                       "const": "post.react"
                     },
                     "with": {
@@ -41122,6 +41206,13 @@
                                   "null"
                                 ],
                                 "description": "The variant its last message or invitation Step sent. Null without variants."
+                              },
+                              "action": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The action of its last executed message or invitation Step, such as voice.send. Null before any."
                               }
                             },
                             "required": [
@@ -41131,7 +41222,8 @@
                               "enrollment_status",
                               "finish_reason",
                               "step_id",
-                              "variant_id"
+                              "variant_id",
+                              "action"
                             ]
                           }
                         },
@@ -41728,6 +41820,13 @@
                             "null"
                           ],
                           "description": "The variant its last message or invitation Step sent. Null without variants."
+                        },
+                        "action": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The action of its last executed message or invitation Step, such as voice.send. Null before any."
                         }
                       },
                       "required": [
@@ -41737,7 +41836,8 @@
                         "enrollment_status",
                         "finish_reason",
                         "step_id",
-                        "variant_id"
+                        "variant_id",
+                        "action"
                       ]
                     }
                   },
@@ -86170,7 +86270,7 @@
                           "properties": {
                             "sent": {
                               "type": "integer",
-                              "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                              "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                             },
                             "messaged": {
                               "type": "integer",
@@ -86757,7 +86857,7 @@
                             "properties": {
                               "sent": {
                                 "type": "integer",
-                                "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                                "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                               },
                               "messaged": {
                                 "type": "integer",
@@ -121208,6 +121308,589 @@
         "x-order": 44
       }
     },
+    "/v1/motions/voice-clips": {
+      "post": {
+        "operationId": "postV1MotionsVoiceClips",
+        "tags": [
+          "Motions"
+        ],
+        "summary": "Upload a voice clip",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The stored clip. The audio is converted once to a voice note format; the original is not kept.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "voice_clip"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Voice clip id (vc_...). Use it as clip_id in a voice note step."
+                    },
+                    "duration_ms": {
+                      "type": "integer",
+                      "description": "Exact length of the stored clip, in milliseconds."
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "description": "Size of the stored clip, in bytes."
+                    },
+                    "filename": {
+                      "type": "string",
+                      "description": "The file name you sent. Never a path."
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "When it was uploaded."
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "duration_ms",
+                    "bytes",
+                    "filename",
+                    "created_at"
+                  ]
+                },
+                "examples": {
+                  "clip": {
+                    "value": {
+                      "object": "voice_clip",
+                      "id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "duration_ms": 42010,
+                      "bytes": 168231,
+                      "filename": "intro.mp3",
+                      "created_at": "2026-10-31T09:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST: a filename that is missing, longer than 255 characters or a path, or a body that did not carry exactly its Content-Length (a truncated upload; nothing is kept). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "TIER_REQUIRED: the team's Tier does not include Motions (Automate). Not fixed by retrying. TIER_REQUIRED: the team's Tier does not include Motions (Motions are part of Automate). The error carries feature, required_tier and current_tier, plus upgrade_url for a team Owner. Not fixed by retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "tierRequired": {
+                    "summary": "The team's Tier does not include Motions",
+                    "value": {
+                      "code": "TIER_REQUIRED",
+                      "message": "Motions are part of Automate. Ask a team Owner to upgrade.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "feature": "motions",
+                      "required_tier": "automate",
+                      "current_tier": "build"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "411": {
+            "description": "INVALID_REQUEST: Content-Length is required; a chunked upload is not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: the body is over 20 MiB. It is refused before it is read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VOICE_CLIP_INVALID: the file is empty, is not audio or cannot be decoded, is under 1 second, or is over 120 seconds (a clip is never shortened). The message names the reason and the limit. Nothing is stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMIT_TENANT: the team uploaded 100 clips in the last 24 hours (Retry-After is the wait until a slot frees). PLATFORM_RATE_LIMIT: too many files are being converted right now (Retry-After: 5). Retry after the wait.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "x-badges": [
+          {
+            "name": "Automate",
+            "position": "after",
+            "color": "#A1A1AA"
+          }
+        ],
+        "x-curviate-tier": "automate",
+        "description": "Uploads one audio file (MP3, WAV, M4A, WebM or Ogg) as the raw request body and returns a clip id for a voice note step. Content-Length is required; the filename query names the file. The audio is converted once and the original is discarded. 1 to 120 seconds, up to 20 MiB, 100 uploads per team per 24 hours. A retry stores a second clip. A clip no Sequence uses is deleted 30 days after its upload. Needs Automate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "audio/mpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/wav": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/x-wav": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/x-m4a": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/webm": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "audio/ogg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "video/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            },
+            "video/webm": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "The audio file's bytes, exactly Content-Length of them."
+              }
+            }
+          }
+        },
+        "x-order": 40
+      }
+    },
+    "/v1/motions/voice-clips/{id}": {
+      "get": {
+        "operationId": "getV1MotionsVoiceClipsId",
+        "tags": [
+          "Motions"
+        ],
+        "summary": "Retrieve a voice clip",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Voice clip id (vc_...)."
+          },
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The clip. There is no download link in this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "voice_clip"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Voice clip id (vc_...). Use it as clip_id in a voice note step."
+                    },
+                    "duration_ms": {
+                      "type": "integer",
+                      "description": "Exact length of the stored clip, in milliseconds."
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "description": "Size of the stored clip, in bytes."
+                    },
+                    "filename": {
+                      "type": "string",
+                      "description": "The file name you sent. Never a path."
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "When it was uploaded."
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "duration_ms",
+                    "bytes",
+                    "filename",
+                    "created_at"
+                  ]
+                },
+                "examples": {
+                  "clip": {
+                    "value": {
+                      "object": "voice_clip",
+                      "id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "duration_ms": 42010,
+                      "bytes": 168231,
+                      "filename": "intro.mp3",
+                      "created_at": "2026-10-31T09:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not used below Automate: a team that lost Motions can still read its clips.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_NOT_FOUND: no such clip in this team. Another team's clip reads the same.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Returns the clip's id, duration, size, file name and upload time. There is no download link.",
+        "x-order": 41
+      }
+    },
     "/v1/motions": {
       "post": {
         "operationId": "postV1Motions",
@@ -128885,7 +129568,7 @@
                           },
                           "steps": {
                             "type": "array",
-                            "description": "Every step that sends text, rendered for this Contact.",
+                            "description": "Every step that sends text, rendered for this Contact. A voice.send step renders nothing: each variant names its clip and duration, and the step carries its fallback.",
                             "items": {
                               "type": "object",
                               "properties": {
@@ -128921,6 +129604,20 @@
                                       "used_fallback": {
                                         "type": "boolean",
                                         "description": "true when a variable had no value or the text was over the account's length limit."
+                                      },
+                                      "clip_id": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ],
+                                        "description": "voice.send only: this variant's Voice clip."
+                                      },
+                                      "clip_duration_ms": {
+                                        "type": [
+                                          "integer",
+                                          "null"
+                                        ],
+                                        "description": "voice.send only: the clip's length in milliseconds; null when no such clip exists."
                                       }
                                     },
                                     "required": [
@@ -128935,6 +129632,13 @@
                                 "would_skip": {
                                   "type": "string",
                                   "description": "A reason the step would be skipped that stored data settles (inmail_unavailable, missing_variable, text_too_long), else unknown."
+                                },
+                                "fallback": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "description": "voice.send only: the text sent when the audio cannot go; null when the response already carries 1 MiB of text."
                                 }
                               },
                               "required": [
@@ -130334,7 +131038,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Enrollments, newest first. Filters combine with AND. The counted unit is the Enrollment, one Contact on one account in one Motion: each Contact counts once per Account. done_step with outcome lists who did what at a Step: executed, skipped, failed (the Step's own record; a condition or wait counts as executed); accepted, not_accepted (on invite.send: its invitation was accepted, or withdrawn or never accepted before the wait for it timed out; on an until invite.accepted: its then or else exit); replied, no_reply (on message.send or inmail.send: a reply came after it, or none and the Enrollment left the following until message.replied by else or finished; on an until message.replied: its then or else exit); seen (on message.send or inmail.send: a read receipt arrived for it or the person replied after it, the same rule as the analytics seen rate). An outcome the Step's kind cannot have is a 400.",
+            "description": "Enrollments, newest first. Filters combine with AND. The counted unit is the Enrollment, one Contact on one account in one Motion: each Contact counts once per Account. done_step with outcome lists who did what at a Step: executed, skipped, failed (the Step's own record; a condition or wait counts as executed); accepted, not_accepted (on invite.send: its invitation was accepted, or withdrawn or never accepted before the wait for it timed out; on an until invite.accepted: its then or else exit); replied, no_reply (on message.send, voice.send or inmail.send: a reply came after it, or none and the Enrollment left the following until message.replied by else or finished; on an until message.replied: its then or else exit); seen (on message.send, voice.send or inmail.send: a read receipt arrived for it or the person replied after it, the same rule as the analytics seen rate). An outcome the Step's kind cannot have is a 400.",
             "content": {
               "application/json": {
                 "schema": {
@@ -135623,7 +136327,7 @@
                           "properties": {
                             "sent": {
                               "type": "integer",
-                              "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                              "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                             },
                             "messaged": {
                               "type": "integer",
@@ -136304,7 +137008,7 @@
                             "properties": {
                               "sent": {
                                 "type": "integer",
-                                "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                                "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                               },
                               "messaged": {
                                 "type": "integer",
@@ -136857,7 +137561,7 @@
                             "properties": {
                               "sent": {
                                 "type": "integer",
-                                "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                                "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                               },
                               "messaged": {
                                 "type": "integer",
@@ -137409,7 +138113,7 @@
                           "properties": {
                             "sent": {
                               "type": "integer",
-                              "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                              "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                             },
                             "messaged": {
                               "type": "integer",
@@ -139037,7 +139741,7 @@
                           "properties": {
                             "sent": {
                               "type": "integer",
-                              "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                              "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                             },
                             "messaged": {
                               "type": "integer",
@@ -139690,7 +140394,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "message.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
+                            "description": "message.send, voice.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
                             "properties": {
                               "replied": {
                                 "type": "integer",
@@ -139775,7 +140479,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "message.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
+                            "description": "message.send, voice.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
                             "properties": {
                               "seen": {
                                 "type": "integer",
@@ -140084,7 +140788,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "message.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
+                                  "description": "message.send, voice.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
                                   "properties": {
                                     "replied": {
                                       "type": "integer",
@@ -140169,7 +140873,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "message.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
+                                  "description": "message.send, voice.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
                                   "properties": {
                                     "seen": {
                                       "type": "integer",
@@ -140492,7 +141196,7 @@
                                 "properties": {
                                   "sent": {
                                     "type": "integer",
-                                    "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                                    "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                                   },
                                   "messaged": {
                                     "type": "integer",
@@ -141014,7 +141718,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "message.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
+                                  "description": "message.send, voice.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
                                   "properties": {
                                     "replied": {
                                       "type": "integer",
@@ -141099,7 +141803,7 @@
                                     "object",
                                     "null"
                                   ],
-                                  "description": "message.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
+                                  "description": "message.send, voice.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
                                   "properties": {
                                     "seen": {
                                       "type": "integer",
@@ -141408,7 +142112,7 @@
                                           "object",
                                           "null"
                                         ],
-                                        "description": "message.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
+                                        "description": "message.send, voice.send and inmail.send only, else null. Last touch: a reply counts for the message step it followed, before the next message. Over executions in the window with no reply before them, so far.",
                                         "properties": {
                                           "replied": {
                                             "type": "integer",
@@ -141493,7 +142197,7 @@
                                           "object",
                                           "null"
                                         ],
-                                        "description": "message.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
+                                        "description": "message.send, voice.send and inmail.send only, else null. Seen rate over this message step's executions in the window, so far: seen when a read receipt arrived for the message or the person replied after it (a reply proves it was read; not last touch). The rate is a floor: people can turn read receipts off. A receipt says the message was seen, never when; the same rule as GET /v1/enrollments outcome=seen.",
                                         "properties": {
                                           "seen": {
                                             "type": "integer",
@@ -141845,7 +142549,7 @@
                             "properties": {
                               "sent": {
                                 "type": "integer",
-                                "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                                "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                               },
                               "messaged": {
                                 "type": "integer",
@@ -142397,7 +143101,7 @@
                           "properties": {
                             "sent": {
                               "type": "integer",
-                              "description": "message.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
+                              "description": "message.send and voice.send steps executed in the window (messages, not people). InMail is counted apart, in inmails."
                             },
                             "messaged": {
                               "type": "integer",

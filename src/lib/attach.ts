@@ -9,7 +9,7 @@
  * v2 wire shape: every write with attachments is `application/json`;
  * there is NO multipart op on the served surface. Attachments travel as
  * base64-encoded objects (`{content, content_type, filename}`, sometimes with
- * `send_mode`/`metadata` for native voice/video bubbles). `toAttachmentPayload`
+ * `send_mode: "file"` to send audio as a download). `toAttachmentPayload`
  * is the shared Buffer->wire-object converter for every command that attaches
  * files (message/post/recruiter/sales-nav).
  */
@@ -58,6 +58,8 @@ export interface AttachmentPayload {
   content: string;
   content_type: string;
   filename: string;
+  /** `file`: send as a download, audio included. Absent: the API's default (audio is a voice note, anything else a file). */
+  send_mode?: "file";
 }
 
 /**
@@ -91,10 +93,16 @@ export function guessContentType(filePath: string): string {
  * Encode a loaded attachment into the v2 wire shape: base64 content plus a
  * best-effort content_type and the original filename.
  */
-export function toAttachmentPayload(filePath: string, buf: Buffer): AttachmentPayload {
+export function toAttachmentPayload(filePath: string, buf: Buffer, sendMode?: "file"): AttachmentPayload {
   return {
     content: buf.toString("base64"),
     content_type: guessContentType(filePath),
     filename: basename(filePath),
+    ...(sendMode ? { send_mode: sendMode } : {}),
   };
+}
+
+/** Whether the API would read this file as audio, so send it as a voice note unless `send_mode` says `file`. */
+export function isAudioFile(filePath: string): boolean {
+  return guessContentType(filePath).startsWith("audio/");
 }
