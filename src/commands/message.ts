@@ -44,7 +44,7 @@ import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { readAttachment, AttachError, toAttachmentPayload } from "../lib/attach.js";
+import { readAttachment, AttachError, toAttachmentPayload, isAudioFile } from "../lib/attach.js";
 import { writeBinaryOutput, BinaryOutputError } from "../lib/binary.js";
 import { readableId, readableObject } from "../lib/paginate.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
@@ -61,6 +61,7 @@ type MessageFlags = {
   subject?: string;
   output?: string;
   attach?: string | string[];
+  "as-file"?: boolean;
   "share-post"?: string;
   "share-job"?: string;
   account?: string;
@@ -208,6 +209,32 @@ function readSharedContent(
   return post !== undefined ? { type: "post", id: raw } : { type: "job_posting", id: resolveJobIdentifier(raw) };
 }
 
+/**
+ * `--attach` audio is a voice note (one audio file, alone, to one person, no
+ * text); `--as-file` sends every attachment as a download instead. The
+ * refusals the API would answer with a 400 and nothing sent are caught here
+ * first. Returns whether the send is a voice note, and the `send_mode` the
+ * attachments carry.
+ */
+function readVoiceNote(
+  flags: MessageFlags,
+  text: string,
+  attachPaths: string[],
+  out: OutputStreams,
+): { voiceNote: boolean; sendMode: "file" | undefined } {
+  const refuse = (msg: string): never => {
+    out.stderr.write(`error: ${msg}\n`);
+    process.exit(2);
+  };
+  const asFile = flags["as-file"] === true;
+  if (text.trim() === "" && attachPaths.length === 0) refuse("nothing to send: pass the message text, or --attach a file.");
+  if (asFile && attachPaths.length === 0) refuse("--as-file needs --attach: it sends the attached files as downloads.");
+  if (asFile || !attachPaths.some(isAudioFile)) return { voiceNote: false, sendMode: asFile ? "file" : undefined };
+  if (attachPaths.length > 1) refuse("a voice note is one audio file alone: pass a single --attach, or add --as-file to send the files as downloads.");
+  if (text.trim() !== "") refuse("a voice note carries no text: drop the text, or add --as-file to send the audio as a download with it.");
+  return { voiceNote: true, sendMode: undefined };
+}
+
 /** Normalize repeated --to into its non-blank values. */
 function normalizeToValues(to: string | string[] | undefined): string[] {
   return (Array.isArray(to) ? to : to === undefined ? [] : [to]).filter((v) => v !== "");
@@ -316,6 +343,7 @@ export async function runMessageNew(
   // Resolve stdin sentinel: "-" reads all of stdin.
   const text = await resolveTextOrStdin(rawText, out, _readStdin);
   const sharedContent = readSharedContent(flags, text, attachPaths, out);
+  const { voiceNote, sendMode } = readVoiceNote(flags, text, attachPaths, out);
 
   // Resolve each recipient to a provider ID.
   // URL/slug inputs call users.get; provider-ID-shaped inputs pass through directly.
@@ -338,7 +366,7 @@ export async function runMessageNew(
     if (providerId !== undefined && !attendeeIds.includes(providerId)) attendeeIds.push(providerId);
   }
 
-  const attachmentPayloads = attachBuffers.map((buf, i) => toAttachmentPayload(attachPaths[i]!, buf));
+  const attachmentPayloads = attachBuffers.map((buf, i) => toAttachmentPayload(attachPaths[i]!, buf, sendMode));
 
   if (flags.preview) {
     const preview = buildPreviewOutput({
@@ -346,8 +374,10 @@ export async function runMessageNew(
       args: { attendees_ids: attendeeIds },
       body: {
         attendees_ids: attendeeIds,
-        text,
+        ...(voiceNote ? {} : { text }),
         ...(subject !== undefined ? { subject } : {}),
+        ...(voiceNote ? { voice_note: true } : {}),
+        ...(sendMode ? { send_mode: sendMode } : {}),
         ...(sharedContent ? { shared_content: sharedContent } : {}),
       },
       account: accountId,
@@ -362,7 +392,8 @@ export async function runMessageNew(
 
   const body = {
     attendees_ids: attendeeIds,
-    text,
+    // A voice note carries no text: the key is left out, never sent empty.
+    ...(voiceNote ? {} : { text }),
     // Present only when the flag was given: an absent subject must leave the
     // key out, never send `subject: ""` (the server has no `.min(1)`).
     ...(subject !== undefined ? { subject } : {}),
@@ -399,6 +430,7 @@ export async function runMessageSend(
   // Resolve stdin sentinel: "-" reads all of stdin.
   const text = await resolveTextOrStdin(rawText, out, _readStdin);
   const sharedContent = readSharedContent(flags, text, attachPaths, out);
+  const { voiceNote, sendMode } = readVoiceNote(flags, text, attachPaths, out);
 
   // Load attachments before any preview or SDK call.
   let attachBuffers: Buffer[] = [];
@@ -416,7 +448,12 @@ export async function runMessageSend(
     const preview = buildPreviewOutput({
       method: "messaging.sendMessage",
       args: { chat_id: chatId },
-      body: { text, ...(sharedContent ? { shared_content: sharedContent } : {}) },
+      body: {
+        ...(voiceNote ? {} : { text }),
+        ...(sharedContent ? { shared_content: sharedContent } : {}),
+        ...(voiceNote ? { voice_note: true } : {}),
+        ...(sendMode ? { send_mode: sendMode } : {}),
+      },
       account: accountId,
       attachments: attachBuffers.map((buf, i) => ({
         name: attachPaths[i] ? attachPaths[i].split("/").pop() ?? attachPaths[i] : `attachment_${i}`,
@@ -429,9 +466,9 @@ export async function runMessageSend(
     return;
   }
 
-  const attachmentPayloads = attachBuffers.map((buf, i) => toAttachmentPayload(attachPaths[i]!, buf));
+  const attachmentPayloads = attachBuffers.map((buf, i) => toAttachmentPayload(attachPaths[i]!, buf, sendMode));
   const body = {
-    text,
+    ...(voiceNote ? {} : { text }),
     ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
     ...(sharedContent ? { shared_content: sharedContent } : {}),
   };
@@ -760,6 +797,13 @@ export async function runMessageInMailBalance(
 // Citty command definitions
 // ---------------------------------------------------------------------------
 
+const ATTACH_DESC =
+  "File to attach (repeatable). Not with --share-post or --share-job. One audio file (MP3, WAV, M4A, WebM, Ogg) alone, with no text, to one person, arrives as a voice note: no duration limit is stated here, and a size the platform refuses is PAYLOAD_TOO_LARGE. Audio to a group, in InMail or to a company page stays a file. --as-file keeps audio a file.";
+const AS_FILE = {
+  type: "boolean" as const,
+  description: "Send every --attach as a file download, audio included (send_mode file). Then the audio may carry text, and several files may go together.",
+};
+
 /** `--share-post` / `--share-job`: the shared_content of a send, on `message new` and `message send`. */
 const SHARE_ARGS = {
   "share-post": {
@@ -790,7 +834,7 @@ const messageNewCommand = defineCommand({
     examples: [
       "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
       "curviate core message new --to janesmith --to ACoAAAexample --subject \"Q4 intro\" \"Hi both, meet each other.\" --preview",
-      "curviate core message new --to janesmith --share-job 4012345678 \"Thought of you for this one.\"",
+      "curviate core message new --to janesmith --attach hello.m4a",
     ],
   },
   args: {
@@ -802,13 +846,14 @@ const messageNewCommand = defineCommand({
         "Recipient (repeatable): LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically. One --to starts a direct chat; two or more different people start a group chat. A person named twice counts once.",
       required: true,
     },
-    text: { type: "positional", stdinArg: true, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
+    text: { type: "positional", stdinArg: true, required: false, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe). Omit it only for a voice note: one --attach audio file alone." },
     subject: {
       type: "string",
       description:
         "Optional conversation name / subject line (at most 200 characters). The group's name when there are two or more people. Omit it for an unnamed chat; an empty value is a usage error.",
     },
-    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job. A voice note stays out of groups." },
+    attach: { type: "string", description: ATTACH_DESC },
+    "as-file": AS_FILE,
     ...SHARE_ARGS,
   },
   async run({ args }) {
@@ -1121,6 +1166,7 @@ const messageSendCommand = defineCommand({
     examples: [
       "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
       "curviate core message send 2-YTQ3ODU3Njgt --share-post 7380123456789012345 \"This is the post I meant.\" --preview",
+      "curviate core message send 2-YTQ3ODU3Njgt --attach hello.m4a",
     ],
   },
   args: {
@@ -1132,8 +1178,9 @@ const messageSendCommand = defineCommand({
         "Chat ID or LinkedIn messaging thread URL. A COMPANY_ chat id sends as the company page; any other " +
         "chat id sends as the connected member.",
     },
-    text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
-    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job." },
+    text: { type: "positional", stdinArg: true, required: false, description: "Message text. Pass - to read from stdin (e.g. via heredoc or pipe). Omit it only for a voice note: one --attach audio file alone." },
+    attach: { type: "string", description: ATTACH_DESC },
+    "as-file": AS_FILE,
     ...SHARE_ARGS,
   },
   async run({ args }) {
@@ -1282,7 +1329,8 @@ export const messageCommand = defineCommand({
       required: false,
     },
     text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin.", required: false },
-    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job." },
+    attach: { type: "string", description: ATTACH_DESC },
+    "as-file": AS_FILE,
     ...SHARE_ARGS,
   },
   subCommands: {

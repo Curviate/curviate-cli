@@ -10,6 +10,12 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is published; `check:sdk-pin` refuses a publish until the pin is a version). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the deployed staging document.
 
+### Voice notes
+
+- `curviate motion voice-clip upload <file>` uploads one audio file (MP3, WAV, M4A, WebM or Ogg; 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours) and prints the clip; its `id` (`vc_...`) is the `clip_id` of a `voice.send` step. `motion voice-clip get <id>` reads one back. `--preview` sends nothing. A refused upload is exit `2` (`VOICE_CLIP_INVALID` names the reason), `PAYLOAD_TOO_LARGE` over 20 MiB, `RATE_LIMIT_TENANT` (exit `6`) past the cap.
+- `motion lint`, `motion create` and `motion update` check a `voice.send` step with the SDK's validator (R13 a malformed `clip_id`, R19 no `fallback`, no text beside a clip).
+- `message new`, `message send` and the bare `message <chat_id>`: one `--attach` audio file alone, with no text, to one person arrives as a voice note (the text argument is optional then). `--as-file` sends every attachment as a download (`send_mode: "file"`), audio included, and then text may come with it. Audio with text, a second file or shared content is exit `2` with nothing sent; `--as-file` without `--attach` is exit `2`.
+
 ### Added
 
 - `message new --to` is repeatable: two or more different people start a group chat, `--subject` its name. A person named twice counts once (`--preview` shows the list sent). A voice note stays out of groups.

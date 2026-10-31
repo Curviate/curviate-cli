@@ -214,6 +214,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   "motion get --version": "motions.getSequenceVersion",
   "motion add":     "motions.addContacts",
   "motion remove":  "motions.removeContacts",
+  "motion voice-clip upload": "motions.voiceClips.upload",
+  "motion voice-clip get": "motions.voiceClips.get",
 
   // enrollments (11): `enrollment signal` is the CLI alias of `event` and sends to events.
   "enrollment list":     "enrollments.list",

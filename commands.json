@@ -1649,7 +1649,7 @@
       "path": [
         "motion"
       ],
-      "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline. Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
+      "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate motion voice-clip`). Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2346,6 +2346,110 @@
       "output": [
         "The Motion file on stdout, or in the --output file."
       ]
+    },
+    {
+      "path": [
+        "motion",
+        "voice-clip"
+      ],
+      "description": "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Motion that uses it is started. Uploads need the Automate plan.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "motion",
+        "voice-clip",
+        "upload"
+      ],
+      "description": "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "file",
+          "type": "positional",
+          "required": true,
+          "description": "The audio file's path."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion voice-clip upload intro.mp3",
+        "curviate motion voice-clip upload intro.m4a --preview"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Stores one converted clip for your Team. No Motion changes and nothing is sent to anyone.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "A retry stores a second clip (it counts toward the 24-hour cap); an unused clip is deleted 30 days after its upload.",
+        "undo": "Not needed: a clip no Sequence uses is deleted after 30 days."
+      },
+      "output": [
+        "The clip: `id`, `duration_ms`, `bytes`, `filename`, `created_at`. No download link."
+      ],
+      "errors": {
+        "VOICE_CLIP_INVALID": "the file is empty, is not audio, cannot be decoded, is under 1 second or is over 120 seconds; the message names the reason. A clip is never shortened.",
+        "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
+        "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
+        "TIER_REQUIRED": "Voice clips need the Automate plan.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate motion voice-clip get",
+        "curviate motion lint",
+        "curviate motion create"
+      ]
+    },
+    {
+      "path": [
+        "motion",
+        "voice-clip",
+        "get"
+      ],
+      "description": "One Voice clip: duration, size, file name and upload time. No download link. Another Team's clip is RESOURCE_NOT_FOUND, like an unknown id.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Voice clip id (vc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate motion voice-clip get vc_YOUR_CLIP_ID"
+      ],
+      "requires": [],
+      "risk": "read"
     },
     {
       "path": [
@@ -11863,7 +11967,12 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable). Not with --share-post or --share-job."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job. One audio file (MP3, WAV, M4A, WebM, Ogg) alone, with no text, to one person, arrives as a voice note: no duration limit is stated here, and a size the platform refuses is PAYLOAD_TOO_LARGE. Audio to a group, in InMail or to a company page stays a file. --as-file keeps audio a file."
+        },
+        {
+          "name": "as-file",
+          "type": "boolean",
+          "description": "Send every --attach as a file download, audio included (send_mode file). Then the audio may carry text, and several files may go together."
         },
         {
           "name": "share-post",
@@ -11932,7 +12041,8 @@
           "name": "text",
           "type": "positional",
           "stdinArg": true,
-          "description": "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)."
+          "required": false,
+          "description": "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe). Omit it only for a voice note: one --attach audio file alone."
         },
         {
           "name": "subject",
@@ -11942,7 +12052,12 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable). Not with --share-post or --share-job. A voice note stays out of groups."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job. One audio file (MP3, WAV, M4A, WebM, Ogg) alone, with no text, to one person, arrives as a voice note: no duration limit is stated here, and a size the platform refuses is PAYLOAD_TOO_LARGE. Audio to a group, in InMail or to a company page stays a file. --as-file keeps audio a file."
+        },
+        {
+          "name": "as-file",
+          "type": "boolean",
+          "description": "Send every --attach as a file download, audio included (send_mode file). Then the audio may carry text, and several files may go together."
         },
         {
           "name": "share-post",
@@ -11970,7 +12085,7 @@
       "examples": [
         "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
         "curviate core message new --to janesmith --to ACoAAAexample --subject \"Q4 intro\" \"Hi both, meet each other.\" --preview",
-        "curviate core message new --to janesmith --share-job 4012345678 \"Thought of you for this one.\""
+        "curviate core message new --to janesmith --attach hello.m4a"
       ],
       "requires": [],
       "risk": "write",
@@ -12010,12 +12125,18 @@
           "name": "text",
           "type": "positional",
           "stdinArg": true,
-          "description": "Message text. Pass - to read from stdin (e.g. via heredoc or pipe)."
+          "required": false,
+          "description": "Message text. Pass - to read from stdin (e.g. via heredoc or pipe). Omit it only for a voice note: one --attach audio file alone."
         },
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable). Not with --share-post or --share-job."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job. One audio file (MP3, WAV, M4A, WebM, Ogg) alone, with no text, to one person, arrives as a voice note: no duration limit is stated here, and a size the platform refuses is PAYLOAD_TOO_LARGE. Audio to a group, in InMail or to a company page stays a file. --as-file keeps audio a file."
+        },
+        {
+          "name": "as-file",
+          "type": "boolean",
+          "description": "Send every --attach as a file download, audio included (send_mode file). Then the audio may carry text, and several files may go together."
         },
         {
           "name": "share-post",
@@ -12042,7 +12163,8 @@
       ],
       "examples": [
         "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
-        "curviate core message send 2-YTQ3ODU3Njgt --share-post 7380123456789012345 \"This is the post I meant.\" --preview"
+        "curviate core message send 2-YTQ3ODU3Njgt --share-post 7380123456789012345 \"This is the post I meant.\" --preview",
+        "curviate core message send 2-YTQ3ODU3Njgt --attach hello.m4a"
       ],
       "requires": [],
       "risk": "write",

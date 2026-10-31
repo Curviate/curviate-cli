@@ -348,6 +348,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   CHAT_NOT_ONE_TO_ONE: 2,
   STEP_IN_FLIGHT: 7,
 
+  // Voice clips: the file is empty, not audio, undecodable or outside 1 to 120 seconds; it never succeeds as sent.
+  VOICE_CLIP_INVALID: 2,
+
   // Client-side: no response within --timeout. Transient, as a refused connection is.
   CLIENT_TIMEOUT: 7,
 };

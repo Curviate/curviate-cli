@@ -276,6 +276,20 @@ curviate core message send 2-YTQ3ODU3Njgt --share-job 4012345678 --account acc_1
 
 `--share-post` takes the post id from `curviate core post get` or a list (an activity id, URN or share URL also works); `--share-job` takes the numeric job id or a job URL. Both together, no text, or `--attach` is exit `2` with nothing sent. A company-page chat and Sales Navigator or Recruiter chats do not take shared content. Whether a post id renders in the message is unproven until a live send.
 
+### 9. Send a voice note
+
+One audio file (MP3, WAV, M4A, WebM or Ogg), alone, with no text, to one person arrives as a voice note. A direct message states no duration limit; a size the platform refuses is `PAYLOAD_TOO_LARGE`. Audio to a group, in InMail or to a company page stays a file.
+
+```bash
+curviate core message send 2-YTQ3ODU3Njgt --attach hello.m4a --account acc_1 --preview   # nothing sent
+curviate core message new --to janesmith --attach hello.m4a --account acc_1
+
+# Keep audio a file download instead (it may then carry text):
+curviate core message send 2-YTQ3ODU3Njgt "The recording." --attach hello.m4a --as-file --account acc_1
+```
+
+Audio with text, with a second file, or with `--share-post` / `--share-job` is exit `2` with nothing sent (add `--as-file` to send files as downloads). `--as-file` without `--attach` is exit `2`.
+
 ## Company
 
 Company commands (`curviate core company ...`) are Core-tier reads. `curviate core company <id>` accepts a public
@@ -351,6 +365,21 @@ motion.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a
 ```
 
 `curviate motion create` and `curviate motion update` check the same way before anything is sent. `curviate motion get mot_1 --json` prints a file `curviate motion update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
+
+### Voice notes in a Sequence
+
+A `voice.send` step plays an uploaded clip instead of text. Upload the file once, then put its id in the Sequence. Nothing reaches LinkedIn until you start the Motion.
+
+```bash
+curviate motion voice-clip upload intro.mp3 --json      # {"id":"vc_...","duration_ms":42010,...}: 1 to 120 s, up to 20 MiB, 100 uploads per Team per 24 hours
+curviate motion voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
+```
+
+```json
+{ "id": "voice", "do": "voice.send", "with": { "clip_id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", "fallback": "Hi, thanks for connecting." }, "next": "end" }
+```
+
+`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate motion lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Motion is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
 
 ### 2. Find and fix Enrollments
 

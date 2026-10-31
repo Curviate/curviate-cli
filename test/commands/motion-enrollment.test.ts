@@ -76,3 +76,33 @@ describe("motion create and update: settings.priority, and the retired keys the 
     expect([refused.status, refused.sent]).toEqual([2, []]);
   });
 });
+
+describe("motion voice-clip", () => {
+  const clip = { object: "voice_clip", id: "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", duration_ms: 42010, bytes: 3, filename: "intro.mp3", created_at: "2026-10-31T09:30:00.000Z" };
+  const audio = () => {
+    const p = join(mkdtempSync(join(tmpdir(), "clip-")), "intro.mp3");
+    writeFileSync(p, Buffer.from([1, 2, 3]));
+    return p;
+  };
+
+  it("upload sends the file's bytes raw with its name and prints the clip; get reads one back", async () => {
+    const up = await wire(["motion", "voice-clip", "upload", audio()], () => ({ status: 201, body: clip }));
+    expect(up.status, up.stderr).toBe(0);
+    expect(up.sent.map((s) => [s.method, s.path, s.query, s.bytes, s.headers.get("content-type")])).toEqual([["POST", "/v1/motions/voice-clips", { filename: "intro.mp3" }, [1, 2, 3], "audio/mpeg"]]);
+    expect(JSON.parse(up.stdout).id).toBe(clip.id);
+    const get = await wire(["motion", "voice-clip", "get", clip.id], () => ({ body: clip }));
+    expect([get.status, lines(get.sent).map((l) => l.call)]).toEqual([0, [`GET /v1/motions/voice-clips/${clip.id}`]]);
+  });
+
+  it("--preview and a missing file send nothing; the API's refusal exits 2 and names the reason", async () => {
+    const preview = await wire(["motion", "voice-clip", "upload", audio(), "--preview"]);
+    expect([preview.status, preview.sent, JSON.parse(preview.stdout).attachments]).toEqual([0, [], ["intro.mp3 (3 bytes)"]]);
+    const missing = await wire(["motion", "voice-clip", "upload", "/nope/x.mp3"]);
+    expect([missing.status, missing.sent]).toEqual([2, []]);
+    const refused = await wire(["motion", "voice-clip", "upload", audio()], () => ({
+      status: 422,
+      body: { code: "VOICE_CLIP_INVALID", message: "The clip is 121.0 s; the limit is 120 s.", user_fixable: true, retry_likely_to_succeed: false },
+    }));
+    expect([refused.status, refused.stderr + refused.stdout]).toEqual([2, expect.stringContaining("the limit is 120 s")]);
+  });
+});
