@@ -58,6 +58,15 @@ async function paged(f: UniboxFlags, params: Row, fetch: (p: Row) => Promise<unk
   if (page["cursor"]) print(`next page: --cursor ${String(page["cursor"])}`);
 }
 
+/** Who a chat is with: its counterpart, or a group's title, else its other members. */
+function chatWith(i: Row): unknown {
+  const g = i["group"] as Row | null | undefined;
+  if (!g) return (i["counterpart"] as Row | null)?.["name"];
+  if (g["title"]) return g["title"];
+  const members = (g["members"] as Row[] | undefined) ?? [];
+  return g["members_known"] && members.length ? members.map((m) => m["name"] ?? "Name pending").join(", ") : "Group chat";
+}
+
 async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
   const q: Row = {};
   if (f.accounts !== undefined) q["account_ids"] = listFlag("accounts", f.accounts);
@@ -75,7 +84,7 @@ async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
       const unread = (i: Row) => (i["unread"] ? (i["marked_unread"] ? "marked" : "yes") : "");
       const motion = (i: Row) => (i["motion_context"] as Row | null)?.["motion_name"];
       print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "MOTION", "TAGS"],
-        page.items.map((i) => [i["account_id"], i["chat_id"], (i["counterpart"] as Row | null)?.["name"], unread(i), i["last_activity_at"], i["last_message_from"], motion(i), (i["tags"] as string[] | undefined)?.join(", ")])));
+        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], motion(i), (i["tags"] as string[] | undefined)?.join(", ")])));
       if (typeof page["total"] === "number") print(`total: ${page["total"]} chats match`);
     });
   } catch (err) {

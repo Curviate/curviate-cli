@@ -14910,7 +14910,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 8000,
-                    "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied."
+                    "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied. Not with a voice note."
                   },
                   "quote_id": {
                     "type": "string",
@@ -14930,12 +14930,20 @@
                         "content_type": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "Attachment MIME type (e.g. image/png, application/pdf)."
+                          "description": "Attachment MIME type (e.g. image/png, application/pdf, audio/mpeg)."
                         },
                         "filename": {
                           "type": "string",
                           "minLength": 1,
                           "description": "File name for the attachment."
+                        },
+                        "send_mode": {
+                          "type": "string",
+                          "enum": [
+                            "native",
+                            "file"
+                          ],
+                          "description": "native sends a voice note: the attachment must be audio and the only content of the message, with no text. file sends a download and may carry text. Default: native for an audio content_type, file for everything else."
                         }
                       },
                       "required": [
@@ -14945,7 +14953,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
+                    "description": "Optional attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third). One audio attachment alone is a voice note."
                   }
                 },
                 "additionalProperties": false
@@ -23691,7 +23699,7 @@
             }
           },
           "400": {
-            "description": "Invalid request: missing attendees_ids or text, an unknown option, or a rejected api/specifics field. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "Invalid request: missing or empty attendees_ids, missing text, an unknown option, a rejected api/specifics field, a voice note that is not one readable audio attachment alone to one person, or shared_content without text, with an attachment, or with a malformed id. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -23793,7 +23801,7 @@
             }
           },
           "413": {
-            "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help.",
+            "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help. A voice note converts to about 4 KB per second before this check, so a shorter recording fits.",
             "content": {
               "application/json": {
                 "schema": {
@@ -23939,7 +23947,7 @@
             }
           }
         },
-        "description": "Starts a chat with members. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. A COMPANY_ id cannot start one. Marks the chat read.",
+        "description": "Starts a chat with members: one attendee starts a direct chat, two or more start a group chat, named by `subject`. An audio attachment alone, to one member, arrives as a voice note. shared_content shows a post or job natively, with the text. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. A COMPANY_ id cannot start one. Marks the chat read.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23953,19 +23961,19 @@
                       "type": "string",
                       "minLength": 1
                     },
-                    "description": "LinkedIn member provider IDs for the chat recipients (>= 1, e.g. ACo...)."
+                    "description": "LinkedIn member provider IDs for the chat recipients (e.g. ACo...). One starts a direct chat, two or more start a group chat."
                   },
                   "text": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 8000,
-                    "description": "Opening message text (1-8000 chars)."
+                    "description": "Opening message text (1-8000 chars). Omit it only for a voice note, one audio attachment alone."
                   },
                   "subject": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200,
-                    "description": "Optional conversation name / subject line (<= 200 chars)."
+                    "description": "Optional conversation name / subject line (<= 200 chars). The group's name when there are two or more attendees."
                   },
                   "attachments": {
                     "type": "array",
@@ -23980,12 +23988,20 @@
                         "content_type": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "Attachment MIME type (e.g. image/png, application/pdf)."
+                          "description": "Attachment MIME type (e.g. image/png, application/pdf, audio/mpeg)."
                         },
                         "filename": {
                           "type": "string",
                           "minLength": 1,
                           "description": "File name for the attachment."
+                        },
+                        "send_mode": {
+                          "type": "string",
+                          "enum": [
+                            "native",
+                            "file"
+                          ],
+                          "description": "native sends a voice note: the attachment must be audio and the only content of the message, with no text. file sends a download and may carry text. Default: native for an audio content_type, file for everything else."
                         }
                       },
                       "required": [
@@ -23995,7 +24011,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
+                    "description": "Optional attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third). One audio attachment alone is a voice note."
                   },
                   "topic": {
                     "type": "string",
@@ -24019,11 +24035,35 @@
                   "inmail": {
                     "type": "boolean",
                     "description": "When true, starts the conversation as an InMail instead of a standard message."
+                  },
+                  "shared_content": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "post",
+                          "job_posting"
+                        ],
+                        "description": "post or job_posting."
+                      },
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000,
+                        "description": "A post: its id from get_post or a list response (a bare activity id, a URN or a share URL also work). A job_posting: its numeric job id."
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A LinkedIn post or job posting shown natively in the message, sent with text. Not with attachments. Classic messages only."
                   }
                 },
                 "required": [
-                  "attendees_ids",
-                  "text"
+                  "attendees_ids"
                 ],
                 "additionalProperties": false
               },
@@ -24045,6 +24085,17 @@
                     ],
                     "text": "Following up on our earlier conversation.",
                     "subject": "Follow-up"
+                  }
+                },
+                "group": {
+                  "summary": "Start a group chat: two or more recipients, subject as the group name",
+                  "value": {
+                    "attendees_ids": [
+                      "ACoAAxxxxxxxxxxxxxxxxxxxx",
+                      "ACoAAyyyyyyyyyyyyyyyyyyyy"
+                    ],
+                    "text": "Welcome to the group.",
+                    "subject": "Launch team"
                   }
                 },
                 "withTopic": {
@@ -24069,6 +24120,34 @@
                         "content": "aGVsbG8gd29ybGQ=",
                         "content_type": "text/plain",
                         "filename": "note.txt"
+                      }
+                    ]
+                  }
+                },
+                "sharedJob": {
+                  "summary": "Start a chat that shares a job posting",
+                  "value": {
+                    "attendees_ids": [
+                      "ACoAAxxxxxxxxxxxxxxxxxxxx"
+                    ],
+                    "text": "This role looks like a fit for you.",
+                    "shared_content": {
+                      "type": "job_posting",
+                      "id": "4012345678"
+                    }
+                  }
+                },
+                "voiceNote": {
+                  "summary": "Start a chat with a voice note: one audio attachment and no text",
+                  "value": {
+                    "attendees_ids": [
+                      "ACoAAxxxxxxxxxxxxxxxxxxxx"
+                    ],
+                    "attachments": [
+                      {
+                        "content": "SUQzBAAAAAAAI1RTU0UAAAAPAAAD",
+                        "content_type": "audio/mpeg",
+                        "filename": "note.mp3"
                       }
                     ]
                   }
@@ -25916,7 +25995,7 @@
             }
           },
           "400": {
-            "description": "Invalid request: at least one of text or attachments must be supplied. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "Invalid request: at least one of text or attachments must be supplied, a voice note that is not one readable audio attachment alone in a 1:1 chat, or shared_content without text, with an attachment, or with a malformed id. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26009,7 +26088,7 @@
             }
           },
           "413": {
-            "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help.",
+            "description": "Payload too large. Three triggers, smallest first: the platform's own ceiling on total request size, which rejects bodies from roughly 1 MB and is the one most callers hit; then the caps enforced here, 5 MiB per attachment and 9 MiB for the whole request body. Base64 inflates a file by about 33 percent, so a 5 MiB file costs about 6.7 MiB of the body budget. Send fewer or smaller attachments; retrying the same request unchanged will not help. A voice note converts to about 4 KB per second before this check, so a shorter recording fits.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26155,7 +26234,7 @@
             }
           }
         },
-        "description": "Sends text, attachments or both. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. COMPANY_ chat ids send as the page. Marks the chat read.",
+        "description": "Sends text, attachments or both. An audio attachment alone, in a 1:1 chat, arrives as a voice note: Curviate converts it and does not store it. Set send_mode to file to send audio as a download. shared_content shows a post or job natively, with the text. This call keeps nothing and logs nothing. Once sent it is a message in the account's inbox, so reading that conversation back through Curviate stores its body in your tenant's inbox records, with no expiry. COMPANY_ chat ids send as the page. Marks the chat read.",
         "requestBody": {
           "required": true,
           "content": {
@@ -26167,7 +26246,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 8000,
-                    "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied."
+                    "description": "Message text (1-8000 chars). Optional when at least one attachment is supplied. Not with a voice note."
                   },
                   "quote_id": {
                     "type": "string",
@@ -26187,12 +26266,20 @@
                         "content_type": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "Attachment MIME type (e.g. image/png, application/pdf)."
+                          "description": "Attachment MIME type (e.g. image/png, application/pdf, audio/mpeg)."
                         },
                         "filename": {
                           "type": "string",
                           "minLength": 1,
                           "description": "File name for the attachment."
+                        },
+                        "send_mode": {
+                          "type": "string",
+                          "enum": [
+                            "native",
+                            "file"
+                          ],
+                          "description": "native sends a voice note: the attachment must be audio and the only content of the message, with no text. file sends a download and may carry text. Default: native for an audio content_type, file for everything else."
                         }
                       },
                       "required": [
@@ -26202,7 +26289,32 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Optional file attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third)."
+                    "description": "Optional attachments, base64-encoded: at most 5 MiB per file and 9 MiB for the whole request body (base64 adds about a third). One audio attachment alone is a voice note."
+                  },
+                  "shared_content": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "post",
+                          "job_posting"
+                        ],
+                        "description": "post or job_posting."
+                      },
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000,
+                        "description": "A post: its id from get_post or a list response (a bare activity id, a URN or a share URL also work). A job_posting: its numeric job id."
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A LinkedIn post or job posting shown natively in the message, sent with text. Not with attachments. Classic messages only."
                   }
                 },
                 "additionalProperties": false
@@ -26226,9 +26338,45 @@
                   "value": {
                     "attachments": [
                       {
-                        "content": "aGVsbG8=",
-                        "content_type": "audio/mp4",
-                        "filename": "clip.m4a"
+                        "content": "aGVsbG8gd29ybGQ=",
+                        "content_type": "text/plain",
+                        "filename": "note.txt"
+                      }
+                    ]
+                  }
+                },
+                "sharedPost": {
+                  "summary": "Send a message that shares a post",
+                  "value": {
+                    "text": "Thought of you when I read this.",
+                    "shared_content": {
+                      "type": "post",
+                      "id": "7380123456789012345"
+                    }
+                  }
+                },
+                "voiceNote": {
+                  "summary": "Send a voice note: one audio attachment and no text",
+                  "value": {
+                    "attachments": [
+                      {
+                        "content": "SUQzBAAAAAAAI1RTU0UAAAAPAAAD",
+                        "content_type": "audio/mpeg",
+                        "filename": "note.mp3"
+                      }
+                    ]
+                  }
+                },
+                "audioAsFile": {
+                  "summary": "Send audio as a download, with text",
+                  "value": {
+                    "text": "The recording from today.",
+                    "attachments": [
+                      {
+                        "content": "SUQzBAAAAAAAI1RTU0UAAAAPAAAD",
+                        "content_type": "audio/mpeg",
+                        "filename": "call.mp3",
+                        "send_mode": "file"
                       }
                     ]
                   }
@@ -40751,6 +40899,98 @@
                               }
                             }
                           },
+                          "group": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "description": "A group chat as this account sees it. Null for a one-to-one chat. The account's own person is never among the members.",
+                            "properties": {
+                              "title": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "The group's own title. Null when it has none: name it from its members."
+                              },
+                              "members": {
+                                "type": "array",
+                                "description": "The other members, as far as LinkedIn has listed them: the count is what the list holds. Empty while members_known is false.",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Their name. Null while LinkedIn has not named them."
+                                    },
+                                    "first_name": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Their first name."
+                                    },
+                                    "picture_url": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Their profile picture."
+                                    },
+                                    "profile_url": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Their profile."
+                                    },
+                                    "headline": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "description": "Their headline."
+                                    },
+                                    "do_not_contact": {
+                                      "type": [
+                                        "boolean",
+                                        "null"
+                                      ],
+                                      "description": "true when they are on your Team's do-not-contact list. Null when nothing names them yet, so nothing was checked. A reply into the group is still allowed, and reaches everyone in it."
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "first_name",
+                                    "picture_url",
+                                    "profile_url",
+                                    "headline",
+                                    "do_not_contact"
+                                  ]
+                                }
+                              },
+                              "members_known": {
+                                "type": "boolean",
+                                "description": "false until a read has listed the group's members. Its next sync lists them."
+                              },
+                              "preview_sender": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Who wrote preview, when someone other than this account did and Curviate knows who."
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "members",
+                              "members_known",
+                              "preview_sender"
+                            ]
+                          },
                           "contact_id": {
                             "type": [
                               "string",
@@ -40903,6 +41143,7 @@
                           "type",
                           "is_group",
                           "counterpart",
+                          "group",
                           "contact_id",
                           "tags",
                           "unread",
@@ -40976,6 +41217,7 @@
                             "picture_url": null,
                             "profile_url": "https://www.linkedin.com/in/ada/"
                           },
+                          "group": null,
                           "contact_id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
                           "tags": [
                             "Interested"
@@ -41263,6 +41505,98 @@
                         }
                       }
                     },
+                    "group": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "A group chat as this account sees it. Null for a one-to-one chat. The account's own person is never among the members.",
+                      "properties": {
+                        "title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The group's own title. Null when it has none: name it from its members."
+                        },
+                        "members": {
+                          "type": "array",
+                          "description": "The other members, as far as LinkedIn has listed them: the count is what the list holds. Empty while members_known is false.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Their name. Null while LinkedIn has not named them."
+                              },
+                              "first_name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Their first name."
+                              },
+                              "picture_url": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Their profile picture."
+                              },
+                              "profile_url": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Their profile."
+                              },
+                              "headline": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Their headline."
+                              },
+                              "do_not_contact": {
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ],
+                                "description": "true when they are on your Team's do-not-contact list. Null when nothing names them yet, so nothing was checked. A reply into the group is still allowed, and reaches everyone in it."
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "first_name",
+                              "picture_url",
+                              "profile_url",
+                              "headline",
+                              "do_not_contact"
+                            ]
+                          }
+                        },
+                        "members_known": {
+                          "type": "boolean",
+                          "description": "false until a read has listed the group's members. Its next sync lists them."
+                        },
+                        "preview_sender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Who wrote preview, when someone other than this account did and Curviate knows who."
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "members",
+                        "members_known",
+                        "preview_sender"
+                      ]
+                    },
                     "contact_id": {
                       "type": [
                         "string",
@@ -41415,6 +41749,7 @@
                     "type",
                     "is_group",
                     "counterpart",
+                    "group",
                     "contact_id",
                     "tags",
                     "unread",
@@ -41442,6 +41777,7 @@
                         "picture_url": null,
                         "profile_url": "https://www.linkedin.com/in/ada/"
                       },
+                      "group": null,
                       "contact_id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
                       "tags": [
                         "Interested"
@@ -120975,6 +121311,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -121790,18 +122127,18 @@
                             "sun"
                           ]
                         },
-                        "description": "Days actions may run on. Default mon to fri."
+                        "description": "Days actions may run on. Default: the days of the Team's Active hours (mon to fri unless the Team set others), taken when the Motion is created and stored on it."
                       },
                       "hours": {
                         "type": "object",
                         "properties": {
                           "start": {
                             "type": "string",
-                            "description": "Default 09:00."
+                            "description": "Default: the start of the Team's Active hours (07:00 unless the Team set another), taken at creation."
                           },
                           "end": {
                             "type": "string",
-                            "description": "Default 18:00."
+                            "description": "Default: the end of the Team's Active hours (22:00 unless the Team set another), taken at creation."
                           }
                         },
                         "required": [
@@ -122279,6 +122616,7 @@
                           },
                           "schedule": {
                             "type": "object",
+                            "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                             "properties": {
                               "days": {
                                 "type": "array",
@@ -122894,6 +123232,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -123636,6 +123975,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -124461,18 +124801,18 @@
                             "sun"
                           ]
                         },
-                        "description": "Days actions may run on. Default mon to fri."
+                        "description": "Days actions may run on. Default: the days of the Team's Active hours (mon to fri unless the Team set others), taken when the Motion is created and stored on it."
                       },
                       "hours": {
                         "type": "object",
                         "properties": {
                           "start": {
                             "type": "string",
-                            "description": "Default 09:00."
+                            "description": "Default: the start of the Team's Active hours (07:00 unless the Team set another), taken at creation."
                           },
                           "end": {
                             "type": "string",
-                            "description": "Default 18:00."
+                            "description": "Default: the end of the Team's Active hours (22:00 unless the Team set another), taken at creation."
                           }
                         },
                         "required": [
@@ -124967,6 +125307,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -125784,6 +126125,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -126568,6 +126910,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -127385,6 +127728,7 @@
                     },
                     "schedule": {
                       "type": "object",
+                      "description": "Days and hours default, at creation, to the Team's Active hours (Monday to Friday, 07:00 to 22:00 until the Team sets its own) and are then stored on the Motion; changing the Team's hours later does not move it.",
                       "properties": {
                         "days": {
                           "type": "array",
@@ -138244,6 +138588,34 @@
             "description": "Only Enrollments pinned to this Sequence version count; step rows follow its document order. Default: every version."
           },
           {
+            "name": "variant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Only Enrollments given this variant, at the step that has it. Every figure then counts only those Enrollments, the steps before that step included. See window.cohort_after."
+          },
+          {
+            "name": "started_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "First day an Enrollment started on, YYYY-MM-DD, read in timezone. Every figure then counts only those Enrollments, whenever their activity happened. Queued Enrollments have not started and never count. See window.cohort_after."
+          },
+          {
+            "name": "started_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Last day an Enrollment started on, YYYY-MM-DD, inclusive, read in timezone. Every figure then counts only those Enrollments, whenever their activity happened. Queued Enrollments have not started and never count. See window.cohort_after."
+          },
+          {
             "name": "origin",
             "in": "query",
             "required": false,
@@ -138387,13 +138759,37 @@
                             ]
                           },
                           "description": "The origins counted (direct is unibox and api); null for every origin."
+                        },
+                        "variant_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The variant_id filter; null when not used."
+                        },
+                        "started_from": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The started_from filter; null when not used."
+                        },
+                        "started_to": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The started_to filter; null when not used."
                         }
                       },
                       "required": [
                         "account_id",
                         "account_ids",
                         "motion_ids",
-                        "origin"
+                        "origin",
+                        "variant_id",
+                        "started_from",
+                        "started_to"
                       ]
                     },
                     "window": {
@@ -138438,6 +138834,13 @@
                             "null"
                           ],
                           "description": "YYYY-MM-DD, the same day as counts_only_through: paths covers the days after it only, so past it paths does not add up to totals. null when paths covers the whole window."
+                        },
+                        "cohort_after": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "YYYY-MM-DD, set when variant_id or started_from or started_to is used and the window reaches daily counts: only Enrollments started after this day count, because older ones have no per-Enrollment detail left. null otherwise. Such a read takes nothing from daily counts, so counts_only_through and paths_through are null."
                         }
                       },
                       "required": [
@@ -138447,7 +138850,8 @@
                         "days",
                         "bucket",
                         "counts_only_through",
-                        "paths_through"
+                        "paths_through",
+                        "cohort_after"
                       ]
                     },
                     "generated_at": {
@@ -138997,6 +139401,27 @@
                         "replies",
                         "engagement",
                         "enrollment_reasons"
+                      ]
+                    },
+                    "accept_time": {
+                      "type": "object",
+                      "description": "How long acceptance took.",
+                      "properties": {
+                        "median_seconds": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Median seconds from an invitation's send to when its acceptance was detected, about 2 hours after it happens at most. null with no acceptance."
+                        },
+                        "accepted": {
+                          "type": "integer",
+                          "description": "Acceptances the median is over: of the invitations sent in the window, read in full detail only (past counts_only_through nothing counts here)."
+                        }
+                      },
+                      "required": [
+                        "median_seconds",
+                        "accepted"
                       ]
                     },
                     "daily": {
@@ -141197,12 +141622,34 @@
                                 "variants"
                               ]
                             }
+                          },
+                          "accept_time": {
+                            "type": "object",
+                            "description": "How long acceptance took.",
+                            "properties": {
+                              "median_seconds": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "description": "Median seconds from an invitation's send to when its acceptance was detected, about 2 hours after it happens at most. null with no acceptance."
+                              },
+                              "accepted": {
+                                "type": "integer",
+                                "description": "Acceptances the median is over: of the invitations sent in the window, read in full detail only (past counts_only_through nothing counts here)."
+                              }
+                            },
+                            "required": [
+                              "median_seconds",
+                              "accepted"
+                            ]
                           }
                         },
                         "required": [
                           "path",
                           "totals",
-                          "steps"
+                          "steps",
+                          "accept_time"
                         ]
                       }
                     },
@@ -142405,7 +142852,10 @@
                         "account_id": null,
                         "account_ids": [],
                         "motion_ids": [],
-                        "origin": null
+                        "origin": null,
+                        "variant_id": null,
+                        "started_from": null,
+                        "started_to": null
                       },
                       "window": {
                         "from": "2026-10-02",
@@ -142414,7 +142864,8 @@
                         "days": 30,
                         "bucket": "day",
                         "counts_only_through": null,
-                        "paths_through": null
+                        "paths_through": null,
+                        "cohort_after": null
                       },
                       "generated_at": "2026-10-31T12:00:00.000Z",
                       "totals": {
@@ -142488,6 +142939,10 @@
                           },
                           "failed": {}
                         }
+                      },
+                      "accept_time": {
+                        "median_seconds": 151200,
+                        "accepted": 9
                       },
                       "daily": [
                         {
@@ -142625,7 +143080,11 @@
                               "failed": {}
                             }
                           },
-                          "steps": []
+                          "steps": [],
+                          "accept_time": {
+                            "median_seconds": null,
+                            "accepted": 0
+                          }
                         },
                         {
                           "path": "not_connected",
@@ -142701,7 +143160,11 @@
                               "failed": {}
                             }
                           },
-                          "steps": []
+                          "steps": [],
+                          "accept_time": {
+                            "median_seconds": 151200,
+                            "accepted": 9
+                          }
                         },
                         {
                           "path": "unknown",
@@ -142777,7 +143240,11 @@
                               "failed": {}
                             }
                           },
-                          "steps": []
+                          "steps": [],
+                          "accept_time": {
+                            "median_seconds": null,
+                            "accepted": 0
+                          }
                         }
                       ],
                       "accounts": [

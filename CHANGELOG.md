@@ -12,6 +12,9 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 ### Added
 
+- `message new --to` is repeatable: two or more different people start a group chat, `--subject` its name. A person named twice counts once (`--preview` shows the list sent). A voice note stays out of groups.
+- `message new` and `message send` (and the bare `message <chat_id>`) take `--share-post <id>` or `--share-job <id>`: a post or job posting shown natively beside the text. Text is required; both flags together, no text or `--attach` is exit `2` with nothing sent. A job URL reduces to its numeric id. Company-page, Sales Navigator and Recruiter chats do not take it. Whether a post id renders in the message is unproven until a live send.
+- `unibox list` names a group chat in WITH: its title, else its other members (`group` on the Unibox chat; `--json` carries it whole).
 - `curviate account safety get|update <account>`: read and change one Account's limits and Active hours. `curviate account team-access on|off <account>`: share an Account with its Team or keep it to its person.
 
 ### Account orchestration
