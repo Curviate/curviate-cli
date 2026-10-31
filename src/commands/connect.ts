@@ -22,6 +22,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { nearestSubcommand } from "../lib/bare-form-guard.js";
@@ -374,6 +375,7 @@ const connectSentCommand = defineCommand({
       "`created_at` is the platform's own ISO-8601 timestamp (not an approximation). " +
       "No total count is available; use `curviate core connect sent --all` and count client-side. " +
       "A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+    risk: "read",
     examples: [
       "curviate core connect sent",
       "curviate core connect sent --all",
@@ -407,6 +409,7 @@ const connectReceivedCommand = defineCommand({
       "The `user.*` fields (`public_identifier`, `display_name`, `first_name`, `last_name`) identify who sent the request. " +
       "Use the `id` field with `curviate core connect accept` or `curviate core connect decline`. " +
       "A very recently received invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+    risk: "read",
     examples: [
       "curviate core connect received",
       "curviate core connect received --json",
@@ -436,6 +439,15 @@ const connectAcceptCommand = defineCommand({
   meta: {
     name: "accept",
     description: "Accept a received invitation.",
+    risk: "write",
+    rules: {
+      changes: "Accepts a received invitation: you and the sender become connections.",
+      visible_to: "The sender.",
+      budget_rows: ["invite_responses"],
+      retry: "A handled invitation is gone from `curviate core connect received`, so a retry has nothing to act on.",
+      undo: "Cannot be undone from the CLI: remove the connection on LinkedIn.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core connect accept INVITATION_ID",
     ],
@@ -470,6 +482,15 @@ const connectDeclineCommand = defineCommand({
   meta: {
     name: "decline",
     description: "Decline a received invitation.",
+    risk: "write",
+    rules: {
+      changes: "Declines a received invitation.",
+      visible_to: "The sender's invitation is closed.",
+      budget_rows: ["invite_responses"],
+      retry: "A handled invitation is gone from `curviate core connect received`, so a retry has nothing to act on.",
+      undo: "Cannot be undone: the sender must invite you again.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core connect decline INVITATION_ID",
     ],
@@ -504,6 +525,15 @@ const connectCancelCommand = defineCommand({
   meta: {
     name: "cancel",
     description: "Cancel a sent invitation.",
+    risk: "write",
+    rules: {
+      changes: "Withdraws an invitation you sent.",
+      visible_to: "The invited person no longer sees it.",
+      budget_rows: ["withdrawal_sweep"],
+      retry: "A withdrawn invitation is gone from `curviate core connect sent`, so a retry has nothing to act on.",
+      undo: "Send a new invitation with `curviate core connect <id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core connect cancel INVITATION_ID",
     ],
@@ -579,6 +609,15 @@ export const connectCommand = defineCommand({
   meta: {
     name: "connect",
     description: DESCRIPTIONS.connect,
+    risk: "write",
+    rules: {
+      changes: "Sends a connection invitation, with your note if you pass --note.",
+      visible_to: "The person invited, who sees the invitation and the note.",
+      budget_rows: ["connection_requests_with_note", "connection_requests_no_note"],
+      retry: "Safe: an invitation already pending, or a person already connected, answers CONNECTION_REQUEST_CONFLICT and sends nothing.",
+      undo: "`curviate core connect cancel <invitation_id>` withdraws it while it is pending.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, CONNECTION_REQUEST_CONFLICT: "already invited or already connected." },
     examples: [
       "curviate core connect janesmith",
       "curviate core connect https://www.linkedin.com/in/janesmith --note \"Enjoyed your talk on agents, would love to connect.\"",
@@ -596,8 +635,8 @@ export const connectCommand = defineCommand({
     note: {
       type: "string",
       description:
-        "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account and a note on about 5 invitations a month " +
-        "(budget row `connection_requests_with_note`, see `curviate account get`). Omit it to send the invitation without a note.",
+        "Note shown with the invitation. Up to 300 characters on LinkedIn Premium; LinkedIn allows 200 on a free account, and a free account has a monthly limit on invitations with a note " +
+        "(budget row `connection_requests_with_note`, 3 a month by default; paid profiles have none). Every invitation, noted or not, counts on `connection_requests_no_note`, the invitation total (see `curviate account get`). Omit it to send the invitation without a note.",
     },
   },
   subCommands: {

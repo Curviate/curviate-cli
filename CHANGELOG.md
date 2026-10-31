@@ -6,6 +6,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## Unreleased
+
+Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is published; `check:sdk-pin` refuses a publish until the pin is a version). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the deployed staging document.
+
+### Voice notes
+
+- `curviate motion voice-clip upload <file>` uploads one audio file (MP3, WAV, M4A, WebM or Ogg; 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours) and prints the clip; its `id` (`vc_...`) is the `clip_id` of a `voice.send` step. `motion voice-clip get <id>` reads one back. `--preview` sends nothing. A refused upload is exit `2` (`VOICE_CLIP_INVALID` names the reason), `PAYLOAD_TOO_LARGE` over 20 MiB, `RATE_LIMIT_TENANT` (exit `6`) past the cap.
+- `motion lint`, `motion create` and `motion update` check a `voice.send` step with the SDK's validator (R13 a malformed `clip_id`, R19 no `fallback`, no text beside a clip).
+- `message new`, `message send` and the bare `message <chat_id>`: one `--attach` audio file alone, with no text, to one person arrives as a voice note (the text argument is optional then). `--as-file` sends every attachment as a download (`send_mode: "file"`), audio included, and then text may come with it. Audio with text, a second file or shared content is exit `2` with nothing sent; `--as-file` without `--attach` is exit `2`.
+
+### Added
+
+- `message new --to` is repeatable: two or more different people start a group chat, `--subject` its name. A person named twice counts once (`--preview` shows the list sent). A voice note stays out of groups.
+- `message new` and `message send` (and the bare `message <chat_id>`) take `--share-post <id>` or `--share-job <id>`: a post or job posting shown natively beside the text. Text is required; both flags together, no text or `--attach` is exit `2` with nothing sent. A job URL reduces to its numeric id. Company-page, Sales Navigator and Recruiter chats do not take it. Whether a post id renders in the message is unproven until a live send.
+- `unibox list` names a group chat in WITH: its title, else its other members (`group` on the Unibox chat; `--json` carries it whole).
+- `curviate account safety get|update <account>`: read and change one Account's limits and Active hours. `curviate account team-access on|off <account>`: share an Account with its Team or keep it to its person.
+
+### Account orchestration
+
+- `motion create` / `motion update --file` accept `settings.priority` (`normal` | `prioritized`): the Motion's weighted share (1 : 2) of each sending Account's daily allowance. The vendored Motion schemas carry it.
+- `settings.new_enrollments_per_account_per_day` and `settings.assign: even` are retired: still accepted, ignored by the API until 2027-01-28; its `SETTING_REMOVED` notice is printed. A read never returns them.
+- `account get` shows `health` (`{state, factor, reasons, until}`; absent on an Account you can see but not operate); it was dropped by the default view. Strict rows in `quotas` carry `target` and `effective_target`.
+- `account safety get|update` carry `auto_withdraw` and the rows' `target`; a row's `green` is its target.
+- Same shape, new meaning: `connection_requests_no_note` counts every invitation; `used` is the invitation total. `connect --note` help names the noted limit (3 a month on a free profile, none on a paid one).
+- `motion preview` help: the projection names the binding pool, `expected_actions_per_day` and `warnings[]` (`hours_below_share`, `no_sending_account`). `enrollment list`: `account_id` is null while an Enrollment waits in its Motion's pool.
+- Help names the blind spot: actions sent by hand, or by another tool on the same Account, are invisible to Curviate.
+
+### Fixed
+
+- `curviate contact export` no longer fails with exit 7 on any answer of more than one row.
+- A write answering a JSON object with no `object` key (`contact tags add`, `contact lists add`, `motion remove`) no longer warns about an unexpected shape.
+- A stored profile holding the stdin placeholder as its key no longer blocks every write to the config file: the placeholder is dropped on read, and the next write heals the file.
+- `motion create` and `motion update` refuse `schedule.timezone` (exit 2) and no longer list it: the API ignores it, hours read in each Account's own zone.
+- `contact lists delete` help: any role may delete a Contact list. `BUDGET_EXHAUSTED` help names `account safety update`.
+
+### Added (earlier)
+
+- `curviate account update --save-connections-as-contacts` (and `--no-save-connections-as-contacts`): whether the Account's Connections are saved as Contacts (Automate). `account get` shows `save_connections_as_contacts` and `save_connections_paused_reason` (`contact_limit_reached`).
+- `curviate contact list|export|update|delete --connected-account` takes several Accounts (repeat the flag, or a comma list, up to 50): Connections of any of them.
+- `contact get|list --json` carries the read-only `company_linkedin_url`; `account get --json` carries `save_connections_as_contacts` and `save_connections_paused_reason` when the API sends them (Automate); `analytics events` and `account overview` items carry `person_name` for a direct action.
+
+### Changed
+
+- Owners and Managers: `team update` (rename; `--billing-owner` stays Owners only), `team invites create|list|resend|revoke` (a Manager invites Members only), `team logo set|remove` and `team remove` (a Manager removes Members) say so in their help and errors; the `team` group reads "Owners and Managers manage".
+- `team members` `name` falls back to the member's email.
+
 ## [0.49.0] - 2026-10-22
 
 A minor: Motions and Enrollments arrive as top-level groups. Requires

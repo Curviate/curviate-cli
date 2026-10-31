@@ -12,6 +12,7 @@
  */
 import { defineCommand } from "citty";
 import { writeFile } from "node:fs/promises";
+import { basename } from "node:path";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -23,6 +24,7 @@ import { intFlag } from "../lib/int-flag.js";
 import { isStdinToken } from "../lib/stdin.js";
 import { compilerLines } from "../lib/sequence-report.js";
 import { sendInChunks } from "../lib/chunks.js";
+import { AttachError, readAttachment } from "../lib/attach.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import connectAndConverse from "../templates/connect-and-converse.json";
 import engageThenConnect from "../templates/engage-then-connect.json";
@@ -48,6 +50,8 @@ type MotionFlags = RootFlags & {
   sample?: string;
   contact?: string | string[];
   account?: string;
+  accounts?: string;
+  sort?: string;
   template?: string;
   output?: string;
   limit?: string;
@@ -71,9 +75,25 @@ const shownFile = (f: MotionFlags) => (f.file === undefined || isStdinToken(f.fi
  * mode the server's refusal shape on stdout. Errors exit 2 (SEQUENCE_INVALID),
  * nothing sent; warnings print and never block.
  */
-async function checkSequence(f: MotionFlags, text: string, sequence: unknown, prefix: string): Promise<{ warnings: unknown[] }> {
+/**
+ * W17, offline where the file holds both the Sequence and `settings.assign`. The rest is server-side.
+ * ponytail: written here because this CLI pins a published SDK; move into the SDK's validator at its next release.
+ */
+function assignWarning(sequence: unknown, assign: unknown) {
+  if (assign !== "already_connected" || !sequence || typeof sequence !== "object") return [];
+  const steps = (sequence as Body)["steps"];
+  if (!Array.isArray(steps)) return [];
+  const at = steps.findIndex((s: Body | null) => s?.["do"] === "invite.send" && typeof s["id"] === "string");
+  if (at < 0) return [];
+  const rule = "settings.assign is already_connected, so anyone not already connected to a sending Account is skipped and this invitation never runs for them; use assign: auto";
+  const hint = "Set settings.assign to auto, the default: it prefers an Account already connected and invites everyone else. Keep already_connected only for a Motion that writes to existing Connections.";
+  return [{ code: "W17" as const, path: `${(steps[at] as Body)["id"]}.do`, rule, message: rule, pointer: `/steps/${at}/do`, hint, docs_url: "https://docs.curviate.com/reference/sequence-rules#w17", severity: "warning" as const }];
+}
+
+async function checkSequence(f: MotionFlags, text: string, sequence: unknown, prefix: string, settings?: unknown): Promise<{ warnings: unknown[] }> {
   const { validateSequence } = await import("@curviate/sdk");
   const verdict = validateSequence(sequence);
+  verdict.warnings.push(...assignWarning(sequence, (settings as Body | null | undefined)?.["assign"]));
   const lines = compilerLines(shownFile(f), text, verdict, prefix);
   if (verdict.errors.length) {
     const first = verdict.errors[0]!;
@@ -102,7 +122,7 @@ async function readMotionFile(f: MotionFlags, command: "motion create" | "motion
   }
   const issues = validate(schema, body);
   if (issues.length) reportIssues(issues, outputOpts(f).json);
-  if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence");
+  if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence", body["settings"]);
   return { body, text };
 }
 
@@ -133,6 +153,12 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
     const bad = status.filter((s) => !STATUSES.includes(s));
     if (bad.length) usage(`--status takes a comma list of ${STATUSES.join(", ")}.`);
     params["status"] = status;
+  }
+  const accounts = f.accounts ?? f.account;
+  if (accounts !== undefined) params["account_id"] = listFlag("accounts", accounts);
+  if (f.sort !== undefined) {
+    if (!["updated", "activity"].includes(f.sort)) usage("--sort takes updated or activity.");
+    params["sort"] = f.sort;
   }
   if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
   const cursor = readCursorFlag(f, process);
@@ -232,13 +258,43 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
   renderSuccess(merged, outputOpts(f), process);
 };
 
+/** `voice-clip upload <file>`: the file's bytes as the raw body (Content-Length set), one clip back. */
+async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
+  const path = f.file ?? "";
+  if (path.trim() === "") usage("the audio file is missing. Pass its path: `curviate motion voice-clip upload intro.mp3`.");
+  const filename = basename(path);
+  let bytes: Buffer;
+  try {
+    bytes = await readAttachment(path);
+  } catch (err) {
+    if (err instanceof AttachError) usage(err.message);
+    throw err;
+  }
+  if (f.preview) {
+    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "motions.voiceClips.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
+  }
+  try {
+    renderSuccess(await c.motions.voiceClips.upload(bytes, { filename }), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runVoiceClipGet(c: Curviate, f: MotionFlags): Promise<void> {
+  try {
+    renderSuccess(await c.motions.voiceClips.get(f.id ?? ""), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 /** `lint`: offline. A Motion file's Sequence (under `/sequence`) or a bare Sequence document. */
 export async function runLint(f: MotionFlags): Promise<void> {
   const text = await readFileFlag("file", f.file ?? "", { others: f });
   const doc = parseDocument("file", text) as Body | null;
   const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
   if (motionFile && doc["sequence"] == null) usage("--file: the Motion file has no sequence; there is nothing to lint.");
-  const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "");
+  const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "", motionFile ? doc["settings"] : undefined);
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
 }
 
@@ -279,12 +335,16 @@ const SEE_LIFECYCLE = ["curviate motion get", "curviate enrollment list"];
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List your Team's Motions, most recently updated first. Items carry no Sequence: read one with `curviate motion get <motion_id>`.",
+    description:
+      "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. " +
+      "A cursor belongs to its sort.",
     risk: "read",
-    examples: ["curviate motion list", "curviate motion list --status active,paused"],
+    examples: ["curviate motion list", "curviate motion list --status active,paused", "curviate motion list --accounts acc_A,acc_B --sort activity"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    accounts: { type: "string", description: "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
+    sort: { type: "string", description: "updated (default) or activity." },
     status: { type: "string", description: `Comma list of ${STATUSES.join(", ")}. Default: all but archived.` },
   },
   run: online(runList),
@@ -321,7 +381,7 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it.",
+    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's share of each Account's daily allowance. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
@@ -350,7 +410,8 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
-      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since.",
+      "settings.priority (normal or prioritized) gives the Motion twice a normal Motion's share of each Account's daily allowance; settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
+      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
@@ -389,7 +450,7 @@ const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete",
   });
 
 const startCmd = lifecycleCmd("start", {
-  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed.",
+  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
@@ -418,7 +479,7 @@ const pauseCmd = lifecycleCmd("pause", {
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Motion. Runs the start checks again.",
+  description: "Resume a paused Motion. Runs the start checks again. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Motion's Steps run again from its sending Accounts.",
@@ -465,7 +526,7 @@ const deleteCmd = lifecycleCmd("delete", {
 const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection. A read: never reaches LinkedIn, spends nothing.",
+    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day, and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
     risk: "read",
     examples: ["curviate motion preview mot_YOUR_MOTION_ID", "curviate motion preview mot_YOUR_MOTION_ID --sample 3"],
   },
@@ -483,7 +544,7 @@ const membershipCmd = (kind: "add" | "remove") =>
     meta: {
       name: kind,
       description: kind === "add"
-        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order."
+        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
         : "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       risk: "high",
       rules: kind === "add"
@@ -557,6 +618,61 @@ const initCmd = defineCommand({
   },
 });
 
+const voiceClipUploadCmd = defineCommand({
+  meta: {
+    name: "upload",
+    description:
+      "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. " +
+      "The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Stores one converted clip for your Team. No Motion changes and nothing is sent to anyone.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "A retry stores a second clip (it counts toward the 24-hour cap); an unused clip is deleted 30 days after its upload.",
+      undo: "Not needed: a clip no Sequence uses is deleted after 30 days.",
+    },
+    output: ["The clip: `id`, `duration_ms`, `bytes`, `filename`, `created_at`. No download link."],
+    errors: {
+      VOICE_CLIP_INVALID: "the file is empty, is not audio, cannot be decoded, is under 1 second or is over 120 seconds; the message names the reason. A clip is never shortened.",
+      PAYLOAD_TOO_LARGE: "the file is over 20 MiB.",
+      RATE_LIMIT_TENANT: "100 uploads in the last 24 hours; Retry-After is the wait.",
+      TIER_REQUIRED: "Voice clips need the Automate plan.",
+      ...ROLE_ERRORS,
+    },
+    seeAlso: ["curviate motion voice-clip get", "curviate motion lint", "curviate motion create"],
+    examples: ["curviate motion voice-clip upload intro.mp3", "curviate motion voice-clip upload intro.m4a --preview"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    file: { type: "positional", required: true, description: "The audio file's path." },
+  },
+  run: online(runVoiceClipUpload),
+});
+
+const voiceClipGetCmd = defineCommand({
+  meta: {
+    name: "get",
+    description: "One Voice clip: duration, size, file name and upload time. No download link. Another Team's clip is RESOURCE_NOT_FOUND, like an unknown id.",
+    risk: "read",
+    examples: ["curviate motion voice-clip get vc_YOUR_CLIP_ID"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    id: { type: "positional", description: "Voice clip id (vc_...)." },
+  },
+  run: online(runVoiceClipGet),
+});
+
+const voiceClipCommand = defineCommand({
+  meta: { name: "voice-clip", description: DESCRIPTIONS.motionVoiceClip },
+  subCommands: { upload: voiceClipUploadCmd, get: voiceClipGetCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(voiceClipCommand, ["curviate", "motion", "voice-clip"]);
+  },
+});
+
 export const motionCommand = defineCommand({
   meta: { name: "motion", description: DESCRIPTIONS.motion },
   subCommands: {
@@ -574,6 +690,7 @@ export const motionCommand = defineCommand({
     remove: membershipCmd("remove"),
     lint: lintCmd,
     init: initCmd,
+    "voice-clip": voiceClipCommand,
   },
   async run() {
     const { showHelp } = await import("../lib/examples.js");

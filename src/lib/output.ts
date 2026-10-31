@@ -151,10 +151,6 @@ function withPreservedNotices(original: unknown, rendered: unknown): unknown {
   if (Array.isArray(notices) && notices.length > 0 && rendered["notices"] !== notices) {
     out = { ...out, notices };
   }
-  // Same class as `notices`: the warn-posture safety signal is not a data
-  // field, and it is the one warning meant to be seen before a refusal.
-  const safetyWarning = original["safety_warning"];
-  if (isPlain(safetyWarning)) out = { ...out, safety_warning: safetyWarning };
   return withPreservedProvenance(original, out);
 }
 
@@ -421,10 +417,7 @@ function renderHuman(data: unknown): string {
     // List response with items
     if (Array.isArray(obj["items"])) {
       const items = obj["items"] as unknown[];
-      let body = items.length === 0 ? "(no items)" : items.map(renderHuman).join("\n");
-      if (isPlain(obj["safety_warning"])) {
-        body = `safety_warning: ${JSON.stringify(obj["safety_warning"])}\n${body}`;
-      }
+      const body = items.length === 0 ? "(no items)" : items.map(renderHuman).join("\n");
       return notices ? `${notices}\n${body}` : body;
     }
 
@@ -529,6 +522,12 @@ export function renderError(
       const mode = loc.mode === "custom" ? "your own proxy" : loc.mode === "auto" ? "managed" : "mode unknown";
       // current_country is where it is right now; country is only what it is set to.
       msg += `\nConnects from now: ${loc.current_country ?? loc.country ?? "unknown"} (${mode}${loc.strict ? ", strict" : ""})`;
+    }
+    // The feature, the Tier that has it, and the way out for this caller's role:
+    // an Owner gets the upgrade link, anyone else is sent to an Owner.
+    if (errJson.code === "TIER_REQUIRED") {
+      msg += `\nNeeds: ${errJson.feature ?? "this feature"} is part of ${errJson.requiredTier ?? "a Tier not on sale yet"}; this Team has ${errJson.currentTier ?? "no Tier"}.`;
+      msg += errJson.upgradeUrl ? `\nUpgrade: ${errJson.upgradeUrl}` : "\nAsk an Owner of your Team to change the Tier (`curviate team members` lists them).";
     }
     if (errJson.retryAfterMs) {
       msg += `\nRetry after: ${errJson.retryAfterMs}ms`;

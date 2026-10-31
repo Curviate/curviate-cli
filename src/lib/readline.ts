@@ -123,3 +123,34 @@ export async function readlineSync(
     }
   });
 }
+
+/**
+ * Read a multi-line paste from a terminal without echoing it, until Ctrl-D.
+ * For a secret-bearing export (`account link --cookies-file -`): a single-line
+ * reader would stop at the first newline of a pretty-printed JSON export.
+ * Ctrl-C rejects. Needs a TTY with raw mode; the caller checks that first.
+ */
+export async function readHiddenToEof(prompt: string, stdin: ReadlineStdin = process.stdin as unknown as ReadlineStdin): Promise<string> {
+  return new Promise((resolve, reject) => {
+    process.stderr.write(prompt);
+    stdin.setRawMode?.(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    let input = "";
+    const done = (fn: () => void) => {
+      stdin.setRawMode?.(false);
+      stdin.pause();
+      stdin.removeListener("data", onData);
+      process.stderr.write("\n");
+      fn();
+    };
+    const onData = (chunk: string) => {
+      for (const char of chunk) {
+        if (char === "\u0004") return done(() => resolve(input));
+        if (char === "\u0003") return done(() => reject(new Error("Interrupted.")));
+        input += char === "\r" ? "\n" : char;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}

@@ -33,7 +33,7 @@ export const pkgRoot = resolve(__dirname, "..");
 
 /**
  * @param {string} root - package root to check (defaults to this package's root)
- * @returns {Promise<{ ok: boolean, reason: "match" | "mismatch" | "not-exact" | "unresolved", declared: string, resolved: string | null }>}
+ * @returns {Promise<{ ok: boolean, reason: "match" | "mismatch" | "not-exact" | "unpublished" | "unresolved", declared: string, resolved: string | null }>}
  */
 export async function checkSdkPin(root = pkgRoot) {
   const pkgJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
@@ -41,6 +41,11 @@ export async function checkSdkPin(root = pkgRoot) {
 
   if (typeof declared !== "string" || declared.length === 0) {
     return { ok: false, reason: "unresolved", declared: declared ?? "", resolved: null };
+  }
+
+  // A commit pin on the unpublished SDK PR build is exact for tests, never for a publish.
+  if (/^github:[^#]+#[0-9a-f]{40}$/.test(declared)) {
+    return { ok: false, reason: "unpublished", declared, resolved: null };
   }
 
   // Exact-pin policy: no range operator.
@@ -75,6 +80,13 @@ async function main() {
     console.error(
       `check:sdk-pin FAIL — could not read the resolved @curviate/sdk version from node_modules. ` +
         `Run \`pnpm install\` first; an uninstalled dependency is not a passing check.`,
+    );
+    process.exit(1);
+  }
+  if (result.reason === "unpublished") {
+    console.error(
+      `check:sdk-pin FAIL — declared @curviate/sdk "${result.declared}" is a commit, not a published ` +
+        `version. Publish the SDK and pin its exact version before packing the CLI.`,
     );
     process.exit(1);
   }

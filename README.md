@@ -83,6 +83,13 @@ curviate --api-key <your-api-key> account list
 > history. Prefer `curviate login` or the `CURVIATE_API_KEY` environment
 > variable; reserve `--api-key` for one-off, low-trust contexts.
 
+**Teams.** A key works in one Team, or in all of your Teams. With a key for
+all your Teams, every call names the Team it acts in: `--team <team_id>`, then
+`CURVIATE_TEAM`, then the profile's `team` (which `curviate setup` stores when
+you pick "All my Teams"). The CLI sends it as `X-Curviate-Team`. A Team key acts
+only in its own Team, so leave the Team unset with one. `curviate doctor`
+reports the key's scope and checks the Team against your Teams.
+
 Get your API key from the [Curviate dashboard](https://app.curviate.com).
 
 ## Usage
@@ -255,6 +262,34 @@ curviate core search jobs --keywords "founding engineer" --location "Berlin" --a
 curviate core job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
 ```
 
+### 8. Start a group chat, share a post or a job
+
+Repeat `--to` for a group chat; `--subject` is its name. A person named twice counts once. A voice note stays out of groups.
+
+```bash
+curviate core message new --to janesmith --to ACoAAAexample --subject "Q4 intro" \
+  --account acc_1 "Hi both, you two should meet." --preview     # nothing sent
+
+# Show a post or job posting natively beside the text. Text is required, no --attach.
+curviate core message send 2-YTQ3ODU3Njgt --share-job 4012345678 --account acc_1 "Thought of you for this one." --preview
+```
+
+`--share-post` takes the post id from `curviate core post get` or a list (an activity id, URN or share URL also works); `--share-job` takes the numeric job id or a job URL. Both together, no text, or `--attach` is exit `2` with nothing sent. A company-page chat and Sales Navigator or Recruiter chats do not take shared content. Whether a post id renders in the message is unproven until a live send.
+
+### 9. Send a voice note
+
+One audio file (MP3, WAV, M4A, WebM or Ogg), alone, with no text, to one person arrives as a voice note. A direct message states no duration limit; a size the platform refuses is `PAYLOAD_TOO_LARGE`. Audio to a group, in InMail or to a company page stays a file.
+
+```bash
+curviate core message send 2-YTQ3ODU3Njgt --attach hello.m4a --account acc_1 --preview   # nothing sent
+curviate core message new --to janesmith --attach hello.m4a --account acc_1
+
+# Keep audio a file download instead (it may then carry text):
+curviate core message send 2-YTQ3ODU3Njgt "The recording." --attach hello.m4a --as-file --account acc_1
+```
+
+Audio with text, with a second file, or with `--share-post` / `--share-job` is exit `2` with nothing sent (add `--as-file` to send files as downloads). `--as-file` without `--attach` is exit `2`.
+
 ## Company
 
 Company commands (`curviate core company ...`) are Core-tier reads. `curviate core company <id>` accepts a public
@@ -331,6 +366,21 @@ motion.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a
 
 `curviate motion create` and `curviate motion update` check the same way before anything is sent. `curviate motion get mot_1 --json` prints a file `curviate motion update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
 
+### Voice notes in a Sequence
+
+A `voice.send` step plays an uploaded clip instead of text. Upload the file once, then put its id in the Sequence. Nothing reaches LinkedIn until you start the Motion.
+
+```bash
+curviate motion voice-clip upload intro.mp3 --json      # {"id":"vc_...","duration_ms":42010,...}: 1 to 120 s, up to 20 MiB, 100 uploads per Team per 24 hours
+curviate motion voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
+```
+
+```json
+{ "id": "voice", "do": "voice.send", "with": { "clip_id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", "fallback": "Hi, thanks for connecting." }, "next": "end" }
+```
+
+`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate motion lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Motion is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
+
 ### 2. Find and fix Enrollments
 
 ```bash
@@ -353,7 +403,7 @@ paid seat entitles every command here. What these commands do need is the Linked
 own Sales Navigator subscription. A refusal is **exit code `5`** with one of three codes in
 the JSON body: `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). Branch on the exit code the same way as example 4 above, and read the code for the
 remedy. Write commands (`curviate core sales-nav save-lead`, `curviate core sales-nav save-account`, `curviate core sales-nav message new`) accept `--preview` to
 render the request without sending it.
@@ -453,7 +503,7 @@ entitles every command here. What these commands do need is the LinkedIn account
 subscription. A refusal is **exit code `5`** with one of three codes in the JSON body:
 `NO_ACTIVE_SEAT` (no Curviate seat covers the account, fix it in billing),
 `LINKEDIN_FEATURE_NOT_SUBSCRIBED` (the LinkedIn account lacks the subscription, fix it on
-LinkedIn) or `BETA_NOT_ENABLED` (a human enables beta in Settings, or pass `--beta` for this
+LinkedIn) or `BETA_NOT_ENABLED` (an Owner enables beta with `curviate beta update --enabled true`, or pass `--beta` for this
 call). The surface is project-centric: most
 operations are scoped to a hiring project id. Write commands (`curviate core recruiter save-candidate`, `curviate core recruiter project update`,
 `curviate core recruiter project-job create`, `curviate core recruiter project-job update`, `curviate core recruiter job create`,
@@ -701,9 +751,9 @@ rather than parsing the message:
   LinkedIn regrants on its own schedule. Null-check it before scheduling on it.
 - `safetyHint.parameter` is addressable on the safety policy, so an agent can
   choose between waiting, escalating and reconfiguring without reading prose.
-- On the default posture nothing is refused at all: the action goes through and
-  the same payload rides the SUCCESS body under `safety_warning` with
-  `blocked: false`.
+- A limit is always enforced: at the ceiling, or outside the activity window,
+  the action is refused with this error. Nothing is sent and nothing rides a
+  success body.
 
 A `429` that carries `budgetRow` under `PLATFORM_RATE_LIMIT` is a third thing:
 that row is PAUSED because LinkedIn refused a recent call on it. The pause is

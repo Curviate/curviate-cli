@@ -653,7 +653,7 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  *
  * Exact fields: account_id, status, auth_method, full_name, headline,
  * seat_id, connected_at, external_id, connection_location, last_checked_at,
- * quotas, account_states. `seat_id`
+ * quotas, account_states, health (when the API sends it). `seat_id`
  * is a slim field here (unlike the six enrichment fields), core
  * identity/troubleshooting data, not part of the enrichment cache.
  *
@@ -662,8 +662,7 @@ export function slimAccountList(data: unknown): Record<string, unknown> {
  * shape. Each row now reports where the account stands (`used`), what it is
  * held to (`effective_ceiling`, which is `ceiling` with the warm-up ramp
  * already applied and the one to compare against), which band that puts it
- * in, and what happens at the ceiling (`posture`, default `warn`, which
- * reports rather than refuses).
+ * in. A limit is always enforced: at the ceiling the action is refused.
  *
  * `account_states` is slim for the same reason `status` is: it is the answer
  * to "why is this account behaving oddly". It carries platform conditions the
@@ -688,10 +687,18 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     seat_id: d["seat_id"] ?? null,
     connected_at: d["connected_at"] ?? null,
     external_id: d["external_id"] ?? null,
+    // where it connects from, with the checked/detected country and the flags (country_mismatch, zone_moved)
     connection_location: d["connection_location"] ?? null,
+    // the ramp (enabled, state, factor, week) and the activity window's zone with its state
+    warm_up: d["warm_up"] ?? null,
+    activity_window: d["activity_window"] ?? null,
     last_checked_at: d["last_checked_at"] ?? null,
     quotas: d["quotas"] ?? [],
     account_states: d["account_states"] ?? [],
+    // Curviate's inference of how LinkedIn sees the account: {state, factor, reasons, until}; absent on an Account you can see but not operate
+    ...(d["health"] !== undefined ? { health: d["health"] } : {}),
+    // absent without Automate: shown only when the API sends them
+    ...(d["save_connections_as_contacts"] !== undefined ? { save_connections_as_contacts: d["save_connections_as_contacts"], save_connections_paused_reason: d["save_connections_paused_reason"] ?? null } : {}),
   };
 }
 

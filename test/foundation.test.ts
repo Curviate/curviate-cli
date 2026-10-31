@@ -9,7 +9,7 @@ describe("package", () => {
 
   it("is an ES module named @curviate/cli with a semver version, depending on the SDK and citty and on no internal workspace package", () => {
     expect([pkg.type, pkg.name]).toEqual(["module", "@curviate/cli"]);
-    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
     expect(Object.keys(pkg.dependencies)).toEqual(expect.arrayContaining(["@curviate/sdk", "citty"]));
     expect(Object.keys(pkg.dependencies)).not.toContain("@curviate/" + "shared"); // fragments: the codename never appears in source
   });

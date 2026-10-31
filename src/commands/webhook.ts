@@ -15,6 +15,7 @@
  * offline; no Curviate client is constructed.
  */
 
+import { DELIVERY_ARGS, deliveryFields, webhookDeliveriesCommand, webhookLintCommand, webhookRedeliverCommand, webhookRotateCommand, webhookTestCommand, webhookVariablesCommand } from "./webhook-ops.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
@@ -62,7 +63,9 @@ type WebhookFlags = {
   preview?: boolean;
   // webhook verify flags
   secret?: string;
-  header?: string;
+  header?: string | string[];
+  "template-file"?: string;
+  "custom-events"?: string;
   file?: string;
   "max-age-secs"?: string;
   "api-key"?: string;
@@ -163,6 +166,7 @@ export async function runWebhookCreate(
     body["data"] = flags.data.split(",").map((s) => s.trim()).filter(Boolean);
   }
 
+  Object.assign(body, await deliveryFields(flags));
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
@@ -300,6 +304,7 @@ export async function runWebhookUpdate(
     body["account_ids"] = accountIds;
   }
 
+  Object.assign(body, await deliveryFields(flags));
   const outOpts = resolveOutputOpts(flags);
 
   if (flags.preview) {
@@ -447,6 +452,15 @@ const webhookCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Register a new webhook endpoint.",
+    risk: "write",
+    rules: {
+      changes: "Registers a webhook endpoint: Curviate delivers the subscribed events to its URL.",
+      visible_to: "Your endpoint, which receives event payloads. Nothing reaches LinkedIn.",
+      budget_rows: [],
+      retry: "Not safe: each call registers another webhook, with its own id and secret.",
+      undo: "`curviate webhook delete <webhook_id>`.",
+    },
+    errors: { WEBHOOK_TEMPLATE_INVALID: "the body template is invalid: `curviate webhook lint` names every finding." },
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
       "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
@@ -455,6 +469,7 @@ const webhookCreateCommand = defineCommand({
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
+    ...DELIVERY_ARGS,
     source: {
       type: "string",
       description:
@@ -466,7 +481,7 @@ const webhookCreateCommand = defineCommand({
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target. Omit to cover every account you can operate, now and later." },
     "motion-ids": { type: "string", description: "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter." },
-    name: { type: "string", description: "Human-readable name (1-100 chars)." },
+    name: { type: "string", description: "Human-readable name (up to 100 characters)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
     data: { type: "string", description: "Comma-separated field-remapping keys." },
@@ -493,6 +508,7 @@ const webhookListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List registered webhooks.",
+    risk: "read",
     examples: [
       "curviate webhook list",
     ],
@@ -519,7 +535,10 @@ const webhookListCommand = defineCommand({
 const webhookEventsCommand = defineCommand({
   meta: {
     name: "events",
-    description: "List the canonical webhook event catalogue.",
+    description:
+      "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. " +
+      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
+    risk: "read",
     examples: [
       "curviate webhook events",
     ],
@@ -547,6 +566,7 @@ const webhookGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a single webhook owned by the calling tenant.",
+    risk: "read",
     examples: [
       "curviate webhook get wh_YOUR_WEBHOOK_ID",
     ],
@@ -577,6 +597,15 @@ const webhookUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Update a webhook in place (source is immutable).",
+    risk: "write",
+    rules: {
+      changes: "Changes the fields you pass on the webhook; its source cannot change.",
+      visible_to: "Your endpoint, which receives the payloads the webhook now selects.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the webhook the same.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { RESOURCE_NOT_FOUND: "no webhook with this id.", WEBHOOK_TEMPLATE_INVALID: "the body template is invalid: `curviate webhook lint` names every finding." },
     examples: [
       "curviate webhook update wh_YOUR_WEBHOOK_ID --no-enabled",
       "curviate webhook update wh_YOUR_WEBHOOK_ID --request-url https://example.com/hooks/v2",
@@ -590,7 +619,7 @@ const webhookUpdateCommand = defineCommand({
     enabled: { type: "boolean", description: "Enable or disable the webhook." },
     events: { type: "string", description: "Replace subscribed events (comma-separated)." },
     data: { type: "string", description: "Replace field-remapping keys (comma-separated)." },
-    "account-ids": { type: "string", description: "Replace targeted accounts (comma-separated)." },
+    "account-ids": { type: "string", description: "Replace targeted accounts (comma-separated)." },    ...DELIVERY_ARGS,
   },
   async run({ args }) {
     const flags = args as WebhookFlags;
@@ -655,6 +684,7 @@ const webhookVerifyCommand = defineCommand({
   meta: {
     name: "verify",
     description: "Verify a webhook signature offline (no network call). A valid signature prints the parsed event to stdout and exits 0; a mismatch prints a structured error to stdout, a summary to stderr, and exits 2.",
+    risk: "read",
     examples: [
       "curviate webhook verify --secret \"$CURVIATE_WEBHOOK_SECRET\" --header \"$SIGNATURE_HEADER\" --file payload.json",
     ],
@@ -689,7 +719,7 @@ const webhookVerifyCommand = defineCommand({
 
     const rawBody = await resolveWebhookBody(flags.file, undefined, flags);
 
-    const signatureHeader = flags.header ?? "";
+    const signatureHeader = String(flags.header ?? "");
     const secret = flags.secret ?? "";
     // NaN would disable the replay check (`age > NaN` is false): checked, never parsed loosely.
     const replayWindowSecs = flags["max-age-secs"] === undefined ? undefined : intFlag("max-age-secs", flags["max-age-secs"]);
@@ -708,11 +738,17 @@ export const webhookCommand = defineCommand({
     update: webhookUpdateCommand,
     delete: webhookDeleteCommand,
     verify: webhookVerifyCommand,
+    lint: webhookLintCommand,
+    variables: webhookVariablesCommand,
+    deliveries: webhookDeliveriesCommand,
+    redeliver: webhookRedeliverCommand,
+    rotate: webhookRotateCommand,
+    test: webhookTestCommand,
   },
   async run() {
     process.stderr.write(
       "Usage: curviate webhook <subcommand>\n" +
-      "  create | list | events | get | update | delete | verify\n",
+      "  create | list | events | get | update | delete | verify | lint | variables | deliveries | redeliver | rotate | test\n",
     );
   },
 });

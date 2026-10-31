@@ -968,6 +968,13 @@
       "settings": {
         "type": "object",
         "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "prioritized"
+            ]
+          },
           "accounts_per_contact": {
             "type": "integer",
             "minimum": 1,
@@ -1023,6 +1030,19 @@
               "nullable": true
             }
           },
+          "on_reply_elsewhere": {
+            "type": "string",
+            "enum": [
+              "stop",
+              "continue"
+            ]
+          },
+          "withdraw_on_reply_elsewhere": {
+            "type": "boolean"
+          },
+          "account_gap": {
+            "type": "string"
+          },
           "stop_on_engagement": {
             "type": "boolean"
           }
@@ -1054,8 +1074,7 @@
       "updated_at",
       "started_at",
       "completed_at",
-      "archived_at",
-      "safety_warning"
+      "archived_at"
     ]
   },
   "motion update": {
@@ -1143,6 +1162,13 @@
       "settings": {
         "type": "object",
         "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "prioritized"
+            ]
+          },
           "accounts_per_contact": {
             "type": "integer",
             "minimum": 1,
@@ -1198,6 +1224,19 @@
               "nullable": true
             }
           },
+          "on_reply_elsewhere": {
+            "type": "string",
+            "enum": [
+              "stop",
+              "continue"
+            ]
+          },
+          "withdraw_on_reply_elsewhere": {
+            "type": "boolean"
+          },
+          "account_gap": {
+            "type": "string"
+          },
           "stop_on_engagement": {
             "type": "boolean"
           }
@@ -1230,8 +1269,7 @@
       "updated_at",
       "started_at",
       "completed_at",
-      "archived_at",
-      "safety_warning"
+      "archived_at"
     ]
   }
 }

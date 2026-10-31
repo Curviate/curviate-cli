@@ -19,6 +19,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { normalizeChatId } from "../lib/identifier.js";
@@ -434,6 +435,7 @@ const inboxListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List inbox chats.",
+    risk: "read",
     examples: [
       "curviate core inbox list",
       "curviate core inbox list --unread",
@@ -477,6 +479,7 @@ const inboxGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get details of a single chat.",
+    risk: "read",
     examples: [
       "curviate core inbox get 2-YTQ3ODU3Njgt",
     ],
@@ -510,6 +513,15 @@ const inboxMarkReadCommand = defineCommand({
   meta: {
     name: "mark-read",
     description: "Mark a chat as read.",
+    risk: "write",
+    rules: {
+      changes: "Marks the chat read on LinkedIn.",
+      visible_to: "The other participants, as a read receipt where LinkedIn shows it.",
+      budget_rows: [],
+      retry: "Safe: marking a read chat read changes nothing.",
+      undo: "Cannot be undone from the CLI: mark it unread on LinkedIn.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core inbox mark-read 2-YTQ3ODU3Njgt",
     ],
@@ -541,7 +553,8 @@ const inboxMarkReadCommand = defineCommand({
 const inboxMessagesCommand = defineCommand({
   meta: {
     name: "messages",
-    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+    description: "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25 messages), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+    risk: "read",
     examples: [
       "curviate core inbox messages 2-YTQ3ODU3Njgt",
       "curviate core inbox messages 2-YTQ3ODU3Njgt --limit 20",
@@ -587,6 +600,7 @@ const inboxSearchCommand = defineCommand({
   meta: {
     name: "search",
     description: "Free-text search the account's own inbox (matches participant names and message content).",
+    risk: "read",
     examples: [
       "curviate core inbox search sophie",
     ],
