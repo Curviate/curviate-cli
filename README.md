@@ -262,6 +262,20 @@ curviate core search jobs --keywords "founding engineer" --location "Berlin" --a
 curviate core job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1
 ```
 
+### 8. Start a group chat, share a post or a job
+
+Repeat `--to` for a group chat; `--subject` is its name. A person named twice counts once. A voice note stays out of groups.
+
+```bash
+curviate core message new --to janesmith --to ACoAAAexample --subject "Q4 intro" \
+  --account acc_1 "Hi both, you two should meet." --preview     # nothing sent
+
+# Show a post or job posting natively beside the text. Text is required, no --attach.
+curviate core message send 2-YTQ3ODU3Njgt --share-job 4012345678 --account acc_1 "Thought of you for this one." --preview
+```
+
+`--share-post` takes the post id from `curviate core post get` or a list (an activity id, URN or share URL also works); `--share-job` takes the numeric job id or a job URL. Both together, no text, or `--attach` is exit `2` with nothing sent. A company-page chat and Sales Navigator or Recruiter chats do not take shared content. Whether a post id renders in the message is unproven until a live send.
+
 ## Company
 
 Company commands (`curviate core company ...`) are Core-tier reads. `curviate core company <id>` accepts a public

@@ -2,8 +2,8 @@
  * `curviate core message`, LinkedIn message operations.
  *
  * Subcommands:
- *   message new --to <url|slug|provider_id> "<text>" [--subject <s>] [--attach <file>...]: start new chat (write)
- *   message <chat_id> "<text>" [--attach <file>...]: send message to chat (write)
+ *   message new --to <url|slug|provider_id>... "<text>" [--subject <s>] [--attach <file>...] [--share-post <id>|--share-job <id>]: start new chat (write)
+ *   message <chat_id> "<text>" [--attach <file>...] [--share-post <id>|--share-job <id>]: send message to chat (write)
  *   message get <chat_id> <message_id>: get a message (read)
  *   message edit <chat_id> <message_id> "<text>": edit a message (write)
  *   message delete <chat_id> <message_id>: delete a message (write)
@@ -22,6 +22,10 @@
  * `message send`).
  * --to for `message new` accepts a LinkedIn URL, bare slug, or provider ID.
  *   URL/slug inputs resolve via users.get; provider-ID-shaped inputs pass through directly.
+ *   Repeat --to: two or more distinct people start a group chat, named by --subject.
+ *   A repeated person counts once, so `--to a --to a` is a direct chat with a.
+ * --share-post / --share-job on `message new` and `message send` show a post or job
+ *   posting natively beside the text (shared_content). Text is required, no attachments.
  * --to for `message inmail` accepts a LinkedIn URL, bare slug, provider ID, or member URN.
  *   URL/slug inputs resolve via users.get; URN and provider-ID pass through directly.
  * <chat_id> on `message send` accepts a LinkedIn messaging thread URL or bare provider ID;
@@ -34,7 +38,7 @@ import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { looksLikeCommandWord, nearestSubcommand } from "../lib/bare-form-guard.js";
-import { resolveIdentifier, normalizeChatId } from "../lib/identifier.js";
+import { resolveIdentifier, normalizeChatId, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveTextOrStdin } from "../lib/stdin.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -49,7 +53,7 @@ type MessageFlags = {
   chatId?: string;
   messageId?: string;
   attachmentId?: string;
-  to?: string;
+  to?: string | string[];
   text?: string;
   emoji?: string;
   /** Deprecated alias for the positional <emoji> (the old `--emoji` flag). */
@@ -57,6 +61,8 @@ type MessageFlags = {
   subject?: string;
   output?: string;
   attach?: string | string[];
+  "share-post"?: string;
+  "share-job"?: string;
   account?: string;
   json?: boolean;
   fields?: string;
@@ -170,6 +176,43 @@ function normalizeAttachPaths(attach: string | string[] | undefined): string[] {
   return Array.isArray(attach) ? attach : [attach];
 }
 
+/**
+ * Read `--share-post` / `--share-job` into the body's `shared_content`.
+ *
+ * Every refusal the server would answer with a 400 and nothing sent is caught
+ * here first, so a mistake costs no request: both flags at once (one object
+ * only), a blank value (a lost `"$ID"`), no text (the post or job is shown
+ * beside it) and any attachment. A post id goes through as given (the id a
+ * read returns, an activity id, a URN or a share URL); a job URL is reduced to
+ * its numeric id.
+ */
+function readSharedContent(
+  flags: MessageFlags,
+  text: string,
+  attachPaths: string[],
+  out: OutputStreams,
+): { type: "post" | "job_posting"; id: string } | undefined {
+  const post = flags["share-post"];
+  const job = flags["share-job"];
+  if (post === undefined && job === undefined) return undefined;
+  const refuse = (msg: string): never => {
+    out.stderr.write(`error: ${msg}\n`);
+    process.exit(2);
+  };
+  if (post !== undefined && job !== undefined) refuse("pass --share-post or --share-job, not both.");
+  const flag = post !== undefined ? "--share-post" : "--share-job";
+  const raw = (post ?? job ?? "").trim();
+  if (raw === "") refuse(`${flag} was given an empty value. Pass the id, or omit the flag.`);
+  if (text.trim() === "") refuse(`${flag} needs the message text: the ${post !== undefined ? "post" : "job posting"} is shown beside it.`);
+  if (attachPaths.length > 0) refuse(`${flag} cannot be combined with --attach.`);
+  return post !== undefined ? { type: "post", id: raw } : { type: "job_posting", id: resolveJobIdentifier(raw) };
+}
+
+/** Normalize repeated --to into its non-blank values. */
+function normalizeToValues(to: string | string[] | undefined): string[] {
+  return (Array.isArray(to) ? to : to === undefined ? [] : [to]).filter((v) => v !== "");
+}
+
 /** A LinkedIn member URN: urn:li:member:<digits>. */
 const MEMBER_URN_RE = /^urn:li:member:\d+$/;
 
@@ -231,13 +274,14 @@ export function willSendAsNotice(chatId: string): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Run `message new --to <url|slug|provider_id> "<text>" [--subject <s>] [--attach <file>...]`.
+ * Run `message new --to <url|slug|provider_id>... "<text>" [--subject <s>] [--attach <file>...]`.
  * Write command, supports --preview.
  *
- * --to resolution:
+ * --to resolution (each value, in order; repeat --to for a group chat):
  *   LinkedIn URL or bare slug -> users.get(slug) -> provider_id passed to startChat.
  *   Provider-ID-shaped input (uppercase AC/AD/AE prefix) -> passed directly, no users.get call.
  *   users.get not-found -> exit 4.
+ *   A person named twice is sent once (the server counts a repeat once too).
  *
  * v2: attachments travel as base64 {content,content_type,filename} objects
  * (application/json only, no multipart op), never raw Buffers.
@@ -250,7 +294,7 @@ export async function runMessageNew(
 ): Promise<void> {
   const subject = readChatSubjectFlag(flags, out);
   const accountId = await requireAccount(client, flags, out);
-  const rawTo = flags.to ?? "";
+  const rawTos = normalizeToValues(flags.to);
   const rawText = flags.text ?? "";
   const attachPaths = normalizeAttachPaths(flags.attach);
 
@@ -271,23 +315,27 @@ export async function runMessageNew(
 
   // Resolve stdin sentinel: "-" reads all of stdin.
   const text = await resolveTextOrStdin(rawText, out, _readStdin);
+  const sharedContent = readSharedContent(flags, text, attachPaths, out);
 
-  // Resolve the recipient to a provider ID.
+  // Resolve each recipient to a provider ID.
   // URL/slug inputs call users.get; provider-ID-shaped inputs pass through directly.
-  const resolvedSlugOrId = resolveIdentifier(rawTo);
-  let providerId: string | undefined;
-
-  if (MEMBER_PROVIDER_ID_RE.test(resolvedSlugOrId)) {
-    // Already a provider ID, use directly without an extra SDK call.
-    providerId = resolvedSlugOrId;
-  } else {
-    // Slug or other form, resolve via users.get.
-    try {
-      providerId = readableId(await ns.users.get(resolvedSlugOrId, {}));
-    } catch (err: unknown) {
-      await handleSdkError(err, outOpts, out);
-      return; // unreachable: handleSdkError always calls process.exit
+  const attendeeIds: string[] = [];
+  for (const rawTo of rawTos) {
+    const resolvedSlugOrId = resolveIdentifier(rawTo);
+    let providerId: string | undefined;
+    if (MEMBER_PROVIDER_ID_RE.test(resolvedSlugOrId)) {
+      // Already a provider ID, use directly without an extra SDK call.
+      providerId = resolvedSlugOrId;
+    } else {
+      // Slug or other form, resolve via users.get.
+      try {
+        providerId = readableId(await ns.users.get(resolvedSlugOrId, {}));
+      } catch (err: unknown) {
+        await handleSdkError(err, outOpts, out);
+        return; // unreachable: handleSdkError always calls process.exit
+      }
     }
+    if (providerId !== undefined && !attendeeIds.includes(providerId)) attendeeIds.push(providerId);
   }
 
   const attachmentPayloads = attachBuffers.map((buf, i) => toAttachmentPayload(attachPaths[i]!, buf));
@@ -295,8 +343,13 @@ export async function runMessageNew(
   if (flags.preview) {
     const preview = buildPreviewOutput({
       method: "messaging.startChat",
-      args: { attendees_ids: [providerId!] },
-      body: { attendees_ids: [providerId!], text, ...(subject !== undefined ? { subject } : {}) },
+      args: { attendees_ids: attendeeIds },
+      body: {
+        attendees_ids: attendeeIds,
+        text,
+        ...(subject !== undefined ? { subject } : {}),
+        ...(sharedContent ? { shared_content: sharedContent } : {}),
+      },
       account: accountId,
       attachments: attachBuffers.map((buf, i) => ({
         name: attachPaths[i] ? attachPaths[i].split("/").pop() ?? attachPaths[i] : `attachment_${i}`,
@@ -308,12 +361,13 @@ export async function runMessageNew(
   }
 
   const body = {
-    attendees_ids: [providerId!],
+    attendees_ids: attendeeIds,
     text,
     // Present only when the flag was given: an absent subject must leave the
     // key out, never send `subject: ""` (the server has no `.min(1)`).
     ...(subject !== undefined ? { subject } : {}),
     ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
+    ...(sharedContent ? { shared_content: sharedContent } : {}),
   };
 
   try {
@@ -344,6 +398,7 @@ export async function runMessageSend(
 
   // Resolve stdin sentinel: "-" reads all of stdin.
   const text = await resolveTextOrStdin(rawText, out, _readStdin);
+  const sharedContent = readSharedContent(flags, text, attachPaths, out);
 
   // Load attachments before any preview or SDK call.
   let attachBuffers: Buffer[] = [];
@@ -361,7 +416,7 @@ export async function runMessageSend(
     const preview = buildPreviewOutput({
       method: "messaging.sendMessage",
       args: { chat_id: chatId },
-      body: { text },
+      body: { text, ...(sharedContent ? { shared_content: sharedContent } : {}) },
       account: accountId,
       attachments: attachBuffers.map((buf, i) => ({
         name: attachPaths[i] ? attachPaths[i].split("/").pop() ?? attachPaths[i] : `attachment_${i}`,
@@ -378,6 +433,7 @@ export async function runMessageSend(
   const body = {
     text,
     ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
+    ...(sharedContent ? { shared_content: sharedContent } : {}),
   };
 
   const ns = client.account(accountId);
@@ -612,7 +668,8 @@ export async function runMessageInMail(
   const subject = readInMailSubjectFlag(flags, out);
   const accountId = await requireAccount(client, flags, out);
 
-  const rawTo = flags.to ?? "";
+  // --to is not repeatable here (the dispatcher refuses a second one), so at most one value.
+  const rawTo = normalizeToValues(flags.to)[0] ?? "";
   if (!rawTo) {
     out.stderr.write(
       "error: --to: not a valid LinkedIn URL, slug, provider-id, or URN.\n",
@@ -703,14 +760,28 @@ export async function runMessageInMailBalance(
 // Citty command definitions
 // ---------------------------------------------------------------------------
 
+/** `--share-post` / `--share-job`: the shared_content of a send, on `message new` and `message send`. */
+const SHARE_ARGS = {
+  "share-post": {
+    type: "string",
+    description:
+      "Show a post natively in the message, beside the text (text required, no --attach). The post id from `curviate core post get` or a list; an activity id, URN or share URL also works. Not with --share-job. Whether a post id renders in the message is unproven until a live send.",
+  },
+  "share-job": {
+    type: "string",
+    description:
+      "Show a job posting natively in the message, beside the text (text required, no --attach). The numeric job id or a LinkedIn job URL. Not with --share-post.",
+  },
+} as const;
+
 const messageNewCommand = defineCommand({
   meta: {
     name: "new",
     description: "Start a new chat with one or more members.",
     risk: "write",
     rules: {
-      changes: "Starts a chat with the recipient and sends the opening message from your Account.",
-      visible_to: "The recipient, in their LinkedIn inbox.",
+      changes: "Starts a chat with the recipient (a group chat with two or more --to) and sends the opening message from your Account.",
+      visible_to: "The recipient, or every member of a group, in their LinkedIn inbox.",
       budget_rows: ["messages_first_degree"],
       retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
       undo: "`curviate core message delete <chat_id> <message_id>` removes the message; the chat stays and the recipient may have read it.",
@@ -718,6 +789,8 @@ const messageNewCommand = defineCommand({
     errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person." },
     examples: [
       "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
+      "curviate core message new --to janesmith --to ACoAAAexample --subject \"Q4 intro\" \"Hi both, meet each other.\" --preview",
+      "curviate core message new --to janesmith --share-job 4012345678 \"Thought of you for this one.\"",
     ],
   },
   args: {
@@ -726,16 +799,17 @@ const messageNewCommand = defineCommand({
     to: {
       type: "string",
       description:
-        "Recipient: LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically.",
+        "Recipient (repeatable): LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically. One --to starts a direct chat; two or more different people start a group chat. A person named twice counts once.",
       required: true,
     },
     text: { type: "positional", stdinArg: true, description: "Opening message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
     subject: {
       type: "string",
       description:
-        "Optional conversation name / subject line (at most 200 characters). Omit it for an unnamed chat; an empty value is a usage error.",
+        "Optional conversation name / subject line (at most 200 characters). The group's name when there are two or more people. Omit it for an unnamed chat; an empty value is a usage error.",
     },
-    attach: { type: "string", description: "File to attach (repeatable)." },
+    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job. A voice note stays out of groups." },
+    ...SHARE_ARGS,
   },
   async run({ args }) {
     const flags = args as MessageFlags;
@@ -1046,6 +1120,7 @@ const messageSendCommand = defineCommand({
     errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person.", CHAT_NOT_VISIBLE: "the chat is not visible to the Account." },
     examples: [
       "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+      "curviate core message send 2-YTQ3ODU3Njgt --share-post 7380123456789012345 \"This is the post I meant.\" --preview",
     ],
   },
   args: {
@@ -1058,7 +1133,8 @@ const messageSendCommand = defineCommand({
         "chat id sends as the connected member.",
     },
     text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin (e.g. via heredoc or pipe)." },
-    attach: { type: "string", description: "File to attach (repeatable)." },
+    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job." },
+    ...SHARE_ARGS,
   },
   async run({ args }) {
     const flags = args as MessageFlags;
@@ -1129,9 +1205,9 @@ const MESSAGE_SUBCOMMANDS = [
 ] as const;
 
 const MESSAGE_USAGE =
-  "Usage: curviate core message new --to <attendee> \"<text>\" [--subject <s>] [--attach <file>...]\n" +
-  "       curviate core message send <chat_id> \"<text>\" [--attach <file>...]\n" +
-  "       curviate core message <chat_id> \"<text>\" [--attach <file>...]\n" +
+  "Usage: curviate core message new --to <attendee>... \"<text>\" [--subject <s>] [--attach <file>... | --share-post <id> | --share-job <id>]\n" +
+  "       curviate core message send <chat_id> \"<text>\" [--attach <file>... | --share-post <id> | --share-job <id>]\n" +
+  "       curviate core message <chat_id> \"<text>\" [--attach <file>... | --share-post <id> | --share-job <id>]\n" +
   "       curviate core message get <chat_id> <message_id>\n" +
   "       curviate core message edit <chat_id> <message_id> \"<text>\"\n" +
   "       curviate core message delete <chat_id> <message_id>\n" +
@@ -1206,7 +1282,8 @@ export const messageCommand = defineCommand({
       required: false,
     },
     text: { type: "positional", stdinArg: true, description: "Message text. Pass - to read from stdin.", required: false },
-    attach: { type: "string", description: "File to attach (repeatable)." },
+    attach: { type: "string", description: "File to attach (repeatable). Not with --share-post or --share-job." },
+    ...SHARE_ARGS,
   },
   subCommands: {
     new: messageNewCommand,

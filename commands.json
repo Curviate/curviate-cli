@@ -11863,7 +11863,17 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable)."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job."
+        },
+        {
+          "name": "share-post",
+          "type": "string",
+          "description": "Show a post natively in the message, beside the text (text required, no --attach). The post id from `curviate core post get` or a list; an activity id, URN or share URL also works. Not with --share-job. Whether a post id renders in the message is unproven until a live send."
+        },
+        {
+          "name": "share-job",
+          "type": "string",
+          "description": "Show a job posting natively in the message, beside the text (text required, no --attach). The numeric job id or a LinkedIn job URL. Not with --share-post."
         }
       ],
       "globals": [
@@ -11915,7 +11925,7 @@
         {
           "name": "to",
           "type": "string",
-          "description": "Recipient: LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically.",
+          "description": "Recipient (repeatable): LinkedIn profile URL (e.g. https://www.linkedin.com/in/some-slug), bare slug (e.g. some-slug), or provider ID (e.g. ACoAAA...). URL and slug inputs resolve the provider ID automatically. One --to starts a direct chat; two or more different people start a group chat. A person named twice counts once.",
           "required": true
         },
         {
@@ -11927,12 +11937,22 @@
         {
           "name": "subject",
           "type": "string",
-          "description": "Optional conversation name / subject line (at most 200 characters). Omit it for an unnamed chat; an empty value is a usage error."
+          "description": "Optional conversation name / subject line (at most 200 characters). The group's name when there are two or more people. Omit it for an unnamed chat; an empty value is a usage error."
         },
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable)."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job. A voice note stays out of groups."
+        },
+        {
+          "name": "share-post",
+          "type": "string",
+          "description": "Show a post natively in the message, beside the text (text required, no --attach). The post id from `curviate core post get` or a list; an activity id, URN or share URL also works. Not with --share-job. Whether a post id renders in the message is unproven until a live send."
+        },
+        {
+          "name": "share-job",
+          "type": "string",
+          "description": "Show a job posting natively in the message, beside the text (text required, no --attach). The numeric job id or a LinkedIn job URL. Not with --share-post."
         }
       ],
       "globals": [
@@ -11948,13 +11968,15 @@
         "beta"
       ],
       "examples": [
-        "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\""
+        "curviate core message new --to janesmith \"Hi Jane, enjoyed your post on agent evals.\"",
+        "curviate core message new --to janesmith --to ACoAAAexample --subject \"Q4 intro\" \"Hi both, meet each other.\" --preview",
+        "curviate core message new --to janesmith --share-job 4012345678 \"Thought of you for this one.\""
       ],
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Starts a chat with the recipient and sends the opening message from your Account.",
-        "visible_to": "The recipient, in their LinkedIn inbox.",
+        "changes": "Starts a chat with the recipient (a group chat with two or more --to) and sends the opening message from your Account.",
+        "visible_to": "The recipient, or every member of a group, in their LinkedIn inbox.",
         "budget_rows": [
           "messages_first_degree"
         ],
@@ -11993,7 +12015,17 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "File to attach (repeatable)."
+          "description": "File to attach (repeatable). Not with --share-post or --share-job."
+        },
+        {
+          "name": "share-post",
+          "type": "string",
+          "description": "Show a post natively in the message, beside the text (text required, no --attach). The post id from `curviate core post get` or a list; an activity id, URN or share URL also works. Not with --share-job. Whether a post id renders in the message is unproven until a live send."
+        },
+        {
+          "name": "share-job",
+          "type": "string",
+          "description": "Show a job posting natively in the message, beside the text (text required, no --attach). The numeric job id or a LinkedIn job URL. Not with --share-post."
         }
       ],
       "globals": [
@@ -12009,7 +12041,8 @@
         "beta"
       ],
       "examples": [
-        "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\""
+        "curviate core message send 2-YTQ3ODU3Njgt \"Thanks, that makes sense.\"",
+        "curviate core message send 2-YTQ3ODU3Njgt --share-post 7380123456789012345 \"This is the post I meant.\" --preview"
       ],
       "requires": [],
       "risk": "write",
