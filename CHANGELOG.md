@@ -12,6 +12,7 @@ Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is 
 
 ### Added
 
+- `unibox list` names a group chat in WITH: its title, else its other members (`group` on the Unibox chat; `--json` carries it whole).
 - `curviate account safety get|update <account>`: read and change one Account's limits and Active hours. `curviate account team-access on|off <account>`: share an Account with its Team or keep it to its person.
 
 ### Account orchestration

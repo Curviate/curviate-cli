@@ -37,6 +37,24 @@ describe("unibox: human output", () => {
   const tty = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
   afterEach(() => (tty ? Object.defineProperty(process.stdout, "isTTY", tty) : delete (process.stdout as { isTTY?: boolean }).isTTY));
 
+  it("list names a group: its title, else its other members, else that its list is pending; a 1:1 its counterpart", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    const row = (chat_id: string, extra: Record<string, unknown>) => ({ object: "unibox_chat", account_id: "acc_a", chat_id, counterpart: null, group: null, ...extra });
+    const g = (group: Record<string, unknown>) => ({ is_group: true, group: { title: null, members: [], members_known: true, preview_sender: null, ...group } });
+    const r = await wire(["unibox", "list"], () => ({
+      body: { object: "unibox_chat_list", cursor: null, items: [
+        row("c1", { counterpart: { name: "Grace Hopper" } }),
+        row("c2", g({ title: "Q4 launch", members: [{ name: "Ana Costa" }] })),
+        row("c3", g({ members: [{ name: "Ana Costa" }, { name: null }] })),
+        row("c4", g({ members_known: false })),
+      ] },
+    }));
+    expect(r.stdout).toMatch(/c1\s+Grace Hopper/);
+    expect(r.stdout).toMatch(/c2\s+Q4 launch/);
+    expect(r.stdout).toMatch(/c3\s+Ana Costa, Name pending/);
+    expect(r.stdout).toMatch(/c4\s+Group chat/);
+  });
+
   it("messages show each message's origin; no vendor name anywhere in the table", async () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     const r = await wire(["unibox", "messages", "acc_a", "chat_1"], () => ({
