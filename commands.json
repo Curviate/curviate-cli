@@ -1488,7 +1488,7 @@
         "safety",
         "update"
       ],
-      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, and `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, and `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending). Active hours hold Motions and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
       "usageOnly": false,
       "args": [
         {
@@ -11749,7 +11749,7 @@
         "inbox",
         "messages"
       ],
-      "description": "List messages in a chat. A very recent send/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25 messages), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
+      "description": "List messages in a chat. A very recent send may take a few minutes to appear here (LinkedIn-side indexing); `curviate core message get <chat_id> <message_id>` reflects it immediately. A deleted message reads `is_deleted: true`, with no text or attachments, as soon as Curviate learns of the delete (at once when you delete it through Curviate). `--mode cache_only` is answered only for an unfiltered, uncursored first page of a chat whose whole message set fits in that one page (`--limit`, at most 25 messages), and only after a walk of the chat reached its end: any unfiltered page fetched from LinkedIn (such as `--mode live` without `--all`) restarts that walk, and `--all` walks to the end and closes it. A read carrying `--before`, `--after` or `--cursor` is never served from the store.",
       "usageOnly": false,
       "args": [
         {
