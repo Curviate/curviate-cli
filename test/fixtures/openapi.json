@@ -470,7 +470,7 @@
               "in_other_motion",
               "filtered_out"
             ],
-            "description": "Present on CONTACT_NOT_ENROLLABLE: why the Contact was not enrolled (already_enrolled, do_not_contact, in_exclusion_list, in_other_motion or filtered_out). Present on BUDGET_EXHAUSTED: which rule refused. ceiling means the row's configured limit is spent, and you wait until reset_at or raise it. activity_window means the account is outside the hours it works in, and reset_at is when the window next opens. The two need different fixes, so branch on this rather than on the message; hint.parameter already names the right setting for each."
+            "description": "Present on CONTACT_NOT_ENROLLABLE: why the Contact was not enrolled (already_enrolled, do_not_contact, in_exclusion_list, in_other_motion or filtered_out). Present on BUDGET_EXHAUSTED: which rule refused. ceiling means the row's configured limit is spent, and you wait until reset_at or raise it. activity_window means the account is outside the hours it works in (never for a direct message: a send, new chat, edit, delete, reaction or read mark), and reset_at is when the window next opens. The two need different fixes, so branch on this rather than on the message; hint.parameter already names the right setting for each."
           },
           "blocked": {
             "type": "boolean",
@@ -97531,7 +97531,7 @@
                     },
                     "activity_window": {
                       "type": "object",
-                      "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
+                      "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused, except direct messaging (a send, new chat, InMail, edit, delete, reaction or read mark), which goes at any hour; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
                       "properties": {
                         "effective_timezone": {
                           "type": [
@@ -99010,7 +99010,7 @@
                     },
                     "activity_window": {
                       "type": "object",
-                      "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
+                      "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused, except direct messaging (a send, new chat, InMail, edit, delete, reaction or read mark), which goes at any hour; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
                       "properties": {
                         "effective_timezone": {
                           "type": [
@@ -100368,7 +100368,7 @@
                         },
                         "activity_window_start": {
                           "type": "string",
-                          "description": "Local time the activity window opens, HH:MM. Outside the window, live write operations are refused.",
+                          "description": "Local time the activity window opens, HH:MM. Outside the window, live write operations are refused, except direct messaging.",
                           "nullable": true
                         },
                         "activity_window_end": {
@@ -100526,7 +100526,7 @@
                       "end"
                     ],
                     "additionalProperties": false,
-                    "description": "This account's own active hours: the days and local hours live writes happen in. Null falls back to the Team default. A row's own activity_window_start/end win over it, keeping these days. The read reports the hours in force and their source; sent back, it changes nothing.",
+                    "description": "This account's own active hours: the days and local hours live writes happen in; direct messaging goes at any hour. Null falls back to the Team default. A row's own activity_window_start/end win over it, keeping these days. The read reports the hours in force and their source; sent back, it changes nothing.",
                     "nullable": true
                   },
                   "object": {
@@ -103377,7 +103377,7 @@
                               },
                               "activity_window_start": {
                                 "type": "string",
-                                "description": "Local time the activity window opens, HH:MM. Outside the window, live write operations are refused.",
+                                "description": "Local time the activity window opens, HH:MM. Outside the window, live write operations are refused, except direct messaging.",
                                 "nullable": true
                               },
                               "activity_window_end": {
@@ -103519,7 +103519,7 @@
                       "end"
                     ],
                     "additionalProperties": false,
-                    "description": "The Team default active hours: the days and local hours live writes happen in. Null falls back to Curviate's default, 07:00-22:00 Monday to Friday. The read reports the hours in force and their source; sent back, it changes nothing.",
+                    "description": "The Team default active hours: the days and local hours live writes happen in; direct messaging goes at any hour. Null falls back to Curviate's default, 07:00-22:00 Monday to Friday. The read reports the hours in force and their source; sent back, it changes nothing.",
                     "nullable": true
                   },
                   "object": {

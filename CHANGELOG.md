@@ -10,6 +10,12 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is published; `check:sdk-pin` refuses a publish until the pin is a version). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the deployed staging document.
 
+### Direct messaging at any hour
+
+- Text only, no new command or flag. Active hours no longer refuse a direct message (`message new`, `send`, `edit`, `delete`, reactions, read and unread marks, InMail), by hand or by an agent: it goes at any hour on any day. Exit `13` with `activity_window` no longer names one, except the wait after a location change; Motions and other live writes keep the hours. Limits, warm-up, halts and do-not-contact apply as before. The README's exit `6` and `13` section and `account safety update` say so.
+- `inbox messages` help: a delete no longer "takes minutes to clear". A deleted message reads `is_deleted: true`, with no text or attachments, as soon as Curviate learns of it (at once when deleted through Curviate). A send still may take minutes to appear.
+- Pinned to the SDK build `1d7bc88` (0.45.0-next.4, descriptions only); the vendored OpenAPI fixture is re-copied from it (staging `de00c9e8f`).
+
 ### Voice notes
 
 - `curviate motion voice-clip upload <file>` uploads one audio file (MP3, WAV, M4A, WebM or Ogg; 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours) and prints the clip; its `id` (`vc_...`) is the `clip_id` of a `voice.send` step. `motion voice-clip get <id>` reads one back. `--preview` sends nothing. A refused upload is exit `2` (`VOICE_CLIP_INVALID` names the reason), `PAYLOAD_TOO_LARGE` over 20 MiB, `RATE_LIMIT_TENANT` (exit `6`) past the cap.

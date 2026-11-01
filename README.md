@@ -721,9 +721,10 @@ Exit `6` means LinkedIn or Curviate's request limiter refused you: back off and
 retry later.
 
 Exit `13` means an account-safety ceiling YOU configured is spent, or the
-account is outside the hours it works in. Nothing reached LinkedIn and nothing
-was spent, so backing off is the wrong move: the reset can be a month out, and
-you can lift it now. The error body names what to do, so branch on the fields
+account is outside the hours it works in (never for a direct message: a send,
+new chat, edit, delete, reaction or read mark goes at any hour). Nothing
+reached LinkedIn and nothing was spent, so backing off is the wrong move: the
+reset can be a month out, and you can lift it now. The error body names what to do, so branch on the fields
 rather than parsing the message:
 
 ```json
@@ -743,7 +744,8 @@ rather than parsing the message:
 ```
 
 - `safetyReason` is `ceiling` (the row's limit is spent) or `activity_window`
-  (the account is outside its working hours). The fixes differ.
+  (the account is outside its working hours; never for a direct message, except
+  the wait after a location change). The fixes differ.
 - `resetAt` is an absolute instant, so it stays true however long you hold it.
   It is `null` in the two cases where no clock frees the account: the
   invitation backlog, which falls when invitations are accepted or withdrawn
@@ -751,9 +753,9 @@ rather than parsing the message:
   LinkedIn regrants on its own schedule. Null-check it before scheduling on it.
 - `safetyHint.parameter` is addressable on the safety policy, so an agent can
   choose between waiting, escalating and reconfiguring without reading prose.
-- A limit is always enforced: at the ceiling, or outside the activity window,
-  the action is refused with this error. Nothing is sent and nothing rides a
-  success body.
+- A limit is always enforced: at the ceiling, or outside the activity window
+  for anything but a direct message, the action is refused with this error.
+  Nothing is sent and nothing rides a success body.
 
 A `429` that carries `budgetRow` under `PLATFORM_RATE_LIMIT` is a third thing:
 that row is PAUSED because LinkedIn refused a recent call on it. The pause is
