@@ -229,6 +229,7 @@ const groupListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List the groups the connected account belongs to. Pass --target to enumerate another member's groups instead (a partial, interests-only read).",
+    risk: "read",
     examples: [
       "curviate core group list",
       "curviate core group list --target janesmith",
@@ -264,6 +265,7 @@ const groupGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get one LinkedIn group's full detail: name, member count, description, admin contact, and write-feasibility gates.",
+    risk: "read",
     examples: [
       "curviate core group get 12345678",
     ],
@@ -295,6 +297,10 @@ const groupMembersCommand = defineCommand({
   meta: {
     name: "members",
     description: "List (or search by name) a group's members: id, profile URL, name, headline, and relationship signal. Requires the connected account be a member of the group.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core group members 12345678",
       "curviate core group members 12345678 --name sophie",

@@ -29,6 +29,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
@@ -557,6 +558,10 @@ const commentListCommand = defineCommand({
   meta: {
     name: "list",
     description: "List the comments on a post. A very recent add/delete may take a few minutes to appear or clear here (LinkedIn-side indexing).",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core comment list 7290000000000000000",
       "curviate core comment list 7290000000000000000 --all",
@@ -575,6 +580,10 @@ const commentRepliesCommand = defineCommand({
   meta: {
     name: "replies",
     description: "List the replies to a comment.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core comment replies 7290000000000000000 COMMENT_ID",
       "curviate core comment replies 7290000000000000000 COMMENT_ID --all",
@@ -594,6 +603,10 @@ const commentReactionsCommand = defineCommand({
   meta: {
     name: "reactions",
     description: "List the reactions on a comment.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core comment reactions 7290000000000000000 COMMENT_ID",
     ],
@@ -612,6 +625,10 @@ const commentUserCommand = defineCommand({
   meta: {
     name: "user",
     description: "List the comments authored by a user (accepts 'me').",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core comment user me",
       "curviate core comment user janesmith --limit 10",
@@ -630,6 +647,15 @@ const commentAddCommand = defineCommand({
   meta: {
     name: "add",
     description: "Publish a comment on a post.",
+    risk: "write",
+    rules: {
+      changes: "Publishes your comment on the post.",
+      visible_to: "The post's author and everyone who can see its comments.",
+      budget_rows: ["comments"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core comment list <post_id>` first.",
+      undo: "`curviate core comment delete <post_id> <comment_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core comment add 7290000000000000000 \"Useful breakdown, thanks for sharing.\"",
     ],
@@ -649,6 +675,15 @@ const commentReplyCommand = defineCommand({
   meta: {
     name: "reply",
     description: "Reply to a comment.",
+    risk: "write",
+    rules: {
+      changes: "Publishes your reply to the comment.",
+      visible_to: "The comment's author and everyone who can see the thread.",
+      budget_rows: ["comments"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core comment replies <post_id> <comment_id>` first.",
+      undo: "`curviate core comment delete <post_id> <comment_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core comment reply 7290000000000000000 COMMENT_ID \"Agreed, that matches what we saw.\"",
     ],
@@ -669,6 +704,15 @@ const commentEditCommand = defineCommand({
   meta: {
     name: "edit",
     description: "Edit your own comment.",
+    risk: "write",
+    rules: {
+      changes: "Replaces the text of your comment.",
+      visible_to: "Everyone who can see the comment.",
+      budget_rows: [],
+      retry: "Safe: the same text written again leaves the comment the same.",
+      undo: "Edit it again with the previous text.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core comment edit 7290000000000000000 COMMENT_ID \"Useful breakdown, thanks for writing it up.\"",
     ],
@@ -688,6 +732,17 @@ const commentDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete your own comment.",
+    risk: "high",
+    rules: {
+      changes: "Deletes one of your comments.",
+      visible_to: "Everyone: the comment disappears from the post.",
+      budget_rows: [],
+      retry: "Safe: a deleted comment is gone, so a repeat has nothing to delete.",
+      undo: "Cannot be undone.",
+      blast_radius: "One comment, with its replies and reactions.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core comment list"],
     examples: [
       "curviate core comment delete 7290000000000000000 COMMENT_ID",
     ],
@@ -706,6 +761,15 @@ const commentReactCommand = defineCommand({
   meta: {
     name: "react",
     description: "React to a comment (like|celebrate|support|love|insightful|funny).",
+    risk: "write",
+    rules: {
+      changes: "Adds your reaction to the comment.",
+      visible_to: "The comment's author and anyone who can see its reactions.",
+      budget_rows: ["post_likes"],
+      retry: "Reacting again replaces your reaction; it never adds a second.",
+      undo: "`curviate core comment unreact <post_id> <comment_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core comment react 7290000000000000000 COMMENT_ID insightful",
     ],
@@ -725,6 +789,15 @@ const commentUnreactCommand = defineCommand({
   meta: {
     name: "unreact",
     description: "Remove your reaction from a comment.",
+    risk: "write",
+    rules: {
+      changes: "Removes your reaction from the comment.",
+      visible_to: "The comment's author and anyone who can see its reactions.",
+      budget_rows: [],
+      retry: "A second call answers REACTION_NOT_FOUND and changes nothing.",
+      undo: "`curviate core comment react <post_id> <comment_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, REACTION_NOT_FOUND: "you have no reaction on the comment." },
     examples: [
       "curviate core comment unreact 7290000000000000000 COMMENT_ID insightful",
     ],

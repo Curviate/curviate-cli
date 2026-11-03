@@ -10,9 +10,11 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Curviate, CurviateError } from "@curviate/sdk";
+import { version } from "../../package.json";
 import { assertNoStdinPlaceholder } from "./stdin.js";
 import { betaOverrideHeader } from "./beta.js";
 import { getRecheck, getWriteKind, isPoll, type WriteKind } from "./global-flags.js";
+import { resolvedTeam } from "./resolve.js";
 
 /** Every header name and value in a `RequestInit`, whatever shape it came in. */
 function headerStrings(headers: RequestInit["headers"]): string[] {
@@ -149,7 +151,7 @@ function fault(res: Response, message: string, retryLikely: boolean): Response {
  * passes through verbatim; a non-JSON one becomes `{}`. An empty, unreadable
  * or unexpected body (not an API object) also warns on stderr. A 204 is the
  * documented bodyless success and passes silently.
- * ponytail: "expected" = a JSON object carrying `object`, upgrade to the
+ * ponytail: "expected" = a JSON object (bulk results carry no `object` key), upgrade to the
  * operation's response schema when the CLI vendors response schemas.
  */
 function acceptedWrite(res: Response, text: string, body: unknown): Response {
@@ -159,7 +161,7 @@ function acceptedWrite(res: Response, text: string, body: unknown): Response {
     headers.delete("content-type");
     return new Response(null, { status: res.status, statusText: res.statusText, headers });
   }
-  const expected = body !== null && typeof body === "object" && !Array.isArray(body) && "object" in body;
+  const expected = body !== null && typeof body === "object" && !Array.isArray(body);
   if (!expected) {
     const what = body === undefined ? "a body that is not JSON" : "a body of an unexpected shape";
     process.stderr.write(`warning: the API accepted this write (HTTP ${res.status}) with ${what}. The write happened: do not retry it.\n`);
@@ -263,6 +265,8 @@ export interface ClientConfig {
   apiKey: string;
   baseUrl?: string;
   timeout?: number;
+  /** The Team (`X-Curviate-Team`, sent by the SDK). Omitted: the resolved one (`--team` > `CURVIATE_TEAM` > profile); null: none. */
+  team?: string | null;
 }
 
 /**
@@ -282,7 +286,12 @@ export function createClient(config: ClientConfig): Curviate {
   return new Curviate({
     apiKey: config.apiKey.trim(),
     fetch: guardedFetch,
+    // Replaces the SDK's own `sdk/<version>`: exactly one Curviate-Client header per request.
+    client: `cli/${version}`,
     ...(config.baseUrl !== undefined ? { baseUrl: config.baseUrl } : {}),
     ...(config.timeout !== undefined ? { timeout: config.timeout } : {}),
+    ...teamOption(config.team === undefined ? resolvedTeam() : config.team),
   });
 }
+
+const teamOption = (team: string | null | undefined): { team?: string } => (team ? { team } : {});

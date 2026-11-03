@@ -40,6 +40,7 @@ export const configCommand = defineCommand({
       meta: {
         name: "list",
         description: "List all profiles (keys redacted).",
+        risk: "read",
         examples: [
           "curviate config list",
         ],
@@ -111,7 +112,7 @@ export const configCommand = defineCommand({
               continue;
             }
             process.stdout.write(`  apiKey: ${d["apiKey"]}\n`);
-            for (const field of ["account", "baseUrl", "timeout"]) {
+            for (const field of ["account", "team", "baseUrl", "timeout"]) {
               if (d[field]) process.stdout.write(`  ${field}: ${d[field]}\n`);
             }
           }
@@ -123,6 +124,7 @@ export const configCommand = defineCommand({
       meta: {
         name: "path",
         description: "Print the config file path.",
+        risk: "read",
         examples: [
           "curviate config path",
         ],
@@ -138,6 +140,15 @@ export const configCommand = defineCommand({
       meta: {
         name: "use",
         description: "Set the active profile.",
+        risk: "write",
+        rules: {
+          changes: "Makes the named profile the active one in the config file.",
+          visible_to: "Nobody else: the file stays on this machine.",
+          budget_rows: [],
+          retry: "Safe: the same result every time.",
+          undo: "Run it again with the previous profile name (`curviate config list`).",
+        },
+        errors: { INVALID_REQUEST: "no profile has that name." },
         examples: [
           "curviate config use work",
         ],
@@ -164,6 +175,15 @@ export const configCommand = defineCommand({
       meta: {
         name: "rename",
         description: "Rename a profile.",
+        risk: "write",
+        rules: {
+          changes: "Renames a profile in the config file; its key is unchanged.",
+          visible_to: "Nobody else: the file stays on this machine.",
+          budget_rows: [],
+          retry: "A second call fails: the old name is gone.",
+          undo: "Rename it back.",
+        },
+        errors: { INVALID_REQUEST: "the old name does not exist, or the new one is taken." },
         examples: [
           "curviate config rename default personal",
         ],
@@ -192,6 +212,15 @@ export const configCommand = defineCommand({
       meta: {
         name: "set-account",
         description: "Set the default account on a profile.",
+        risk: "write",
+        rules: {
+          changes: "Sets the Account that commands use when you pass no --account.",
+          visible_to: "Nobody else: the file stays on this machine.",
+          budget_rows: [],
+          retry: "Safe: the same result every time.",
+          undo: "Run it again with the previous Account id.",
+        },
+        errors: { INVALID_REQUEST: "there is no config file or no such profile." },
         examples: [
           "curviate config set-account acc_YOUR_ACCOUNT_ID",
         ],
@@ -228,6 +257,15 @@ export const configCommand = defineCommand({
       meta: {
         name: "set-base-url",
         description: "Set or clear the base URL on a profile.",
+        risk: "write",
+        rules: {
+          changes: "Sets or clears the API base URL on a profile.",
+          visible_to: "Nobody else: the file stays on this machine.",
+          budget_rows: [],
+          retry: "Safe: the same result every time.",
+          undo: "Run it again with the previous URL, or --reset.",
+        },
+        errors: { INVALID_REQUEST: "there is no config file, no such profile, or the URL is not valid." },
         examples: [
           "curviate config set-base-url https://api.curviate.com",
           "curviate config set-base-url --reset",
@@ -290,6 +328,17 @@ export const configCommand = defineCommand({
       meta: {
         name: "reset",
         description: "Remove the config file (or a single profile).",
+        risk: "high",
+        rules: {
+          changes: "Deletes the config file, or with --profile one profile, with the API keys stored there.",
+          visible_to: "Nobody else: the file stays on this machine.",
+          budget_rows: [],
+          retry: "Safe: with nothing left to remove it changes nothing.",
+          undo: "Cannot be undone: a removed key is gone; create a new one with `curviate setup`.",
+          blast_radius: "Every profile in the file, or the one named by --profile.",
+        },
+        errors: { INVALID_REQUEST: "no profile has that name." },
+        seeAlso: ["curviate config list", "curviate setup"],
         examples: [
           "curviate config reset --profile work --yes",
           "curviate config reset --yes",

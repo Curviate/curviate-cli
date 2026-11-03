@@ -121,7 +121,8 @@ export const PATTERNS = [
   {
     label: "internal path prefixes (sdk/N, api/N, core/N, infra/N, mcp/N, cli/N)",
     // Matches: sdk/001, api/003, core/002, infra/006, mcp/007, cli/004
-    pattern: /\b(sdk|api|core|infra|mcp|cli)\/\d+/,
+    // Not a semver client id (`sdk/2.0.0`, the served Curviate-Client example).
+    pattern: /\b(sdk|api|core|infra|mcp|cli)\/\d+(?!\d*\.\d)/,
   },
   {
     label: "internal doc paths (docs/specs, docs/adr)",

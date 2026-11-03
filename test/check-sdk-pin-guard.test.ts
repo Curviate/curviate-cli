@@ -12,6 +12,7 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -109,14 +110,16 @@ describe("check:sdk-pin — the fixed, matching state (GREEN)", () => {
 });
 
 describe("check:sdk-pin — real invocation against the actual package (integration)", () => {
-  it("node scripts/check-sdk-pin.mjs exits 0 against the real, currently-fixed source tree", () => {
-    expect(() =>
+  it("node scripts/check-sdk-pin.mjs passes on a published pin and refuses a commit pin (no publish of an unpublished SDK)", () => {
+    const declared: string = JSON.parse(readFileSync(join(pkgRoot, "package.json"), "utf8")).dependencies["@curviate/sdk"];
+    const run = () =>
       execFileSync(process.execPath, ["scripts/check-sdk-pin.mjs"], {
         cwd: pkgRoot,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-      }),
-    ).not.toThrow();
+      });
+    if (declared.startsWith("github:")) expect(run).toThrow(/a commit, not a published version/);
+    else expect(run).not.toThrow();
   });
 
   it("importing the module for its exports prints nothing and never exits the process", async () => {

@@ -891,6 +891,10 @@ const searchPeopleCommand = defineCommand({
   meta: {
     name: "people",
     description: "Search members with structured filters.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search people --keywords \"AI engineer\"",
       "curviate core search people --keywords \"AI engineer\" --location 106967730",
@@ -936,6 +940,10 @@ const searchCompaniesCommand = defineCommand({
   meta: {
     name: "companies",
     description: "Search companies.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search companies --keywords \"developer tools\"",
       "curviate core search companies --keywords robotics --headcount 11-50,51-200",
@@ -978,6 +986,10 @@ const searchPostsCommand = defineCommand({
     name: "posts",
     description:
       "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate core post get <id>` for the clean body.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search posts --keywords \"agent infrastructure\"",
       "curviate core search posts --keywords \"agent infrastructure\" --date-posted past_week",
@@ -1022,6 +1034,10 @@ const searchJobsCommand = defineCommand({
   meta: {
     name: "jobs",
     description: "Search jobs.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search jobs --keywords \"AI engineer\"",
       "curviate core search jobs --keywords \"AI engineer\" --location 106967730 --presence remote",
@@ -1082,6 +1098,7 @@ const searchParametersCommand = defineCommand({
     name: "parameters",
     description:
       "Resolve human-readable terms to opaque filter IDs. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    risk: "read",
     examples: [
       "curviate core search parameters --type LOCATION --keywords Berlin",
       "curviate core search parameters --type COMPANY --keywords Acme",
@@ -1120,6 +1137,10 @@ const searchGroupsCommand = defineCommand({
   meta: {
     name: "groups",
     description: "Keyword search for LinkedIn groups. A no-match search returns an empty list, not an error.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search groups \"gtm engineering\"",
     ],
@@ -1154,6 +1175,10 @@ const searchServicesCommand = defineCommand({
       "Search Services Marketplace providers with structured filters. At least one of --keywords, " +
       "--service-category, or --location is required. Resolve --service-category/--location values with " +
       "`curviate core search service-parameters` first, both take opaque ids, not free text.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search services --keywords marketing",
       "curviate core search services --service-category 100 --location 106967730",
@@ -1194,6 +1219,7 @@ const searchServiceParametersCommand = defineCommand({
     name: "service-parameters",
     description:
       "Resolve human-readable service-filter terms into the opaque ids `curviate core search services` accepts. Paginated: --cursor pages manually, --all streams every page as NDJSON.",
+    risk: "read",
     examples: [
       "curviate core search service-parameters --type service_category --keywords marketing",
     ],
@@ -1229,6 +1255,10 @@ export const searchCommand = defineCommand({
   meta: {
     name: "search",
     description: DESCRIPTIONS.search,
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
     ],

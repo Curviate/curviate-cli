@@ -1,6 +1,6 @@
 /** `login`: --base-url persistence and the `--api-key -` stdin contract, through the CLI entry point. */
 import { describe, it, expect, beforeEach } from "vitest";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { STDIN_SENTINEL } from "../../src/lib/stdin.js";
 import { useSink } from "../helpers/sink.js";
@@ -42,5 +42,17 @@ describe("login --api-key -", () => {
     const next = await sink.run(["account", "list", "--profile", "t", "--base-url", sink.url, "--json"], { xdg, env });
     expect(next.status).toBe(0);
     expect(next.requests.map((q) => q.headers.authorization)).toEqual([`Bearer ${KEY}`]);
+  });
+});
+
+describe("a config already holding the placeholder as a key", () => {
+  it("does not block a write to another profile; the stale key is gone and the other profiles stay", async () => {
+    mkdirSync(join(xdg, "curviate"), { recursive: true });
+    writeFileSync(join(xdg, "curviate", "config.json"), JSON.stringify({ active: "work", profiles: { work: { apiKey: "rdc_live_W" }, default: { apiKey: STDIN_SENTINEL } } }));
+    const r = await sink.run(["login", "--api-key", "rdc_live_N", "--profile", "other"], { xdg, env });
+    expect(r.status, r.stderr).toBe(0);
+    expect(config().profiles["other"]).toMatchObject({ apiKey: "rdc_live_N" });
+    expect(config().profiles["work"]).toMatchObject({ apiKey: "rdc_live_W" });
+    expect(config().profiles["default"]).not.toHaveProperty("apiKey");
   });
 });

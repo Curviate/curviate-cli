@@ -37,6 +37,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
@@ -973,6 +974,7 @@ const profileMeCommand = defineCommand({
   meta: {
     name: "me",
     description: "Get your own profile, or list own activity with --posts/--comments/--reactions/--followers.",
+    risk: "read",
     examples: [
       "curviate core profile me",
       "curviate core profile me --posts",
@@ -1036,7 +1038,9 @@ const profileMeCommand = defineCommand({
 const profileRelationsCommand = defineCommand({
   meta: {
     name: "relations",
-    description: "List your 1st-degree connections.",
+    description: "List your 1st-degree connections, live from LinkedIn.",
+    seeAlso: ["curviate network list (the stored Connections of every Account, no LinkedIn call)"],
+    risk: "read",
     examples: [
       "curviate core profile relations",
       "curviate core profile relations --all",
@@ -1066,6 +1070,15 @@ const profileEndorseCommand = defineCommand({
   meta: {
     name: "endorse",
     description: "Endorse a skill on a member's profile.",
+    risk: "write",
+    rules: {
+      changes: "Adds your endorsement to one skill on the member's profile.",
+      visible_to: "The member, on their profile.",
+      budget_rows: ["endorsements"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read the member's skills with `curviate core profile <id> --sections skills` first.",
+      undo: "Cannot be undone from the CLI: remove the endorsement on LinkedIn.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core profile endorse janesmith --endorsement-id 12345",
     ],
@@ -1123,6 +1136,15 @@ const profileUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Update your own profile (headline, bio, name, skills, photos).",
+    risk: "write",
+    rules: {
+      changes: "Overwrites the profile fields you pass; fields you omit stay as they are.",
+      visible_to: "Everyone who can view your LinkedIn profile.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the profile the same.",
+      undo: "Run it again with the previous values; the CLI keeps no copy of them.",
+    },
+    errors: { ...AS_ACCOUNT },
     examples: [
       "curviate core profile update --headline \"Building agent infrastructure\"",
       "curviate core profile update --skills \"TypeScript,Agents\"",
@@ -1150,6 +1172,15 @@ const profileFollowCommand = defineCommand({
   meta: {
     name: "follow",
     description: "Follow a member (sends a connect request if their profile is private).",
+    risk: "write",
+    rules: {
+      changes: "Follows the member; for a private profile it sends a connection request instead.",
+      visible_to: "The member.",
+      budget_rows: ["follows"],
+      retry: "Following a member you already follow adds nothing; read `curviate core profile following me` first to be sure.",
+      undo: "`curviate core profile unfollow <id>`; a connection request stays pending until you cancel it.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core profile follow janesmith",
     ],
@@ -1167,6 +1198,15 @@ const profileUnfollowCommand = defineCommand({
   meta: {
     name: "unfollow",
     description: "Unfollow a member. Unfollowing someone you do not follow changes nothing.",
+    risk: "write",
+    rules: {
+      changes: "Stops following the member.",
+      visible_to: "The member's follower count drops.",
+      budget_rows: [],
+      retry: "Safe: unfollowing a member you do not follow changes nothing.",
+      undo: "`curviate core profile follow <id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core profile unfollow janesmith",
     ],
@@ -1184,6 +1224,7 @@ const profileFollowersCommand = defineCommand({
   meta: {
     name: "followers",
     description: "List a member's followers (accepts 'me').",
+    risk: "read",
     examples: [
       "curviate core profile followers me",
       "curviate core profile followers janesmith --limit 20",
@@ -1202,6 +1243,7 @@ const profileFollowingCommand = defineCommand({
   meta: {
     name: "following",
     description: "List who a member follows (accepts 'me').",
+    risk: "read",
     examples: [
       "curviate core profile following me",
       "curviate core profile following me --all",
@@ -1220,6 +1262,7 @@ const profileSubscriptionCommand = defineCommand({
   meta: {
     name: "subscription",
     description: "Read your premium subscription: entitlements, primary plan, and LinkedIn management links. A free account is a valid result (has_premium:false).",
+    risk: "read",
     examples: [
       "curviate core profile subscription",
     ],
@@ -1234,6 +1277,7 @@ const profileAnalyticsCommand = defineCommand({
   meta: {
     name: "analytics",
     description: "Read your performance headline metrics: profile viewers, followers, post impressions, and search appearances (fixed LinkedIn reporting windows, no window selector).",
+    risk: "read",
     examples: [
       "curviate core profile analytics",
     ],
@@ -1248,6 +1292,7 @@ const profileVisitorsCommand = defineCommand({
   meta: {
     name: "visitors",
     description: "List people who recently viewed your profile, classified by disclosure fidelity (identified, semi-anonymous, or aggregate; Premium sees more identified viewers).",
+    risk: "read",
     examples: [
       "curviate core profile visitors",
       "curviate core profile visitors --limit 20",
@@ -1263,6 +1308,7 @@ const profileSsiCommand = defineCommand({
   meta: {
     name: "ssi",
     description: "Read your Social Selling Index: the overall score, its four pillar breakdowns, and industry/network percentile ranks.",
+    risk: "read",
     examples: [
       "curviate core profile ssi",
     ],
@@ -1277,6 +1323,10 @@ export const profileCommand = defineCommand({
   meta: {
     name: "profile",
     description: DESCRIPTIONS.profile,
+    risk: "read",
+    rules: {
+      budget_rows: ["profile_views"],
+    },
     examples: [
       "curviate core profile janesmith",
       "curviate core profile https://www.linkedin.com/in/janesmith --posts",

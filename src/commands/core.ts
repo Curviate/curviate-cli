@@ -33,7 +33,7 @@ export const coreCommand = defineCommand({
     recruiter: lazy("recruiter", () => import("./recruiter.js").then((m) => m.recruiterCommand)),
     group: lazy("group", () => import("./group.js").then((m) => m.groupCommand)),
     feed: lazy("feed", () => import("./feed.js").then((m) => m.feedCommand)),
-    notification: lazy("notification", () => import("./notification.js").then((m) => m.notificationCommand)),
+    notification: lazy("coreNotification", () => import("./notification.js").then((m) => m.notificationCommand)),
     draft: lazy("draft", () => import("./draft.js").then((m) => m.draftCommand)),
   },
   async run() {

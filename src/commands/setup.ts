@@ -41,7 +41,8 @@ import { createClient } from "../lib/client.js";
 import { CurviateError } from "@curviate/sdk";
 import { getExitCode } from "../lib/exit-codes.js";
 import { readablePage } from "../lib/paginate.js";
-import { GLOBAL_FLAGS } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, getTeamFlag } from "../lib/global-flags.js";
+import { isPlainObject } from "../lib/config.js";
 import { readlineSync, type ReadlineStdin } from "../lib/readline.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import {
@@ -116,16 +117,23 @@ function appRoot(baseUrl: string, override?: string): string {
   return `${parsed.origin}${parsed.pathname.replace(/\/?api\/?$/, "").replace(/\/$/, "")}`;
 }
 
-/** The authorize URL the user opens, carrying the two public values. */
+/**
+ * The authorize URL the user opens, carrying the two public values. `picker`
+ * asks the page to offer "All my Teams" (a key for every Team) beside one
+ * Team; `team` preselects a Team (`setup --team`).
+ */
 export function authorizeUrl(
   baseUrl: string,
   sessionId: string,
   publicKey: string,
   appUrlOverride?: string,
+  team?: string,
 ): string {
   const url = new URL(`${appRoot(baseUrl, appUrlOverride)}/cli`);
   url.searchParams.set("sid", sessionId);
   url.searchParams.set("pk", publicKey);
+  url.searchParams.set("picker", "1");
+  if (team) url.searchParams.set("team", team);
   return url.toString();
 }
 
@@ -201,6 +209,8 @@ interface ExchangeBody {
   sealed_key: SealedKey;
   tenant_name: string;
   account_id?: string;
+  /** With a key for all the person's Teams: the Team they picked, stored as the profile's `team`. */
+  team_id?: string;
 }
 
 type ExchangeFailure =
@@ -362,8 +372,10 @@ export interface SetupIO {
   readStdin: () => Promise<string>;
   open: (url: string) => Promise<unknown>;
   fetch: typeof fetch;
-  /** One real API call, proving the key that was just written works. */
-  verify: (apiKey: string, baseUrl: string) => Promise<void>;
+  /** One real API call, proving the key that was just written works, in `team` when set. */
+  verify: (apiKey: string, baseUrl: string, team: string | undefined) => Promise<void>;
+  /** The person's Teams (`GET /v1/teams`), asked without a Team. */
+  listTeams: (apiKey: string, baseUrl: string) => Promise<unknown>;
   /** Session material generator, overridden only to pin values in a test. */
   generate: () => SessionMaterial;
 }
@@ -377,9 +389,13 @@ async function defaultOpen(url: string): Promise<unknown> {
   return open(url);
 }
 
-async function defaultVerify(apiKey: string, baseUrl: string): Promise<void> {
+async function defaultVerify(apiKey: string, baseUrl: string, team: string | undefined): Promise<void> {
   // A 2xx proves nothing unless it is a real account page, as in `doctor`.
-  readablePage(await createClient({ apiKey, baseUrl }).accounts.list());
+  readablePage(await createClient({ apiKey, baseUrl, team: team ?? null }).accounts.list());
+}
+
+async function defaultListTeams(apiKey: string, baseUrl: string): Promise<unknown> {
+  return createClient({ apiKey, baseUrl, team: null }).teams.list({ limit: 100 });
 }
 
 export function resolveSetupIO(io: Partial<SetupIO> = {}): SetupIO {
@@ -400,6 +416,7 @@ export function resolveSetupIO(io: Partial<SetupIO> = {}): SetupIO {
     open: io.open ?? defaultOpen,
     fetch: io.fetch ?? fetch,
     verify: io.verify ?? defaultVerify,
+    listTeams: io.listTeams ?? defaultListTeams,
     generate: io.generate ?? generateSessionMaterial,
   };
 }
@@ -481,6 +498,7 @@ export async function runSetup(args: SetupArgs, io: SetupIO): Promise<number> {
     material.sessionId,
     material.publicKey,
     io.env[APP_URL_ENV],
+    getTeamFlag(),
   );
 
   if (json) {
@@ -595,15 +613,18 @@ async function finishExchange(
     return 1;
   }
 
+  const team = result.body.team_id === undefined ? undefined : await confirmTeam(apiKey, baseUrl, result.body.team_id, opts, io);
   await writeProfile(profileName, {
     apiKey,
     tenant: result.body.tenant_name,
+    // Always written: a Team key replacing an all-teams one must not keep its Team.
+    team,
     ...(result.body.account_id !== undefined ? { account: result.body.account_id } : {}),
   });
   await clearResumeState();
 
   try {
-    await io.verify(apiKey, baseUrl);
+    await io.verify(apiKey, baseUrl, team);
   } catch (err: unknown) {
     io.stderr.write(
       "error: the credential was saved but a verifying call did not succeed. Run `curviate doctor` for detail.\n",
@@ -616,6 +637,7 @@ async function finishExchange(
     ok: true,
     tenant: result.body.tenant_name,
     profile: profileName,
+    team: team ?? null,
     ...(result.body.account_id !== undefined ? { account_id: result.body.account_id } : {}),
   };
   if (opts.json) {
@@ -627,24 +649,73 @@ async function finishExchange(
     if (result.body.account_id !== undefined) {
       io.stderr.write(`Default account set to ${result.body.account_id}.\n`);
     }
+    if (team !== undefined) io.stderr.write(`This key works in all your Teams; calls act in ${team} (change it with \`curviate team switch <team_id>\` or --team).\n`);
     io.stderr.write("Run `curviate doctor` to confirm.\n");
   }
   return 0;
+}
+
+/**
+ * The Team the exchange named, checked against the person's Teams: they may
+ * have left it between Authorize and the exchange. A Team that is not theirs
+ * is asked for again on a terminal, and left unset otherwise (with how to
+ * set it). An unreadable list keeps the exchange's Team: the verifying call
+ * then shows whether it works.
+ */
+async function confirmTeam(
+  apiKey: string,
+  baseUrl: string,
+  teamId: string,
+  opts: { json: boolean },
+  io: SetupIO,
+): Promise<string | undefined> {
+  let rows: Array<{ team_id: string; name: unknown }>;
+  try {
+    const page = await io.listTeams(apiKey, baseUrl);
+    const items = isPlainObject(page) ? page["items"] : undefined;
+    if (!Array.isArray(items)) return teamId;
+    rows = items.filter((t): t is { team_id: string; name: unknown } => isPlainObject(t) && typeof t["team_id"] === "string");
+  } catch {
+    return teamId;
+  }
+  const ids = rows.map((t) => t.team_id);
+  if (ids.includes(teamId)) return teamId;
+  io.stderr.write(`The Team you picked (${teamId}) is no longer one of yours.\n`);
+  if (!opts.json && io.isTTY && ids.length > 0) {
+    for (const t of rows) io.stderr.write(`  ${t.team_id}  ${typeof t.name === "string" ? t.name : ""}\n`);
+    const picked = (await io.prompt("Team to act in (team id, empty for none): ")).trim();
+    if (ids.includes(picked)) return picked;
+  }
+  io.stderr.write("No Team saved: pass --team, set CURVIATE_TEAM, or run `curviate team switch <team_id>` (`curviate team list` shows them).\n");
+  return undefined;
 }
 
 export const setupCommand = defineCommand({
   meta: {
     name: "setup",
     description: DESCRIPTIONS.setup,
+    risk: "write",
+    rules: {
+      changes: "Opens the dashboard, exchanges the code it shows for an API key and saves it as a local profile.",
+      visible_to: "Your workspace lists the new API key; nothing reaches LinkedIn.",
+      budget_rows: [],
+      retry: "Each run creates another API key; revoke the unused ones in the dashboard.",
+      undo: "Revoke the key in the dashboard and remove the profile with `curviate config reset --profile <name> --yes`.",
+    },
+    errors: { INVALID_REQUEST: "the code was not accepted or has expired: run `curviate setup` again for a fresh one." },
     examples: [
       "curviate setup",
-      "curviate setup --json",
+      "curviate setup --json --team tnt_01HZY3K8Q2",
       "curviate setup --code -",
     ],
   },
   args: {
     profile: GLOBAL_FLAGS.profile,
     "base-url": GLOBAL_FLAGS["base-url"],
+    team: {
+      type: "string",
+      description: "Preselect this Team (tnt_...) on the authorize page.",
+    },
     json: GLOBAL_FLAGS.json,
     "no-browser": {
       type: "boolean",

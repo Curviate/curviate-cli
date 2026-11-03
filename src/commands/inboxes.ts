@@ -200,6 +200,7 @@ const inboxesListCommand = defineCommand({
   meta: {
     name: "list",
     description: "Discover the account's inboxes (personal + company pages).",
+    risk: "read",
     examples: [
       "curviate core inboxes list",
       "curviate core inboxes list --kind company",
@@ -244,6 +245,7 @@ const inboxesChatsCommand = defineCommand({
       "List an inbox's conversations. Each chat id is send-ready: reply with `curviate core message send <chat_id> \"<text>\"`. " +
       "A company inbox's chat id (e.g. COMPANY_83734124_2-...) sends AS THE PAGE, no separate flag needed. " +
       "Company inboxes are reply-only and cannot start a new conversation.",
+    risk: "read",
     examples: [
       "curviate core inboxes chats CLASSIC_PRIMARY",
       "curviate core inboxes chats COMPANY_1234567_PRIMARY --limit 10",

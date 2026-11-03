@@ -77,10 +77,11 @@ describe("account link intent options", () => {
   const linkArgs = (extra: object) => ({ "seat-id": "seat_1", "auth-method": "cookie", country: "US", "li-at": "AQEDaTest", "user-agent": "Mozilla/5.0", json: true, ...extra }) as never;
   const link = (extra: object, out = makeOut(), intent = vi.fn().mockResolvedValue({ object: "account" })) => ({ intent, run: () => runAccountLink({ auth: { intent } } as never, linkArgs(extra), out, { isTTY: false }) });
 
-  it("forwards external_id, timezone and products (split, trimmed); omits all three when absent; --preview shows them", async () => {
+  it("forwards external_id and products (split, trimmed), never a timezone; omits them when absent; --preview shows them", async () => {
     const a = link({ "external-id": "usr_42", timezone: "Europe/Berlin", products: "sales_navigator, recruiter" });
     await a.run();
-    expect(a.intent.mock.calls[0]![0]).toMatchObject({ external_id: "usr_42", timezone: "Europe/Berlin", products: ["sales_navigator", "recruiter"] });
+    expect(a.intent.mock.calls[0]![0]).toMatchObject({ external_id: "usr_42", products: ["sales_navigator", "recruiter"] });
+    expect(a.intent.mock.calls[0]![0]).not.toHaveProperty("timezone");
     const b = link({});
     await b.run();
     expect(b.intent.mock.calls[0]![0]).toMatchObject({ auth_method: "cookie" });
@@ -88,7 +89,7 @@ describe("account link intent options", () => {
     const out = makeOut();
     const c = link({ preview: true, "external-id": "usr_42", timezone: "Europe/Berlin", products: "recruiter" }, out);
     await c.run();
-    expect((JSON.parse(text(out.stdout.write)) as { body: object }).body).toMatchObject({ external_id: "usr_42", timezone: "Europe/Berlin", products: ["recruiter"] });
+    expect((JSON.parse(text(out.stdout.write)) as { body: object }).body).toMatchObject({ external_id: "usr_42", products: ["recruiter"] });
     expect(c.intent).not.toHaveBeenCalled();
   });
 

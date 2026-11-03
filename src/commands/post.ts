@@ -28,6 +28,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, WRITE_SINGLE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveMemberOrMeProviderId } from "../lib/member-id.js";
@@ -610,6 +611,10 @@ const postGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a post by id.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core post get 7290000000000000000",
       "curviate core post get urn:li:activity:7290000000000000000",
@@ -647,6 +652,15 @@ const postCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Create a new post.",
+    risk: "write",
+    rules: {
+      changes: "Publishes a post from your Account.",
+      visible_to: "Everyone who can see your posts on LinkedIn.",
+      budget_rows: ["posts"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core post user-posts me` first.",
+      undo: "`curviate core post delete <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET },
     examples: [
       "curviate core post create \"We just shipped webhooks for inbox events.\"",
       "curviate core post create \"Our latest product update.\" --attach screenshot.png",
@@ -686,6 +700,15 @@ const postReactCommand = defineCommand({
   meta: {
     name: "react",
     description: "React to a post.",
+    risk: "write",
+    rules: {
+      changes: "Adds your reaction to the post.",
+      visible_to: "The post's author and anyone who can see its reactions.",
+      budget_rows: ["post_likes"],
+      retry: "Reacting again replaces your reaction; it never adds a second.",
+      undo: "`curviate core post unreact <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET },
     examples: [
       "curviate core post react 7290000000000000000 like",
       "curviate core post react 7290000000000000000 celebrate --as-organization 1234567",
@@ -742,6 +765,10 @@ const postReactionsCommand = defineCommand({
   meta: {
     name: "reactions",
     description: "List reactions on a post.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core post reactions 7290000000000000000",
       "curviate core post reactions 7290000000000000000 --all",
@@ -800,6 +827,17 @@ const postDeleteCommand = defineCommand({
   meta: {
     name: "delete",
     description: "Delete a post you own.",
+    risk: "high",
+    rules: {
+      changes: "Deletes one of your posts.",
+      visible_to: "Everyone: the post disappears from LinkedIn.",
+      budget_rows: [],
+      retry: "Safe: a deleted post is gone, so a repeat has nothing to delete.",
+      undo: "Cannot be undone.",
+      blast_radius: "One post, with its comments and reactions.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
+    seeAlso: ["curviate core post user-posts"],
     examples: [
       "curviate core post delete 7290000000000000000",
     ],
@@ -817,6 +855,15 @@ const postUnreactCommand = defineCommand({
   meta: {
     name: "unreact",
     description: "Remove your reaction from a post.",
+    risk: "write",
+    rules: {
+      changes: "Removes your reaction from the post.",
+      visible_to: "The post's author and anyone who can see its reactions.",
+      budget_rows: [],
+      retry: "A second call answers REACTION_NOT_FOUND and changes nothing.",
+      undo: "`curviate core post react <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, REACTION_NOT_FOUND: "you have no reaction on the post." },
     examples: [
       "curviate core post unreact 7290000000000000000 like",
     ],
@@ -834,7 +881,8 @@ const postUnreactCommand = defineCommand({
 const postSavedCommand = defineCommand({
   meta: {
     name: "saved",
-    description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview (snippet capped at 140 chars).",
+    description: "List your own saved posts (a private bookmark list, newest-saved-first). Each item is a preview, not the full post body.",
+    risk: "read",
     examples: [
       "curviate core post saved",
     ],
@@ -849,6 +897,15 @@ const postSaveCommand = defineCommand({
   meta: {
     name: "save",
     description: "Save a post to your private bookmark list. Never notifies the author, never visible to third parties. Saving a saved post changes nothing.",
+    risk: "write",
+    rules: {
+      changes: "Adds the post to your private saved list.",
+      visible_to: "Only you.",
+      budget_rows: [],
+      retry: "Safe: saving a saved post changes nothing.",
+      undo: "`curviate core post unsave <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core post save 7290000000000000000",
     ],
@@ -866,6 +923,15 @@ const postUnsaveCommand = defineCommand({
   meta: {
     name: "unsave",
     description: "Remove a post from your saved-posts bookmark list. Unsaving a post that is not saved changes nothing.",
+    risk: "write",
+    rules: {
+      changes: "Removes the post from your private saved list.",
+      visible_to: "Only you.",
+      budget_rows: [],
+      retry: "Safe: unsaving a post that is not saved changes nothing.",
+      undo: "`curviate core post save <post_id>`.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET },
     examples: [
       "curviate core post unsave 7290000000000000000",
     ],
@@ -883,6 +949,10 @@ const postUserPostsCommand = defineCommand({
   meta: {
     name: "user-posts",
     description: "List a member's own posts (accepts 'me'). A very recent create/delete may take a few minutes to appear or clear here (LinkedIn-side indexing); `curviate core post get <post_id>` reflects it immediately.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core post user-posts me",
       "curviate core post user-posts janesmith --limit 10",
@@ -901,6 +971,10 @@ const postUserReactionsCommand = defineCommand({
   meta: {
     name: "user-reactions",
     description: "List a member's own reactions (accepts 'me'). Items carry no time of the reaction: `parent_post.created_at` is when the post was created, not when it was reacted to, so the listing cannot be filtered by date; without `--all`, `--limit` caps the read at one page.",
+    risk: "read",
+    rules: {
+      budget_rows: ["content_poll", "profile_views"],
+    },
     examples: [
       "curviate core post user-reactions me",
       "curviate core post user-reactions me --all",

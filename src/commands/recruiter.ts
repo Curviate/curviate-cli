@@ -33,6 +33,7 @@
 
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
+import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
@@ -1418,6 +1419,15 @@ const recruiterMessageNewCommand = defineCommand({
   meta: {
     name: "new",
     description: "Start a new Recruiter chat with a member.",
+    risk: "write",
+    rules: {
+      changes: "Starts a Recruiter chat with the member and sends the opening message.",
+      visible_to: "The recipient.",
+      budget_rows: ["inmail"],
+      retry: "Not safe: requests carry no idempotency key, so a retry after a timeout can repeat it. Read `curviate core inbox list` first.",
+      undo: "Cannot be undone.",
+    },
+    errors: { ...AS_ACCOUNT, ...BUDGET, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription.", RECIPIENT_UNREACHABLE: "LinkedIn will not let the Account message this person." },
     examples: [
       "curviate core recruiter message new --to AEMAAA1234567 --subject \"Staff Engineer role\" --signature \"Jane, Acme\" \"Hi Sam, your work on evals caught my eye.\"",
     ],
@@ -1434,9 +1444,9 @@ const recruiterMessageNewCommand = defineCommand({
     subject: { type: "string", description: "Message subject line (required for Recruiter InMail).", required: true },
     signature: { type: "string", description: "Sender signature (required for Recruiter InMail).", required: true },
     text: { type: "positional", description: "Opening message text." },
-    attach: { type: "string", description: "File to attach (repeatable, max 7 MiB each)." },
-    voice: { type: "string", description: "Voice message file (max 7 MiB)." },
-    video: { type: "string", description: "Video message file (max 7 MiB)." },
+    attach: { type: "string", description: "File to attach (repeatable)." },
+    voice: { type: "string", description: "Voice message file." },
+    video: { type: "string", description: "Video message file." },
   },
   async run({ args }) {
     const flags = args as RecruiterFlags;
@@ -1472,6 +1482,10 @@ const recruiterProfileCommand = defineCommand({
   meta: {
     name: "profile",
     description: "Get a Recruiter enriched member profile.",
+    risk: "read",
+    rules: {
+      budget_rows: ["profile_views"],
+    },
     examples: [
       "curviate core recruiter profile https://www.linkedin.com/in/janesmith",
     ],
@@ -1504,6 +1518,10 @@ const recruiterSearchPeopleCommand = defineCommand({
   meta: {
     name: "people",
     description: "Search Recruiter member profiles.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core recruiter search people --keywords \"staff engineer\"",
       "curviate core recruiter search people --filters-file filters.json",
@@ -1541,6 +1559,7 @@ const recruiterSearchParametersCommand = defineCommand({
   meta: {
     name: "parameters",
     description: "Resolve Recruiter filter parameter IDs (POST, source-scoped).",
+    risk: "read",
     examples: [
       "curviate core recruiter search parameters --source SEARCH --type LOCATION --keywords Berlin",
     ],
@@ -1594,6 +1613,10 @@ const recruiterSearchCommand = defineCommand({
   meta: {
     name: "search",
     description: "Recruiter search operations. Also runs a pasted Recruiter search/talent-pool/applicant URL directly.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\"",
     ],
@@ -1644,6 +1667,7 @@ const recruiterProjectsCommand = defineCommand({
   meta: {
     name: "projects",
     description: "List Recruiter hiring projects.",
+    risk: "read",
     examples: [
       "curviate core recruiter projects",
       "curviate core recruiter projects --all",
@@ -1673,6 +1697,15 @@ const recruiterProjectUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Edit a Recruiter project's config. All fields optional; omitted fields are left unchanged.",
+    risk: "write",
+    rules: {
+      changes: "Changes the fields you pass on a Recruiter project.",
+      visible_to: "Your Recruiter seat and the project's collaborators.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the project the same.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
     examples: [
       "curviate core recruiter project update PROJECT_ID --name \"Staff Engineer 2026\"",
       "curviate core recruiter project update PROJECT_ID --visibility PRIVATE",
@@ -1715,6 +1748,7 @@ const recruiterProjectCommand = defineCommand({
   meta: {
     name: "project",
     description: "Get a Recruiter hiring project by ID.",
+    risk: "read",
     examples: [
       "curviate core recruiter project PROJECT_ID",
     ],
@@ -1757,6 +1791,7 @@ const recruiterPipelineCommand = defineCommand({
   meta: {
     name: "pipeline",
     description: "List candidates in a project's pipeline (POST-as-list).",
+    risk: "read",
     examples: [
       "curviate core recruiter pipeline PROJECT_ID",
       "curviate core recruiter pipeline PROJECT_ID --sort-by LAST_MODIFIED",
@@ -1793,6 +1828,15 @@ const recruiterSaveCandidateCommand = defineCommand({
   meta: {
     name: "save-candidate",
     description: "Save a candidate to a project's pipeline at a given stage.",
+    risk: "write",
+    rules: {
+      changes: "Adds the candidate to the project's pipeline at the given stage.",
+      visible_to: "Your Recruiter seat and the project's collaborators.",
+      budget_rows: [],
+      retry: "Read `curviate core recruiter pipeline <project_id>` first.",
+      undo: "Remove the candidate from the pipeline in Recruiter; the CLI has no command for it.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
     examples: [
       "curviate core recruiter save-candidate PROJECT_ID --stage-id STAGE_ID --candidate-id CANDIDATE_ID",
     ],
@@ -1827,6 +1871,7 @@ const recruiterJobsCommand = defineCommand({
   meta: {
     name: "jobs",
     description: "List Recruiter job postings.",
+    risk: "read",
     examples: [
       "curviate core recruiter jobs",
       "curviate core recruiter jobs --all",
@@ -1877,6 +1922,15 @@ const recruiterJobCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Create a Recruiter job posting draft, opening a brand-new hiring project.",
+    risk: "write",
+    rules: {
+      changes: "Creates a job-posting draft and a new hiring project for it; nothing is published.",
+      visible_to: "Your Recruiter seat, until you publish it.",
+      budget_rows: [],
+      retry: "Not safe: each call creates another project and draft.",
+      undo: "The CLI cannot delete a project or draft: remove them in Recruiter.",
+    },
+    errors: { ...AS_ACCOUNT, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
     examples: [
       "curviate core recruiter job create --project-name \"Staff Engineer 2026\" --file job.json",
       "curviate core recruiter job create --project-name \"Staff Engineer 2026\" --file - <<'EOF'\n" +
@@ -1920,6 +1974,17 @@ const recruiterJobPublishCommand = defineCommand({
   meta: {
     name: "publish",
     description: "Publish a Recruiter job posting draft. PROMOTED/PROMOTED_PLUS spend real money and require --budget-amount, --budget-currency, and --budget-scope.",
+    risk: "high",
+    rules: {
+      changes: "Publishes the draft on LinkedIn; PROMOTED and PROMOTED_PLUS also spend the budget you pass.",
+      visible_to: "Anyone on LinkedIn who can see job postings.",
+      budget_rows: [],
+      retry: "Not safe for a promoted posting: a repeat can spend again. Read `curviate core recruiter project-job budget <project_id> <job_id>` and the posting first.",
+      undo: "`curviate core recruiter job close <project_id> <job_id>` stops applications; money spent is not returned by the CLI.",
+      blast_radius: "One job posting; with PROMOTED or PROMOTED_PLUS, the --budget-amount in --budget-currency.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
+    seeAlso: ["curviate core recruiter project-job budget", "curviate core recruiter job close"],
     examples: [
       "curviate core recruiter job publish PROJECT_ID JOB_ID --mode FREE",
     ],
@@ -1960,6 +2025,7 @@ const recruiterApplicantsCommand = defineCommand({
   meta: {
     name: "applicants",
     description: "List applicants in a Recruiter project's talent pool.",
+    risk: "read",
     examples: [
       "curviate core recruiter applicants PROJECT_ID --channel-id CHANNEL_ID",
     ],
@@ -1994,6 +2060,7 @@ const recruiterJobGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get a job posting via the Recruiter lens (any public posting, not only your own).",
+    risk: "read",
     examples: [
       "curviate core recruiter job get 4100000000",
       "curviate core recruiter job get https://www.linkedin.com/jobs/view/4100000000",
@@ -2026,6 +2093,17 @@ const recruiterJobCloseCommand = defineCommand({
   meta: {
     name: "close",
     description: "Stop a project's job posting from accepting applications (irreversible once LISTED).",
+    risk: "high",
+    rules: {
+      changes: "Stops the project's job posting from accepting applications.",
+      visible_to: "Anyone viewing the posting: it no longer takes applications.",
+      budget_rows: [],
+      retry: "Read `curviate core recruiter project-job get <project_id>` first: a closed posting has nothing left to close.",
+      undo: "Cannot be undone once the posting is listed.",
+      blast_radius: "One job posting.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
+    seeAlso: ["curviate core recruiter project-job get", "curviate core recruiter applicants"],
     examples: [
       "curviate core recruiter job close PROJECT_ID JOB_ID",
     ],
@@ -2078,6 +2156,7 @@ const recruiterProjectJobGetCommand = defineCommand({
   meta: {
     name: "get",
     description: "Get the single job posting attached to a project (404 when none is attached).",
+    risk: "read",
     examples: [
       "curviate core recruiter project-job get PROJECT_ID",
     ],
@@ -2110,6 +2189,15 @@ const recruiterProjectJobCreateCommand = defineCommand({
   meta: {
     name: "create",
     description: "Create a job-posting draft attached to an existing project.",
+    risk: "write",
+    rules: {
+      changes: "Creates a job-posting draft on an existing project; nothing is published.",
+      visible_to: "Your Recruiter seat, until you publish it.",
+      budget_rows: [],
+      retry: "Not safe: each call creates another draft.",
+      undo: "The CLI cannot delete a draft: remove it in Recruiter.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
     examples: [
       "curviate core recruiter project-job create PROJECT_ID --file job.json",
       "curviate core recruiter project-job create PROJECT_ID --file - <<'EOF'\n" +
@@ -2153,6 +2241,7 @@ const recruiterProjectJobBudgetCommand = defineCommand({
   meta: {
     name: "budget",
     description: "Get pricing to publish a project's job posting.",
+    risk: "read",
     examples: [
       "curviate core recruiter project-job budget PROJECT_ID JOB_ID",
     ],
@@ -2186,6 +2275,15 @@ const recruiterProjectJobUpdateCommand = defineCommand({
   meta: {
     name: "update",
     description: "Apply a partial update to a project's job posting.",
+    risk: "write",
+    rules: {
+      changes: "Changes the fields you pass on the project's job posting.",
+      visible_to: "Your Recruiter seat while it is a draft; anyone who can see the posting once it is published.",
+      budget_rows: [],
+      retry: "Safe: the same values written again leave the posting the same.",
+      undo: "Run it again with the previous values.",
+    },
+    errors: { ...AS_ACCOUNT, ...TARGET, LINKEDIN_FEATURE_NOT_SUBSCRIBED: "the Account has no Recruiter subscription." },
     examples: [
       "curviate core recruiter project-job update PROJECT_ID JOB_ID --workplace-type HYBRID",
       "curviate core recruiter project-job update PROJECT_ID JOB_ID --file - <<'EOF'\n" +
@@ -2224,6 +2322,7 @@ const recruiterProjectJobCommand = defineCommand({
   meta: {
     name: "project-job",
     description: "The single job posting attached to a Recruiter project.",
+    risk: "read",
     examples: [
       "curviate core recruiter project-job PROJECT_ID",
     ],
@@ -2270,6 +2369,10 @@ const recruiterTalentSearchCommand = defineCommand({
   meta: {
     name: "talent-search",
     description: "Search a project's talent pool.",
+    risk: "read",
+    rules: {
+      budget_rows: ["search"],
+    },
     examples: [
       "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
       "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID --keywords typescript",
@@ -2306,6 +2409,7 @@ const recruiterApplicantResumeCommand = defineCommand({
   meta: {
     name: "resume",
     description: "Download a job applicant's resume.",
+    risk: "read",
     examples: [
       "curviate core recruiter applicant resume PROJECT_ID APPLICANT_ID -o resume.pdf",
     ],
@@ -2345,6 +2449,7 @@ const recruiterApplicantCommand = defineCommand({
   meta: {
     name: "applicant",
     description: "Recruiter job applicant operations.",
+    risk: "read",
     examples: [
       "curviate core recruiter applicant PROJECT_ID APPLICANT_ID",
     ],

@@ -92,6 +92,15 @@ export const loginCommand = defineCommand({
   meta: {
     name: "login",
     description: DESCRIPTIONS.login,
+    risk: "write",
+    rules: {
+      changes: "Saves the API key to a local profile; no request is made.",
+      visible_to: "Nobody else: the file stays on this machine.",
+      budget_rows: [],
+      retry: "Safe: the same key saved again leaves the profile the same.",
+      undo: "`curviate config reset --profile <name> --yes` removes the profile.",
+    },
+    errors: { INVALID_REQUEST: "the key is empty or the base URL is not valid." },
     examples: [
       "curviate login",
       "curviate login --api-key - --profile work",
