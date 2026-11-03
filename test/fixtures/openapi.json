@@ -3832,7 +3832,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the role. Passes through verbatim, never stored."
+                                "description": "The member's own description of the role."
                               },
                               "employment_type": {
                                 "type": "string",
@@ -3925,7 +3925,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the studies. Passes through verbatim, never stored."
+                                "description": "The member's own description of the studies."
                               },
                               "started_on": {
                                 "type": "string",
@@ -4103,7 +4103,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the work. Passes through verbatim, never stored."
+                                "description": "The member's own description of the work."
                               },
                               "started_on": {
                                 "type": "string",
@@ -4131,7 +4131,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the project. Passes through verbatim, never stored."
+                                "description": "The member's own description of the project."
                               },
                               "contributors": {
                                 "type": "array",
@@ -4221,7 +4221,7 @@
                                 "properties": {
                                   "text": {
                                     "type": "string",
-                                    "description": "The recommendation text. Passes through verbatim, never stored."
+                                    "description": "The recommendation text."
                                   },
                                   "caption": {
                                     "type": "string",
@@ -4290,7 +4290,7 @@
                                 "properties": {
                                   "text": {
                                     "type": "string",
-                                    "description": "The recommendation text. Passes through verbatim, never stored."
+                                    "description": "The recommendation text."
                                   },
                                   "caption": {
                                     "type": "string",
@@ -4515,7 +4515,7 @@
                                   },
                                   "description": {
                                     "type": "string",
-                                    "description": "The newsletter's description. Passes through verbatim, never stored."
+                                    "description": "The newsletter's description."
                                   },
                                   "url": {
                                     "type": "string",
@@ -6455,7 +6455,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The company pages the account administers, each with its per-page admin capability matrix. An account that administers no pages returns an empty list; never a 403. Page names are returned verbatim and are stored in your tenant's entity records, with no expiry.",
+            "description": "The company pages the account administers, each with its per-page admin capability matrix. An account that administers no pages returns an empty list; never a 403. Page names are stored in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6522,7 +6522,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Page display name. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
+                            "description": "Page display name. Reading it back through Curviate stores it in your tenant's entity records. A record nothing links to and that is not fetched again for 90 days is deleted."
                           },
                           "universal_name": {
                             "type": [
@@ -9920,7 +9920,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The company's LinkedIn profile. Content fields (description, tagline) are returned verbatim and are never stored. follower_count is the audience-size signal that replaces the retired company followers list.",
+            "description": "The company's LinkedIn profile. follower_count is the audience-size signal that replaces the retired company followers list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9951,7 +9951,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Company description (content pass-through, never stored)."
+                      "description": "Company description."
                     },
                     "public_identifier": {
                       "type": "string",
@@ -10979,7 +10979,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A page of the company's posts. Post text is returned verbatim and is never stored.",
+            "description": "A page of the company's posts.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12433,7 +12433,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A page of the company page's followers; the admin analytics follower list. Follower names and headlines are returned verbatim and are stored in your tenant's entity records, with no expiry. Page until cursor is null.",
+            "description": "A page of the company page's followers; the admin analytics follower list. Follower names and headlines are stored in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. Page until cursor is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12477,14 +12477,14 @@
                               "string",
                               "null"
                             ],
-                            "description": "Follower display name. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
+                            "description": "Follower display name. Reading it back through Curviate stores it in your tenant's entity records. A record nothing links to and that is not fetched again for 90 days is deleted."
                           },
                           "headline": {
                             "type": [
                               "string",
                               "null"
                             ],
-                            "description": "Follower headline. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
+                            "description": "Follower headline. Reading it back through Curviate stores it in your tenant's entity records. A record nothing links to and that is not fetched again for 90 days is deleted."
                           },
                           "public_identifier": {
                             "type": [
@@ -30361,7 +30361,7 @@
                           "text": {
                             "type": "string",
                             "nullable": true,
-                            "description": "Full post body, verbatim, on both sorts. null when the post has no body. Pass-through, never stored."
+                            "description": "Full post body, verbatim, on both sorts. null when the post has no body."
                           },
                           "created_at": {
                             "type": "string",
@@ -30403,7 +30403,7 @@
                               "text": {
                                 "type": "string",
                                 "nullable": true,
-                                "description": "Original post body (pass-through; never stored)."
+                                "description": "Original post body."
                               }
                             }
                           },
@@ -31894,7 +31894,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "description": "A LinkedIn comment or reply (content pass-through, text and attachments are never stored).",
+                        "description": "A LinkedIn comment or reply.",
                         "properties": {
                           "object": {
                             "type": "string",
@@ -31919,7 +31919,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Full comment text (content pass-through, never stored)."
+                            "description": "Full comment text."
                           },
                           "reply_count": {
                             "type": "number",
@@ -32064,7 +32064,7 @@
                                   "string",
                                   "null"
                                 ],
-                                "description": "Full text of the parent post (content pass-through, never stored). Present on the full form only."
+                                "description": "Full text of the parent post. Present on the full form only."
                               },
                               "is_repost": {
                                 "type": "boolean",
@@ -32431,7 +32431,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "A LinkedIn comment or reply (content pass-through, text and attachments are never stored).",
+                  "description": "A LinkedIn comment or reply.",
                   "properties": {
                     "object": {
                       "type": "string",
@@ -32456,7 +32456,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "Full comment text (content pass-through, never stored)."
+                      "description": "Full comment text."
                     },
                     "reply_count": {
                       "type": "number",
@@ -33026,7 +33026,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "description": "A LinkedIn post comment (content pass-through, text is never stored). Canonical shape defined by the Comments group.",
+                        "description": "A LinkedIn post comment. Canonical shape defined by the Comments group.",
                         "properties": {
                           "object": {
                             "type": "string",
@@ -33051,7 +33051,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Full comment text (content pass-through, never stored)."
+                            "description": "Full comment text."
                           },
                           "reply_count": {
                             "type": "number",
@@ -33452,7 +33452,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "A LinkedIn comment or reply (content pass-through, text and attachments are never stored).",
+                  "description": "A LinkedIn comment or reply.",
                   "properties": {
                     "object": {
                       "type": "string",
@@ -33477,7 +33477,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "Full comment text (content pass-through, never stored)."
+                      "description": "Full comment text."
                     },
                     "reply_count": {
                       "type": "number",
@@ -34193,7 +34193,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "A LinkedIn comment or reply (content pass-through, text and attachments are never stored).",
+                  "description": "A LinkedIn comment or reply.",
                   "properties": {
                     "object": {
                       "type": "string",
@@ -34218,7 +34218,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "Full comment text (content pass-through, never stored)."
+                      "description": "Full comment text."
                     },
                     "reply_count": {
                       "type": "number",
@@ -34768,7 +34768,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "description": "A LinkedIn comment or reply (content pass-through, text and attachments are never stored).",
+                        "description": "A LinkedIn comment or reply.",
                         "properties": {
                           "object": {
                             "type": "string",
@@ -34793,7 +34793,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Full comment text (content pass-through, never stored)."
+                            "description": "Full comment text."
                           },
                           "reply_count": {
                             "type": "number",
@@ -43555,7 +43555,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The connected account's own classic job postings matching the filter. Content fields (title) are returned verbatim and are never stored.",
+            "description": "The connected account's own classic job postings matching the filter.",
             "content": {
               "application/json": {
                 "schema": {
@@ -43599,7 +43599,7 @@
                           },
                           "title": {
                             "type": "string",
-                            "description": "Job title (content pass-through, never stored)."
+                            "description": "Job title."
                           },
                           "company": {
                             "type": "string",
@@ -43910,7 +43910,7 @@
         ],
         "responses": {
           "201": {
-            "description": "The created job posting, in DRAFT state. Content fields (title, description) are returned verbatim and are never stored. This op never publishes and never spends money.",
+            "description": "The created job posting, in DRAFT state. This op never publishes and never spends money.",
             "content": {
               "application/json": {
                 "schema": {
@@ -43943,7 +43943,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "description": "Job title (content pass-through, never stored)."
+                      "description": "Job title."
                     },
                     "company": {
                       "type": "object",
@@ -44007,7 +44007,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Full job description text (content pass-through, never stored)."
+                      "description": "Full job description text."
                     },
                     "views_count": {
                       "type": "number",
@@ -44596,7 +44596,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The classic job posting's full detail. Content fields (title, description) are returned verbatim and are never stored.",
+            "description": "The classic job posting's full detail.",
             "content": {
               "application/json": {
                 "schema": {
@@ -44632,7 +44632,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "description": "Job title (content pass-through, never stored)."
+                      "description": "Job title."
                     },
                     "company": {
                       "type": "object",
@@ -44696,7 +44696,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Full job description text (content pass-through, never stored)."
+                      "description": "Full job description text."
                     },
                     "views_count": {
                       "type": "number",
@@ -45116,7 +45116,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The updated job posting, reflecting only the fields included in the request. Content fields (title, description) are returned verbatim and are never stored.",
+            "description": "The updated job posting, reflecting only the fields included in the request.",
             "content": {
               "application/json": {
                 "schema": {
@@ -45149,7 +45149,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "description": "Job title (content pass-through, never stored)."
+                      "description": "Job title."
                     },
                     "company": {
                       "type": "object",
@@ -45213,7 +45213,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Full job description text (content pass-through, never stored)."
+                      "description": "Full job description text."
                     },
                     "views_count": {
                       "type": "number",
@@ -48337,7 +48337,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "A LinkedIn post (content pass-through, text and attachments are never stored).",
+                  "description": "A LinkedIn post.",
                   "properties": {
                     "object": {
                       "type": "string",
@@ -48376,7 +48376,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "Full post text (content pass-through, never stored)."
+                      "description": "Full post text."
                     },
                     "created_at": {
                       "type": [
@@ -49576,7 +49576,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "description": "A LinkedIn post (content pass-through, text and attachments are never stored).",
+                        "description": "A LinkedIn post.",
                         "properties": {
                           "object": {
                             "type": "string",
@@ -49615,7 +49615,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "Full post text (content pass-through, never stored)."
+                            "description": "Full post text."
                           },
                           "created_at": {
                             "type": [
@@ -51306,7 +51306,7 @@
                                   "string",
                                   "null"
                                 ],
-                                "description": "Full text of the parent post (content pass-through, never stored). Present on the full form only."
+                                "description": "Full text of the parent post. Present on the full form only."
                               },
                               "is_repost": {
                                 "type": "boolean",
@@ -57011,7 +57011,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "The member's professional headline. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
+                      "description": "The member's professional headline. Reading it back through Curviate stores it in your tenant's entity records. A record nothing links to and that is not fetched again for 90 days is deleted."
                     },
                     "location": {
                       "type": "string",
@@ -57161,7 +57161,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the role. Passes through verbatim, never stored."
+                                "description": "The member's own description of the role."
                               },
                               "employment_type": {
                                 "type": "string",
@@ -57254,7 +57254,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the studies. Passes through verbatim, never stored."
+                                "description": "The member's own description of the studies."
                               },
                               "started_on": {
                                 "type": "string",
@@ -57391,7 +57391,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the project. Passes through verbatim, never stored."
+                                "description": "The member's own description of the project."
                               },
                               "contributors": {
                                 "type": "array",
@@ -57521,7 +57521,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the work. Passes through verbatim, never stored."
+                                "description": "The member's own description of the work."
                               },
                               "started_on": {
                                 "type": "string",
@@ -57545,7 +57545,7 @@
                             "properties": {
                               "text": {
                                 "type": "string",
-                                "description": "The recommendation text. Passes through verbatim, never stored."
+                                "description": "The recommendation text."
                               },
                               "caption": {
                                 "type": "string",
@@ -57616,14 +57616,14 @@
                     },
                     "recruiting_profile": {
                       "type": "object",
-                      "description": "Recruiter-only enrichment: notes, tags, and message-activity events. The notes, the tags and each event's message text are removed before anything is written, on every path. The rest of this object is stored in your tenant's entity records, with no expiry.",
+                      "description": "Recruiter-only enrichment: notes, tags, and message-activity events.",
                       "properties": {
                         "notes": {
                           "type": [
                             "string",
                             "null"
                           ],
-                          "description": "Recruiter notes on this candidate. Passes through, never stored."
+                          "description": "Recruiter notes on this candidate."
                         },
                         "tags": {
                           "type": "array",
@@ -57648,7 +57648,7 @@
                               },
                               "message_content": {
                                 "type": "string",
-                                "description": "Message text. Passes through, never stored."
+                                "description": "Message text."
                               },
                               "message_status": {
                                 "type": "string",
@@ -58837,7 +58837,7 @@
                           },
                           "headline": {
                             "type": "string",
-                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "location": {
                             "type": "string"
@@ -58901,7 +58901,7 @@
                           },
                           "display_name": {
                             "type": "string",
-                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "public_identifier": {
                             "type": "string"
@@ -58929,21 +58929,21 @@
                           },
                           "summary": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "Profile summary."
                           },
                           "emails": {
                             "type": "array",
                             "items": {
                               "type": "string"
                             },
-                            "description": "PII, full variant only, never persisted/logged."
+                            "description": "PII, full variant only. Never logged."
                           },
                           "phone_numbers": {
                             "type": "array",
                             "items": {
                               "type": "string"
                             },
-                            "description": "PII, full variant only, never persisted/logged."
+                            "description": "PII, full variant only. Never logged."
                           },
                           "skills": {
                             "type": "array",
@@ -62169,7 +62169,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -62233,7 +62233,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -62261,21 +62261,21 @@
                               },
                               "summary": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "Profile summary."
                               },
                               "emails": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "phone_numbers": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "skills": {
                                 "type": "array",
@@ -62903,7 +62903,7 @@
                           },
                           "headline": {
                             "type": "string",
-                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                            "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "location": {
                             "type": "string"
@@ -62967,7 +62967,7 @@
                           },
                           "display_name": {
                             "type": "string",
-                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                            "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                           },
                           "public_identifier": {
                             "type": "string"
@@ -62995,21 +62995,21 @@
                           },
                           "summary": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "Profile summary."
                           },
                           "emails": {
                             "type": "array",
                             "items": {
                               "type": "string"
                             },
-                            "description": "PII, full variant only, never persisted/logged."
+                            "description": "PII, full variant only. Never logged."
                           },
                           "phone_numbers": {
                             "type": "array",
                             "items": {
                               "type": "string"
                             },
-                            "description": "PII, full variant only, never persisted/logged."
+                            "description": "PII, full variant only. Never logged."
                           },
                           "skills": {
                             "type": "array",
@@ -63838,7 +63838,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -63902,7 +63902,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -63930,21 +63930,21 @@
                               },
                               "summary": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "Profile summary."
                               },
                               "emails": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "phone_numbers": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "skills": {
                                 "type": "array",
@@ -64058,7 +64058,7 @@
                                   },
                                   "headline": {
                                     "type": "string",
-                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "location": {
                                     "type": "string"
@@ -64122,7 +64122,7 @@
                                   },
                                   "display_name": {
                                     "type": "string",
-                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "public_identifier": {
                                     "type": "string"
@@ -64150,21 +64150,21 @@
                                   },
                                   "summary": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "Profile summary."
                                   },
                                   "emails": {
                                     "type": "array",
                                     "items": {
                                       "type": "string"
                                     },
-                                    "description": "PII, full variant only, never persisted/logged."
+                                    "description": "PII, full variant only. Never logged."
                                   },
                                   "phone_numbers": {
                                     "type": "array",
                                     "items": {
                                       "type": "string"
                                     },
-                                    "description": "PII, full variant only, never persisted/logged."
+                                    "description": "PII, full variant only. Never logged."
                                   },
                                   "skills": {
                                     "type": "array",
@@ -64278,7 +64278,7 @@
                                   },
                                   "headline": {
                                     "type": "string",
-                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                    "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "location": {
                                     "type": "string"
@@ -64342,7 +64342,7 @@
                                   },
                                   "display_name": {
                                     "type": "string",
-                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                    "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                                   },
                                   "public_identifier": {
                                     "type": "string"
@@ -64370,21 +64370,21 @@
                                   },
                                   "summary": {
                                     "type": "string",
-                                    "description": "Content, not stored."
+                                    "description": "Profile summary."
                                   },
                                   "emails": {
                                     "type": "array",
                                     "items": {
                                       "type": "string"
                                     },
-                                    "description": "PII, full variant only, never persisted/logged."
+                                    "description": "PII, full variant only. Never logged."
                                   },
                                   "phone_numbers": {
                                     "type": "array",
                                     "items": {
                                       "type": "string"
                                     },
-                                    "description": "PII, full variant only, never persisted/logged."
+                                    "description": "PII, full variant only. Never logged."
                                   },
                                   "skills": {
                                     "type": "array",
@@ -64845,7 +64845,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "description": "Content, not stored."
+                      "description": "Job title."
                     },
                     "company": {
                       "type": "object",
@@ -64928,7 +64928,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Content, not stored."
+                      "description": "Job description."
                     },
                     "views_count": {
                       "type": "number"
@@ -64978,7 +64978,7 @@
                         "properties": {
                           "question": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "Screening question text."
                           },
                           "is_eliminatory": {
                             "type": "boolean"
@@ -67330,7 +67330,7 @@
                           },
                           "title": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "Job title."
                           },
                           "company": {
                             "type": "string",
@@ -67735,7 +67735,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "description": "Content, not stored."
+                      "description": "Job title."
                     },
                     "company": {
                       "type": "object",
@@ -67818,7 +67818,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Content, not stored."
+                      "description": "Job description."
                     },
                     "views_count": {
                       "type": "number"
@@ -67868,7 +67868,7 @@
                         "properties": {
                           "question": {
                             "type": "string",
-                            "description": "Content, not stored."
+                            "description": "Screening question text."
                           },
                           "is_eliminatory": {
                             "type": "boolean"
@@ -70350,7 +70350,7 @@
                               },
                               "headline": {
                                 "type": "string",
-                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "location": {
                                 "type": "string"
@@ -70414,7 +70414,7 @@
                               },
                               "display_name": {
                                 "type": "string",
-                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                                "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                               },
                               "public_identifier": {
                                 "type": "string"
@@ -70442,21 +70442,21 @@
                               },
                               "summary": {
                                 "type": "string",
-                                "description": "Content, not stored."
+                                "description": "Profile summary."
                               },
                               "emails": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "phone_numbers": {
                                 "type": "array",
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "PII, full variant only, never persisted/logged."
+                                "description": "PII, full variant only. Never logged."
                               },
                               "skills": {
                                 "type": "array",
@@ -71390,7 +71390,7 @@
                         },
                         "headline": {
                           "type": "string",
-                          "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                          "description": "The member's headline. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                         },
                         "location": {
                           "type": "string"
@@ -71454,7 +71454,7 @@
                         },
                         "display_name": {
                           "type": "string",
-                          "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records, with no expiry. A pipeline read, an applicant read and a pasted-URL search store nothing."
+                          "description": "The member's display name. A people search or a talent-pool search stores it in your tenant's entity records; a record nothing links to and that is not fetched again for 90 days is deleted. A pipeline read, an applicant read and a pasted-URL search store nothing."
                         },
                         "public_identifier": {
                           "type": "string"
@@ -71482,21 +71482,21 @@
                         },
                         "summary": {
                           "type": "string",
-                          "description": "Content, not stored."
+                          "description": "Profile summary."
                         },
                         "emails": {
                           "type": "array",
                           "items": {
                             "type": "string"
                           },
-                          "description": "PII, full variant only, never persisted/logged."
+                          "description": "PII, full variant only. Never logged."
                         },
                         "phone_numbers": {
                           "type": "array",
                           "items": {
                             "type": "string"
                           },
-                          "description": "PII, full variant only, never persisted/logged."
+                          "description": "PII, full variant only. Never logged."
                         },
                         "skills": {
                           "type": "array",
@@ -72856,7 +72856,7 @@
                     },
                     "description": {
                       "type": "string",
-                      "description": "Professional headline. Present when populated. Reading it back through Curviate stores it in your tenant's entity records, with no expiry."
+                      "description": "Professional headline. Present when populated. Reading it back through Curviate stores it in your tenant's entity records. A record nothing links to and that is not fetched again for 90 days is deleted."
                     },
                     "location": {
                       "type": "string",
@@ -73034,7 +73034,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the role. Passes through verbatim, never stored."
+                                "description": "The member's own description of the role."
                               },
                               "employment_type": {
                                 "type": "string",
@@ -73127,7 +73127,7 @@
                               },
                               "description": {
                                 "type": "string",
-                                "description": "The member's own description of the studies. Passes through verbatim, never stored."
+                                "description": "The member's own description of the studies."
                               },
                               "started_on": {
                                 "type": "string",
@@ -80894,7 +80894,7 @@
                                     "integer",
                                     "null"
                                   ],
-                                  "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
+                                  "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (the first four weeks after warm-up was turned on, at connect or later, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                                 },
                                 "target": {
                                   "type": [
@@ -81017,7 +81017,7 @@
                             "properties": {
                               "enabled": {
                                 "type": "boolean",
-                                "description": "The account's warm-up switch, default true. Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
+                                "description": "The account's warm-up switch, default false. On ramps the account's limits from 0.15 at week 1 to full over 5 weeks, from connect or from the moment it is turned on; off is full limits. Recovery after a LinkedIn restriction applies either way. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
                               },
                               "state": {
                                 "type": "string",
@@ -81026,7 +81026,7 @@
                                   "ramping",
                                   "restriction_recovery"
                                 ],
-                                "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                                "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                               },
                               "factor": {
                                 "type": "number",
@@ -81037,7 +81037,7 @@
                                   "integer",
                                   "null"
                                 ],
-                                "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                                "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                               },
                               "steps": {
                                 "type": "integer",
@@ -81049,15 +81049,15 @@
                                   "type": "string",
                                   "enum": [
                                     "connect",
-                                    "dormant",
+                                    "switched_on",
                                     "post_restriction"
                                   ]
                                 },
-                                "description": "The triggers that apply now: `connect` in the first 28 days after connect, `dormant` after more than 30 days with no action (counted from the connect when the account never acted) until the ramp it started completes, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
+                                "description": "The triggers that apply now: `connect` in the first 28 days after a connect with warm-up on, `switched_on` in the first 28 days after warm-up was turned on, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
                               },
                               "dormant": {
                                 "type": "boolean",
-                                "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. With warm-up on, its next action starts the ramp at 0.15."
+                                "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. A fact only: it starts no ramp."
                               }
                             }
                           },
@@ -81613,7 +81613,7 @@
                               "integer",
                               "null"
                             ],
-                            "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
+                            "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (the first four weeks after warm-up was turned on, at connect or later, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                           },
                           "target": {
                             "type": [
@@ -81736,7 +81736,7 @@
                       "properties": {
                         "enabled": {
                           "type": "boolean",
-                          "description": "The account's warm-up switch, default true. Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
+                          "description": "The account's warm-up switch, default false. On ramps the account's limits from 0.15 at week 1 to full over 5 weeks, from connect or from the moment it is turned on; off is full limits. Recovery after a LinkedIn restriction applies either way. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
                         },
                         "state": {
                           "type": "string",
@@ -81745,7 +81745,7 @@
                             "ramping",
                             "restriction_recovery"
                           ],
-                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                         },
                         "factor": {
                           "type": "number",
@@ -81756,7 +81756,7 @@
                             "integer",
                             "null"
                           ],
-                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                         },
                         "steps": {
                           "type": "integer",
@@ -81768,15 +81768,15 @@
                             "type": "string",
                             "enum": [
                               "connect",
-                              "dormant",
+                              "switched_on",
                               "post_restriction"
                             ]
                           },
-                          "description": "The triggers that apply now: `connect` in the first 28 days after connect, `dormant` after more than 30 days with no action (counted from the connect when the account never acted) until the ramp it started completes, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
+                          "description": "The triggers that apply now: `connect` in the first 28 days after a connect with warm-up on, `switched_on` in the first 28 days after warm-up was turned on, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
                         },
                         "dormant": {
                           "type": "boolean",
-                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. With warm-up on, its next action starts the ramp at 0.15."
+                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. A fact only: it starts no ramp."
                         }
                       }
                     },
@@ -83464,7 +83464,7 @@
                       "properties": {
                         "enabled": {
                           "type": "boolean",
-                          "description": "The account's warm-up switch, default true. Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
+                          "description": "The account's warm-up switch, default false. On ramps the account's limits from 0.15 at week 1 to full over 5 weeks, from connect or from the moment it is turned on; off is full limits. Recovery after a LinkedIn restriction applies either way. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
                         },
                         "state": {
                           "type": "string",
@@ -83473,7 +83473,7 @@
                             "ramping",
                             "restriction_recovery"
                           ],
-                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                         },
                         "factor": {
                           "type": "number",
@@ -83484,7 +83484,7 @@
                             "integer",
                             "null"
                           ],
-                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                         },
                         "steps": {
                           "type": "integer",
@@ -83496,15 +83496,15 @@
                             "type": "string",
                             "enum": [
                               "connect",
-                              "dormant",
+                              "switched_on",
                               "post_restriction"
                             ]
                           },
-                          "description": "The triggers that apply now: `connect` in the first 28 days after connect, `dormant` after more than 30 days with no action (counted from the connect when the account never acted) until the ramp it started completes, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
+                          "description": "The triggers that apply now: `connect` in the first 28 days after a connect with warm-up on, `switched_on` in the first 28 days after warm-up was turned on, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
                         },
                         "dormant": {
                           "type": "boolean",
-                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. With warm-up on, its next action starts the ramp at 0.15."
+                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. A fact only: it starts no ramp."
                         }
                       }
                     },
@@ -85752,7 +85752,7 @@
                                 "ramping",
                                 "restriction_recovery"
                               ],
-                              "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                              "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                             },
                             "factor": {
                               "type": "number",
@@ -85763,7 +85763,7 @@
                                 "integer",
                                 "null"
                               ],
-                              "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                              "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                             },
                             "steps": {
                               "type": "integer",
@@ -85975,7 +85975,7 @@
                                   "integer",
                                   "null"
                                 ],
-                                "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
+                                "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (the first four weeks after warm-up was turned on, at connect or later, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                               },
                               "remaining": {
                                 "type": [
@@ -88575,7 +88575,7 @@
                   },
                   "warm_up": {
                     "type": "boolean",
-                    "description": "Optional, new connects only, default true. false connects this account with warm-up off: no connect ramp and no ramp after a quiet spell; recovery after a LinkedIn restriction still applies. Change it later with PATCH /v1/{account_id}/safety-policy and warm_up.enabled."
+                    "description": "Optional, new connects only, default false (warm-up off: full limits from the start). true connects this account with warm-up on: its limits start at 15% and rise over 5 weeks, for a new account or one with few connections and little activity. Recovery after a LinkedIn restriction applies either way. Change it later with PATCH /v1/{account_id}/safety-policy and warm_up.enabled."
                   }
                 },
                 "required": [
@@ -90882,7 +90882,7 @@
                   },
                   "warm_up": {
                     "type": "boolean",
-                    "description": "Optional, new connects only, default true. false connects this account with warm-up off: no connect ramp and no ramp after a quiet spell; recovery after a LinkedIn restriction still applies. Change it later with PATCH /v1/{account_id}/safety-policy and warm_up.enabled."
+                    "description": "Optional, new connects only, default false (warm-up off: full limits from the start). true connects this account with warm-up on: its limits start at 15% and rise over 5 weeks, for a new account or one with few connections and little activity. Recovery after a LinkedIn restriction applies either way. Change it later with PATCH /v1/{account_id}/safety-policy and warm_up.enabled."
                   }
                 },
                 "additionalProperties": false
@@ -90892,10 +90892,10 @@
                   "summary": "Ask for a new account",
                   "value": {}
                 },
-                "connect_warm_up_off": {
-                  "summary": "Ask for a new account with warm-up off",
+                "connect_warm_up_on": {
+                  "summary": "Ask for a new account with warm-up on",
                   "value": {
-                    "warm_up": false
+                    "warm_up": true
                   }
                 },
                 "reconnect": {
@@ -97481,7 +97481,7 @@
                       "properties": {
                         "enabled": {
                           "type": "boolean",
-                          "description": "The account's warm-up switch, default true. Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
+                          "description": "The account's warm-up switch, default false. On ramps the account's limits from 0.15 at week 1 to full over 5 weeks, from connect or from the moment it is turned on; off is full limits. Recovery after a LinkedIn restriction applies either way. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
                         },
                         "state": {
                           "type": "string",
@@ -97490,7 +97490,7 @@
                             "ramping",
                             "restriction_recovery"
                           ],
-                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                         },
                         "factor": {
                           "type": "number",
@@ -97501,7 +97501,7 @@
                             "integer",
                             "null"
                           ],
-                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                         },
                         "steps": {
                           "type": "integer",
@@ -97513,15 +97513,15 @@
                             "type": "string",
                             "enum": [
                               "connect",
-                              "dormant",
+                              "switched_on",
                               "post_restriction"
                             ]
                           },
-                          "description": "The triggers that apply now: `connect` in the first 28 days after connect, `dormant` after more than 30 days with no action (counted from the connect when the account never acted) until the ramp it started completes, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
+                          "description": "The triggers that apply now: `connect` in the first 28 days after a connect with warm-up on, `switched_on` in the first 28 days after warm-up was turned on, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
                         },
                         "dormant": {
                           "type": "boolean",
-                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. With warm-up on, its next action starts the ramp at 0.15."
+                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. A fact only: it starts no ramp."
                         }
                       }
                     },
@@ -98417,7 +98417,7 @@
                     },
                     "notices": {
                       "type": "array",
-                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-01-25). Nothing was stored for it. Branch on code, never on message.",
+                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-02-01). Nothing was stored for it. Branch on code, never on message.",
                       "items": {
                         "type": "object",
                         "required": [
@@ -98460,7 +98460,7 @@
                       "limit_profile_source": "detected",
                       "limit_profile_detected_at": "2026-09-07T08:12:04.000Z",
                       "warm_up": {
-                        "enabled": true,
+                        "enabled": false,
                         "state": "none",
                         "factor": 1,
                         "week": null,
@@ -98960,7 +98960,7 @@
                       "properties": {
                         "enabled": {
                           "type": "boolean",
-                          "description": "The account's warm-up switch, default true. Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
+                          "description": "The account's warm-up switch, default false. On ramps the account's limits from 0.15 at week 1 to full over 5 weeks, from connect or from the moment it is turned on; off is full limits. Recovery after a LinkedIn restriction applies either way. Set it with PATCH /v1/{account_id}/safety-policy and `warm_up: {enabled}`, or with `warm_up` at connect."
                         },
                         "state": {
                           "type": "string",
@@ -98969,7 +98969,7 @@
                             "ramping",
                             "restriction_recovery"
                           ],
-                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after its connect or after a quiet spell. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
+                          "description": "`none` is an account at full speed. `ramping` is an account climbing 0.15, 0.35, 0.60, 0.85 to 1.00 by week after warm-up was turned on, at connect or later. `restriction_recovery` is an account under, or just out of, a LinkedIn restriction: it holds at 0 for seven days after the restriction lifts, resumes at 0.40, then steps up 0.15 every four days."
                         },
                         "factor": {
                           "type": "number",
@@ -98980,7 +98980,7 @@
                             "integer",
                             "null"
                           ],
-                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the return from a quiet spell, whichever is later. Null when no ramp applies or restriction recovery is lower."
+                          "description": "Which week of the ramp supplies `factor`, counted from the connect or the moment warm-up was turned on, whichever is later. Null when no ramp applies or restriction recovery is lower."
                         },
                         "steps": {
                           "type": "integer",
@@ -98992,15 +98992,15 @@
                             "type": "string",
                             "enum": [
                               "connect",
-                              "dormant",
+                              "switched_on",
                               "post_restriction"
                             ]
                           },
-                          "description": "The triggers that apply now: `connect` in the first 28 days after connect, `dormant` after more than 30 days with no action (counted from the connect when the account never acted) until the ramp it started completes, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
+                          "description": "The triggers that apply now: `connect` in the first 28 days after a connect with warm-up on, `switched_on` in the first 28 days after warm-up was turned on, `post_restriction` under or recovering from a LinkedIn restriction. With warm-up off only `post_restriction` can apply."
                         },
                         "dormant": {
                           "type": "boolean",
-                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. With warm-up on, its next action starts the ramp at 0.15."
+                          "description": "True when the account has had no action for over 30 days (counted from its connect when it never acted), whether warm-up is on or off. A fact only: it starts no ramp."
                         }
                       }
                     },
@@ -99896,7 +99896,7 @@
                     },
                     "notices": {
                       "type": "array",
-                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-01-25). Nothing was stored for it. Branch on code, never on message.",
+                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-02-01). Nothing was stored for it. Branch on code, never on message.",
                       "items": {
                         "type": "object",
                         "required": [
@@ -100109,7 +100109,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST. The row name or source class is not one of the accepted values, `warm_up.enabled` is not a boolean, or a number is not a number (a negative ceiling). A value is never rejected for being unsafe: any limit may be set to any value, and a high one is reported rather than refused. A time zone is not a setting: any value but null in `timezone` or a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null is accepted and ignored, so a document read before this change can be sent back once its zones are null. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-01-25 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST. The row name or source class is not one of the accepted values, `warm_up.enabled` is not a boolean, or a number is not a number (a negative ceiling). A value is never rejected for being unsafe: any limit may be set to any value, and a high one is reported rather than refused. A time zone is not a setting: any value but null in `timezone` or a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null is accepted and ignored, so a document read before this change can be sent back once its zones are null. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-02-01 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -100241,7 +100241,7 @@
                       "warn",
                       "enforce"
                     ],
-                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-01-25, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
+                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-02-01, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
                     "nullable": true
                   },
                   "clear_halts": {
@@ -100278,7 +100278,7 @@
                       "warn",
                       "enforce"
                     ],
-                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-01-25, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
+                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-02-01, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
                     "nullable": true
                   },
                   "rows": {
@@ -100363,7 +100363,7 @@
                             "warn",
                             "enforce"
                           ],
-                          "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-01-25, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
+                          "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-02-01, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
                           "nullable": true
                         },
                         "activity_window_start": {
@@ -100454,7 +100454,7 @@
                           "description": "READ-ONLY. `interface_ceiling` with the account's warm-up ramp applied. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` and not `ceiling` answers that for a standard one. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
                         "posture_source": {
-                          "description": "REMOVED from the read (SF-04). Accepted and ignored until 2027-01-25 so an older document round-trips; refused after."
+                          "description": "REMOVED from the read (SF-04). Accepted and ignored until 2027-02-01 so an older document round-trips; refused after."
                         },
                         "over_default": {
                           "description": "READ-ONLY. The fields on this row configured above the Curviate default. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
@@ -100548,14 +100548,14 @@
                     "description": "READ-ONLY. When `limit_profile` was last read from LinkedIn, or null if it never has been. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                   },
                   "posture_source": {
-                    "description": "REMOVED from the read (SF-04). Accepted and ignored until 2027-01-25 so an older document round-trips; refused after."
+                    "description": "REMOVED from the read (SF-04). Accepted and ignored until 2027-02-01 so an older document round-trips; refused after."
                   },
                   "warm_up": {
                     "type": "object",
                     "properties": {
                       "enabled": {
                         "type": "boolean",
-                        "description": "Turn this account's warm-up on (true, the default) or off (false). Off skips the connect ramp and the quiet ramp; recovery after a LinkedIn restriction still applies."
+                        "description": "Turn this account's warm-up on (true) or off (false, the default). On starts the ramp at week 1 (0.15) from now, rising to full limits over 5 weeks; off is full limits at once. Recovery after a LinkedIn restriction applies either way."
                       }
                     },
                     "description": "The account's warm-up. Only `enabled` is settable; its other keys are derived on every read, accepted and ignored, so the read's object can be sent back unchanged."
@@ -100610,11 +100610,11 @@
                     ]
                   }
                 },
-                "warmUpOff": {
-                  "summary": "Turn this account's warm-up off (recovery after a restriction still applies)",
+                "warmUpOn": {
+                  "summary": "Turn this account's warm-up on: limits restart at 15% this week and rise over 5 weeks",
                   "value": {
                     "warm_up": {
-                      "enabled": false
+                      "enabled": true
                     }
                   }
                 },
@@ -101910,7 +101910,7 @@
                     },
                     "notices": {
                       "type": "array",
-                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-01-25). Nothing was stored for it. Branch on code, never on message.",
+                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-02-01). Nothing was stored for it. Branch on code, never on message.",
                       "items": {
                         "type": "object",
                         "required": [
@@ -102996,7 +102996,7 @@
                     },
                     "notices": {
                       "type": "array",
-                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-01-25). Nothing was stored for it. Branch on code, never on message.",
+                      "description": "Present on a write only, and only when it sent a removed key (`posture`, `tenant_default_posture`): one POSTURE_REMOVED entry per key, naming it and the last day it is accepted (2027-02-01). Nothing was stored for it. Branch on code, never on message.",
                       "items": {
                         "type": "object",
                         "required": [
@@ -103163,7 +103163,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST. An unknown limit profile, row name or field, or a value that is not a value (a negative ceiling). A value is never rejected for being unsafe. A time zone is not a setting: any value but null in a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null there is accepted and ignored. A top-level `timezone` is not a field of this operation: it is refused as an unknown key, null included. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-01-25 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST. An unknown limit profile, row name or field, or a value that is not a value (a negative ceiling). A value is never rejected for being unsafe. A time zone is not a setting: any value but null in a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null there is accepted and ignored. A top-level `timezone` is not a field of this operation: it is refused as an unknown key, null included. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-02-01 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -103281,7 +103281,7 @@
                       "warn",
                       "enforce"
                     ],
-                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-01-25, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
+                    "description": "REMOVED: limits are always enforced; to send more, raise the limit. \"enforce\" (or null) is still accepted until 2027-02-01, changes nothing and earns a POSTURE_REMOVED notice; \"warn\", or any value after that day, is refused with INVALID_REQUEST.",
                     "nullable": true
                   },
                   "profiles": {
@@ -144606,7 +144606,7 @@
                                     "integer",
                                     "null"
                                   ],
-                                  "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (its first four weeks after connect, after a quiet spell, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
+                                  "description": "What this row is ACTUALLY held to right now: `ceiling` with the account's warm-up ramp applied. Compare `used` against THIS one, and `band` is computed against it too. While warm-up holds an account back (the first four weeks after warm-up was turned on, at connect or later, or while it recovers from a restriction) the two differ, and in the first week after connect they differ by a factor of about seven. Equal to `ceiling` once the ramp is over, and `null` wherever `ceiling` is null. The account's ramp, its factor and the triggers behind it are on GET /v1/{account_id}/safety-policy as `warm_up`."
                                 },
                                 "target": {
                                   "type": [
