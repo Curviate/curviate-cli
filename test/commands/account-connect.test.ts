@@ -197,21 +197,25 @@ describe("guided checkpoint", () => {
 
 describe("warm-up and zone", () => {
   const UA = ["--user-agent", "UA/1", "--seat-id", "seat_1", "--country", "US", "--json"];
-  it("link --no-warm-up sends warm_up:false; omitted sends no key; --timezone is accepted and sends no zone; refused with --account-id", async () => {
+  it("link --warm-up sends warm_up:true, --no-warm-up false; omitted sends no key; --timezone is accepted and sends no zone; refused with --account-id", async () => {
+    const on = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", "--warm-up", ...UA]);
+    expect((JSON.parse(on.requests[0]!.body) as Record<string, unknown>)["warm_up"]).toBe(true);
     const off = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", "--no-warm-up", "--timezone", "Europe/Berlin", ...UA]);
     const body = JSON.parse(off.requests[0]!.body) as Record<string, unknown>;
     expect(body["warm_up"]).toBe(false);
     expect(body).not.toHaveProperty("timezone");
     const dflt = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", ...UA]);
     expect(JSON.parse(dflt.requests[0]!.body)).not.toHaveProperty("warm_up");
-    const re = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", "--no-warm-up", "--account-id", "acc_1", ...UA]);
-    expect([re.status, re.requests.length]).toEqual([2, 0]);
+    for (const flag of ["--warm-up", "--no-warm-up"]) {
+      const re = await sink.run(["account", "link", "--auth-method", "cookie", "--li-at", "AT", flag, "--account-id", "acc_1", ...UA]);
+      expect([re.status, re.requests.length], flag).toEqual([2, 0]);
+    }
   });
 
-  it("connect-request create --no-warm-up sends warm_up:false; with --reconnect it exits 2", async () => {
-    const r = await sink.run(["account", "connect-request", "create", "--no-warm-up", "--json"]);
-    expect(JSON.parse(r.requests[0]!.body)).toEqual({ warm_up: false });
-    const re = await sink.run(["account", "connect-request", "create", "--no-warm-up", "--reconnect", "acc_1"]);
+  it.each([["--warm-up", true], ["--no-warm-up", false]])("connect-request create %s sends warm_up:%s; with --reconnect it exits 2", async (flag, warm_up) => {
+    const r = await sink.run(["account", "connect-request", "create", flag, "--json"]);
+    expect(JSON.parse(r.requests[0]!.body)).toEqual({ warm_up });
+    const re = await sink.run(["account", "connect-request", "create", flag, "--reconnect", "acc_1"]);
     expect([re.status, re.requests.length]).toEqual([2, 0]);
   });
 

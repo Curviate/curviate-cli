@@ -32,8 +32,8 @@ const switchCommand = (name: "on" | "off") => defineCommand({
   meta: {
     name,
     description: name === "on"
-      ? "Turn the Account's warm-up on: the ramp holds its ceilings below the limits after a connect or a quiet spell. Prints the resulting warm-up."
-      : "Turn the Account's warm-up off: the connect and quiet ramps no longer apply (recovery after a LinkedIn restriction still does). Prints the resulting warm-up.",
+      ? "Turn the Account's warm-up on: its limits start at 15% from now and rise to full over 5 weeks. Prints the resulting warm-up."
+      : "Turn the Account's warm-up off (the default): full limits at once; recovery after a LinkedIn restriction still applies. Prints the resulting warm-up.",
     risk: "write",
     rules: {
       changes: `The Account's warm-up switch is set ${name}; every budget row's effective ceiling follows.`,

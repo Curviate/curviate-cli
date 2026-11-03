@@ -6,9 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## Unreleased
+## [0.50.0] - 2026-11-03
 
-Requires the next `@curviate/sdk` (a commit pin on the SDK PR build until it is published; `check:sdk-pin` refuses a publish until the pin is a version). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the deployed staging document.
+Requires `@curviate/sdk` 0.45.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the production document.
+
+### Warm-up opt-in
+
+- **Same flag, new meaning:** warm-up is off by default, opt-in per account. `account link --warm-up` and `account connect-request create --warm-up` (new) connect the new account with warm-up on: its limits start at 15% and rise to full over 5 weeks. `--no-warm-up` is still accepted and changes nothing. Either flag with `--account-id` / `--reconnect` exits 2; a connected account's ramp is switched with `account warm-up on|off`, and `on` starts week 1 from that moment.
+- `account warm-up on|off` help and the README example say so; a quiet account no longer restarts the ramp.
 
 ### Direct messaging at any hour
 

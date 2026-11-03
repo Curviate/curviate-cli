@@ -736,7 +736,7 @@ rather than parsing the message:
     "safetyReason": "ceiling",
     "safetyHint": {
       "parameter": "profile_views.ceiling",
-      "message": "effective ceiling 15 = 100 x warm-up 0.15 (week 0, account_age)."
+      "message": "effective ceiling 15 = 100 x warm-up 0.15 (week 0, switched_on)."
     },
     "blocked": true
   }

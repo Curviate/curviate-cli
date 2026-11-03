@@ -590,7 +590,7 @@
         {
           "name": "warm-up",
           "type": "boolean",
-          "description": "--no-warm-up skips the ramp a new account starts on (its first weeks at lower limits). A new connect only; for a connected account use `curviate account warm-up`. Default on."
+          "description": "--warm-up connects the new account with warm-up on: its limits start at 15% and rise to full over 5 weeks. Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only; for a connected account use `curviate account warm-up`."
         },
         {
           "name": "account-id",
@@ -679,7 +679,7 @@
         {
           "name": "warm-up",
           "type": "boolean",
-          "description": "--no-warm-up: the new account skips the ramp (its first weeks at lower limits) once the person connects it. A new connect only. Default on."
+          "description": "--warm-up: the new account starts with warm-up on once the person connects it (limits at 15%, rising to full over 5 weeks). Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only."
         }
       ],
       "globals": [
@@ -697,7 +697,7 @@
       ],
       "examples": [
         "curviate account connect-request create",
-        "curviate account connect-request create --no-warm-up",
+        "curviate account connect-request create --warm-up",
         "curviate account connect-request create --reconnect acc_YOUR_ACCOUNT_ID"
       ],
       "requires": [],
@@ -1348,7 +1348,7 @@
         "warm-up",
         "on"
       ],
-      "description": "Turn the Account's warm-up on: the ramp holds its ceilings below the limits after a connect or a quiet spell. Prints the resulting warm-up.",
+      "description": "Turn the Account's warm-up on: its limits start at 15% from now and rise to full over 5 weeks. Prints the resulting warm-up.",
       "usageOnly": false,
       "args": [
         {
@@ -1393,7 +1393,7 @@
         "warm-up",
         "off"
       ],
-      "description": "Turn the Account's warm-up off: the connect and quiet ramps no longer apply (recovery after a LinkedIn restriction still does). Prints the resulting warm-up.",
+      "description": "Turn the Account's warm-up off (the default): full limits at once; recovery after a LinkedIn restriction still applies. Prints the resulting warm-up.",
       "usageOnly": false,
       "args": [
         {
