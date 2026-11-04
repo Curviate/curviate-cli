@@ -55882,7 +55882,7 @@
                           },
                           "type": {
                             "type": "string",
-                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
+                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, account.activity_level_fallback, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
                           },
                           "subject": {
                             "type": "object",
@@ -56571,7 +56571,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
+                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.motion_work_paused, account.health_worsened, account.activity_level_fallback, motion.auto_paused, motion.no_sending_account, motion.completed, contacts.import_finished, export.finished, team.invite_accepted, team.member_left."
                     },
                     "subject": {
                       "type": "object",
@@ -80901,7 +80901,7 @@
                                     "integer",
                                     "null"
                                   ],
-                                  "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                                  "description": "What the account aims at today on this row: the engine's own figure for the account-day, drawn from the account's limit and green figure at the level in force (`normal` about midway, `increased` close to the limit), never past the limit; it differs from day to day. On InMail it is the green figure. Null where the row has no limit to aim at."
                                 },
                                 "effective_target": {
                                   "type": [
@@ -81620,7 +81620,7 @@
                               "integer",
                               "null"
                             ],
-                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                            "description": "What the account aims at today on this row: the engine's own figure for the account-day, drawn from the account's limit and green figure at the level in force (`normal` about midway, `increased` close to the limit), never past the limit; it differs from day to day. On InMail it is the green figure. Null where the row has no limit to aim at."
                           },
                           "effective_target": {
                             "type": [
@@ -82462,11 +82462,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 12,
-                          "ceiling": 48,
-                          "effective_ceiling": 48,
+                          "ceiling": 72,
+                          "effective_ceiling": 72,
                           "target": null,
                           "effective_target": null,
-                          "remaining": 36,
+                          "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -82956,11 +82956,11 @@
                           "window_start": "2026-06-10T00:00:00.000Z",
                           "resets_at": "2026-06-11T00:00:00.000Z",
                           "used": 12,
-                          "ceiling": 48,
-                          "effective_ceiling": 48,
+                          "ceiling": 72,
+                          "effective_ceiling": 72,
                           "target": null,
                           "effective_target": null,
-                          "remaining": 36,
+                          "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
                           "band": "green",
@@ -97529,6 +97529,29 @@
                       "type": "boolean",
                       "description": "Whether Curviate withdraws this account's old Motion-sent invitations on its own (default true). Past 400 pending invitations, those over 14 days old go oldest first, at most the larger of 25 and the day's invitation allowance a day, one at a time inside the account's working hours, each after a check that it is still pending. Invitations sent by hand or through the API are never withdrawn, and a withdrawn person is never invited again by a Motion. It runs while invitations are stopped at 650 pending. Set it with PATCH /v1/{account_id}/safety-policy and `auto_withdraw`; a change is recorded in the account's ledger."
                     },
+                    "activity_level": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "increased"
+                      ],
+                      "description": "How close this account's daily targets sit to its limits (default `normal`). `normal` aims about midway between the green figure and the limit. `increased` works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It changes only the targets; the pace follows. Set it with PATCH /v1/{account_id}/safety-policy and `activity_level`, by whoever may change this account's active hours; a change is recorded in the account's ledger. It runs as `normal` on its own, and the setting stays, while warm-up is on or the account's health is not `healthy`: see `activity_level_effective`."
+                    },
+                    "activity_level_effective": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "increased"
+                      ],
+                      "description": "The level in force now. Equal to `activity_level`, except that `increased` reads `normal` while warm-up is on or the account's health is not `healthy`. One notification (`account.activity_level_fallback`) tells you when it falls back; nothing is sent when it returns. Read-only."
+                    },
+                    "activity_level_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Why `activity_level_effective` differs from `activity_level`, in plain words. Null while they are equal. Read-only."
+                    },
                     "activity_window": {
                       "type": "object",
                       "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused, except direct messaging (a send, new chat, InMail, edit, delete, reaction or read mark), which goes at any hour; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
@@ -97747,7 +97770,7 @@
                               "integer",
                               "null"
                             ],
-                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio. Read-only."
+                            "description": "What the account aims at today on this row: the figure the engine draws for the account-day from the account's own limit and green figure, at the level in force (`activity_level_effective`), never past the limit. `normal` is about midway between green and the limit, `increased` close to the limit. It differs from day to day. On InMail and on a Team default it is the green figure (the configured `green` when set, otherwise `ceiling` times the profile's seeded ratio). Null where the row has no limit to aim at. Read-only."
                           },
                           "effective_target": {
                             "type": [
@@ -98469,6 +98492,9 @@
                         "dormant": false
                       },
                       "auto_withdraw": true,
+                      "activity_level": "normal",
+                      "activity_level_effective": "normal",
+                      "activity_level_reason": null,
                       "activity_window": {
                         "effective_timezone": "Europe/Berlin",
                         "source": "country",
@@ -98564,8 +98590,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 150,
-                          "jitter_seconds": 300,
+                          "min_gap_seconds": 60,
+                          "jitter_seconds": 120,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -98631,6 +98657,9 @@
                         "dormant": false
                       },
                       "auto_withdraw": true,
+                      "activity_level": "increased",
+                      "activity_level_effective": "normal",
+                      "activity_level_reason": "Warm-up is on, so this account runs at the normal level until it ends.",
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "none",
@@ -98730,8 +98759,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 150,
-                          "jitter_seconds": 300,
+                          "min_gap_seconds": 60,
+                          "jitter_seconds": 120,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -99008,6 +99037,29 @@
                       "type": "boolean",
                       "description": "Whether Curviate withdraws this account's old Motion-sent invitations on its own (default true). Past 400 pending invitations, those over 14 days old go oldest first, at most the larger of 25 and the day's invitation allowance a day, one at a time inside the account's working hours, each after a check that it is still pending. Invitations sent by hand or through the API are never withdrawn, and a withdrawn person is never invited again by a Motion. It runs while invitations are stopped at 650 pending. Set it with PATCH /v1/{account_id}/safety-policy and `auto_withdraw`; a change is recorded in the account's ledger."
                     },
+                    "activity_level": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "increased"
+                      ],
+                      "description": "How close this account's daily targets sit to its limits (default `normal`). `normal` aims about midway between the green figure and the limit. `increased` works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It changes only the targets; the pace follows. Set it with PATCH /v1/{account_id}/safety-policy and `activity_level`, by whoever may change this account's active hours; a change is recorded in the account's ledger. It runs as `normal` on its own, and the setting stays, while warm-up is on or the account's health is not `healthy`: see `activity_level_effective`."
+                    },
+                    "activity_level_effective": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "increased"
+                      ],
+                      "description": "The level in force now. Equal to `activity_level`, except that `increased` reads `normal` while warm-up is on or the account's health is not `healthy`. One notification (`account.activity_level_fallback`) tells you when it falls back; nothing is sent when it returns. Read-only."
+                    },
+                    "activity_level_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Why `activity_level_effective` differs from `activity_level`, in plain words. Null while they are equal. Read-only."
+                    },
                     "activity_window": {
                       "type": "object",
                       "description": "The zone the activity window is read in, derived from where the account connects. Outside the window, a live write to LinkedIn is refused, except direct messaging (a send, new chat, InMail, edit, delete, reaction or read mark), which goes at any hour; reads and anything served from Curviate's own store are never affected, at any hour. Read-only: a write accepts it back and ignores it, so a read policy can be sent back unchanged.",
@@ -99226,7 +99278,7 @@
                               "integer",
                               "null"
                             ],
-                            "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio. Read-only."
+                            "description": "What the account aims at today on this row: the figure the engine draws for the account-day from the account's own limit and green figure, at the level in force (`activity_level_effective`), never past the limit. `normal` is about midway between green and the limit, `increased` close to the limit. It differs from day to day. On InMail and on a Team default it is the green figure (the configured `green` when set, otherwise `ceiling` times the profile's seeded ratio). Null where the row has no limit to aim at. Read-only."
                           },
                           "effective_target": {
                             "type": [
@@ -99950,6 +100002,9 @@
                         "dormant": false
                       },
                       "auto_withdraw": true,
+                      "activity_level": "increased",
+                      "activity_level_effective": "normal",
+                      "activity_level_reason": "Warm-up is on, so this account runs at the normal level until it ends.",
                       "activity_window": {
                         "effective_timezone": null,
                         "source": "none",
@@ -100049,8 +100104,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 150,
-                          "jitter_seconds": 300,
+                          "min_gap_seconds": 60,
+                          "jitter_seconds": 120,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -100442,7 +100497,7 @@
                           "description": "READ-ONLY. `ceiling` with the account's warm-up ramp applied, which is what this row is actually held to. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
                         "target": {
-                          "description": "READ-ONLY. What this Account aims at per window on this row (invitations, InMail, profile views only; null elsewhere): the row's `green` when set, otherwise `ceiling` times the profile's seeded ratio, so raising a ceiling alone moves it. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                          "description": "READ-ONLY. What the account aims at today on this row: the engine's own figure for the account-day, drawn from the account's limit and green figure at the level in force (`normal` about midway, `increased` close to the limit), never past the limit; it differs from day to day. On InMail it is the green figure. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
                         "effective_target": {
                           "description": "READ-ONLY. `target` with the account's warm-up and health applied, rounded down. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
@@ -100528,6 +100583,20 @@
                     "additionalProperties": false,
                     "description": "This account's own active hours: the days and local hours live writes happen in; direct messaging goes at any hour. Null falls back to the Team default. A row's own activity_window_start/end win over it, keeping these days. The read reports the hours in force and their source; sent back, it changes nothing.",
                     "nullable": true
+                  },
+                  "activity_level": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "increased"
+                    ],
+                    "description": "How close this account's daily targets sit to its limits. `normal` (the default): about midway between the green figure and the limit. `increased`: close to the limit, never past it. Higher chance LinkedIn notices the activity. It runs as `normal` on its own, and the setting stays, while warm-up is on or the account's health is not `healthy`; the read's `activity_level_effective` and `activity_level_reason` say which level is in force. Whoever may change this account's active hours may change it; a change is recorded in the account's ledger."
+                  },
+                  "activity_level_effective": {
+                    "description": "READ-ONLY. The level in force: `increased` reads `normal` while warm-up is on or health is not `healthy`. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                  },
+                  "activity_level_reason": {
+                    "description": "READ-ONLY. Why the level in force differs from `activity_level`, in plain words, or null. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                   },
                   "object": {
                     "description": "READ-ONLY. The document's type discriminator. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
@@ -101972,8 +102041,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 150,
-                          "jitter_seconds": 300,
+                          "min_gap_seconds": 60,
+                          "jitter_seconds": 120,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -103072,8 +103141,8 @@
                           "over_default": []
                         },
                         "message.send": {
-                          "min_gap_seconds": 150,
-                          "jitter_seconds": 300,
+                          "min_gap_seconds": 60,
+                          "jitter_seconds": 120,
                           "over_default": []
                         },
                         "inmail.send": {
@@ -122068,7 +122137,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -122854,7 +122923,7 @@
                           "normal",
                           "prioritized"
                         ],
-                        "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. Default normal."
+                        "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. Default normal."
                       },
                       "accounts_per_contact": {
                         "type": "integer",
@@ -123373,7 +123442,7 @@
                                   "normal",
                                   "prioritized"
                                 ],
-                                "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                                "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                               },
                               "exclude": {
                                 "type": "object",
@@ -123989,7 +124058,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -124732,7 +124801,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -125528,7 +125597,7 @@
                           "normal",
                           "prioritized"
                         ],
-                        "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. Default normal."
+                        "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. Default normal."
                       },
                       "accounts_per_contact": {
                         "type": "integer",
@@ -126064,7 +126133,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -126882,7 +126951,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -127667,7 +127736,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -128485,7 +128554,7 @@
                             "normal",
                             "prioritized"
                           ],
-                          "description": "This Motion's share of each sending account's daily allowance: normal, or prioritized for twice a normal Motion's share. A share nobody uses flows to the other Motions the same day."
+                          "description": "This Motion's weight in each sending account's budgets: normal (1) or prioritized (1.5). Motions with a higher priority are preferred in the weighting on every budget; every Motion with work due still progresses, and a limit is never exceeded. A share nobody uses flows to the other Motions the same day."
                         },
                         "exclude": {
                           "type": "object",
@@ -144613,7 +144682,7 @@
                                     "integer",
                                     "null"
                                   ],
-                                  "description": "What the Account aims at per window on this row. Only the invitation total, InMail and profile views carry one (null on other rows): the row's configured `green` when set, otherwise `ceiling` times the profile's seeded ratio."
+                                  "description": "What the account aims at today on this row: the engine's own figure for the account-day, drawn from the account's limit and green figure at the level in force (`normal` about midway, `increased` close to the limit), never past the limit; it differs from day to day. On InMail it is the green figure. Null where the row has no limit to aim at."
                                 },
                                 "effective_target": {
                                   "type": [
