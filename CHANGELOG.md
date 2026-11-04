@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+Version, SDK pin (0.46.0) and the vendored OpenAPI fixture are set at release, after the SDK is published.
+
+### Activity level
+
+- **`account safety update --activity-level normal|increased`** sets the Account's Activity level alone, or beside `--file` (the flag wins over the document's `activity_level`; `--file` is no longer required when the flag is given). `normal` (the default) aims about midway between the green figure and the limit, `increased` works close to the limit, never past it, with a higher chance LinkedIn notices the activity. It runs as `normal`, and the setting stays, while warm-up is on or health is not `healthy`: `account safety get` prints `activity_level_effective` and `activity_level_reason`. A value other than `normal` or `increased`, or neither flag, exits 2 before any request.
+- **Same wording, new meaning:** `motion create` and `motion update` help: `settings.priority` weighs a Motion 1 (`normal`) or 1.5 (`prioritized`) in each Account's budgets, on every budget. Every Motion with work due still progresses and no limit is passed. It was "twice a normal Motion's share of the daily allowance".
+- `account safety get` help names the Activity level. `commands.json` regenerated.
+
 ## [0.50.0] - 2026-11-03
 
 Requires `@curviate/sdk` 0.45.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from the production document.
