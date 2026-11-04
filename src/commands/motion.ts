@@ -381,7 +381,7 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's share of each Account's daily allowance. Needs Automate.",
+    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's weight in each Account's budgets: 1 or 1.5, on every budget; every Motion with work due still progresses and no limit is passed. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
@@ -410,7 +410,7 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
-      "settings.priority (normal or prioritized) gives the Motion twice a normal Motion's share of each Account's daily allowance; settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
+      "settings.priority (normal or prioritized) weighs the Motion 1 or 1.5 in each Account's budgets, on every budget (every Motion with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
       "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {

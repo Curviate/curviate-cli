@@ -10,13 +10,14 @@ import { renderSuccess } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { fail, outputOpts, rootClient, type RootFlags } from "../lib/root-command.js";
 
-type Flags = RootFlags & { accountId?: string; file?: string };
+type Flags = RootFlags & { accountId?: string; file?: string; "activity-level"?: string };
+const LEVELS = ["normal", "increased"];
 const ACCOUNT = { type: "positional" as const, description: "The Account (acc_...)." };
 
 const getCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing and auto_withdraw. A read: no LinkedIn call.",
+    description: "One Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing, auto_withdraw and the Activity level (activity_level, and activity_level_effective with activity_level_reason when it runs lower). A read: no LinkedIn call.",
     risk: "read",
     seeAlso: ["curviate account safety update", "curviate account get"],
     examples: ["curviate account safety get acc_YOUR_ACCOUNT_ID", "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up"],
@@ -36,10 +37,10 @@ const getCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, and `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending). Active hours hold Motions and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Motions and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
     risk: "write",
     rules: {
-      changes: "The Account's limits or Active hours, from the next action on.",
+      changes: "The Account's limits, Active hours or Activity level, from the next action on.",
       visible_to: "Your Team. Nothing is posted on LinkedIn; a higher limit lets more actions reach it.",
       budget_rows: [],
       retry: "Safe: the same document leaves the same policy.",
@@ -50,17 +51,30 @@ const updateCmd = defineCommand({
     seeAlso: ["curviate account safety get", "curviate account warm-up"],
     examples: [
       "curviate account safety update acc_YOUR_ACCOUNT_ID --file policy.json",
+      "curviate account safety update acc_YOUR_ACCOUNT_ID --activity-level increased",
     ],
+    requires: ["--file or --activity-level, or both (the flag wins over the document's activity_level)."],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     accountId: ACCOUNT,
-    file: { type: "string", required: true, description: "The JSON document: a path, or - to read it from stdin." },
+    file: { type: "string", description: "The JSON document: a path, or - to read it from stdin." },
+    "activity-level": { type: "string", description: "normal (default) or increased: how close the Account's daily targets sit to its limits. increased raises the chance LinkedIn notices the activity; it runs as normal while warm-up is on or health is not healthy." },
   },
   async run({ args }) {
     const f = args as Flags;
     const accountId = String(f.accountId ?? "");
-    const body = parseDocument("file", await readFileFlag("file", f.file ?? "", { others: f })) as Record<string, unknown>;
+    const level = f["activity-level"];
+    if (level !== undefined && !LEVELS.includes(level)) {
+      process.stderr.write(`error: --activity-level is normal or increased, not "${level}".\n`);
+      process.exit(2);
+    }
+    if (f.file === undefined && level === undefined) {
+      process.stderr.write("error: pass --file <policy.json> or --activity-level normal|increased.\n");
+      process.exit(2);
+    }
+    const doc = f.file === undefined ? {} : (parseDocument("file", await readFileFlag("file", f.file, { others: f })) as Record<string, unknown>);
+    const body = level === undefined ? doc : { ...doc, activity_level: level };
     if (f.preview) {
       process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "accounts.updateSafetyPolicy", args: { accountId }, body })) + "\n");
       return;
@@ -75,7 +89,7 @@ const updateCmd = defineCommand({
 });
 
 export const accountSafetyCommand = defineCommand({
-  meta: { name: "safety", description: "Read or change one Account's safety policy: limits per budget row and Active hours." },
+  meta: { name: "safety", description: "Read or change one Account's safety policy: limits per budget row, Active hours and the Activity level." },
   subCommands: { get: getCmd, update: updateCmd },
   async run() {
     process.stderr.write("Usage: curviate account safety get|update <account>\n");

@@ -47,6 +47,20 @@ describe("account safety and team-access", () => {
     expect((await sink.run(["account", "safety", "update", "acc_1", "--file", file, "--preview"])).requests).toHaveLength(0);
   });
 
+  it("update --activity-level sends the level alone or over the file's, and refuses a bad value or no input before any request", async () => {
+    const alone = await sink.run(["account", "safety", "update", "acc_1", "--activity-level", "increased", "--json"]);
+    expect(alone.status, alone.stderr).toBe(0);
+    expect(JSON.parse(alone.requests[0]!.body)).toEqual({ activity_level: "increased" });
+    const file = join(mkdtempSync(join(tmpdir(), "safety-")), "p.json");
+    writeFileSync(file, JSON.stringify({ auto_withdraw: false, activity_level: "increased" }));
+    const both = await sink.run(["account", "safety", "update", "acc_1", "--file", file, "--activity-level", "normal", "--json"]);
+    expect(JSON.parse(both.requests[0]!.body)).toEqual({ auto_withdraw: false, activity_level: "normal" });
+    for (const args of [["--activity-level", "high"], []]) {
+      const bad = await sink.run(["account", "safety", "update", "acc_1", ...args]);
+      expect([bad.status, bad.requests.length]).toEqual([2, 0]);
+    }
+  });
+
   it.each([["on", true], ["off", false]])("team-access %s sends the switch", async (verb, on) => {
     const r = await sink.run(["account", "team-access", verb, "acc_1", "--json"]);
     expect(r.status, r.stderr).toBe(0);
