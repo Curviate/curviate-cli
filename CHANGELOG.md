@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+Needs the server's forecast (the `--forecast-days` flag sends `forecast_days`); no SDK type is read, so it runs on the 0.46.0 pin. The release pins `@curviate/sdk` 0.47.0 and re-copies the vendored fixture.
+
+### Forecast
+
+- **`analytics get --include forecast`** and **`account overview --include forecast`**, with **`--forecast-days N`** (default 30, the server allows 1 to 365): per day from today, what your Motions are expected to send and get (invitations, acceptances, messages, replies with InMail replies included, InMails, InMail replies), a simulation with their observed rates. Motions only; it assumes the configuration frozen as it is now. A draft Motion reads as if turned on now. The human table prints it under `forecast through <day>`; a draft with no Account says there is none. `--forecast-days` is refused with `--view activity`, and when it is not a whole number (exit 2, no request).
+- **Same wording, new meaning:** `motion preview` help: a draft's expected actions a day are the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now.
+- `analytics get` and `account overview` help name the section. `commands.json` regenerated.
+
 ## [0.51.0] - 2026-11-05
 
 Requires `@curviate/sdk` 0.46.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging b25643d91.

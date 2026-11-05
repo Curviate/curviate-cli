@@ -28,6 +28,8 @@ describe("analytics: the request each command sends", () => {
     [["export", "get", "exp_1"], q("GET /v1/exports/exp_1", {})],
     [["account", "overview", "acc_a", "--range", "30d", "--include", "performance,limits", "--origin", "motion"],
       q("GET /v1/accounts/acc_a/overview", { range: "30d", include: "performance,limits", origin: "motion" })],
+    [["analytics", "get", "--motion", "mot_1", "--include", "forecast", "--forecast-days", "14"], q("GET /v1/analytics/motions/mot_1", { include: "forecast", forecast_days: "14" })],
+    [["account", "overview", "acc_a", "--include", "forecast", "--forecast-days", "7"], q("GET /v1/accounts/acc_a/overview", { include: "forecast", forecast_days: "7" })],
     [["account", "metrics", "acc_a", "--from", "2026-10-01", "--to", "2026-10-28"], q("GET /v1/accounts/acc_a/metrics", { from: "2026-10-01", to: "2026-10-28" })],
   ])("%j", async (args, expected) => {
     const r = await wire(args, () => ({ body: { object: "x", id: "exp_1", status: "queued", items: [], cursor: null } }));
@@ -39,6 +41,8 @@ describe("analytics: the request each command sends", () => {
     [["analytics", "events", "list", "--step", "opener"]],
     [["analytics", "export", "--table", "motion_activity"]],
     [["analytics", "export", "--json"]],
+    [["analytics", "get", "--view", "activity", "--forecast-days", "7"]],
+    [["analytics", "get", "--include", "forecast", "--forecast-days", "two"]],
   ])("%j exits 2 with no request", async (args) => {
     const r = await wire(args);
     expect([r.status, r.sent.length]).toEqual([2, 0]);
@@ -94,5 +98,15 @@ describe("analytics: human output", () => {
     const control = await wire(["analytics", "get", "--motion", "mot_1"], () => ({ body: motion(null) }));
     expect(control.stdout).toMatch(/connected\s+9\/16 56%/);
     expect(control.stdout).not.toContain("paths cover");
+  });
+
+  it("--include forecast renders the forecast table; a draft with no Account says why there is none", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    const day = { date: "2026-11-05", invites_sent: 14, accepted: 4, messages_sent: 9, replies: 2, inmails_sent: 0, inmail_replies: 0 };
+    const r = await wire(["analytics", "get", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: { through: "2026-11-05", daily: [day] } } }));
+    expect(r.stdout).toContain("forecast through 2026-11-05");
+    expect(r.stdout).toMatch(/2026-11-05\s+14\s+4\s+9\s+2\s+0\s+0/);
+    const none = await wire(["analytics", "get", "--motion", "mot_d", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: null } }));
+    expect(none.stdout).toContain("forecast: none");
   });
 });
