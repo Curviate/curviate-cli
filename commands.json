@@ -1239,7 +1239,12 @@
         {
           "name": "include",
           "type": "string",
-          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags)."
+          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
+        },
+        {
+          "name": "forecast-days",
+          "type": "string",
+          "description": "With --include forecast: days after today, 1-365 (default 30); the forecast ends sooner when activity does."
         },
         {
           "name": "sort",
@@ -2132,7 +2137,7 @@
         "motion",
         "preview"
       ],
-      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day, and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
+      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
       "usageOnly": false,
       "args": [
         {
@@ -6245,7 +6250,12 @@
         {
           "name": "include",
           "type": "string",
-          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags)."
+          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
+        },
+        {
+          "name": "forecast-days",
+          "type": "string",
+          "description": "With --include forecast: days after today, 1-365 (default 30); the forecast ends sooner when activity does."
         },
         {
           "name": "sort",
@@ -6277,7 +6287,7 @@
       ],
       "examples": [
         "curviate analytics get --range 30d",
-        "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths --range 90d",
+        "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths,forecast --forecast-days 14",
         "curviate analytics get --view activity --from 2026-10-01 --to 2026-10-28"
       ],
       "requires": [],
@@ -6286,6 +6296,7 @@
         "acceptance: invitations accepted over invitations sent in the window, so far.",
         "reply: people who replied over people messaged; InMail reply the same for InMails. Rates move as replies and acceptances arrive; `maturing` counts what was sent under 7 days ago and `low_sample` marks fewer than 30.",
         "seen (--motion): messages read or replied over messages sent, per message step.",
+        "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Motion as if turned on now.",
         "A compact table by default; --json (or piped) prints the API body."
       ],
       "seeAlso": [

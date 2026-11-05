@@ -8,6 +8,12 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Forecast
+
+- **`analytics get --include forecast`** and **`account overview --include forecast`**, with **`--forecast-days N`** (default 30, the server allows 1 to 365): per day from today, what your Motions are expected to send and get (invitations, acceptances, messages, replies with InMail replies included, InMails, InMail replies), a simulation with their observed rates. Motions only; it assumes the configuration frozen as it is now. A draft Motion reads as if turned on now. The human table prints it under `forecast through <day>`; a draft with no Account says there is none, and `status: computing` (an Account of the scope has had no simulation yet) says so instead of printing zeros. `--forecast-days` is refused with `--view activity`, and when it is not a whole number (exit 2, no request).
+- **Same wording, new meaning:** `motion preview` help: a draft's expected actions a day are the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now.
+- `analytics get` and `account overview` help name the section. `commands.json` regenerated.
+
 ### Contact import: async, and a busy Team names the import in its way
 
 - **`contact import --async`** prints the imports' ids and statuses as soon as each is accepted and exits 0, without waiting; stderr names `curviate contact imports get IMPORT_ID` for a queued one. Same as `--no-wait`, which stays.

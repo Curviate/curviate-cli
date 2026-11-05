@@ -33,6 +33,7 @@ export type AnalyticsFlags = RootFlags & {
   sort?: string;
   limit?: string;
   compare?: string;
+  "forecast-days"?: string;
   version?: string;
   step?: string;
   kind?: string;
@@ -73,6 +74,7 @@ export function grammarParams(f: AnalyticsFlags): Row {
   if (f.sort !== undefined) q["sort"] = listFlag("sort", f.sort);
   if (f.limit !== undefined) q["limit"] = intFlag("limit", f.limit);
   if (f.compare !== undefined) q["compare"] = f.compare;
+  if (f["forecast-days"] !== undefined) q["forecast_days"] = intFlag("forecast-days", f["forecast-days"]);
   return q;
 }
 
@@ -137,6 +139,12 @@ export function renderOverview(body: Row): void {
   if (Array.isArray(limits) && limits.length) out.push(table(["BUDGET ROW", "USED", "CEILING", "LEFT"], (limits as Row[]).map((r) => [r["budget_row"], r["used"], r["effective_ceiling"], r["remaining"]])));
   out.push(rowsTable("MOTION", "motion_id", "name", body["motions"]));
   out.push(rowsTable("ACCOUNT", "account_id", "account_name", body["accounts"]));
+  const forecast = body["forecast"] as { status?: string; through?: string; daily?: Row[] } | null | undefined;
+  if (forecast?.status === "computing") out.push("forecast: being computed (an Account has had no simulation yet); read again in a few minutes");
+  else if (forecast?.daily?.length) {
+    out.push(`forecast through ${forecast.through} (Motions only, the configuration as it is now)`);
+    out.push(table(["DATE", "INVITES", "ACCEPTED", "MESSAGES", "REPLIES", "INMAILS", "INMAIL REPLIES"], forecast.daily.map((d) => [d["date"], d["invites_sent"], d["accepted"], d["messages_sent"], d["replies"], d["inmails_sent"], d["inmail_replies"]])));
+  } else if (forecast === null) out.push("forecast: none (pick an Account for this Motion)");
   for (const fl of (body["flags"] ?? []) as Row[]) out.push(`${fl["code"]}: ${fl["message"]}${fl["next"] ? ` (${fl["next"]})` : ""}`);
   print(out.filter((x): x is string => !!x).join("\n"));
 }
@@ -155,7 +163,7 @@ async function runGet(c: Curviate, f: AnalyticsFlags): Promise<void> {
   const view = f.view ?? "motions";
   if (view !== "motions" && view !== "activity") usage("--view takes motions or activity.");
   if (view === "activity") {
-    const motionOnly = (["motion", "motions", "origin", "include", "sort", "limit", "compare", "version"] as const).find((k) => f[k] !== undefined);
+    const motionOnly = (["motion", "motions", "origin", "include", "sort", "limit", "compare", "forecast-days", "version"] as const).find((k) => f[k] !== undefined);
     if (motionOnly) usage(`--${motionOnly} reads Motions: --view activity takes the window and --accounts only.`);
   }
   if (f.version !== undefined && f.motion === undefined) usage("--version needs --motion.");
@@ -259,7 +267,8 @@ const FILTER_ARGS = {
   origin: { type: "string" as const, description: "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api." },
 };
 export const GRAMMAR_ARGS = {
-  include: { type: "string" as const, description: "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags)." },
+  include: { type: "string" as const, description: "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary." },
+  "forecast-days": { type: "string" as const, description: "With --include forecast: days after today, 1-365 (default 30); the forecast ends sooner when activity does." },
   sort: { type: "string" as const, description: "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending." },
   limit: { type: "string" as const, description: "How many Motions and Accounts to return." },
   compare: { type: "string" as const, description: "previous_period: add the same number of days before --from to every rate (`previous`, `delta`)." },
@@ -276,12 +285,13 @@ const getCmd = defineCommand({
       "acceptance: invitations accepted over invitations sent in the window, so far.",
       "reply: people who replied over people messaged; InMail reply the same for InMails. Rates move as replies and acceptances arrive; `maturing` counts what was sent under 7 days ago and `low_sample` marks fewer than 30.",
       "seen (--motion): messages read or replied over messages sent, per message step.",
+      "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Motion as if turned on now.",
       "A compact table by default; --json (or piped) prints the API body.",
     ],
     seeAlso: ["curviate analytics events list", "curviate account overview", "Judgement on reading the numbers: https://github.com/curviate/curviate-plugin"],
     examples: [
       "curviate analytics get --range 30d",
-      "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths --range 90d",
+      "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths,forecast --forecast-days 14",
       "curviate analytics get --view activity --from 2026-10-01 --to 2026-10-28",
     ],
   },
