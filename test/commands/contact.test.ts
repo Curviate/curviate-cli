@@ -201,8 +201,8 @@ describe("contact create / update", () => {
   it("create sends the fields, tags and list; update --clear sends null; update with nothing exits 2", async () => {
     const c = await sink.run(["contact", "create", "--linkedin-url", "https://www.linkedin.com/in/jane", "--email", "j@x.co", "--tag", "a", "--tag", "b", "--list-name", "L", "--json"]);
     expect(JSON.parse(c.requests[0]!.body)).toEqual({ linkedin_url: "https://www.linkedin.com/in/jane", email: "j@x.co", tags: ["a", "b"], list_name: "L" });
-    const u = await sink.run(["contact", "update", "con_1", "--clear", "email,about", "--company", "Acme", "--json"]);
-    expect([line(u.requests[0]!), JSON.parse(u.requests[0]!.body)]).toEqual(["PATCH /v1/contacts/con_1", { company: "Acme", email: null, about: null }]);
+    const u = await sink.run(["contact", "update", "con_1", "--clear", "email,about", "--company", "Acme", "--language", "de", "--json"]);
+    expect([line(u.requests[0]!), JSON.parse(u.requests[0]!.body)]).toEqual(["PATCH /v1/contacts/con_1", { company: "Acme", language: "de", email: null, about: null }]);
     const none = await sink.run(["contact", "update", "con_1"]);
     expect([none.status, none.requests.length]).toEqual([2, 0]);
   });
