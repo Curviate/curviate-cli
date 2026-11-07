@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+### Pending invitations
+
+- **`core connect sent`** keeps `user.public_identifier` in the slim output (null when unknown). LinkedIn sends no slug for sent invitations; the API fills it from stored data when it knows the person.
+- `motion preview` prints the new `pending_invite` skip count as the API returns it (Motions skip a Contact any Team Account has a pending invitation to; `settings.exclude.pending_invites`, default on). `motion create|update --file` accept `settings.exclude.pending_invites` once the vendored OpenAPI fixture is re-copied from the next SDK.
+
 ## [0.51.0] - 2026-11-05
 
 Requires `@curviate/sdk` 0.46.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging b25643d91.
