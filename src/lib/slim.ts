@@ -283,14 +283,15 @@ export function slimProfile(data: unknown): Record<string, unknown> {
  *
  * v2 shape (`GET /v1/{account_id}/invites/sent`, item `object: "invitation_sent"`):
  *   { object, id, created_at?, message?,
- *     user: { id, type?, display_name?, first_name?, last_name?, public_picture_url? } }
+ *     user: { id, type?, display_name?, first_name?, last_name?, public_picture_url?, public_identifier? } }
  *
  * Drops: the per-item `object` discriminator (redundant with the envelope's
  * own `object`); `user.type` and `user.public_picture_url` (verbose-only).
  * Keeps: id, created_at, message, and a trimmed `user` sub-object (id,
- * display_name, first_name, last_name), the sent-variant's `user` carries
- * no `public_identifier`/`profile_url`/`description` (those are
- * received-only, per the served schema, see slimInviteReceivedItem).
+ * display_name, first_name, last_name, public_identifier). LinkedIn sends no
+ * slug for sent invitations; the server fills `public_identifier` from stored
+ * data when it knows one (null otherwise). `profile_url`/`description` stay
+ * received-only (see slimInviteReceivedItem).
  *
  * v1-parity note: this replaces the pre-v2 shape (`invited_user`,
  * `invited_user_id`, `invited_user_public_id`, `invited_user_description`,
@@ -310,6 +311,7 @@ export function slimInviteSentItem(item: Record<string, unknown>): Record<string
           display_name: rawUser["display_name"] ?? null,
           first_name: rawUser["first_name"] ?? null,
           last_name: rawUser["last_name"] ?? null,
+          public_identifier: rawUser["public_identifier"] ?? null,
         }
       : null;
 
