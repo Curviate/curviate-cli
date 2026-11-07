@@ -11,7 +11,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 Requires the `@curviate/sdk` release with `enrollments.move` (exact pin, bumped at release; until then `test/parity.test.ts` reds on the missing method).
 
 - **`curviate enrollment move <enrollment_id> --to <motion_id>`**: ends the Enrollment as `moved` and enrolls its Contact in another Motion on the same Account, at that Motion's first Step. Being in this Motion never refuses it; the other Motion's rules do (`CONTACT_NOT_ENROLLABLE`, exit 2, with the reason). Moving back later is allowed.
-- **`ACCOUNT_NOT_IN_MOTION`** exits 2: the target Motion does not send from the Enrollment's Account.
+- **`ACCOUNT_NOT_IN_MOTION`** exits 2: the target Motion does not send from the Enrollment's Account. `ALREADY_ENROLLED_ON_ACCOUNT` (exit 2) also refuses a move into a Motion the person completed or replied in on that Account.
 
 ## [0.51.0] - 2026-11-05
 

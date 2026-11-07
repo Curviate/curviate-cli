@@ -507,6 +507,7 @@ const moveCmd = defineCommand({
       ...NOT_ACTIVE,
       MOTION_STATUS_CONFLICT: "the target Motion is archived or past its end.",
       ACCOUNT_NOT_IN_MOTION: "the target Motion does not send from the Enrollment's Account.",
+      ALREADY_ENROLLED_ON_ACCOUNT: "the person completed the target Motion or replied there on this Account; it is not started over.",
       CONTACT_NOT_ENROLLABLE: "the target Motion refused the Contact; reason says why.",
       ...IN_FLIGHT,
       ...ROLE,
