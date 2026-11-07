@@ -3313,6 +3313,11 @@
           "description": "The Contact's about."
         },
         {
+          "name": "language",
+          "type": "string",
+          "description": "The Contact's language, an ISO 639-1 code like de or en; yours is never overwritten by the profile's."
+        },
+        {
           "name": "tag",
           "type": "string",
           "description": "A Tag to add (up to 64 characters); repeatable."
@@ -3416,9 +3421,14 @@
           "description": "The Contact's about."
         },
         {
+          "name": "language",
+          "type": "string",
+          "description": "The Contact's language, an ISO 639-1 code like de or en; yours is never overwritten by the profile's."
+        },
+        {
           "name": "clear",
           "type": "string",
-          "description": "Comma list of fields to empty: full-name, first-name, last-name, headline, job-title, company, email, location, about."
+          "description": "Comma list of fields to empty: full-name, first-name, last-name, headline, job-title, company, email, location, about, language."
         }
       ],
       "globals": [

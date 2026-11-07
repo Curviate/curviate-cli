@@ -18,6 +18,7 @@ export function slimContact(data: unknown): Rec {
     company: c["company"] ?? null,
     company_linkedin_url: c["company_linkedin_url"] ?? null,
     email: c["email"] ?? null,
+    language: c["language"] ?? null,
     tags: c["tags"] ?? [],
     list_ids: c["list_ids"] ?? [],
     connected_account_ids: c["connected_account_ids"] ?? [],

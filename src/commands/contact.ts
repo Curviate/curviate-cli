@@ -46,7 +46,7 @@ export type ContactFlags = RootFlags &
 
 type Body = Record<string, unknown>;
 
-const FIELDS = ["full-name", "first-name", "last-name", "headline", "job-title", "company", "email", "location", "about"] as const;
+const FIELDS = ["full-name", "first-name", "last-name", "headline", "job-title", "company", "email", "location", "about", "language"] as const;
 const key = (flag: string) => flag.replace(/-/g, "_");
 
 export function preview(method: string, args: Body, body: unknown = {}): void {
@@ -252,7 +252,9 @@ async function runExport(c: Curviate, f: ContactFlags): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const ID = { type: "positional" as const, description: "Contact id (con_...)." };
-const FIELD_ARGS = Object.fromEntries(FIELDS.map((x) => [x, { type: "string" as const, description: `The Contact's ${x.replace("-", " ")}.` }]));
+const FIELD_ARGS = Object.fromEntries(
+  FIELDS.map((x) => [x, { type: "string" as const, description: x === "language" ? "The Contact's language, an ISO 639-1 code like de or en; yours is never overwritten by the profile's." : `The Contact's ${x.replace("-", " ")}.` }]),
+);
 const LIST_ROLE = { INSUFFICIENT_ROLE: "your role cannot do this: deleting Contacts, lists and Tags is for Owners and Managers." };
 const SEE = ["curviate contact list", "curviate contact get"];
 const BULK_NOTE = `Sent in requests of up to ${BULK_MAX_IDS} ids, in order; a failed request stops the run and reports what was sent.`;
