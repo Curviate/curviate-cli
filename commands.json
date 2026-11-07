@@ -2462,7 +2462,7 @@
       "path": [
         "enrollment"
       ],
-      "description": "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
+      "description": "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, move to another Motion, or act on many at once. Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2959,6 +2959,66 @@
         "ACCOUNT_ALREADY_ENGAGED": "its current Account already did something the person can see.",
         "ALREADY_ENROLLED_ON_ACCOUNT": "the target already holds this Contact in the Motion, or is the current Account.",
         "KNOWN_CHAT": "the target already has a chat with the person.",
+        "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
+        "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate enrollment get",
+        "curviate motion get"
+      ]
+    },
+    {
+      "path": [
+        "enrollment",
+        "move"
+      ],
+      "description": "Move an Enrollment's Contact to another Motion on the same Account: the Enrollment ends as moved, and the new one starts at the first Step of that Motion. Being in this Motion never refuses it; the other Motion's rules do (do-not-contact, exclusion lists, filters). Moving back later is allowed. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Enrollment id (enr_...)."
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "required": true,
+          "description": "The Motion to move the Contact to (mot_...). It must send from the Enrollment's Account."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate enrollment move enr_YOUR_ENROLLMENT_ID --to mot_YOUR_MOTION_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The Enrollment finishes (moved); a new Enrollment in the target Motion is queued on the same Account.",
+        "visible_to": "The Contact, once the target Motion's first Step reaches LinkedIn.",
+        "budget_rows": [],
+        "retry": "A second call answers ENROLLMENT_NOT_ACTIVE: the Enrollment has already moved.",
+        "undo": "Move the new Enrollment back; what was sent stays sent and counted for the Motion that sent it.",
+        "blast_radius": "One Enrollment: one Contact, on one Account."
+      },
+      "errors": {
+        "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
+        "MOTION_STATUS_CONFLICT": "the target Motion is archived or past its end.",
+        "ACCOUNT_NOT_IN_MOTION": "the target Motion does not send from the Enrollment's Account.",
+        "CONTACT_NOT_ENROLLABLE": "the target Motion refused the Contact; reason says why.",
+        "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
         "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
         "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
       },

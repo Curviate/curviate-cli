@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+Requires the `@curviate/sdk` release with `enrollments.move` (exact pin, bumped at release; until then `test/parity.test.ts` reds on the missing method).
+
+- **`curviate enrollment move <enrollment_id> --to <motion_id>`**: ends the Enrollment as `moved` and enrolls its Contact in another Motion on the same Account, at that Motion's first Step. Being in this Motion never refuses it; the other Motion's rules do (`CONTACT_NOT_ENROLLABLE`, exit 2, with the reason). Moving back later is allowed.
+- **`ACCOUNT_NOT_IN_MOTION`** exits 2: the target Motion does not send from the Enrollment's Account.
+
 ## [0.51.0] - 2026-11-05
 
 Requires `@curviate/sdk` 0.46.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging b25643d91.

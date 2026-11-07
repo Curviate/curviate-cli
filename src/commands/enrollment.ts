@@ -22,6 +22,7 @@ type EnrollmentFlags = RootFlags & {
   name?: string;
   at?: string;
   account?: string;
+  to?: string;
   accounts?: string;
   action?: string;
   motion?: string;
@@ -144,8 +145,8 @@ async function runGet(c: Curviate, f: EnrollmentFlags): Promise<void> {
   }
 }
 
-/** pause, resume, stop, event, reassign: one call on one Enrollment. */
-const single = (method: "pause" | "resume" | "stop" | "events" | "reassign", body: (f: EnrollmentFlags) => Record_ | undefined = () => undefined) =>
+/** pause, resume, stop, event, reassign, move: one call on one Enrollment. */
+const single = (method: "pause" | "resume" | "stop" | "events" | "reassign" | "move", body: (f: EnrollmentFlags) => Record_ | undefined = () => undefined) =>
   async (c: Curviate, f: EnrollmentFlags): Promise<void> => {
     const b = body(f);
     if (f.preview) return preview(`enrollments.${method}`, { id: f.id }, b ?? {});
@@ -487,6 +488,40 @@ const reassignCmd = defineCommand({
   run: online(single("reassign", (f) => ({ account_id: required("account", f.account, "the target Account (acc_...)") }))),
 });
 
+const moveCmd = defineCommand({
+  meta: {
+    name: "move",
+    description:
+      "Move an Enrollment's Contact to another Motion on the same Account: the Enrollment ends as moved, and the new one starts at the first Step of that Motion. " +
+      "Being in this Motion never refuses it; the other Motion's rules do (do-not-contact, exclusion lists, filters). Moving back later is allowed. Needs Automate.",
+    risk: "high",
+    rules: {
+      changes: "The Enrollment finishes (moved); a new Enrollment in the target Motion is queued on the same Account.",
+      visible_to: "The Contact, once the target Motion's first Step reaches LinkedIn.",
+      budget_rows: [],
+      retry: "A second call answers ENROLLMENT_NOT_ACTIVE: the Enrollment has already moved.",
+      undo: "Move the new Enrollment back; what was sent stays sent and counted for the Motion that sent it.",
+      blast_radius: "One Enrollment: one Contact, on one Account.",
+    },
+    errors: {
+      ...NOT_ACTIVE,
+      MOTION_STATUS_CONFLICT: "the target Motion is archived or past its end.",
+      ACCOUNT_NOT_IN_MOTION: "the target Motion does not send from the Enrollment's Account.",
+      CONTACT_NOT_ENROLLABLE: "the target Motion refused the Contact; reason says why.",
+      ...IN_FLIGHT,
+      ...ROLE,
+    },
+    seeAlso: ["curviate enrollment get", "curviate motion get"],
+    examples: ["curviate enrollment move enr_YOUR_ENROLLMENT_ID --to mot_YOUR_MOTION_ID"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    id: ID,
+    to: { type: "string", required: true, description: "The Motion to move the Contact to (mot_...). It must send from the Enrollment's Account." },
+  },
+  run: online(single("move", (f) => ({ motion_id: required("to", f.to, "the target Motion (mot_...)") }))),
+});
+
 const bulkCmd = defineCommand({
   meta: {
     name: "bulk",
@@ -535,6 +570,7 @@ export const enrollmentCommand = defineCommand({
     event: eventCmd,
     signal: signalCmd,
     reassign: reassignCmd,
+    move: moveCmd,
     bulk: bulkCmd,
   },
   async run() {

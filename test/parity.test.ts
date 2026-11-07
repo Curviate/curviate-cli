@@ -217,7 +217,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "motion voice-clip upload": "motions.voiceClips.upload",
   "motion voice-clip get": "motions.voiceClips.get",
 
-  // enrollments (11): `enrollment signal` is the CLI alias of `event` and sends to events.
+  // enrollments (12): `enrollment signal` is the CLI alias of `event` and sends to events.
   "enrollment list":     "enrollments.list",
   "enrollment get":      "enrollments.get",
   "enrollment stop":     "enrollments.stop",
@@ -225,6 +225,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "enrollment resume":   "enrollments.resume",
   "enrollment event":    "enrollments.events",
   "enrollment reassign": "enrollments.reassign",
+  "enrollment move":     "enrollments.move",
   "enrollment bulk":     "enrollments.bulk",
   "enrollment retry":    "enrollments.retry",
 
