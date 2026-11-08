@@ -5020,7 +5020,7 @@
       "path": [
         "do-not-contact"
       ],
-      "description": "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove. Any member adds; removing is for Owners and Managers.",
+      "description": "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. Any member adds and imports; removing and exporting are for Owners and Managers.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5102,7 +5102,7 @@
         "do-not-contact",
         "add"
       ],
-      "description": "Put one person on the list, by Contact id or LinkedIn URL (a URL of someone who is not a Contact yet creates the Contact from stored data). No Motion contacts them afterwards and writes toward them are refused. One person per call; loop for many. Any member may add. Needs Automate.",
+      "description": "Put one person on the list, by Contact id or LinkedIn URL (a URL of someone who is not a Contact yet creates the Contact from stored data). No Motion contacts them afterwards and writes toward them are refused. One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5152,7 +5152,8 @@
         "RESOURCE_NOT_FOUND": "no Contact has this id."
       },
       "seeAlso": [
-        "curviate do-not-contact list"
+        "curviate do-not-contact list",
+        "curviate do-not-contact import"
       ]
     },
     {
@@ -5252,6 +5253,113 @@
       "seeAlso": [
         "curviate do-not-contact list",
         "curviate do-not-contact add"
+      ]
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "export"
+      ],
+      "description": "Download your Team's whole do-not-contact list as csv, json or ndjson (default): LinkedIn URL (empty once the Contact was deleted), reason, who added it, when. The file imports as it is. The data goes to stdout or --output and nothing else does; the count goes to stderr. --output is written whole or not at all, with mode 0600. Owners and Managers only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "json",
+          "type": "boolean",
+          "description": "Not accepted: an export's data is the file. Use --format json."
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "description": "csv | json | ndjson (default ndjson)."
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "alias": "o",
+          "description": "Write to this path (0600, replaced whole on success) or - for stdout (default)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "team",
+        "base-url",
+        "timeout"
+      ],
+      "examples": [
+        "curviate do-not-contact export --format csv --output do-not-contact.csv",
+        "curviate do-not-contact export --format json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The data only. No --json: use --format json."
+      ],
+      "errors": {
+        "INSUFFICIENT_ROLE": "exporting is for Owners and Managers."
+      },
+      "seeAlso": [
+        "curviate do-not-contact import"
+      ]
+    },
+    {
+      "path": [
+        "do-not-contact",
+        "import"
+      ],
+      "description": "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: someone who is not a Contact yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. A file over 10,000 rows is sent in several requests. Any member may import. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "file",
+          "type": "string",
+          "stdinArg": true,
+          "required": true,
+          "description": "The file: a path, or - to read it from stdin (then --format is required)."
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "description": "csv | json | ndjson. Default: from the file extension (.csv, .json, .ndjson)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate do-not-contact import --file do-not-contact.csv",
+        "curviate do-not-contact import --file - --format ndjson"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The people join the list; Motions skip them and writes toward them are refused. Nothing is sent to LinkedIn or to the people.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: a person already listed is reported unchanged. A run stopped part way: run it again.",
+        "undo": "`curviate do-not-contact remove <id>` per person (Owners and Managers)."
+      },
+      "output": [
+        "One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."
+      ],
+      "errors": {
+        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "CONTACT_LIMIT_REACHED": "the Team is at its Contact cap; rows that would add a Contact past it are skipped."
+      },
+      "seeAlso": [
+        "curviate do-not-contact export",
+        "curviate do-not-contact list"
       ]
     },
     {

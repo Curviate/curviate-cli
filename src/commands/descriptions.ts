@@ -24,8 +24,8 @@ export const DESCRIPTIONS = {
     "Subgroups: `curviate contact lists` (Contact lists, including combining lists), `curviate contact tags`, `curviate contact imports`. " +
     "Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
   "do-not-contact":
-    "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove. " +
-    "Any member adds; removing is for Owners and Managers.",
+    "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. " +
+    "Any member adds and imports; removing and exporting are for Owners and Managers.",
   billing: "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",
   contactImport: "Import Contacts from a CSV, JSON or NDJSON file into a Contact list, splitting a large file into several imports.",
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",

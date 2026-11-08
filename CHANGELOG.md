@@ -24,6 +24,14 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 - **`contact import --apply-lists`**: each row's Contact joins the Contact lists named in its `lists` (a CSV export's `lists` column, names joined with `;`, or a JSON/NDJSON row's `lists` array), and a missing list is created by name. Only adds. A row past the Team's list limit is skipped (`list_limit_reached`). **Same name, new meaning:** without the flag `lists` is ignored, as before. Every split chunk carries the option. Needs the server change (`apply_lists`); an older server rejects the unknown key.
 
+### Do-not-contact file
+
+Needs `@curviate/sdk` 0.47.0 (the exact pin and the vendored OpenAPI fixture are bumped at release, after the SDK is published).
+
+- **`do-not-contact export [--format csv|json|ndjson] [--output FILE]`** downloads the whole list: LinkedIn URL (empty once the Contact was deleted), reason, who added it, when. Data to stdout or `--output` (mode 0600, written whole), the count to stderr. Owners and Managers only.
+- **`do-not-contact import --file FILE|- [--format csv|json|ndjson]`** puts the people of a file on the list (`linkedin_url`, optional `reason`; an exported file works as it is). A person already listed is reported unchanged; a bad URL or reason skips its row. One report: `total_rows`, summed `counts` and the `skipped` rows with file row, reason and field. A file over 10,000 rows is sent in several requests. Any member; needs Automate.
+- `do-not-contact add` help points at `import` for many people. `commands.json` regenerated.
+
 ## [0.51.0] - 2026-11-05
 
 Requires `@curviate/sdk` 0.46.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging b25643d91.

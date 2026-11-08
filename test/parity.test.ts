@@ -318,12 +318,14 @@ const PARITY_MANIFEST: Record<string, string> = {
   "billing invoices":     "billing.invoices.list",
   "billing invoices pdf": "billing.invoices.pdf",
 
-  // doNotContact (5)
+  // doNotContact (7)
   "do-not-contact list":   "doNotContact.list",
   "do-not-contact get":    "doNotContact.get",
   "do-not-contact add":    "doNotContact.add",
   "do-not-contact update": "doNotContact.update",
   "do-not-contact remove": "doNotContact.remove",
+  "do-not-contact export": "doNotContact.export",
+  "do-not-contact import": "doNotContact.import",
 
   // tier (1)
   "tier": "tier.get",
