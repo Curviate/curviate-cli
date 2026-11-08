@@ -94498,24 +94498,6 @@
                               "source": "account_status",
                               "description": "A LinkedIn-side scope the account relies on was withdrawn. No longer pushed in real time, detect via an on-demand account read.",
                               "availability": "no_longer_realtime"
-                            },
-                            {
-                              "type": "account.initial_sync.running",
-                              "source": "account_status",
-                              "description": "The initial history backfill for a newly connected account has started (informational, bracket-open).",
-                              "availability": "realtime"
-                            },
-                            {
-                              "type": "account.initial_sync.completed",
-                              "source": "account_status",
-                              "description": "The initial history backfill completed, full LinkedIn history is now queryable.",
-                              "availability": "realtime"
-                            },
-                            {
-                              "type": "account.initial_sync.failed",
-                              "source": "account_status",
-                              "description": "The initial history backfill failed. The delivered payload carries a neutral `reason`, one of `internal`, `proxy`, or `provider`.",
-                              "availability": "realtime"
                             }
                           ]
                         },
@@ -94709,7 +94691,7 @@
             }
           }
         },
-        "description": "Returns the complete canonical event catalogue (40 events) grouped by source: messaging (7), user (2), account_status (15), post (2), motion (11), plus 3 recruiter/sales_nav events. A local catalogue read: no platform call is made."
+        "description": "Returns the complete canonical event catalogue (37 events) grouped by source: messaging (7), user (2), account_status (12), post (2), motion (11), plus 3 recruiter/sales_nav events. A local catalogue read: no platform call is made."
       }
     },
     "/v1/webhooks/variables": {
