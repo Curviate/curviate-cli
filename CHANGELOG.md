@@ -8,6 +8,8 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+- `--all` and `--max-pages` help: the default cap (100 pages), that a capped run ends with a `stream_truncated` line on stdout plus a stderr note, and that it still exits 0. Help text only.
+
 ## [0.52.0] - 2026-11-08
 
 Requires `@curviate/sdk` 0.48.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging f4ecd2656.
