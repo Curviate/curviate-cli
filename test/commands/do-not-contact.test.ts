@@ -1,10 +1,15 @@
 /** `do-not-contact` over the wire: add then list, and what each verb sends. */
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { useSink, line, type Hit } from "../helpers/sink.js";
 
 const ENTRY = { object: "do_not_contact_entry", id: "dnc_1", contact: { id: "con_1", name: "Jane" }, reason: "asked_to_stop" };
 const entries: unknown[] = [];
 const sink = useSink((h: Hit) => {
+  if (h.url === "/v1/do-not-contact/import") return { body: { object: "do_not_contact_import", total_rows: 2, counts: { created: 1, unchanged: 0, skipped: 1 }, report: [{ row: 1, outcome: "created" }, { row: 2, outcome: "skipped", skip_reason: "invalid_reason", field: "reason" }] } };
+  if (h.url.startsWith("/v1/do-not-contact/export")) return { body: [{ linkedin_url: "https://www.linkedin.com/in/jane/", reason: null, id: "dnc_1" }] };
   if (h.method === "POST") {
     entries.push(ENTRY);
     return { status: 201, body: ENTRY };
@@ -42,5 +47,25 @@ describe("do-not-contact", () => {
   ])("%j is refused before any request", async (args) => {
     const r = await sink.run(["do-not-contact", ...args]);
     expect([r.status, r.requests.length]).toEqual([2, 0]);
+  });
+
+  it("import sends the file's rows (a CSV with its header) and reports counts and the skipped row; export asks for the format", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "dnc-"));
+    const csv = join(dir, "list.csv");
+    writeFileSync(csv, "linkedin_url,reason\nhttps://www.linkedin.com/in/jane/,asked_to_stop\nhttps://www.linkedin.com/in/sam/,rude\n");
+    const imp = await sink.run(["do-not-contact", "import", "--file", csv, "--json"]);
+    expect([imp.status, line(imp.requests[0]!), JSON.parse(imp.requests[0]!.body)]).toEqual([
+      0,
+      "POST /v1/do-not-contact/import",
+      { csv: "linkedin_url,reason\nhttps://www.linkedin.com/in/jane/,asked_to_stop\nhttps://www.linkedin.com/in/sam/,rude" },
+    ]);
+    expect(JSON.parse(imp.stdout)).toMatchObject({ total_rows: 2, counts: { created: 1, unchanged: 0, skipped: 1 }, skipped: [{ row: 2, reason: "invalid_reason", field: "reason" }] });
+    const json = join(dir, "list.json");
+    writeFileSync(json, JSON.stringify([{ linkedin_url: "https://www.linkedin.com/in/jane/" }]));
+    expect(JSON.parse((await sink.run(["do-not-contact", "import", "--file", json, "--json"])).requests[0]!.body)).toEqual({ rows: [{ linkedin_url: "https://www.linkedin.com/in/jane/" }] });
+    const exp = await sink.run(["do-not-contact", "export", "--format", "json"]);
+    expect([exp.status, exp.requests.map((r) => r.url)]).toEqual([0, ["/v1/do-not-contact/export?format=json"]]);
+    const refused = await sink.run(["do-not-contact", "import", "--file", join(dir, "list.txt")]);
+    expect([refused.status, refused.requests.length]).toEqual([2, 0]);
   });
 });

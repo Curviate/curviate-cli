@@ -468,9 +468,11 @@
               "do_not_contact",
               "in_exclusion_list",
               "in_other_motion",
+              "known_chat",
+              "pending_invite",
               "filtered_out"
             ],
-            "description": "Present on CONTACT_NOT_ENROLLABLE: why the Contact was not enrolled (already_enrolled, do_not_contact, in_exclusion_list, in_other_motion or filtered_out). Present on BUDGET_EXHAUSTED: which rule refused. ceiling means the row's configured limit is spent, and you wait until reset_at or raise it. activity_window means the account is outside the hours it works in (never for a direct message: a send, new chat, edit, delete, reaction or read mark), and reset_at is when the window next opens. The two need different fixes, so branch on this rather than on the message; hint.parameter already names the right setting for each."
+            "description": "Present on CONTACT_NOT_ENROLLABLE: why the Contact was not enrolled (already_enrolled, do_not_contact, in_exclusion_list, in_other_motion, known_chat, pending_invite or filtered_out; known_chat and pending_invite only on a move to another Motion). Present on BUDGET_EXHAUSTED: which rule refused. ceiling means the row's configured limit is spent, and you wait until reset_at or raise it. activity_window means the account is outside the hours it works in (never for a direct message: a send, new chat, edit, delete, reaction or read mark), and reset_at is when the window next opens. The two need different fixes, so branch on this rather than on the message; hint.parameter already names the right setting for each."
           },
           "blocked": {
             "type": "boolean",
@@ -1878,7 +1880,8 @@
                             "company",
                             "location",
                             "linkedin_url",
-                            "about"
+                            "about",
+                            "language"
                           ]
                         }
                       },
@@ -2432,6 +2435,46 @@
                               "description": "Exactly one operator. Strings compare trimmed, case-insensitive."
                             },
                             "contact.about": {
+                              "type": "object",
+                              "minProperties": 1,
+                              "maxProperties": 1,
+                              "additionalProperties": false,
+                              "properties": {
+                                "eq": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean"
+                                  ]
+                                },
+                                "neq": {
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean"
+                                  ]
+                                },
+                                "in": {
+                                  "type": "array",
+                                  "minItems": 1,
+                                  "items": {
+                                    "type": [
+                                      "string",
+                                      "number",
+                                      "boolean"
+                                    ]
+                                  }
+                                },
+                                "contains": {
+                                  "type": "string"
+                                },
+                                "exists": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "description": "Exactly one operator. Strings compare trimmed, case-insensitive."
+                            },
+                            "contact.language": {
                               "type": "object",
                               "minProperties": 1,
                               "maxProperties": 1,
@@ -3124,6 +3167,46 @@
                                       "description": "Exactly one operator. Strings compare trimmed, case-insensitive."
                                     },
                                     "contact.about": {
+                                      "type": "object",
+                                      "minProperties": 1,
+                                      "maxProperties": 1,
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "eq": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        },
+                                        "neq": {
+                                          "type": [
+                                            "string",
+                                            "number",
+                                            "boolean"
+                                          ]
+                                        },
+                                        "in": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": [
+                                              "string",
+                                              "number",
+                                              "boolean"
+                                            ]
+                                          }
+                                        },
+                                        "contains": {
+                                          "type": "string"
+                                        },
+                                        "exists": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "description": "Exactly one operator. Strings compare trimmed, case-insensitive."
+                                    },
+                                    "contact.language": {
                                       "type": "object",
                                       "minProperties": 1,
                                       "maxProperties": 1,
@@ -36329,6 +36412,10 @@
                         "public_picture_url": {
                           "type": "string",
                           "description": "Public profile picture URL."
+                        },
+                        "public_identifier": {
+                          "type": "string",
+                          "description": "LinkedIn public identifier (vanity URL slug). LinkedIn does not send it for sent invitations; present when Curviate already knows this person's slug from stored data (a Contact or a profile read), else omitted."
                         }
                       },
                       "required": [
@@ -36789,6 +36876,10 @@
                               "public_picture_url": {
                                 "type": "string",
                                 "description": "Public profile picture URL."
+                              },
+                              "public_identifier": {
+                                "type": "string",
+                                "description": "LinkedIn public identifier (vanity URL slug). LinkedIn does not send it for sent invitations; present when Curviate already knows this person's slug from stored data (a Contact or a profile read), else omitted."
                               }
                             },
                             "required": [
@@ -43027,7 +43118,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -43040,7 +43131,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -43083,6 +43175,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -43097,6 +43190,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -86481,6 +86575,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -86496,6 +86591,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -86531,6 +86627,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -86546,6 +86643,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -87068,6 +87166,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -87083,6 +87182,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -87118,6 +87218,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -87133,6 +87234,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -88369,7 +88471,7 @@
                       "password": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "LinkedIn account password. Encrypted at rest, never logged."
+                        "description": "LinkedIn account password. Used to connect the Account; not stored unless Keep connected is on. Never logged."
                       }
                     },
                     "required": [
@@ -111054,6 +111156,13 @@
                       ],
                       "description": "About text."
                     },
+                    "language": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                    },
                     "extra": {
                       "type": "object",
                       "additionalProperties": true,
@@ -111167,6 +111276,7 @@
                     "email",
                     "location",
                     "about",
+                    "language",
                     "extra",
                     "sources",
                     "tags",
@@ -111311,6 +111421,13 @@
                       ],
                       "description": "About text."
                     },
+                    "language": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                    },
                     "extra": {
                       "type": "object",
                       "additionalProperties": true,
@@ -111424,6 +111541,7 @@
                     "email",
                     "location",
                     "about",
+                    "language",
                     "extra",
                     "sources",
                     "tags",
@@ -111454,6 +111572,7 @@
                       "email": null,
                       "location": null,
                       "about": null,
+                      "language": "en",
                       "extra": {
                         "note": "Met at the agent meetup."
                       },
@@ -111462,7 +111581,8 @@
                         "first_name": "tenant",
                         "last_name": "tenant",
                         "job_title": "tenant",
-                        "company": "tenant"
+                        "company": "tenant",
+                        "language": "linkedin"
                       },
                       "tags": [
                         "Interested"
@@ -111721,6 +111841,11 @@
                   "about": {
                     "type": "string",
                     "description": "About text, up to 10000 characters.",
+                    "nullable": true
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "Language, an ISO 639-1 code like de or en, stored lowercase: what you supply, else the language of the person's LinkedIn profile locale (yours is never overwritten).",
                     "nullable": true
                   },
                   "extra": {
@@ -112145,6 +112270,13 @@
                             ],
                             "description": "About text."
                           },
+                          "language": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                          },
                           "extra": {
                             "type": "object",
                             "additionalProperties": true,
@@ -112250,6 +112382,7 @@
                           "email",
                           "location",
                           "about",
+                          "language",
                           "extra",
                           "sources",
                           "tags",
@@ -112302,6 +112435,7 @@
                           "email": null,
                           "location": null,
                           "about": null,
+                          "language": "en",
                           "extra": {
                             "note": "Met at the agent meetup."
                           },
@@ -112310,7 +112444,8 @@
                             "first_name": "tenant",
                             "last_name": "tenant",
                             "job_title": "tenant",
-                            "company": "tenant"
+                            "company": "tenant",
+                            "language": "linkedin"
                           },
                           "tags": [
                             "Interested"
@@ -112821,6 +112956,13 @@
                         ],
                         "description": "About text."
                       },
+                      "language": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                      },
                       "extra": {
                         "type": "object",
                         "additionalProperties": true,
@@ -112926,6 +113068,7 @@
                       "email",
                       "location",
                       "about",
+                      "language",
                       "extra",
                       "sources",
                       "tags",
@@ -112960,6 +113103,7 @@
                         "email": null,
                         "location": null,
                         "about": null,
+                        "language": "en",
                         "extra": {
                           "note": "Met at the agent meetup."
                         },
@@ -112968,7 +113112,8 @@
                           "first_name": "tenant",
                           "last_name": "tenant",
                           "job_title": "tenant",
-                          "company": "tenant"
+                          "company": "tenant",
+                          "language": "linkedin"
                         },
                         "tags": [
                           "Interested"
@@ -114601,9 +114746,12 @@
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
+                              "invalid_language",
                               "contact_too_large",
                               "too_many_tags",
                               "tag_limit_reached",
+                              "invalid_list",
+                              "list_limit_reached",
                               "malformed_row",
                               "contact_limit_reached",
                               "contact_deleted",
@@ -114886,9 +115034,12 @@
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
+                              "invalid_language",
                               "contact_too_large",
                               "too_many_tags",
                               "tag_limit_reached",
+                              "invalid_list",
+                              "list_limit_reached",
                               "malformed_row",
                               "contact_limit_reached",
                               "contact_deleted",
@@ -115155,7 +115306,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Imports Contacts from rows or CSV text, keyed on LinkedIn identity as POST /v1/contacts; re-importing merges. Up to 10000 rows. 500 rows or fewer run in the request (201, per-row report inline); more run in the background (202). A bad value skips its row, a bad structure refuses all. Needs Automate.",
+        "description": "Imports Contacts from rows or CSV text, keyed on LinkedIn identity as POST /v1/contacts; re-importing merges. Up to 10000 rows. 500 rows or fewer run in the request (201, per-row report inline); more run in the background (202). A bad value skips its row, a bad structure refuses all. apply_lists: true adds each row's Contact to the Contact lists named in its lists (created by name), so an export re-imports with its lists; the Team's list limit skips the row (list_limit_reached). Needs Automate.",
         "x-curviate-limits": {
           "rows": 10000,
           "body_bytes": 9437184
@@ -115208,6 +115359,10 @@
                     },
                     "description": "Tag names removed from every row's Contact."
                   },
+                  "apply_lists": {
+                    "type": "boolean",
+                    "description": "Default false: a row's `lists` (names) is ignored. True: each row's Contact joins those Contact lists, created if missing; never removed. Past the Team's list limit the row is skipped (list_limit_reached)."
+                  },
                   "mapping": {
                     "type": "object",
                     "additionalProperties": {
@@ -115253,6 +115408,22 @@
                       "Vorname": "first_name"
                     },
                     "list_name": "Q4 webinar"
+                  }
+                },
+                "lists": {
+                  "summary": "An export, lists applied",
+                  "value": {
+                    "rows": [
+                      {
+                        "linkedin_url": "https://www.linkedin.com/in/jane-doe/",
+                        "first_name": "Jane",
+                        "lists": [
+                          "Q4 webinar",
+                          "Customers"
+                        ]
+                      }
+                    ],
+                    "apply_lists": true
                   }
                 }
               }
@@ -115495,9 +115666,12 @@
                                     "invalid_linkedin_url",
                                     "invalid_tag",
                                     "field_too_long",
+                                    "invalid_language",
                                     "contact_too_large",
                                     "too_many_tags",
                                     "tag_limit_reached",
+                                    "invalid_list",
+                                    "list_limit_reached",
                                     "malformed_row",
                                     "contact_limit_reached",
                                     "contact_deleted",
@@ -115914,9 +116088,12 @@
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
+                              "invalid_language",
                               "contact_too_large",
                               "too_many_tags",
                               "tag_limit_reached",
+                              "invalid_list",
+                              "list_limit_reached",
                               "malformed_row",
                               "contact_limit_reached",
                               "contact_deleted",
@@ -116234,9 +116411,12 @@
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
+                              "invalid_language",
                               "contact_too_large",
                               "too_many_tags",
                               "tag_limit_reached",
+                              "invalid_list",
+                              "list_limit_reached",
                               "malformed_row",
                               "contact_limit_reached",
                               "contact_deleted",
@@ -116587,6 +116767,13 @@
                       ],
                       "description": "About text."
                     },
+                    "language": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                    },
                     "extra": {
                       "type": "object",
                       "additionalProperties": true,
@@ -116692,6 +116879,7 @@
                     "email",
                     "location",
                     "about",
+                    "language",
                     "extra",
                     "sources",
                     "tags",
@@ -116722,6 +116910,7 @@
                       "email": null,
                       "location": null,
                       "about": null,
+                      "language": "en",
                       "extra": {
                         "note": "Met at the agent meetup."
                       },
@@ -116730,7 +116919,8 @@
                         "first_name": "tenant",
                         "last_name": "tenant",
                         "job_title": "tenant",
-                        "company": "tenant"
+                        "company": "tenant",
+                        "language": "linkedin"
                       },
                       "tags": [
                         "Interested"
@@ -117024,6 +117214,13 @@
                       ],
                       "description": "About text."
                     },
+                    "language": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO 639-1 language code, lowercase (de, en). What you supplied, else the language of the person's LinkedIn profile locale, which is the language their profile was created in, not always the one they speak. Yours is never overwritten. Branch a Sequence on it with contact.language."
+                    },
                     "extra": {
                       "type": "object",
                       "additionalProperties": true,
@@ -117129,6 +117326,7 @@
                     "email",
                     "location",
                     "about",
+                    "language",
                     "extra",
                     "sources",
                     "tags",
@@ -117159,6 +117357,7 @@
                       "email": null,
                       "location": null,
                       "about": null,
+                      "language": "en",
                       "extra": {
                         "note": "Met at the agent meetup."
                       },
@@ -117167,7 +117366,8 @@
                         "first_name": "tenant",
                         "last_name": "tenant",
                         "job_title": "tenant",
-                        "company": "tenant"
+                        "company": "tenant",
+                        "language": "linkedin"
                       },
                       "tags": [
                         "Interested"
@@ -117409,6 +117609,11 @@
                   "about": {
                     "type": "string",
                     "description": "About text, up to 10000 characters.",
+                    "nullable": true
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "Language, an ISO 639-1 code like de or en, stored lowercase: what you supply, else the language of the person's LinkedIn profile locale (yours is never overwritten).",
                     "nullable": true
                   },
                   "extra": {
@@ -120511,7 +120716,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Adds one person by contact_id or linkedin_url; a URL of someone who is not a Contact yet creates the Contact first, from stored data only. 201 when added; a person already on the list answers 200 with their entry. Any team member may add. No bulk route: loop for many. Needs Automate.",
+        "description": "Adds one person by contact_id or linkedin_url; a URL of someone who is not a Contact yet creates the Contact first, from stored data only. 201 when added; a person already on the list answers 200 with their entry. Any team member may add. For many people, POST /v1/do-not-contact/import takes a file. Needs Automate.",
         "requestBody": {
           "required": true,
           "content": {
@@ -120565,6 +120770,653 @@
           }
         },
         "x-order": 41
+      }
+    },
+    "/v1/do-not-contact/export": {
+      "get": {
+        "operationId": "getV1DoNotContactExport",
+        "tags": [
+          "Contacts"
+        ],
+        "summary": "Export the do-not-contact list",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "ndjson"
+              ],
+              "default": "ndjson"
+            },
+            "description": "csv, json or ndjson (default)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The whole list in one streamed download (Content-Disposition: attachment): NDJSON (default), CSV (UTF-8 with a BOM) or JSON.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string",
+                  "description": "One entry per line."
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "description": "A header row, then one row per entry."
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "linkedin_url": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "The person's LinkedIn profile URL; null once the Contact is deleted."
+                      },
+                      "reason": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "enum": [
+                          "asked_to_stop",
+                          "existing_customer",
+                          "competitor",
+                          "partner",
+                          "employee",
+                          "other",
+                          null
+                        ],
+                        "description": "Why, from a fixed list."
+                      },
+                      "added_by": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "Name of the team member who added it."
+                      },
+                      "via": {
+                        "type": "string",
+                        "enum": [
+                          "dashboard",
+                          "api",
+                          "mcp"
+                        ],
+                        "description": "Where it was added."
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "id": {
+                        "type": "string",
+                        "description": "Entry id (dnc_...)."
+                      }
+                    }
+                  },
+                  "description": "Entries."
+                },
+                "examples": {
+                  "entries": {
+                    "summary": "format=json",
+                    "value": [
+                      {
+                        "linkedin_url": "https://www.linkedin.com/in/jane-doe/",
+                        "reason": "asked_to_stop",
+                        "added_by": "Sam Lee",
+                        "via": "api",
+                        "created_at": "2026-10-28T09:30:00.000Z",
+                        "id": "dnc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "A format outside csv, json and ndjson. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "INSUFFICIENT_ROLE: in a team, only an Owner or a Manager exports. Not fixed by retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Streams your team's whole do-not-contact list in one download, oldest first, as CSV, JSON or NDJSON (default). No cursor. Each entry has linkedin_url, reason, added_by, via, created_at, id; linkedin_url is empty once the person's Contact was deleted. The file re-imports as it is (POST /v1/do-not-contact/import). Owner and Manager only.",
+        "x-order": 45
+      }
+    },
+    "/v1/do-not-contact/import": {
+      "post": {
+        "operationId": "postV1DoNotContactImport",
+        "tags": [
+          "Contacts"
+        ],
+        "summary": "Import a do-not-contact file",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The per-row report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "do_not_contact_import"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "total_rows": {
+                      "type": "integer",
+                      "description": "Rows in the file."
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "integer"
+                        },
+                        "unchanged": {
+                          "type": "integer"
+                        },
+                        "skipped": {
+                          "type": "integer"
+                        }
+                      },
+                      "description": "Rows by outcome."
+                    },
+                    "report": {
+                      "type": "array",
+                      "description": "One entry per row, in file order.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "row": {
+                            "type": "integer",
+                            "description": "Data row number, from 1 (the header line does not count)."
+                          },
+                          "outcome": {
+                            "type": "string",
+                            "enum": [
+                              "created",
+                              "unchanged",
+                              "skipped"
+                            ],
+                            "description": "created: put on the list. unchanged: already on the list. skipped: see skip_reason."
+                          },
+                          "entry_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The person's entry (dnc_...), created or existing."
+                          },
+                          "contact_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The person's Contact (con_...)."
+                          },
+                          "skip_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "missing_linkedin_url",
+                              "invalid_linkedin_url",
+                              "invalid_reason",
+                              "malformed_row",
+                              "contact_limit_reached",
+                              null
+                            ],
+                            "description": "Why the row was skipped."
+                          },
+                          "field": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The field a skip is about."
+                          },
+                          "duplicate_of_row": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The first row of the file that named this person."
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "report": {
+                    "value": {
+                      "object": "do_not_contact_import",
+                      "total_rows": 3,
+                      "counts": {
+                        "created": 1,
+                        "unchanged": 1,
+                        "skipped": 1
+                      },
+                      "report": [
+                        {
+                          "row": 1,
+                          "outcome": "created",
+                          "entry_id": "dnc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                          "contact_id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                          "skip_reason": null,
+                          "field": null,
+                          "duplicate_of_row": null
+                        },
+                        {
+                          "row": 2,
+                          "outcome": "unchanged",
+                          "entry_id": "dnc_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "contact_id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y9",
+                          "skip_reason": null,
+                          "field": null,
+                          "duplicate_of_row": null
+                        },
+                        {
+                          "row": 3,
+                          "outcome": "skipped",
+                          "entry_id": null,
+                          "contact_id": null,
+                          "skip_reason": "invalid_reason",
+                          "field": "reason",
+                          "duplicate_of_row": null
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "Neither or both of rows and csv, a row that is not an object or holds an unknown key, a CSV without a header line or a LinkedIn URL column. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "TIER_REQUIRED: the team's Tier does not include Contacts (Contacts are part of Automate). The error carries feature, required_tier and current_tier, plus upgrade_url for a team Owner. Not fixed by retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "tierRequired": {
+                    "summary": "The team's Tier does not include Contacts",
+                    "value": {
+                      "code": "TIER_REQUIRED",
+                      "message": "Contacts are part of Automate. Ask a team Owner to upgrade.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "feature": "contacts",
+                      "required_tier": "automate",
+                      "current_tier": "build"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: more than 10000 rows or a body over 9 MiB. Nothing is written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "x-badges": [
+          {
+            "name": "Automate",
+            "position": "after",
+            "color": "#A1A1AA"
+          }
+        ],
+        "x-curviate-tier": "automate",
+        "description": "Adds the people of a file to the do-not-contact list: rows of linkedin_url and an optional reason, as JSON rows or CSV text, up to 10000 rows. Each row works as POST /v1/do-not-contact: a URL of someone who is not a Contact yet creates the Contact from stored data, and a person already on the list is reported unchanged (their entry and reason stay). The answer is the per-row report. A bad URL or reason skips its row and the others apply; a bad structure refuses the file. A do-not-contact export re-imports as it is. Any team member may import. Needs Automate.",
+        "x-curviate-limits": {
+          "rows": 10000,
+          "body_bytes": 9437184
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "description": "The rows: objects with linkedin_url (required) and reason (optional). Send rows or csv, not both."
+                  },
+                  "csv": {
+                    "type": "string",
+                    "description": "The file as text (RFC 4180, UTF-8) with a header line; a linkedin_url column and optionally a reason column. A do-not-contact export re-imports as it is. Send rows or csv, not both."
+                  },
+                  "delimiter": {
+                    "type": "string",
+                    "enum": [
+                      ",",
+                      ";",
+                      "\t"
+                    ],
+                    "description": "csv only: , ; or tab. Default: the most frequent in the header line."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "examples": {
+                "rows": {
+                  "summary": "Rows",
+                  "value": {
+                    "rows": [
+                      {
+                        "linkedin_url": "https://www.linkedin.com/in/jane-doe/",
+                        "reason": "asked_to_stop"
+                      },
+                      {
+                        "linkedin_url": "https://www.linkedin.com/in/sam-lee/"
+                      }
+                    ]
+                  }
+                },
+                "csv": {
+                  "summary": "CSV",
+                  "value": {
+                    "csv": "linkedin_url,reason\nhttps://www.linkedin.com/in/jane-doe/,asked_to_stop\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-order": 46
       }
     },
     "/v1/do-not-contact/{id}": {
@@ -122147,11 +122999,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -122469,7 +123325,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -122956,6 +123813,10 @@
                           "known_chats": {
                             "type": "boolean",
                             "description": "Skip Contacts the account already chats with. Default true."
+                          },
+                          "pending_invites": {
+                            "type": "boolean",
+                            "description": "Skip Contacts with a pending invitation from any account of the team, sent from Curviate or not. Default true."
                           }
                         },
                         "additionalProperties": false
@@ -123452,11 +124313,15 @@
                                   },
                                   "known_chats": {
                                     "type": "boolean"
+                                  },
+                                  "pending_invites": {
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
                                   "other_motions",
-                                  "known_chats"
+                                  "known_chats",
+                                  "pending_invites"
                                 ]
                               },
                               "acceptance_floor": {
@@ -123697,7 +124562,8 @@
                             "assign": "auto",
                             "exclude": {
                               "other_motions": true,
-                              "known_chats": true
+                              "known_chats": true,
+                              "pending_invites": true
                             },
                             "acceptance_floor": null,
                             "variables": {}
@@ -124068,11 +124934,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -124361,7 +125231,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -124811,11 +125682,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -125142,7 +126017,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -125630,6 +126506,10 @@
                           "known_chats": {
                             "type": "boolean",
                             "description": "Skip Contacts the account already chats with. Default true."
+                          },
+                          "pending_invites": {
+                            "type": "boolean",
+                            "description": "Skip Contacts with a pending invitation from any account of the team, sent from Curviate or not. Default true."
                           }
                         },
                         "additionalProperties": false
@@ -126143,11 +127023,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -126436,7 +127320,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -126961,11 +127846,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -127254,7 +128143,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -127746,11 +128636,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -128039,7 +128933,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -128564,11 +129459,15 @@
                             },
                             "known_chats": {
                               "type": "boolean"
+                            },
+                            "pending_invites": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "other_motions",
-                            "known_chats"
+                            "known_chats",
+                            "pending_invites"
                           ]
                         },
                         "acceptance_floor": {
@@ -128857,7 +129756,8 @@
                         "assign": "auto",
                         "exclude": {
                           "other_motions": true,
-                          "known_chats": true
+                          "known_chats": true,
+                          "pending_invites": true
                         },
                         "acceptance_floor": null,
                         "variables": {}
@@ -129607,9 +130507,10 @@
                               "in_exclusion_list",
                               "in_other_motion",
                               "known_chat",
+                              "pending_invite",
                               null
                             ],
-                            "description": "Why the Contact would not be enrolled, from stored data: the Team's do-not-contact list holds it, an Exclusion list holds it, it is or was within 90 days in another Motion, or an account already chats with it. null: nothing excludes it."
+                            "description": "Why the Contact would not be enrolled, from stored data: the Team's do-not-contact list holds it, an Exclusion list holds it, it is or was within 90 days in another Motion, an account already chats with it, or an account of the team has a pending invitation to it. null: nothing excludes it."
                           },
                           "filters": {
                             "type": "array",
@@ -129733,7 +130634,7 @@
                       "properties": {
                         "audience": {
                           "type": "object",
-                          "description": "The Contacts of the source lists, counted from stored data (nothing is read from LinkedIn), each once. A Contact that would be skipped for several reasons counts under the first: do_not_contact, excluded, other_motion, known_chat, filtered, not_connected. Present even when the Motion has no Sequence.",
+                          "description": "The Contacts of the source lists, counted from stored data (nothing is read from LinkedIn), each once. A Contact that would be skipped for several reasons counts under the first: do_not_contact, excluded, other_motion, known_chat, pending_invite, filtered, not_connected. Present even when the Motion has no Sequence.",
                           "properties": {
                             "total": {
                               "type": "integer",
@@ -129758,6 +130659,10 @@
                                   "type": "integer",
                                   "description": "An account already chats with them (when settings.exclude.known_chats is on)."
                                 },
+                                "pending_invite": {
+                                  "type": "integer",
+                                  "description": "An account of the team has a pending invitation to them, sent from Curviate or not, as each account's sent invitations were last read (when settings.exclude.pending_invites is on)."
+                                },
                                 "filtered": {
                                   "type": "integer",
                                   "description": "Fail a where filter on stored Contact data (fields, extra fields, tags). A filter only LinkedIn can answer, such as degree or premium, is checked when the Contact enrolls and does not count here."
@@ -129772,6 +130677,7 @@
                                 "excluded",
                                 "other_motion",
                                 "known_chat",
+                                "pending_invite",
                                 "filtered",
                                 "not_connected"
                               ]
@@ -130064,6 +130970,7 @@
                             "excluded": 3,
                             "other_motion": 3,
                             "known_chat": 2,
+                            "pending_invite": 0,
                             "filtered": 3,
                             "not_connected": 0
                           },
@@ -130257,7 +131164,7 @@
         ],
         "responses": {
           "200": {
-            "description": "One result per Contact id, in the order sent (an id sent twice is answered once). queued: a queued Enrollment was created, or one that was skipped or ended before it started was re-queued. already_enrolled: nothing changed (enrollment_ids leaves out an Enrollment on a teammate's account you cannot operate). do_not_contact, in_exclusion_list, in_other_motion, known_chat: the Contact is recorded as skipped. filtered_out: the Contact fails the Motion's where filters, no Enrollment. not_found: not one of your Contacts.",
+            "description": "One result per Contact id, in the order sent (an id sent twice is answered once). queued: a queued Enrollment was created, or one that was skipped or ended before it started was re-queued. already_enrolled: nothing changed (enrollment_ids leaves out an Enrollment on a teammate's account you cannot operate). do_not_contact, in_exclusion_list, in_other_motion, known_chat, pending_invite: the Contact is recorded as skipped. filtered_out: the Contact fails the Motion's where filters, no Enrollment. not_found: not one of your Contacts.",
             "content": {
               "application/json": {
                 "schema": {
@@ -130286,6 +131193,7 @@
                               "in_exclusion_list",
                               "in_other_motion",
                               "known_chat",
+                              "pending_invite",
                               "filtered_out",
                               "not_found"
                             ]
@@ -131015,6 +131923,7 @@
                   "in_exclusion_list",
                   "in_other_motion",
                   "known_chat",
+                  "pending_invite",
                   "filtered",
                   "profile_unavailable",
                   "no_connected_account",
@@ -131030,6 +131939,7 @@
                   "replied",
                   "messaged_manually",
                   "engaged_elsewhere",
+                  "moved",
                   "already_following",
                   "not_following",
                   "already_connected",
@@ -131181,7 +132091,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                            "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                             "properties": {
                               "kind": {
                                 "type": "string",
@@ -131194,7 +132104,8 @@
                                   "motion_paused",
                                   "halt",
                                   "kill_switch",
-                                  "paused_by_user"
+                                  "paused_by_user",
+                                  "no_overlap"
                                 ]
                               },
                               "step_id": {
@@ -131237,6 +132148,7 @@
                               "messaged_manually",
                               "engaged_elsewhere",
                               "do_not_contact",
+                              "moved",
                               null
                             ],
                             "description": "Why it finished; null unless status is finished."
@@ -131251,6 +132163,7 @@
                               "in_exclusion_list",
                               "in_other_motion",
                               "known_chat",
+                              "pending_invite",
                               "filtered",
                               "profile_unavailable",
                               "no_connected_account",
@@ -131661,7 +132574,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -131674,7 +132587,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -131717,6 +132631,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -131731,6 +132646,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -131871,6 +132787,7 @@
                               "in_exclusion_list",
                               "in_other_motion",
                               "known_chat",
+                              "pending_invite",
                               "filtered",
                               "profile_unavailable",
                               "no_connected_account",
@@ -131886,6 +132803,7 @@
                               "replied",
                               "messaged_manually",
                               "engaged_elsewhere",
+                              "moved",
                               "already_following",
                               "not_following",
                               "already_connected",
@@ -132272,7 +133190,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -132285,7 +133203,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -132328,6 +133247,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -132342,6 +133262,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -132737,7 +133658,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -132750,7 +133671,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -132793,6 +133715,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -132807,6 +133730,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -133206,7 +134130,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -133219,7 +134143,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -133262,6 +134187,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -133276,6 +134202,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -133533,7 +134460,7 @@
             }
           },
           "409": {
-            "description": "ENROLLMENT_NOT_ACTIVE: a queued or skipped Enrollment, one whose Contact is gone, or one that finished with account_removed, account_unavailable, contact_deleted or contact_merged. MOTION_STATUS_CONFLICT: the Motion is archived, or its schedule.end_at has passed. STEP_IN_FLIGHT: a Step is being sent right now; try again in a minute.",
+            "description": "ENROLLMENT_NOT_ACTIVE: a queued or skipped Enrollment, one whose Contact is gone, or one that finished with account_removed, account_unavailable, contact_deleted, contact_merged, do_not_contact or moved. ALREADY_ENROLLED_ON_ACCOUNT: the Contact has another open Enrollment on this account in the Motion (moved back in); act on that one. MOTION_STATUS_CONFLICT: the Motion is archived, or its schedule.end_at has passed. STEP_IN_FLIGHT: a Step is being sent right now; try again in a minute.",
             "content": {
               "application/json": {
                 "schema": {
@@ -133741,7 +134668,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -133754,7 +134681,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -133797,6 +134725,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -133811,6 +134740,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -134283,7 +135213,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -134296,7 +135226,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -134339,6 +135270,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -134353,6 +135285,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -134875,7 +135808,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it.",
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
                       "properties": {
                         "kind": {
                           "type": "string",
@@ -134888,7 +135821,8 @@
                             "motion_paused",
                             "halt",
                             "kill_switch",
-                            "paused_by_user"
+                            "paused_by_user",
+                            "no_overlap"
                           ]
                         },
                         "step_id": {
@@ -134931,6 +135865,7 @@
                         "messaged_manually",
                         "engaged_elsewhere",
                         "do_not_contact",
+                        "moved",
                         null
                       ],
                       "description": "Why it finished; null unless status is finished."
@@ -134945,6 +135880,7 @@
                         "in_exclusion_list",
                         "in_other_motion",
                         "known_chat",
+                        "pending_invite",
                         "filtered",
                         "profile_unavailable",
                         "no_connected_account",
@@ -135341,6 +136277,565 @@
           }
         },
         "x-order": 8
+      }
+    },
+    "/v1/enrollments/{id}/move": {
+      "post": {
+        "operationId": "postV1EnrollmentsIdMove",
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Move an enrollment to another motion",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Enrollment id (enr_...)."
+          },
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The new Enrollment in the Motion you named, on the same account, queued to start at the first Step of that Motion's Sequence. The one you moved finished with finish_reason moved; its sends stay counted for its own Motion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "enrollment"
+                      ],
+                      "description": "Response type discriminator."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Enrollment id (enr_...)."
+                    },
+                    "motion_id": {
+                      "type": "string",
+                      "description": "The Motion (mot_...)."
+                    },
+                    "contact_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The Contact (con_...); null once the Contact is deleted."
+                    },
+                    "account_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The sending account (acc_...). null while the Enrollment waits for one: a sending account of the Motion takes it when it has room, and it stays on that account. The account_id list filter leaves out Enrollments that have none yet."
+                    },
+                    "sequence_version": {
+                      "type": "integer",
+                      "description": "The Sequence version this Enrollment runs on."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "active",
+                        "paused",
+                        "finished",
+                        "failed",
+                        "skipped"
+                      ],
+                      "description": "queued: Waiting to start. active: Running. paused: Paused. finished: Finished, for any reason but a lost account (replied and messaged_manually included). failed: Finished because the sending account became unavailable or was removed (derived: such an Enrollment is stored as finished). skipped: Skipped at admission or start."
+                    },
+                    "current_step_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The Step it is at; null before it starts."
+                    },
+                    "waiting": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "What it waits for; null when nothing holds it. paused_by_user: you paused this Enrollment; it holds until you resume it, whatever else returns. account_unavailable, motion_paused: its account or Motion holds it. no_overlap: the Motion's days and hours never meet the account's Active hours, so nothing can run; change one of them.",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "wait",
+                            "event",
+                            "queue",
+                            "budget",
+                            "account_unavailable",
+                            "motion_paused",
+                            "halt",
+                            "kill_switch",
+                            "paused_by_user",
+                            "no_overlap"
+                          ]
+                        },
+                        "step_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "The Step it waits at; null before it starts."
+                        },
+                        "until": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "ISO 8601, when the wait ends; null when open-ended."
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "step_id",
+                        "until"
+                      ]
+                    },
+                    "finish_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "completed",
+                        "stopped",
+                        "removed",
+                        "account_unavailable",
+                        "account_removed",
+                        "motion_archived",
+                        "motion_ended",
+                        "contact_deleted",
+                        "contact_merged",
+                        "replied",
+                        "messaged_manually",
+                        "engaged_elsewhere",
+                        "do_not_contact",
+                        "moved",
+                        null
+                      ],
+                      "description": "Why it finished; null unless status is finished."
+                    },
+                    "skip_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "do_not_contact",
+                        "in_exclusion_list",
+                        "in_other_motion",
+                        "known_chat",
+                        "pending_invite",
+                        "filtered",
+                        "profile_unavailable",
+                        "no_connected_account",
+                        null
+                      ],
+                      "description": "Why the Contact was not enrolled; null unless status is skipped."
+                    },
+                    "finish_message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The reasons catalogue's one-line sentence for finish_reason (https://docs.curviate.com/reference/motion-reasons); null when finish_reason is."
+                    },
+                    "skip_message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The reasons catalogue's one-line sentence for skip_reason (https://docs.curviate.com/reference/motion-reasons); null when skip_reason is."
+                    },
+                    "skip_detail": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "More on the skip, for example the index of the where filter that failed."
+                    },
+                    "replied": {
+                      "type": "boolean",
+                      "description": "True once the Contact replied."
+                    },
+                    "variants": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The variant chosen per Step: step id to variant id."
+                    },
+                    "relationship_at_enrollment": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "connected",
+                        "not_connected",
+                        "invite_pending",
+                        "unknown",
+                        null
+                      ],
+                      "description": "The Contact's relationship to the account when the Enrollment started, from stored data (the account's Connections and its pending invitations; no LinkedIn call): connected, not_connected, invite_pending, or unknown when the account's Connections are not synced. Null until it starts."
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "description": "ISO 8601."
+                    },
+                    "started_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When it started."
+                    },
+                    "finished_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When it finished."
+                    },
+                    "values": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      },
+                      "description": "Enrollment values: what the Sequence's save maps took from an incoming event, name to value (read them as {{enrollment.<name>}} and if enrollment.<name>). They end with the Enrollment: empty from the moment it finishes, and empty after a resume."
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "id",
+                    "motion_id",
+                    "contact_id",
+                    "account_id",
+                    "sequence_version",
+                    "status",
+                    "current_step_id",
+                    "waiting",
+                    "finish_reason",
+                    "skip_reason",
+                    "finish_message",
+                    "skip_message",
+                    "skip_detail",
+                    "replied",
+                    "variants",
+                    "relationship_at_enrollment",
+                    "created_at",
+                    "started_at",
+                    "finished_at",
+                    "values"
+                  ]
+                },
+                "examples": {
+                  "enrollment": {
+                    "value": {
+                      "object": "enrollment",
+                      "id": "enr_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "motion_id": "mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "contact_id": "con_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "sequence_version": 1,
+                      "status": "queued",
+                      "current_step_id": null,
+                      "waiting": null,
+                      "finish_reason": null,
+                      "finish_message": null,
+                      "skip_reason": null,
+                      "skip_message": null,
+                      "skip_detail": null,
+                      "replied": false,
+                      "variants": {},
+                      "relationship_at_enrollment": null,
+                      "created_at": "2026-10-09T09:30:00.000Z",
+                      "started_at": null,
+                      "finished_at": null,
+                      "values": {
+                        "meeting_type": "demo",
+                        "score": 72
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST: motion_id is missing or names the Enrollment's own Motion, at is not start, or an unknown key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "In a team, for the account the Enrollment runs on (before one is assigned: the accounts its Motion sends from). INSUFFICIENT_ROLE: the account is a teammate's and your role is Member. ACCOUNT_NOT_SHARED: before an account is assigned, team access is off for an account its Motion sends from. Not fixed by retrying. An Enrollment on a teammate's account with team access off is not found (404) instead. The same for the Motion you move it to: you need to be allowed to send from its accounts. TIER_REQUIRED: the team's Tier does not include Motions (Motions are part of Automate). The error carries feature, required_tier and current_tier, plus upgrade_url for a team Owner. Not fixed by retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "tierRequired": {
+                    "summary": "The team's Tier does not include Motions",
+                    "value": {
+                      "code": "TIER_REQUIRED",
+                      "message": "Motions are part of Automate. Ask a team Owner to upgrade.",
+                      "retry_hint": {
+                        "kind": "never"
+                      },
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false,
+                      "feature": "motions",
+                      "required_tier": "automate",
+                      "current_tier": "build"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_NOT_FOUND: no such Enrollment, or no such Motion (another team's included).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nothing changed. ENROLLMENT_NOT_ACTIVE: the Enrollment is finished or skipped; move needs queued, active or paused. MOTION_STATUS_CONFLICT: the Motion you named is archived, or its schedule.end_at has passed. ACCOUNT_NOT_IN_MOTION: that Motion does not send from the Enrollment's account. ALREADY_ENROLLED_ON_ACCOUNT: the Contact's Enrollment in that Motion on this account completed or ended by a reply or a manual message, so it is not started over. STEP_IN_FLIGHT: a Step is being sent right now; try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large, the request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "413 error",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CONTACT_NOT_ENROLLABLE: the Motion you named refused the Contact; reason is do_not_contact, in_exclusion_list, known_chat, pending_invite, filtered_out or already_enrolled (an open Enrollment there already). Being in the other Motion never refuses a move. Nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "x-badges": [
+          {
+            "name": "Automate",
+            "position": "after",
+            "color": "#A1A1AA"
+          }
+        ],
+        "x-curviate-tier": "automate",
+        "description": "Ends the Enrollment (finish_reason moved) and enrolls its Contact in another Motion on the same account, to start at that Motion's first Step. Being in the first Motion never refuses it; every other rule of the new Motion applies (do-not-contact, exclusion lists, filters). Moving back later is allowed. Refused, nothing changed, when that Motion is archived or does not send from the account. Needs Automate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "motion_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "The Motion (mot_...) to move the Enrollment's Contact to. It must send from the Enrollment's account."
+                  },
+                  "at": {
+                    "type": "string",
+                    "enum": [
+                      "start"
+                    ],
+                    "description": "Where the new Enrollment begins: start (the default and only value), the first Step of that Motion's Sequence. Its own conditions (already connected, already messaged) decide what runs."
+                  }
+                },
+                "required": [
+                  "motion_id"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "motion": {
+                  "summary": "Move the Contact to another Motion on the same account",
+                  "value": {
+                    "motion_id": "mot_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-order": 9
       }
     },
     "/v1/enrollments/bulk": {
@@ -135803,6 +137298,7 @@
                             "in_exclusion_list",
                             "in_other_motion",
                             "known_chat",
+                            "pending_invite",
                             "filtered",
                             "profile_unavailable",
                             "no_connected_account",
@@ -135818,6 +137314,7 @@
                             "replied",
                             "messaged_manually",
                             "engaged_elsewhere",
+                            "moved",
                             "already_following",
                             "not_following",
                             "already_connected",
@@ -135926,7 +137423,7 @@
             }
           }
         },
-        "x-order": 9
+        "x-order": 10
       }
     },
     "/v1/analytics/motions": {
@@ -136652,6 +138149,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -136667,6 +138165,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -136702,6 +138201,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -136717,6 +138217,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -137333,6 +138834,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -137348,6 +138850,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -137383,6 +138886,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -137398,6 +138902,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -137886,6 +139391,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -137901,6 +139407,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -137936,6 +139443,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -137951,6 +139459,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -138438,6 +139947,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -138453,6 +139963,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -138488,6 +139999,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -138503,6 +140015,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -140066,6 +141579,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -140081,6 +141595,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -140116,6 +141631,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -140131,6 +141647,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -140643,6 +142160,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -140658,6 +142176,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -140693,6 +142212,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -140708,6 +142228,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -141521,6 +143042,7 @@
                                         "in_exclusion_list",
                                         "in_other_motion",
                                         "known_chat",
+                                        "pending_invite",
                                         "filtered",
                                         "profile_unavailable",
                                         "no_connected_account",
@@ -141536,6 +143058,7 @@
                                         "replied",
                                         "messaged_manually",
                                         "engaged_elsewhere",
+                                        "moved",
                                         "already_following",
                                         "not_following",
                                         "already_connected",
@@ -141571,6 +143094,7 @@
                                         "in_exclusion_list",
                                         "in_other_motion",
                                         "known_chat",
+                                        "pending_invite",
                                         "filtered",
                                         "profile_unavailable",
                                         "no_connected_account",
@@ -141586,6 +143110,7 @@
                                         "replied",
                                         "messaged_manually",
                                         "engaged_elsewhere",
+                                        "moved",
                                         "already_following",
                                         "not_following",
                                         "already_connected",
@@ -141967,6 +143492,7 @@
                                           "in_exclusion_list",
                                           "in_other_motion",
                                           "known_chat",
+                                          "pending_invite",
                                           "filtered",
                                           "profile_unavailable",
                                           "no_connected_account",
@@ -141982,6 +143508,7 @@
                                           "replied",
                                           "messaged_manually",
                                           "engaged_elsewhere",
+                                          "moved",
                                           "already_following",
                                           "not_following",
                                           "already_connected",
@@ -142017,6 +143544,7 @@
                                           "in_exclusion_list",
                                           "in_other_motion",
                                           "known_chat",
+                                          "pending_invite",
                                           "filtered",
                                           "profile_unavailable",
                                           "no_connected_account",
@@ -142032,6 +143560,7 @@
                                           "replied",
                                           "messaged_manually",
                                           "engaged_elsewhere",
+                                          "moved",
                                           "already_following",
                                           "not_following",
                                           "already_connected",
@@ -142874,6 +144403,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -142889,6 +144419,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -142924,6 +144455,7 @@
                                     "in_exclusion_list",
                                     "in_other_motion",
                                     "known_chat",
+                                    "pending_invite",
                                     "filtered",
                                     "profile_unavailable",
                                     "no_connected_account",
@@ -142939,6 +144471,7 @@
                                     "replied",
                                     "messaged_manually",
                                     "engaged_elsewhere",
+                                    "moved",
                                     "already_following",
                                     "not_following",
                                     "already_connected",
@@ -143426,6 +144959,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -143441,6 +144975,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -143476,6 +145011,7 @@
                                   "in_exclusion_list",
                                   "in_other_motion",
                                   "known_chat",
+                                  "pending_invite",
                                   "filtered",
                                   "profile_unavailable",
                                   "no_connected_account",
@@ -143491,6 +145027,7 @@
                                   "replied",
                                   "messaged_manually",
                                   "engaged_elsewhere",
+                                  "moved",
                                   "already_following",
                                   "not_following",
                                   "already_connected",
@@ -145255,6 +146792,7 @@
                               "in_exclusion_list",
                               "in_other_motion",
                               "known_chat",
+                              "pending_invite",
                               "filtered",
                               "profile_unavailable",
                               "no_connected_account",
@@ -145270,6 +146808,7 @@
                               "replied",
                               "messaged_manually",
                               "engaged_elsewhere",
+                              "moved",
                               "already_following",
                               "not_following",
                               "already_connected",
