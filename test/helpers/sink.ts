@@ -26,6 +26,10 @@ export interface Reply {
   status?: number;
   type?: string;
   body?: unknown;
+  /** Extra response headers (win over the default `retry-after: 0`). */
+  headers?: Record<string, string>;
+  /** Hold the response this long: the request is already recorded, and whatever the reply fn did has happened. */
+  delayMs?: number;
 }
 export type ReplyFn = (hit: Hit) => Reply;
 
@@ -70,8 +74,12 @@ export function useSink(initial: Reply | ReplyFn = OK_PAGE): Sink {
         hits.push(hit);
         const r = typeof sink.reply === "function" ? sink.reply(hit) : sink.reply;
         const raw = typeof r.body === "string";
-        res.writeHead(r.status ?? 200, { "content-type": r.type ?? (raw ? "text/plain" : "application/json"), "retry-after": "0" });
-        res.end(raw ? (r.body as string) : JSON.stringify(r.body ?? {}));
+        const send = () => {
+          res.writeHead(r.status ?? 200, { "content-type": r.type ?? (raw ? "text/plain" : "application/json"), "retry-after": "0", ...r.headers });
+          res.end(raw ? (r.body as string) : JSON.stringify(r.body ?? {}));
+        };
+        if (r.delayMs) setTimeout(send, r.delayMs);
+        else send();
       });
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));

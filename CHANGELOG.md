@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+### Contact import tells the truth about timeouts and a busy Team
+
+- **`contact import` after a timeout or dropped connection** reads the Team's newest imports and reports the one the request made: the import id with `completed` and its counts, or `running`/`queued` (it keeps waiting, as for a large file). Only when none exists does it say nothing was imported (connection refused: "Nothing was imported"; otherwise "no import from this request exists", with a pointer to `contact imports list`). It no longer says "0 of N rows were sent". No idempotency key or dry-run is added.
+- **`RATE_LIMIT_TENANT` (429, known not processed)** waits the advertised `Retry-After` (default 5 s when none, at most 60 s, five sends per import) and sends that import again, then goes on with the next. A longer `Retry-After` stops the run at once, exit 6, without sleeping.
+- `contact import --json` prints exactly one JSON document on stdout; waits and progress go to stderr (test added).
+- A failed chunk's summary reads "N of M rows were accepted before it" (it said "sent").
+
 ## [0.51.0] - 2026-11-05
 
 Requires `@curviate/sdk` 0.46.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging b25643d91.
