@@ -157,6 +157,13 @@ export const RETRY_AFTER_BOUND_S = 60;
 const RETRY_DEFAULT_S = 5;
 /** Sends of one chunk the team's busy answer may cost before the run stops. */
 const MAX_SENDS = 5;
+/**
+ * An inline import writes its record in the same transaction as its rows, so a request that timed out mid-apply
+ * can show no import yet: the Team's imports are read again every 2 s, up to RELIST_TRIES more times (30 s),
+ * before the CLI says none exists. The env var is a test seam (the interval; the window scales with it).
+ */
+const relistMs = (): number => Number(process.env["CURVIATE_IMPORT_RELIST_MS"]) || 2000;
+const RELIST_TRIES = 15;
 /** Our clock against the API's: an import this much older than the request still counts as its. */
 const CLOCK_SKEW_MS = 30_000;
 
@@ -177,7 +184,7 @@ async function createChunk(c: Curviate, body: Body, rows: number, seen: string[]
     } catch (err) {
       if (!(err instanceof CurviateError)) throw err;
       if (err.code === "RATE_LIMIT_TENANT") {
-        const wait = notes.retryAfterS || RETRY_DEFAULT_S;
+        const wait = notes.retryAfterS ?? RETRY_DEFAULT_S;
         if (wait > RETRY_AFTER_BOUND_S) {
           throw new CurviateError({ code: err.code, message: `${err.message} The API asked to wait ${wait} s, more than the ${RETRY_AFTER_BOUND_S} s the CLI waits. Nothing in this chunk was imported; send it again later.`, httpStatus: 429, userFixable: false, retryLikelyToSucceed: true } as never);
         }
@@ -200,21 +207,25 @@ async function recover(c: Curviate, body: Body, rows: number, seen: string[], st
   if (notes.unreached) throw fresh(`Nothing was imported: the API could not be reached (${err.message}).`);
   say(`Import ${k} of ${n}: no answer from the API; looking for the import it made.`);
   let found: Imp | undefined;
-  try {
-    // ponytail: the API names no credential, so an import is this request's by shape and time (rows, format, list, 30 s of clock skew); a concurrent identical import by the same Team is the ceiling.
-    const page = (await c.contacts.imports.list({ limit: 20 } as never)) as { items?: Array<Imp & { total_rows?: number; format?: string; list_id?: string | null; created_at?: string }> };
-    found = (page.items ?? []).find(
-      (i) =>
-        !seen.includes(String(i.id)) &&
-        i.total_rows === rows &&
-        i.format === (body["csv"] !== undefined ? "csv" : "rows") &&
-        (body["list_id"] === undefined || i.list_id === body["list_id"]) &&
-        Date.parse(i.created_at ?? "") >= started - CLOCK_SKEW_MS,
-    );
-  } catch {
-    throw fresh(`${err.message} The check for an import it made failed too: read \`curviate contact imports list\` before running this again, it may have been imported.`);
+  // ponytail: the API names no credential and the CLI cannot learn the caller (no /v1/me), so an import is this request's by shape and time (rows, format, list, 30 s of clock skew); a concurrent identical import by the same Team is the ceiling. Upgrade when the API offers a caller id: also match the import's `created_by_user_id`.
+  for (let tries = 0; ; tries++) {
+    try {
+      const page = (await c.contacts.imports.list({ limit: 20 } as never)) as { items?: Array<Imp & { total_rows?: number; format?: string; list_id?: string | null; created_at?: string }> };
+      found = (page.items ?? []).find(
+        (i) =>
+          !seen.includes(String(i.id)) &&
+          i.total_rows === rows &&
+          i.format === (body["csv"] !== undefined ? "csv" : "rows") &&
+          (body["list_id"] === undefined || i.list_id === body["list_id"]) &&
+          Date.parse(i.created_at ?? "") >= started - CLOCK_SKEW_MS,
+      );
+    } catch {
+      throw fresh(`${err.message} The check for an import it made failed too: read \`curviate contact imports list\` before running this again, it may have been imported.`);
+    }
+    if (found || tries >= RELIST_TRIES) break;
+    await sleep(relistMs());
   }
-  if (!found) throw fresh(`${err.message} No import from this request exists, so nothing was imported so far. If the API is only slow, one may still appear: read \`curviate contact imports list\` before running this again.`);
+  if (!found) throw fresh(`${err.message} No import from this request appeared within 30 s, so nothing was imported so far. If the API is only slow, one may still appear: read \`curviate contact imports list\` before running this again.`);
   say(`Import ${k} of ${n}: the API did apply it. Import ${found.id} is ${found.status}${found.status === "completed" ? ` (${COUNTS.map((x) => `${x} ${found.counts?.[x] ?? 0}`).join(", ")})` : ""}.`);
   return found;
 }
@@ -319,7 +330,7 @@ const importCmd = defineCommand({
       `Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
       "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --no-wait; the first refused or failed import stops the run. " +
       "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. " +
-      `If the request times out or the connection drops, the CLI looks up the Team's newest imports and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none exists. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again; a longer wait fails. Needs Automate.`,
+      `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again; a longer wait fails. Needs Automate.`,
     risk: "write",
     rules: {
       changes: "Contacts are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
@@ -332,7 +343,7 @@ const importCmd = defineCommand({
       CONTACT_LIMIT_REACHED: "the Team is at its Contact cap; rows past it are skipped.",
       IMPORT_QUEUE_FULL: "too many imports are queued (429); wait, then run it again.",
       RATE_LIMIT_TENANT: `the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run.`,
-      CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports and reports the import this request made. None found: nothing was imported so far, but read `curviate contact imports list` before running it again.",
+      CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate contact imports list` before running it again.",
       NAME_TAKEN: "--list-name names a list that exists.",
     },
     output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --no-wait: the imports' ids and statuses only."],
