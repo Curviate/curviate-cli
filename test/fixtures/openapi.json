@@ -802,9 +802,10 @@
                     "FILTER_VALUE_UNCHECKED",
                     "SOME_RESULTS_HIDDEN",
                     "ALL_RESULTS_HIDDEN",
-                    "PAGE_TRUNCATED"
+                    "PAGE_TRUNCATED",
+                    "BOOLEAN_QUERY_EMPTY"
                   ],
-                  "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end."
+                  "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries."
                 },
                 "message": {
                   "type": "string",
@@ -10725,9 +10726,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -11242,9 +11244,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -18210,9 +18213,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -18912,9 +18916,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -19554,9 +19559,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -20271,9 +20277,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
@@ -22244,9 +22251,10 @@
                               "FILTER_VALUE_UNCHECKED",
                               "SOME_RESULTS_HIDDEN",
                               "ALL_RESULTS_HIDDEN",
-                              "PAGE_TRUNCATED"
+                              "PAGE_TRUNCATED",
+                              "BOOLEAN_QUERY_EMPTY"
                             ],
-                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. Branch on this rather than on message."
+                            "description": "FILTER_VALUE_UNRESOLVED: the value matched no known filter option, so it was sent on as an id we could not check. FILTER_VALUE_UNCHECKED: the value already looked like an id, so it was never looked up, and this page came back empty. SOME_RESULTS_HIDDEN: some people on this page were not disclosed to the connected account, so those entries cannot be read back. ALL_RESULTS_HIDDEN: none of the people on this page were disclosed, so the page yielded nothing you can act on, even when more pages follow. PAGE_TRUNCATED: this page is short because the search stopped fetching upstream pages, not because the results ran out; follow cursor, and treat only a null cursor as the end. BOOLEAN_QUERY_EMPTY: a people search with a boolean operator (OR, AND, NOT) in keywords came back empty with no cursor; long boolean queries can come back empty without meaning there are no matches, so split them into shorter queries. Branch on this rather than on message."
                           },
                           "message": {
                             "type": "string",
