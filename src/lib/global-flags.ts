@@ -61,12 +61,14 @@ export const GLOBAL_FLAGS = {
   },
   all: {
     type: "boolean" as const,
-    description: "Stream all pages as NDJSON.",
+    description:
+      "Stream pages as NDJSON until the results run out or --max-pages is reached (default 100 pages). A capped stream ends with a {\"object\":\"stream_truncated\"} line and exits 0; raise --max-pages to fetch more.",
     default: false,
   },
   "max-pages": {
     type: "string" as const,
-    description: "Maximum number of pages to fetch when --all is used. Refused (exit 2) without --all.",
+    description:
+      "Maximum number of pages to fetch when --all is used (default 100). Refused (exit 2) without --all.",
   },
   "page-delay": {
     type: "string" as const,
