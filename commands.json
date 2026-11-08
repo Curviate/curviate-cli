@@ -16545,7 +16545,7 @@
         "draft",
         "publish"
       ],
-      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. If the error says the outcome is unknown, the post may be live: check the account's posts before retrying. Needs Automate.",
+      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure keeps the content and cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared). If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -16578,7 +16578,7 @@
         "budget_rows": [
           "posts"
         ],
-        "retry": "A known failure leaves the Draft unchanged and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
+        "retry": "A known failure keeps the content, cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared) and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
         "undo": "`curviate core post delete <post_id>`."
       },
       "errors": {

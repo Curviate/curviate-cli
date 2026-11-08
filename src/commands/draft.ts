@@ -573,14 +573,14 @@ const draftPublishCommand = defineCommand({
   meta: {
     name: "publish",
     description:
-      "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure leaves the Draft unchanged. " +
-      "If the error says the outcome is unknown, the post may be live: check the account's posts before retrying. Needs Automate.",
+      "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure keeps the content and cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared). " +
+      "If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs Automate.",
     risk: "write",
     rules: {
       changes: "Publishes the Draft as a post now and deletes the Draft.",
       visible_to: "Everyone who can see your posts on LinkedIn.",
       budget_rows: ["posts"],
-      retry: "A known failure leaves the Draft unchanged and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
+      retry: "A known failure keeps the content, cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared) and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
       undo: "`curviate core post delete <post_id>`.",
     },
     errors: { ...AS_ACCOUNT, ...BUDGET, TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_NOT_PUBLISHABLE: "the Draft lacks what a post needs.", DRAFT_PUBLISHING: "the Draft is already being published." },
