@@ -15,6 +15,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 - `contact import --json` prints exactly one JSON document on stdout; waits and progress go to stderr (test added).
 - A failed chunk's summary reads "N of M rows were accepted before it" (it said "sent").
 
+### Contact import finds an import that commits late
+
+- **`contact import` after a timeout** reads the Team's imports again every 2 s for up to 30 s while none shows (an inline import writes its record in the same transaction as its rows, so a timeout mid-apply sees none yet), then polls the one it finds as before. Only after the window does it say no import appeared (exit 7).
+- **`Retry-After: 0`** on a busy 429 waits 0 s; the 5 s default applies only when the header is absent.
+
 ### Contact import applies the export's lists
 
 - **`contact import --apply-lists`**: each row's Contact joins the Contact lists named in its `lists` (a CSV export's `lists` column, names joined with `;`, or a JSON/NDJSON row's `lists` array), and a missing list is created by name. Only adds. A row past the Team's list limit is skipped (`list_limit_reached`). **Same name, new meaning:** without the flag `lists` is ignored, as before. Every split chunk carries the option. Needs the server change (`apply_lists`); an older server rejects the unknown key.

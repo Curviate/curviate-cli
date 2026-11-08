@@ -191,6 +191,33 @@ describe("contact import", () => {
     expect(r.stderr).not.toMatch(/were sent/);
   });
 
+  it("an inline import whose record commits after the client timeout is found on a later re-list: exit 0, the one import, never resent", async () => {
+    let committed: object | undefined;
+    let lists = 0;
+    sink.reply = (h) => {
+      if (post(h)) return (committed = OK(3, "imp_late")), { status: 201, body: committed, delayMs: 1500 };
+      if (h.url.startsWith("/v1/contacts/imports")) return { body: { object: "contact_import_list", items: ++lists >= 3 ? [committed] : [], cursor: null } };
+      return { body: {} };
+    };
+    const r = await sink.run(["contact", "import", "--file", file("late.csv", "linkedin_url\na\nb\nc\n"), "--timeout", "400", "--json"], { env: { CURVIATE_IMPORT_RELIST_MS: "100" } });
+    expect(r.status, r.stderr).toBe(0);
+    expect(oneDoc(r)).toMatchObject({ imports: [{ id: "imp_late", status: "completed" }], total_rows: 3 });
+    expect(lists).toBeGreaterThanOrEqual(3);
+    expect(r.requests.filter(post)).toHaveLength(1);
+  }, 8_000);
+
+  it("Retry-After: 0 on a busy 429 waits 0 s (the default only when the header is absent)", async () => {
+    let sends = 0;
+    sink.reply = (h) => {
+      if (!post(h)) return { body: {} };
+      return ++sends === 1 ? { status: 429, headers: { "retry-after": "0" }, body: { code: "RATE_LIMIT_TENANT", message: "busy", user_fixable: false, retry_likely_to_succeed: true } } : { status: 201, body: OK(1, "imp_z") };
+    };
+    const t0 = performance.now();
+    const r = await sink.run(["contact", "import", "--file", file("ra0.csv", "linkedin_url\na\n"), "--json"]);
+    expect([r.status, sends]).toEqual([0, 2]);
+    expect(performance.now() - t0).toBeLessThan(3000); // the 5 s default would exceed it
+  }, 8_000);
+
   it("nothing reached the API (connection refused): says nothing was imported, non-zero exit; a timeout with no import found does not claim the rows were not sent", async () => {
     const closed = createServer();
     await new Promise<void>((ok) => closed.listen(0, "127.0.0.1", ok));
@@ -201,7 +228,7 @@ describe("contact import", () => {
     expect(refused.stderr).toContain("Nothing was imported");
     const stalled = await (async () => {
       sink.reply = (h) => (post(h) ? { status: 201, body: OK(1, "imp_x"), delayMs: 1500 } : { body: { object: "contact_import_list", items: [], cursor: null } });
-      return sink.run(["contact", "import", "--file", file("stalled.csv", "linkedin_url\na\n"), "--timeout", "400", "--json"]);
+      return sink.run(["contact", "import", "--file", file("stalled.csv", "linkedin_url\na\n"), "--timeout", "400", "--json"], { env: { CURVIATE_IMPORT_RELIST_MS: "20" } });
     })();
     expect(stalled.status).not.toBe(0);
     expect(stalled.stderr).toContain("contact imports list");

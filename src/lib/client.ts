@@ -76,7 +76,7 @@ const guardedFetch: typeof fetch = async (input, init) => {
   const method = (merged?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
   if (notes && res.status === 429) {
     const ra = res.headers.get("retry-after");
-    notes.retryAfterS = (ra === null ? undefined : retryAfterSeconds(ra)) ?? 0;
+    notes.retryAfterS = ra === null ? undefined : retryAfterSeconds(ra);
     const headers = new Headers(res.headers);
     headers.delete("retry-after");
     res = new Response(res.body, { status: res.status, statusText: res.statusText, headers });
@@ -88,7 +88,7 @@ const downloading = new AsyncLocalStorage<true>();
 
 /** What a caller learns from the wire that the SDK's error hides (see `withWireNotes`). */
 export interface WireNotes {
-  /** A 429's `Retry-After` in seconds (the SDK would have slept it); 0 when the 429 carried none. */
+  /** A 429's `Retry-After` in seconds (the SDK would have slept it); 0 means "now", absent when the 429 carried none (or an unreadable one). */
   retryAfterS?: number;
   /** The request never left: the connection was refused or the host did not resolve. */
   unreached?: boolean;
