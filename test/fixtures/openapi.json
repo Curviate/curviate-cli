@@ -4820,7 +4820,7 @@
             }
           },
           "403": {
-            "description": "Forbidden. LINKEDIN_FEATURE_NOT_SUBSCRIBED: the connected LinkedIn account's own subscription level does not entitle it to view this person's profile. This is the same condition a people-search result reports in-band as visibility:\"hidden\" on GET/POST .../search/..., reading a hidden result back always ends here. It is not a bug or a misconfiguration; retrying will not help, and there is no request shape that makes this person readable from this account. In a team, a call on an account a teammate connected can also answer INSUFFICIENT_ROLE (your role may not do this), ACCOUNT_NOT_SHARED (the teammate turned team access off for the account) or ACCOUNT_OWNER_ONLY (only the person who connected the account may do this). None is fixed by retrying.",
+            "description": "Forbidden. LINKEDIN_FEATURE_NOT_SUBSCRIBED: the connected LinkedIn account's own subscription level does not entitle it to view this person's profile. This is the same condition a people-search result reports in-band as visibility:\"hidden\" on GET/POST .../search/..., reading a hidden result back always ends here. A profile outside the account's network, or one with restricted visibility, ends here too: the response does not say which. It is not a bug or a misconfiguration; retrying will not help, and there is no request shape that makes this person readable from this account. In a team, a call on an account a teammate connected can also answer INSUFFICIENT_ROLE (your role may not do this), ACCOUNT_NOT_SHARED (the teammate turned team access off for the account) or ACCOUNT_OWNER_ONLY (only the person who connected the account may do this). None is fixed by retrying.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49229,11 +49229,27 @@
                     "id": {
                       "type": "string",
                       "description": "The newly published post's own identifier."
+                    },
+                    "activity_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The post's plain numeric activity id, decoded from `id`. Null when `id` is absent or does not decode."
+                    },
+                    "share_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Link to the post on LinkedIn, built from the activity id. Null when `activity_id` is null."
                     }
                   },
                   "required": [
                     "object",
-                    "id"
+                    "id",
+                    "activity_id",
+                    "share_url"
                   ]
                 },
                 "examples": {
@@ -49241,7 +49257,9 @@
                     "summary": "Post created",
                     "value": {
                       "object": "post_created",
-                      "id": "urn:li:ugcPost:7123456789012345678"
+                      "id": "urn:li:ugcPost:7123456789012345678",
+                      "activity_id": "7497236303755841536",
+                      "share_url": "https://www.linkedin.com/feed/update/urn:li:activity:7497236303755841536/"
                     }
                   }
                 }
@@ -55098,11 +55116,27 @@
                         "null"
                       ],
                       "description": "The published post's id."
+                    },
+                    "activity_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The post's plain numeric activity id, decoded from `id`. Null when `id` is null or does not decode."
+                    },
+                    "share_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Link to the post on LinkedIn, built from the activity id. Null when `activity_id` is null."
                     }
                   },
                   "required": [
                     "object",
-                    "id"
+                    "id",
+                    "activity_id",
+                    "share_url"
                   ]
                 },
                 "examples": {
@@ -88502,6 +88536,9 @@
                     "type": "string",
                     "description": "Present = re-authenticate this existing account in place (reconnect); omit = connect a new account."
                   },
+                  "trial_premium": {
+                    "description": "Retired. Accepted and ignored; use linkedin_premium."
+                  },
                   "linkedin_premium": {
                     "type": "string",
                     "enum": [
@@ -97457,6 +97494,10 @@
                     },
                     "description": "With motion.custom_event in events: null (the default) delivers every custom event, a list only those names (up to 50). GET /v1/webhooks/events lists the names your Sequences send under custom_events.",
                     "nullable": true
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Immutable. The webhook's current source is accepted and changes nothing; any other value is refused."
                   }
                 }
               },
