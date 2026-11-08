@@ -116,9 +116,10 @@ describe("contact import", () => {
 
   it("a 25,000-row CSV is 3 imports of 10,000, 10,000 and 5,000 with the header repeated, one aggregated report with global row numbers", async () => {
     imports = 0;
-    const r = await sink.run(["contact", "import", "--file", file("big.csv", csv(25_000)), "--list-name", "L", "--tag", "t", "--json"]);
+    const r = await sink.run(["contact", "import", "--file", file("big.csv", csv(25_000)), "--list-name", "L", "--tag", "t", "--apply-lists", "--json"]);
     expect(r.status, r.stderr).toBe(0);
-    const bodies = r.requests.map((h) => JSON.parse(h.body) as { csv: string; list_name: string; tags: string[] });
+    const bodies = r.requests.map((h) => JSON.parse(h.body) as { csv: string; list_name: string; tags: string[]; apply_lists?: boolean });
+    expect(bodies.every((b) => b.apply_lists === true)).toBe(true); // every chunk carries the opt-in
     expect(bodies.map((b) => b.csv.split("\n").length - 1)).toEqual([10_000, 10_000, 5_000]);
     expect(bodies.every((b) => b.csv.startsWith("linkedin_url,full_name\n") && b.list_name === "L" && b.tags[0] === "t")).toBe(true);
     const out = JSON.parse(r.stdout) as { imports: unknown[]; total_rows: number; counts: Record<string, number>; skipped: Array<{ row: number }> };
@@ -131,6 +132,7 @@ describe("contact import", () => {
     const rows = csv(10_000) + "\n" + Array.from({ length: 10_000 }, (_, i) => `REFUSE${i},x`).join("\n") + "\n" + row(0);
     const r = await sink.run(["contact", "import", "--file", file("refuse.csv", rows), "--json"]);
     expect(r.requests).toHaveLength(2);
+    expect(JSON.parse(r.requests[0]!.body)).not.toHaveProperty("apply_lists"); // default off: the key is not sent
     expect(r.status).toBe(6);
     expect(JSON.parse(r.stdout)).toMatchObject({ progress: { chunks: { sent: 1, total: 3 }, failed_chunk: { index: 2, first_row: 10_001 } } });
   });

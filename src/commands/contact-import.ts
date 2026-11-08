@@ -39,6 +39,7 @@ type ImportFlags = Omit<ContactFlags, "list" | "tag"> & {
   list?: string;
   tag?: string | string[];
   "remove-tag"?: string | string[];
+  "apply-lists"?: boolean;
   map?: string | string[];
   delimiter?: string;
   "no-wait"?: boolean;
@@ -237,6 +238,7 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
   if (tags.length) base["tags"] = tags;
   const removeTags = listFlag("remove-tag", f["remove-tag"]);
   if (removeTags.length) base["remove_tags"] = removeTags;
+  if (f["apply-lists"] === true) base["apply_lists"] = true;
   const map = mapping(f);
   if (map) base["mapping"] = map;
   if (f.delimiter !== undefined) {
@@ -320,7 +322,7 @@ const importCmd = defineCommand({
       `If the request times out or the connection drops, the CLI looks up the Team's newest imports and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none exists. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again; a longer wait fails. Needs Automate.`,
     risk: "write",
     rules: {
-      changes: "Contacts are created or updated, joined to --list and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
+      changes: "Contacts are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "After a timeout the CLI reports the import it made; do not run it again then. Otherwise Contacts converge: a second run reports them `unchanged`. A run stopped part way: read `curviate contact imports list`, then import the rest.",
@@ -337,7 +339,7 @@ const importCmd = defineCommand({
     seeAlso: ["curviate contact imports get", "curviate contact list"],
     examples: [
       "curviate contact import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
-      "curviate contact import --file prospects.csv --map \"LinkedIn Profile=linkedin_url\" --list cl_YOUR_LIST_ID --no-wait",
+      "curviate contact import --file contacts-export.csv --apply-lists --no-wait",
       "curviate contact import --file - --format ndjson --list cl_YOUR_LIST_ID",
     ],
   },
@@ -349,6 +351,7 @@ const importCmd = defineCommand({
     "list-name": { type: "string", description: "Add them to the list of this name (up to 100 characters), creating it. Not with --list." },
     tag: { type: "string", description: "Put this Tag on every imported Contact (up to 64 characters); repeatable." },
     "remove-tag": { type: "string", description: "Take this Tag off every imported Contact; repeatable." },
+    "apply-lists": { type: "boolean", description: "Add each Contact to the Contact lists named in its `lists` (an export's column), creating a missing list by name. Only adds. A row past the Team's list limit is skipped (list_limit_reached). Default: the column is ignored." },
     map: { type: "string", description: "Map a file header to a Contact field: header=target, for example \"LinkedIn Profile=linkedin_url\"; repeatable." },
     delimiter: { type: "string", description: "A CSV's separator: comma, semicolon or tab. Default: found by the server." },
     "no-wait": { type: "boolean", description: "Print the imports' ids without waiting for them to finish. Stops only on a refused request." },
