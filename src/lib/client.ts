@@ -63,12 +63,54 @@ const guardedFetch: typeof fetch = async (input, init) => {
     ...headerStrings(merged?.headers),
     typeof merged?.body === "string" ? merged.body : undefined,
   ]);
-  const res = await fetch(input, merged);
+  const notes = wireNotes.getStore();
+  let res: Response;
+  try {
+    res = await fetch(input, merged);
+  } catch (err) {
+    // The connection was refused or the host unknown: the request never left, so nothing was applied.
+    const code = (err as { cause?: { code?: string } } | null)?.cause?.code;
+    if (notes && (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "EAI_AGAIN")) notes.unreached = true;
+    throw err;
+  }
   const method = (merged?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+  if (notes && res.status === 429) {
+    const ra = res.headers.get("retry-after");
+    notes.retryAfterS = (ra === null ? undefined : retryAfterSeconds(ra)) ?? 0;
+    const headers = new Headers(res.headers);
+    headers.delete("retry-after");
+    res = new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  }
   return downloading.getStore() && res.ok ? asOpaqueBytes(res) : platformFaultIfUnreadable(res, getWriteKind() === "state" ? "state" : method === "GET" ? "read" : getWriteKind());
 };
 
 const downloading = new AsyncLocalStorage<true>();
+
+/** What a caller learns from the wire that the SDK's error hides (see `withWireNotes`). */
+export interface WireNotes {
+  /** A 429's `Retry-After` in seconds (the SDK would have slept it); 0 when the 429 carried none. */
+  retryAfterS?: number;
+  /** The request never left: the connection was refused or the host did not resolve. */
+  unreached?: boolean;
+}
+const wireNotes = new AsyncLocalStorage<WireNotes>();
+
+/**
+ * Run `call` with `notes` filled from its requests, and a 429's `Retry-After` withheld from the SDK. The SDK
+ * sleeps a write's `Retry-After` in full before it throws, with no bound; a caller that decides the wait (a
+ * bounded wait, or none) takes the value from `notes.retryAfterS` instead.
+ */
+export function withWireNotes<T>(notes: WireNotes, call: () => Promise<T>): Promise<T> {
+  return wireNotes.run(notes, call);
+}
+
+/** Seconds from a `Retry-After` value (delta-seconds or an HTTP date); undefined when it is neither. */
+function retryAfterSeconds(v: string): number | undefined {
+  const n = Number(v.trim());
+  if (v.trim() !== "" && Number.isFinite(n) && n >= 0) return n;
+  const at = Date.parse(v);
+  return Number.isNaN(at) ? undefined : Math.max(0, Math.ceil((at - Date.now()) / 1000));
+}
 
 /**
  * Run a binary download. Inside it a 2xx body is the file, saved verbatim

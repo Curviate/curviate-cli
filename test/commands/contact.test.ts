@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createServer } from "node:net";
 import { useSink, line, type Hit } from "../helpers/sink.js";
 
 const CON = { object: "contact", id: "con_1", company_linkedin_url: "https://www.linkedin.com/company/1/", linkedin_url: "https://www.linkedin.com/in/jane", full_name: "Jane", tags: ["a"], list_ids: [], connected_account_ids: [], enrichment: { status: "none" } };
@@ -131,12 +132,13 @@ describe("contact import", () => {
     const r = await sink.run(["contact", "import", "--file", file("refuse.csv", rows), "--json"]);
     expect(r.requests).toHaveLength(2);
     expect(r.status).toBe(6);
-    expect(JSON.parse(r.stdout.trim().split("\n")[0]!)).toMatchObject({ progress: { chunks: { sent: 1, total: 3 }, failed_chunk: { index: 2, first_row: 10_001 } } });
+    expect(JSON.parse(r.stdout)).toMatchObject({ progress: { chunks: { sent: 1, total: 3 }, failed_chunk: { index: 2, first_row: 10_001 } } });
   });
 
   it("a failed import stops the run: the next chunk is never sent, and the exit is the failure's", async () => {
     const r = await sink.run(["contact", "import", "--file", file("fail.csv", "linkedin_url\nFAILIMP\n" + Array.from({ length: 10_000 }, () => "x").join("\n")), "--json"]);
     expect([r.requests.length, r.status]).toEqual([1, 2]);
+    expect(JSON.parse(r.stdout)).toMatchObject({ error: { code: "CONTACT_LIMIT_REACHED" } }); // one document
   });
 
   it(".json and .ndjson arrive as rows; a Latin-1 file, --file - without --format, and an empty file exit 2 with zero requests", async () => {
@@ -166,6 +168,71 @@ describe("contact import", () => {
     expect(fast.requests.map(line)).toEqual(["POST /v1/contacts/imports"]);
     expect(JSON.parse(fast.stdout).imports).toEqual([{ id: "imp_q", status: "queued" }]);
   });
+
+  /** The report is the whole of stdout: one JSON document. */
+  const oneDoc = (r: { stdout: string }) => JSON.parse(r.stdout) as Record<string, unknown>;
+  const OK = (rows: number, id: string, extra: object = {}) => ({ ...IMP({ created: rows, updated: 0, unchanged: 0, skipped: 0 }), id, total_rows: rows, format: "csv", list_id: null, created_at: new Date().toISOString(), ...extra });
+  const post = (h: Hit) => h.method === "POST" && h.url === "/v1/contacts/imports";
+
+  it("a timeout after the API committed reports the import it made (id, completed, counts), exit 0, never 'not sent'", async () => {
+    let committed: object | undefined;
+    sink.reply = (h) => {
+      if (post(h)) return (committed = OK(3, "imp_slow")), { status: 201, body: committed, delayMs: 1500 };
+      if (h.url.startsWith("/v1/contacts/imports")) return { body: { object: "contact_import_list", items: committed ? [committed] : [], cursor: null } };
+      return { body: {} };
+    };
+    const r = await sink.run(["contact", "import", "--file", file("slow.csv", "linkedin_url\na\nb\nc\n"), "--timeout", "400", "--json"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(oneDoc(r)).toMatchObject({ imports: [{ id: "imp_slow", status: "completed" }], total_rows: 3, counts: { created: 3 } });
+    expect(r.requests.filter(post)).toHaveLength(1); // never resent
+    expect(r.stderr).toContain("imp_slow");
+    expect(r.stderr).not.toMatch(/were sent/);
+  });
+
+  it("nothing reached the API (connection refused): says nothing was imported, non-zero exit; a timeout with no import found does not claim the rows were not sent", async () => {
+    const closed = createServer();
+    await new Promise<void>((ok) => closed.listen(0, "127.0.0.1", ok));
+    const port = (closed.address() as { port: number }).port;
+    await new Promise((ok) => closed.close(ok));
+    const refused = await sink.run(["contact", "import", "--file", file("refused.csv", "linkedin_url\na\n"), "--base-url", `http://127.0.0.1:${port}`, "--json"]);
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain("Nothing was imported");
+    const stalled = await (async () => {
+      sink.reply = (h) => (post(h) ? { status: 201, body: OK(1, "imp_x"), delayMs: 1500 } : { body: { object: "contact_import_list", items: [], cursor: null } });
+      return sink.run(["contact", "import", "--file", file("stalled.csv", "linkedin_url\na\n"), "--timeout", "400", "--json"]);
+    })();
+    expect(stalled.status).not.toBe(0);
+    expect(stalled.stderr).toContain("contact imports list");
+    expect(stalled.stderr).not.toMatch(/0 of 1 rows were sent/);
+  });
+
+  it("a 429 RATE_LIMIT_TENANT with Retry-After: 2 on chunk 2 of 3 waits, resends chunk 2, sends chunk 3, and sums all three; one JSON document", async () => {
+    let sends = 0;
+    const when: number[] = [];
+    sink.reply = (h) => {
+      if (!post(h)) return { body: {} };
+      sends++;
+      when.push(performance.now());
+      if (sends === 2) return { status: 429, headers: { "retry-after": "2" }, body: { code: "RATE_LIMIT_TENANT", message: "busy", user_fixable: false, retry_likely_to_succeed: true } };
+      return { status: 201, body: OK(10_000, `imp_${sends}`) };
+    };
+    const rows = Array.from({ length: 25_000 }, (_, i) => row(i));
+    const r = await sink.run(["contact", "import", "--file", file("rl.csv", ["linkedin_url,full_name", ...rows].join("\n")), "--json"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(sends).toBe(4); // chunk 1, chunk 2 refused, chunk 2 again, chunk 3
+    expect(when[2]! - when[1]!).toBeGreaterThanOrEqual(1900);
+    expect(oneDoc(r)).toMatchObject({ total_rows: 25_000, counts: { created: 30_000 } }); // the fake counts 10,000 for each of its 3 imports
+    expect((oneDoc(r)["imports"] as unknown[]).length).toBe(3);
+  }, 15_000);
+
+  it("a Retry-After above the bound fails loudly at once: no sleep, no resend, nothing claimed sent", async () => {
+    sink.reply = (h) => (post(h) ? { status: 429, headers: { "retry-after": "600" }, body: { code: "RATE_LIMIT_TENANT", message: "busy", user_fixable: false, retry_likely_to_succeed: true } } : { body: {} });
+    const r = await sink.run(["contact", "import", "--file", file("bound.csv", "linkedin_url\na\n"), "--json"]);
+    expect(r.requests.filter(post)).toHaveLength(1);
+    expect(r.status).toBe(6);
+    expect(r.stderr).toMatch(/600 s/);
+    expect(JSON.parse(r.stdout)).toMatchObject({ error: { code: "RATE_LIMIT_TENANT" } }); // still one document
+  }, 4_000);
 
   it("a BOM is dropped; --map and --delimiter are sent", async () => {
     const r = await sink.run(["contact", "import", "--file", file("bom.csv", "﻿url;n\nx;y\n"), "--map", "url=linkedin_url", "--delimiter", "semicolon", "--json"]);

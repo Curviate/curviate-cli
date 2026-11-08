@@ -37,7 +37,7 @@ export async function sendChunked<T, R>(chunks: T[][], send: (chunk: T[]) => Pro
         failed_chunk: { index: k + 1, first_row: accepted + 1, last_row: accepted + chunk.length },
       };
       if (!(err instanceof CurviateError)) {
-        process.stderr.write(`Chunk ${k + 1} of ${total} failed; ${accepted} of ${all} ${unit} were sent before it. Nothing after it was sent.\n`);
+        process.stderr.write(`Chunk ${k + 1} of ${total} failed; ${accepted} of ${all} ${unit} were accepted before it. Nothing after it was sent.\n`);
         return fail(err, f);
       }
       const { getExitCode } = await import("./exit-codes.js");
@@ -46,7 +46,7 @@ export async function sendChunked<T, R>(chunks: T[][], send: (chunk: T[]) => Pro
       process.stderr.write(
         `error [${e.code}] ${e.message}\n` +
           `Chunk ${k + 1} of ${total} failed (${unit} ${progress.failed_chunk.first_row} to ${progress.failed_chunk.last_row}); ` +
-          `${accepted} of ${all} ${unit} were sent before it. Nothing after it was sent.\n`,
+          `${accepted} of ${all} ${unit} were accepted before it. Nothing after it was sent.\n`,
       );
       process.exit(getExitCode(err as CurviateError));
     }
