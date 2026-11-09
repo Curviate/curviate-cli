@@ -44,6 +44,7 @@ type ImportFlags = Omit<ContactFlags, "list" | "tag"> & {
   delimiter?: string;
   "no-wait"?: boolean;
   wait?: boolean;
+  async?: boolean;
   outcome?: string;
 };
 
@@ -185,11 +186,14 @@ async function createChunk(c: Curviate, body: Body, rows: number, seen: string[]
       if (!(err instanceof CurviateError)) throw err;
       if (err.code === "RATE_LIMIT_TENANT") {
         const wait = notes.retryAfterS ?? RETRY_DEFAULT_S;
-        if (wait > RETRY_AFTER_BOUND_S) {
-          throw new CurviateError({ code: err.code, message: `${err.message} The API asked to wait ${wait} s, more than the ${RETRY_AFTER_BOUND_S} s the CLI waits. Nothing in this chunk was imported; send it again later.`, httpStatus: 429, userFixable: false, retryLikelyToSucceed: true } as never);
+        // The API names the import holding the Team's write lock, when one does.
+        const d = err.details as { import_id?: unknown; started_at?: unknown } | undefined;
+        const holder = typeof d?.import_id === "string" ? ` Import ${d.import_id} (started ${String(d.started_at)}) holds the Team's write lock: read it with \`curviate contact imports get ${d.import_id}\`.` : "";
+        if (wait > RETRY_AFTER_BOUND_S || sends >= MAX_SENDS) {
+          const why = wait > RETRY_AFTER_BOUND_S ? ` The API asked to wait ${wait} s, more than the ${RETRY_AFTER_BOUND_S} s the CLI waits.` : "";
+          throw new CurviateError({ code: err.code, message: `${err.message}${why} Nothing in this chunk was imported; send it again later.${holder}`, httpStatus: 429, userFixable: false, retryLikelyToSucceed: true, ...(err.details ? { details: err.details } : {}) } as never);
         }
-        if (sends >= MAX_SENDS) throw err;
-        say(`Import ${k} of ${n}: the Team has other Contact writes running (nothing was imported); waiting ${wait} s, then sending it again.`);
+        say(`Import ${k} of ${n}: the Team has other Contact writes running (nothing was imported); waiting ${wait} s, then sending it again.${holder}`);
         await sleep(wait * 1000);
         continue;
       }
@@ -265,8 +269,8 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
   const total = chunks.reduce((n, x) => n + x.length, 0);
   if (f.preview) return preview("contacts.imports.create", chunks.length > 1 ? { imports: chunks.length, rows: total } : {}, bodyOf(chunks[0]!));
 
-  // The parser reads `--no-wait` as the negation of a `wait` flag.
-  const wait = !(f["no-wait"] === true || f.wait === false);
+  // The parser reads `--no-wait` as the negation of a `wait` flag. `--async` is the same.
+  const wait = !(f["no-wait"] === true || f.wait === false || f.async === true);
   const poll = async (made: Imp): Promise<Imp> => {
     let imp = made;
     while (wait && imp.status !== "completed" && imp.status !== "failed") {
@@ -288,6 +292,7 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
       at += rows.length;
       done.push(imp);
       if (imp.status === "failed") throw await failedImport(imp);
+      if (!wait && imp.status !== "completed") say(`Import ${done.length} of ${chunks.length}: ${imp.id} is ${imp.status}; read its progress with \`curviate contact imports get ${imp.id}\`.`);
       return imp;
     },
     f,
@@ -328,9 +333,9 @@ const importCmd = defineCommand({
     name: "import",
     description:
       `Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
-      "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --no-wait; the first refused or failed import stops the run. " +
+      "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. " +
       "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. " +
-      `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again; a longer wait fails. Needs Automate.`,
+      `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs Automate.`,
     risk: "write",
     rules: {
       changes: "Contacts are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
@@ -342,15 +347,15 @@ const importCmd = defineCommand({
     errors: {
       CONTACT_LIMIT_REACHED: "the Team is at its Contact cap; rows past it are skipped.",
       IMPORT_QUEUE_FULL: "too many imports are queued (429); wait, then run it again.",
-      RATE_LIMIT_TENANT: `the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run.`,
+      RATE_LIMIT_TENANT: `the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run. When an import holds the Team's write lock, the message and \`details.import_id\` name it: read it with \`curviate contact imports get\`.`,
       CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate contact imports list` before running it again.",
       NAME_TAKEN: "--list-name names a list that exists.",
     },
-    output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --no-wait: the imports' ids and statuses only."],
+    output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --async (or --no-wait): the imports' ids and statuses only, printed as soon as each is accepted; a queued one's progress is \`curviate contact imports get IMPORT_ID\` (stderr names it)."],
     seeAlso: ["curviate contact imports get", "curviate contact list"],
     examples: [
       "curviate contact import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
-      "curviate contact import --file contacts-export.csv --apply-lists --no-wait",
+      "curviate contact import --file contacts-export.csv --apply-lists --async",
       "curviate contact import --file - --format ndjson --list cl_YOUR_LIST_ID",
     ],
   },
@@ -365,7 +370,8 @@ const importCmd = defineCommand({
     "apply-lists": { type: "boolean", description: "Add each Contact to the Contact lists named in its `lists` (an export's column), creating a missing list by name. Only adds. A row past the Team's list limit is skipped (list_limit_reached). Default: the column is ignored." },
     map: { type: "string", description: "Map a file header to a Contact field: header=target, for example \"LinkedIn Profile=linkedin_url\"; repeatable." },
     delimiter: { type: "string", description: "A CSV's separator: comma, semicolon or tab. Default: found by the server." },
-    "no-wait": { type: "boolean", description: "Print the imports' ids without waiting for them to finish. Stops only on a refused request." },
+    async: { type: "boolean", description: "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate contact imports get IMPORT_ID`. Stops only on a refused request." },
+    "no-wait": { type: "boolean", description: "Same as --async." },
   },
   run: online(runImport),
 });

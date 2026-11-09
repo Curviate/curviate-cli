@@ -8,6 +8,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Contact import: async, and a busy Team names the import in its way
+
+- **`contact import --async`** prints the imports' ids and statuses as soon as each is accepted and exits 0, without waiting; stderr names `curviate contact imports get IMPORT_ID` for a queued one. Same as `--no-wait`, which stays.
+- **A busy-Team 429 (`RATE_LIMIT_TENANT`) names the import holding the Team's write lock** when the API names one (`details.import_id`, `details.started_at`): in the wait line on stderr and in the final error, so an agent reads that import instead of guessing.
+
 - `--all` and `--max-pages` help: the default cap (100 pages), that a capped run ends with a `stream_truncated` line on stdout plus a stderr note, and that it still exits 0. Help text only.
 
 ### Hygiene

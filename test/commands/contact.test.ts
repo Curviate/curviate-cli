@@ -161,14 +161,17 @@ describe("contact import", () => {
     }
   });
 
-  it("a queued import is awaited by polling it; --no-wait prints the id and does not poll", async () => {
+  it("a queued import is awaited by polling it; --async (and --no-wait) prints the id at once, exit 0, never polls, names the read on stderr", async () => {
     const f = file("q.csv", "linkedin_url\nQUEUED\n");
     const waited = await sink.run(["contact", "import", "--file", f, "--json"]);
     expect(waited.requests.map(line)).toEqual(["POST /v1/contacts/imports", "GET /v1/contacts/imports/imp_q"]);
     expect(JSON.parse(waited.stdout).imports).toEqual([{ id: "imp_q", status: "completed" }]);
-    const fast = await sink.run(["contact", "import", "--file", f, "--no-wait", "--json"]);
-    expect(fast.requests.map(line)).toEqual(["POST /v1/contacts/imports"]);
-    expect(JSON.parse(fast.stdout).imports).toEqual([{ id: "imp_q", status: "queued" }]);
+    for (const flag of ["--async", "--no-wait"]) {
+      const fast = await sink.run(["contact", "import", "--file", f, flag, "--json"]);
+      expect([fast.status, fast.requests.map(line)], flag).toEqual([0, ["POST /v1/contacts/imports"]]);
+      expect(JSON.parse(fast.stdout)).toEqual({ imports: [{ id: "imp_q", status: "queued" }], total_rows: 1 });
+      expect(fast.stderr).toContain("curviate contact imports get imp_q");
+    }
   });
 
   /** The report is the whole of stdout: one JSON document. */
