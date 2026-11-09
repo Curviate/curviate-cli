@@ -3586,7 +3586,7 @@
         "contact",
         "import"
       ],
-      "description": "Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --no-wait; the first refused or failed import stops the run. Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again; a longer wait fails. Needs Automate.",
+      "description": "Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -3637,9 +3637,14 @@
           "description": "A CSV's separator: comma, semicolon or tab. Default: found by the server."
         },
         {
+          "name": "async",
+          "type": "boolean",
+          "description": "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate contact imports get IMPORT_ID`. Stops only on a refused request."
+        },
+        {
           "name": "no-wait",
           "type": "boolean",
-          "description": "Print the imports' ids without waiting for them to finish. Stops only on a refused request."
+          "description": "Same as --async."
         }
       ],
       "globals": [
@@ -3657,7 +3662,7 @@
       ],
       "examples": [
         "curviate contact import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
-        "curviate contact import --file contacts-export.csv --apply-lists --no-wait",
+        "curviate contact import --file contacts-export.csv --apply-lists --async",
         "curviate contact import --file - --format ndjson --list cl_YOUR_LIST_ID"
       ],
       "requires": [],
@@ -3670,12 +3675,12 @@
         "undo": "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `curviate contact tags remove` and `curviate contact lists remove`."
       },
       "output": [
-        "With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --no-wait: the imports' ids and statuses only."
+        "With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --async (or --no-wait): the imports' ids and statuses only, printed as soon as each is accepted; a queued one's progress is `curviate contact imports get IMPORT_ID` (stderr names it)."
       ],
       "errors": {
         "CONTACT_LIMIT_REACHED": "the Team is at its Contact cap; rows past it are skipped.",
         "IMPORT_QUEUE_FULL": "too many imports are queued (429); wait, then run it again.",
-        "RATE_LIMIT_TENANT": "the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to 60 s) and sends again, a longer wait stops the run.",
+        "RATE_LIMIT_TENANT": "the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to 60 s) and sends again, a longer wait stops the run. When an import holds the Team's write lock, the message and `details.import_id` name it: read it with `curviate contact imports get`.",
         "CLIENT_TIMEOUT": "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate contact imports list` before running it again.",
         "NAME_TAKEN": "--list-name names a list that exists."
       },
