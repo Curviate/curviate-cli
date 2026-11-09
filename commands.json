@@ -10825,7 +10825,7 @@
         "connect",
         "sent"
       ],
-      "description": "Returns pending sent invitations only. Accepted and declined invitations are not returned (LinkedIn API limitation). Use `id` with `curviate core connect cancel`; use `user.id` (native member URN; the sent-variant carries no public slug) to identify the recipient. `created_at` is the platform's own ISO-8601 timestamp (not an approximation). No total count is available; use `curviate core connect sent --all` and count client-side. A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
+      "description": "Returns pending sent invitations only. Accepted and declined invitations are not returned (LinkedIn API limitation). Use `id` with `curviate core connect cancel`; use `user.id` (native member URN) to identify the recipient; `user.public_identifier` is present only when Curviate already knows the slug from stored data. `created_at` is the platform's own ISO-8601 timestamp (not an approximation). No total count is available; use `curviate core connect sent --all` and count client-side. A very recently sent invitation may take a few minutes to appear here (LinkedIn-side indexing).",
       "usageOnly": false,
       "args": [],
       "globals": [

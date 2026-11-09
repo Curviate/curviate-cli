@@ -10,6 +10,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 - `--all` and `--max-pages` help: the default cap (100 pages), that a capped run ends with a `stream_truncated` line on stdout plus a stderr note, and that it still exits 0. Help text only.
 
+### Pending invitations
+
+- **`core connect sent`** keeps `user.public_identifier` in the slim output (null when unknown). LinkedIn sends no slug for sent invitations; the API fills it from stored data when it knows the person.
+- `motion preview` prints the new `pending_invite` skip count as the API returns it (Motions skip a Contact any Team Account has a pending invitation to; `settings.exclude.pending_invites`, default on). `motion create|update --file` accept `settings.exclude.pending_invites` (vendored document schemas re-derived from the OpenAPI fixture served by staging e858d1ed0; the SDK pin stays 0.48.0, whose generated types already carry it).
+
 ## [0.52.0] - 2026-11-08
 
 Requires `@curviate/sdk` 0.48.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging f4ecd2656.
