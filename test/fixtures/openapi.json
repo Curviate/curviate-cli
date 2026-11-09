@@ -687,10 +687,17 @@
           },
           "details": {
             "type": "object",
-            "description": "Present on INVALID_REQUEST, CONNECTION_LOCATION_REQUIRED and PLATFORM_ERROR when an account PATCH's location change was refused (your own proxy, a country, clearing the proxy): account says where the account stands now, re-read after the attempt. Never any proxy field. Present on EXPORT_IN_PROGRESS: export_id names the export your team already has queued or running. It may be a teammate's, which GET /v1/exports/{id} answers 404; it finishes or fails within the hour, then start yours. Present on INVALID_REQUEST when a safety-policy write sent a removed key: removed_key names it. Drop that key from the request; limits are always enforced. Present on TIER_REQUIRED when one account lacks the feature while the team has it (an account on a seat another team lent this one carries that seat's Tier): account_id names it. Leave that account out, or ask the Owner who lent the seat.",
+            "description": "Present on INVALID_REQUEST, CONNECTION_LOCATION_REQUIRED and PLATFORM_ERROR when an account PATCH's location change was refused (your own proxy, a country, clearing the proxy): account says where the account stands now, re-read after the attempt. Never any proxy field. Present on RATE_LIMIT_TENANT when an import of your team holds the team's Contact write lock: import_id and started_at name it. Read it with GET /v1/contacts/imports/{id} (404 while an import of up to 500 rows is still being applied in its request: its record commits with its rows), then retry. Present on EXPORT_IN_PROGRESS: export_id names the export your team already has queued or running. It may be a teammate's, which GET /v1/exports/{id} answers 404; it finishes or fails within the hour, then start yours. Present on INVALID_REQUEST when a safety-policy write sent a removed key: removed_key names it. Drop that key from the request; limits are always enforced. Present on TIER_REQUIRED when one account lacks the feature while the team has it (an account on a seat another team lent this one carries that seat's Tier): account_id names it. Leave that account out, or ask the Owner who lent the seat.",
             "properties": {
               "export_id": {
                 "type": "string"
+              },
+              "import_id": {
+                "type": "string"
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time"
               },
               "account_id": {
                 "type": "string"
@@ -85687,7 +85694,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Sections: profile, metrics, performance, daily, limits, motions, activity, flags. Omitted: the summary. Repeat the key, comma-separate or mix; empties ignored."
+            "description": "Sections: profile, metrics, performance, daily, limits, motions, activity, flags, forecast. Omitted: the summary, which never holds forecast. Repeat the key, comma-separate or mix; empties ignored."
           },
           {
             "name": "fields",
@@ -85729,6 +85736,17 @@
               ]
             },
             "description": "previous_period: each rate gains previous (the same number of days just before from) and delta (rate - previous rate)."
+          },
+          {
+            "name": "forecast_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "description": "Days of the Forecast after today, 1-365. Default: 30. Only with include=forecast."
           }
         ],
         "responses": {
@@ -87428,6 +87446,93 @@
                           "next"
                         ]
                       }
+                    },
+                    "forecast": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Only with include=forecast. forecast: what your Motions are expected to send and get per day, from today (its whole expected day) through forecast_days (1-365, default 30) or the last day with activity, whichever comes first. A simulation of each Motion's Sequence, limits, warm-up, schedule and accounts with its observed acceptance and reply rates. Motions only, no direct actions; the configuration is frozen as it is now: no new Enrollments, no edits. A draft Motion: as if turned on now with its picked accounts; null when none is picked. Whole actions: each day's expected values summed over the scope, then rounded.",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "computed",
+                            "computing"
+                          ],
+                          "description": "computing: an account of the scope has had no simulation yet, so daily is today's zeros and is not a forecast; read again in a few minutes. computed otherwise (always for a draft Motion)."
+                        },
+                        "computed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "When the newest of the scope's simulations ran (UTC); null when none has."
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Changes whenever any simulation of the team runs again: cache the section until it changes."
+                        },
+                        "through": {
+                          "type": "string",
+                          "description": "The last day served, YYYY-MM-DD: today when nothing lies ahead."
+                        },
+                        "daily": {
+                          "type": "array",
+                          "description": "Every day from today through `through`, in the read's timezone; a day with nothing expected is all zeros.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "invites_sent": {
+                                "type": "integer",
+                                "description": "Invitations expected to be sent."
+                              },
+                              "accepted": {
+                                "type": "integer",
+                                "description": "Invitations expected to be accepted that day."
+                              },
+                              "messages_sent": {
+                                "type": "integer",
+                                "description": "Messages expected to be sent."
+                              },
+                              "replies": {
+                                "type": "integer",
+                                "description": "Replies expected, InMail replies included."
+                              },
+                              "inmails_sent": {
+                                "type": "integer",
+                                "description": "InMails expected to be sent."
+                              },
+                              "inmail_replies": {
+                                "type": "integer",
+                                "description": "Of replies, those to an InMail."
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "invites_sent",
+                              "accepted",
+                              "messages_sent",
+                              "replies",
+                              "inmails_sent",
+                              "inmail_replies"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "computed_at",
+                        "version",
+                        "through",
+                        "daily"
+                      ]
                     }
                   },
                   "required": [
@@ -115349,7 +115454,7 @@
             }
           },
           "429": {
-            "description": "IMPORT_QUEUE_FULL: 5 background imports are already queued or running. Wait for one to finish, then retry.",
+            "description": "IMPORT_QUEUE_FULL: 5 background imports are already queued or running. Wait for one to finish, then retry. RATE_LIMIT_TENANT: other Contact or Motion writes of your team held its write lock for 5 s, nothing was imported; when an import holds it, details.import_id and details.started_at name it. Retry with a backoff.",
             "content": {
               "application/json": {
                 "schema": {
@@ -130808,7 +130913,7 @@
                               },
                               "expected_actions_per_day": {
                                 "type": "integer",
-                                "description": "The LinkedIn actions a day this Motion is expected to make on this account at that pace, every budgeted step of the costliest route counted. An estimate; 0 when the account carries no Contact."
+                                "description": "The LinkedIn actions a day this Motion is expected to make on this account. A draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now (the same simulation as include=forecast on GET /v1/analytics/motions/{motion_id}). A started Motion: at that pace, every budgeted step of the costliest route counted. An estimate; 0 when the account carries no Contact."
                               }
                             },
                             "required": [
@@ -137634,7 +137739,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Sections: performance, daily, motions, accounts, flags. Omitted: the summary. Repeat the key, comma-separate or mix; empties ignored."
+            "description": "Sections: performance, daily, motions, accounts, flags, forecast. Omitted: the summary, which never holds forecast. Repeat the key, comma-separate or mix; empties ignored."
           },
           {
             "name": "fields",
@@ -137676,6 +137781,17 @@
               ]
             },
             "description": "previous_period: each rate gains previous (the same number of days just before from) and delta (rate - previous rate)."
+          },
+          {
+            "name": "forecast_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "description": "Days of the Forecast after today, 1-365. Default: 30. Only with include=forecast."
           }
         ],
         "responses": {
@@ -140208,6 +140324,93 @@
                           "next"
                         ]
                       }
+                    },
+                    "forecast": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Only with include=forecast. forecast: what your Motions are expected to send and get per day, from today (its whole expected day) through forecast_days (1-365, default 30) or the last day with activity, whichever comes first. A simulation of each Motion's Sequence, limits, warm-up, schedule and accounts with its observed acceptance and reply rates. Motions only, no direct actions; the configuration is frozen as it is now: no new Enrollments, no edits. A draft Motion: as if turned on now with its picked accounts; null when none is picked. Whole actions: each day's expected values summed over the scope, then rounded.",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "computed",
+                            "computing"
+                          ],
+                          "description": "computing: an account of the scope has had no simulation yet, so daily is today's zeros and is not a forecast; read again in a few minutes. computed otherwise (always for a draft Motion)."
+                        },
+                        "computed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "When the newest of the scope's simulations ran (UTC); null when none has."
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Changes whenever any simulation of the team runs again: cache the section until it changes."
+                        },
+                        "through": {
+                          "type": "string",
+                          "description": "The last day served, YYYY-MM-DD: today when nothing lies ahead."
+                        },
+                        "daily": {
+                          "type": "array",
+                          "description": "Every day from today through `through`, in the read's timezone; a day with nothing expected is all zeros.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "invites_sent": {
+                                "type": "integer",
+                                "description": "Invitations expected to be sent."
+                              },
+                              "accepted": {
+                                "type": "integer",
+                                "description": "Invitations expected to be accepted that day."
+                              },
+                              "messages_sent": {
+                                "type": "integer",
+                                "description": "Messages expected to be sent."
+                              },
+                              "replies": {
+                                "type": "integer",
+                                "description": "Replies expected, InMail replies included."
+                              },
+                              "inmails_sent": {
+                                "type": "integer",
+                                "description": "InMails expected to be sent."
+                              },
+                              "inmail_replies": {
+                                "type": "integer",
+                                "description": "Of replies, those to an InMail."
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "invites_sent",
+                              "accepted",
+                              "messages_sent",
+                              "replies",
+                              "inmails_sent",
+                              "inmail_replies"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "computed_at",
+                        "version",
+                        "through",
+                        "daily"
+                      ]
                     }
                   },
                   "required": [
@@ -140694,6 +140897,54 @@
                         }
                       ]
                     }
+                  },
+                  "forecast": {
+                    "summary": "include=forecast&forecast_days=1: the next days, Motions only",
+                    "value": {
+                      "object": "analytics_motions",
+                      "scope": {
+                        "account_id": null,
+                        "account_ids": [],
+                        "motion_ids": [],
+                        "origin": null
+                      },
+                      "window": {
+                        "from": "2026-10-02",
+                        "to": "2026-10-31",
+                        "timezone": "UTC",
+                        "days": 30,
+                        "bucket": "day",
+                        "counts_only_through": null,
+                        "paths_through": null
+                      },
+                      "generated_at": "2026-10-31T12:00:00.000Z",
+                      "forecast": {
+                        "status": "computed",
+                        "computed_at": "2026-10-31T03:27:00.000Z",
+                        "version": "2026-10-31T03:27:00.000Z",
+                        "through": "2026-11-01",
+                        "daily": [
+                          {
+                            "date": "2026-10-31",
+                            "invites_sent": 14,
+                            "accepted": 4,
+                            "messages_sent": 9,
+                            "replies": 2,
+                            "inmails_sent": 0,
+                            "inmail_replies": 0
+                          },
+                          {
+                            "date": "2026-11-01",
+                            "invites_sent": 15,
+                            "accepted": 5,
+                            "messages_sent": 11,
+                            "replies": 1,
+                            "inmails_sent": 0,
+                            "inmail_replies": 0
+                          }
+                        ]
+                      }
+                    }
                   }
                 }
               }
@@ -141000,7 +141251,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Sections: performance, daily, steps, variants, paths, accounts, flags. Omitted: the summary. Repeat the key, comma-separate or mix; empties ignored."
+            "description": "Sections: performance, daily, steps, variants, paths, accounts, flags, forecast. Omitted: the summary, which never holds forecast. Repeat the key, comma-separate or mix; empties ignored."
           },
           {
             "name": "fields",
@@ -141042,6 +141293,17 @@
               ]
             },
             "description": "previous_period: each rate gains previous (the same number of days just before from) and delta (rate - previous rate)."
+          },
+          {
+            "name": "forecast_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "description": "Days of the Forecast after today, 1-365. Default: 30. Only with include=forecast."
           }
         ],
         "responses": {
@@ -145220,6 +145482,93 @@
                           "next"
                         ]
                       }
+                    },
+                    "forecast": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Only with include=forecast. forecast: what your Motions are expected to send and get per day, from today (its whole expected day) through forecast_days (1-365, default 30) or the last day with activity, whichever comes first. A simulation of each Motion's Sequence, limits, warm-up, schedule and accounts with its observed acceptance and reply rates. Motions only, no direct actions; the configuration is frozen as it is now: no new Enrollments, no edits. A draft Motion: as if turned on now with its picked accounts; null when none is picked. Whole actions: each day's expected values summed over the scope, then rounded.",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "computed",
+                            "computing"
+                          ],
+                          "description": "computing: an account of the scope has had no simulation yet, so daily is today's zeros and is not a forecast; read again in a few minutes. computed otherwise (always for a draft Motion)."
+                        },
+                        "computed_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "When the newest of the scope's simulations ran (UTC); null when none has."
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Changes whenever any simulation of the team runs again: cache the section until it changes."
+                        },
+                        "through": {
+                          "type": "string",
+                          "description": "The last day served, YYYY-MM-DD: today when nothing lies ahead."
+                        },
+                        "daily": {
+                          "type": "array",
+                          "description": "Every day from today through `through`, in the read's timezone; a day with nothing expected is all zeros.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "invites_sent": {
+                                "type": "integer",
+                                "description": "Invitations expected to be sent."
+                              },
+                              "accepted": {
+                                "type": "integer",
+                                "description": "Invitations expected to be accepted that day."
+                              },
+                              "messages_sent": {
+                                "type": "integer",
+                                "description": "Messages expected to be sent."
+                              },
+                              "replies": {
+                                "type": "integer",
+                                "description": "Replies expected, InMail replies included."
+                              },
+                              "inmails_sent": {
+                                "type": "integer",
+                                "description": "InMails expected to be sent."
+                              },
+                              "inmail_replies": {
+                                "type": "integer",
+                                "description": "Of replies, those to an InMail."
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "invites_sent",
+                              "accepted",
+                              "messages_sent",
+                              "replies",
+                              "inmails_sent",
+                              "inmail_replies"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "computed_at",
+                        "version",
+                        "through",
+                        "daily"
+                      ]
                     }
                   },
                   "required": [
