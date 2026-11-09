@@ -61,6 +61,22 @@ describe("motion create: schedule.timezone is retired", () => {
   });
 });
 
+describe("motion lint and create: one verdict on a Motion file's fields", () => {
+  const seq = { on_reply: "end", steps: [{ id: "t", tag: "warm", next: "end" }] };
+  it.each([
+    ["an unknown top-level key", { name: "M", description: "x", sequence: seq }, 2],
+    ["an unknown settings key", { name: "M", settings: { nope: 1 }, sequence: seq }, 2],
+    ["no name", { sequence: seq }, 2],
+    ["a clean file", { name: "M", sequence: seq }, 0],
+  ])("%s: lint and create exit alike, lint sends nothing", async (_what, doc, status) => {
+    const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+    writeFileSync(p, JSON.stringify(doc));
+    const lint = await wire(["motion", "lint", "--file", p]);
+    const create = await wire(["motion", "create", "--file", p], () => ({ body: { object: "motion", id: "mot_1" } }));
+    expect([lint.status, create.status, lint.sent.length]).toEqual([status, status, 0]);
+  });
+});
+
 describe("motion create and update: settings.priority, and the retired keys the API still accepts", () => {
   it.each([["create"], ["update mot_1"]])("%s sends priority and the retired keys as written, and prints the API's SETTING_REMOVED notice", async (verb) => {
     const settings = { priority: "prioritized", new_enrollments_per_account_per_day: 15, assign: "even" };

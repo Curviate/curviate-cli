@@ -12,6 +12,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ### Hygiene
 
+- `motion lint` checks a Motion file's fields with the schema `motion create` uses: an unknown top-level or `settings` key (`description`), a missing `name` and the other field rules now exit 2 in lint, as they do in create. A bare Sequence document is unchanged.
 - No-Account hint (`--account` omitted, none connected) says "Team" and sends the person to the dashboard (Accounts, Connect account) or `curviate account connect-request create`, not the stdin-credential `account link`.
 - Help states limits: `unibox list --limit` 1 to 100, `unibox messages --limit` 1 to 25, `do-not-contact list --limit` 1 to 100 (the API returns no total there, so no `--total`); `contact lists add|remove` help names `--from-list` as the list filter, with an example.
 

@@ -106,10 +106,8 @@ async function checkSequence(f: MotionFlags, text: string, sequence: unknown, pr
   return verdict;
 }
 
-/** A Motion file, checked whole before any request: read-only keys dropped, fields against the schema, then the Sequence. */
-async function readMotionFile(f: MotionFlags, command: "motion create" | "motion update"): Promise<{ body: Body; text: string }> {
-  const text = await readFileFlag("file", f.file ?? "", { others: f });
-  const doc = parseDocument("file", text);
+/** A Motion file against the create/update schema: read-only keys dropped, then fields. Shared by `create`, `update` and `lint`, so lint cannot pass what create refuses. */
+function checkMotionFields(f: MotionFlags, command: "motion create" | "motion update", doc: unknown): Body {
   const schema = documentSchema(command);
   let body = doc as Body;
   if (doc && typeof doc === "object" && !Array.isArray(doc)) {
@@ -122,6 +120,13 @@ async function readMotionFile(f: MotionFlags, command: "motion create" | "motion
   }
   const issues = validate(schema, body);
   if (issues.length) reportIssues(issues, outputOpts(f).json);
+  return body;
+}
+
+/** A Motion file, checked whole before any request: fields against the schema, then the Sequence. */
+async function readMotionFile(f: MotionFlags, command: "motion create" | "motion update"): Promise<{ body: Body; text: string }> {
+  const text = await readFileFlag("file", f.file ?? "", { others: f });
+  const body = checkMotionFields(f, command, parseDocument("file", text));
   if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence", body["settings"]);
   return { body, text };
 }
@@ -293,6 +298,7 @@ export async function runLint(f: MotionFlags): Promise<void> {
   const text = await readFileFlag("file", f.file ?? "", { others: f });
   const doc = parseDocument("file", text) as Body | null;
   const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
+  if (motionFile) checkMotionFields(f, "motion create", doc); // the fields create refuses, lint refuses
   if (motionFile && doc["sequence"] == null) usage("--file: the Motion file has no sequence; there is nothing to lint.");
   const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "", motionFile ? doc["settings"] : undefined);
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
