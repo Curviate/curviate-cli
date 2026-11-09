@@ -81269,6 +81269,49 @@
                         "null"
                       ],
                       "description": "Next-page cursor; null on the last page."
+                    },
+                    "status_counts": {
+                      "type": "object",
+                      "description": "How many accounts the whole list holds per status, whatever the page: every account you would page through, not only these items. warming: warm-up still below full limits. in_motion: in at least one Motion.",
+                      "properties": {
+                        "active": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "connecting": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "reconnect_needed": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "restricted": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "disconnected": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "warming": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "in_motion": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "active",
+                        "connecting",
+                        "reconnect_needed",
+                        "restricted",
+                        "disconnected",
+                        "warming",
+                        "in_motion"
+                      ]
                     }
                   }
                 },
@@ -81298,7 +81341,16 @@
                           }
                         }
                       ],
-                      "cursor": null
+                      "cursor": null,
+                      "status_counts": {
+                        "active": 1,
+                        "connecting": 0,
+                        "reconnect_needed": 0,
+                        "restricted": 0,
+                        "disconnected": 0,
+                        "warming": 0,
+                        "in_motion": 0
+                      }
                     }
                   }
                 }
