@@ -1001,6 +1001,9 @@
               },
               "known_chats": {
                 "type": "boolean"
+              },
+              "pending_invites": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1194,6 +1197,9 @@
                 "type": "boolean"
               },
               "known_chats": {
+                "type": "boolean"
+              },
+              "pending_invites": {
                 "type": "boolean"
               }
             },
