@@ -228,6 +228,7 @@ const listCmd = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: { ...GLOBAL_FLAGS.limit, description: "Chats per page (1 to 100)." },
     accounts: ACCOUNTS,
     motion: { type: "string" as const, description: "Only chats linked to these Motions (mot_...), repeatable or a comma list; `none` for chats no Motion links." },
     person: { type: "string" as const, description: "Only chats with this person: a Contact id (con_...) or a LinkedIn id (ACo...)." },
@@ -271,7 +272,7 @@ const messagesCmd = defineCommand({
     seeAlso: ["curviate core inbox messages"],
     examples: ["curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID", "curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --all"],
   },
-  args: { ...readOnly(GLOBAL_FLAGS), accountId: ACCOUNT, chatId: CHAT },
+  args: { ...readOnly(GLOBAL_FLAGS), limit: { ...GLOBAL_FLAGS.limit, description: "Messages per page (1 to 25; more than 25 is refused with exit 2). --all pages on." }, accountId: ACCOUNT, chatId: CHAT },
   run: online(runMessages),
 });
 

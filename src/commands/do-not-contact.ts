@@ -224,7 +224,7 @@ const listCmd = defineCommand({
     risk: "read",
     examples: ["curviate do-not-contact list", "curviate do-not-contact list --query jane"],
   },
-  args: { ...readOnly(GLOBAL_FLAGS), query: { type: "string", description: "Only entries whose Contact name matches this text." } },
+  args: { ...readOnly(GLOBAL_FLAGS), limit: { ...GLOBAL_FLAGS.limit, description: "Entries per page (1 to 100). The API returns no total: count with --all." }, query: { type: "string", description: "Only entries whose Contact name matches this text." } },
   run: online(runList),
 });
 

@@ -4248,7 +4248,7 @@
         "lists",
         "add"
       ],
-      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Add Contacts to a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`contact list` calls it --list). Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4354,7 +4354,8 @@
       ],
       "examples": [
         "curviate contact lists add cl_YOUR_LIST_ID con_A con_B",
-        "curviate contact lists add cl_YOUR_LIST_ID --tag hot --no-email"
+        "curviate contact lists add cl_YOUR_LIST_ID --tag hot --no-email",
+        "curviate contact lists add cl_YOUR_LIST_ID --from-list cl_SOURCE_LIST_ID --connected"
       ],
       "requires": [],
       "risk": "high",
@@ -4384,7 +4385,7 @@
         "lists",
         "remove"
       ],
-      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Remove Contacts from a Contact list. Name the Contacts by id, or with filter flags (the same as `curviate contact list`) to act on every match. Count a filter first: `curviate contact list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`contact list` calls it --list). Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -4490,7 +4491,8 @@
       ],
       "examples": [
         "curviate contact lists remove cl_YOUR_LIST_ID con_A con_B",
-        "curviate contact lists remove cl_YOUR_LIST_ID --tag hot --no-email"
+        "curviate contact lists remove cl_YOUR_LIST_ID --tag hot --no-email",
+        "curviate contact lists remove cl_YOUR_LIST_ID --from-list cl_SOURCE_LIST_ID --connected"
       ],
       "requires": [],
       "risk": "high",
@@ -5036,6 +5038,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Entries per page (1 to 100). The API returns no total: count with --all."
+        },
+        {
           "name": "query",
           "type": "string",
           "description": "Only entries whose Contact name matches this text."
@@ -5050,7 +5057,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -5382,6 +5388,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Chats per page (1 to 100)."
+        },
+        {
           "name": "accounts",
           "type": "string",
           "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
@@ -5436,7 +5447,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -5533,6 +5543,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Messages per page (1 to 25; more than 25 is refused with exit 2). --all pages on."
+        },
+        {
           "name": "accountId",
           "type": "positional",
           "description": "The chat's Account (acc_...), as `curviate unibox list` prints it."
@@ -5552,7 +5567,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
