@@ -532,7 +532,7 @@ const deleteCmd = lifecycleCmd("delete", {
 const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day, and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
+    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
     risk: "read",
     examples: ["curviate motion preview mot_YOUR_MOTION_ID", "curviate motion preview mot_YOUR_MOTION_ID --sample 3"],
   },
