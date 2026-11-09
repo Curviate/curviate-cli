@@ -10,6 +10,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 - `--all` and `--max-pages` help: the default cap (100 pages), that a capped run ends with a `stream_truncated` line on stdout plus a stderr note, and that it still exits 0. Help text only.
 
+### Hygiene
+
+- No-Account hint (`--account` omitted, none connected) says "Team" and sends the person to the dashboard (Accounts, Connect account) or `curviate account connect-request create`, not the stdin-credential `account link`.
+- Help states limits: `unibox list --limit` 1 to 100, `unibox messages --limit` 1 to 25, `do-not-contact list --limit` 1 to 100 (the API returns no total there, so no `--total`); `contact lists add|remove` help names `--from-list` as the list filter, with an example.
+
 ### Pending invitations
 
 - **`core connect sent`** keeps `user.public_identifier` in the slim output (null when unknown). LinkedIn sends no slug for sent invitations; the API fills it from stored data when it knows the person.

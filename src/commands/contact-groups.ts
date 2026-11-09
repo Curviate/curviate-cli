@@ -248,7 +248,7 @@ const membership = (verb: "add" | "remove") =>
       name: verb,
       description:
         `${verb === "add" ? "Add Contacts to" : "Remove Contacts from"} a Contact list. Name the Contacts by id, or with filter flags (the same as \`curviate contact list\`) to act on every match. ` +
-        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`contact list` calls it --list). Needs Automate.",
       risk: "high",
       rules: {
         changes: verb === "add" ? "The Contacts join the list." : "The Contacts leave the list; they are not deleted.",
@@ -264,6 +264,7 @@ const membership = (verb: "add" | "remove") =>
       examples: [
         `curviate contact lists ${verb} cl_YOUR_LIST_ID con_A con_B`,
         `curviate contact lists ${verb} cl_YOUR_LIST_ID --tag hot --no-email`,
+        `curviate contact lists ${verb} cl_YOUR_LIST_ID --from-list cl_SOURCE_LIST_ID --connected`,
       ],
     },
     args: {
