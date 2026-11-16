@@ -8,6 +8,11 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### `tier` stops printing `pending` and `early access`
+
+- **BREAKING (output):** `curviate tier` no longer prints the `pending` and `early access` lines, and `--json` no longer carries the `pending` and `early_access` keys: the server dropped both (no alias, no `null`). A script reading either key from `tier --json` gets nothing; delete the read. The command's help drops "pending change" and "early access".
+- Requires the `@curviate/sdk` release that drops both keys (exact pin, bumped at publish; `test/fixtures/VENDORED_FROM.json` `sdkVersion` follows the pin then). The vendored OpenAPI fixture is re-copied from the SDK's regenerated one; `commands.json` regenerated.
+
 ## [0.53.0] - 2026-11-09
 
 Requires `@curviate/sdk` 0.49.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, fetched from production 134827ce6.

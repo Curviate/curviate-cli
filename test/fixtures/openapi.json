@@ -104307,7 +104307,6 @@
                             "enum": [
                               "build",
                               "automate",
-                              "enhance",
                               null
                             ],
                             "description": "The team's Tier, or the Tier of a seat lent to it; null with no subscription. Only with include=counts, on a team this credential may count (see the operation)."
@@ -148972,7 +148971,6 @@
                       "enum": [
                         "build",
                         "automate",
-                        "enhance",
                         null
                       ],
                       "description": "The Tier the subscription buys, or null."
@@ -150951,7 +150949,6 @@
                       "enum": [
                         "build",
                         "automate",
-                        "enhance",
                         null
                       ],
                       "description": "The Tier the Team has now: the highest of the Tier it bought, its trial's Tier while the trial runs, and a Tier granted to it. Null when it has none."
@@ -150964,7 +150961,6 @@
                       "enum": [
                         "build",
                         "automate",
-                        "enhance",
                         null
                       ],
                       "description": "The Tier of the Team's subscription. Null without a live subscription."
@@ -150992,8 +150988,7 @@
                           "type": "string",
                           "enum": [
                             "build",
-                            "automate",
-                            "enhance"
+                            "automate"
                           ],
                           "description": "The Tier the trial carries."
                         },
@@ -151019,8 +151014,7 @@
                           "type": "string",
                           "enum": [
                             "build",
-                            "automate",
-                            "enhance"
+                            "automate"
                           ],
                           "description": "The Tier granted."
                         },
@@ -151038,33 +151032,6 @@
                         "expires_at"
                       ]
                     },
-                    "pending": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "description": "A Tier change that takes effect at the next renewal. Null when none is scheduled.",
-                      "properties": {
-                        "tier": {
-                          "type": "string",
-                          "enum": [
-                            "build",
-                            "automate",
-                            "enhance"
-                          ],
-                          "description": "The Tier the subscription moves to."
-                        },
-                        "effective_at": {
-                          "type": "string",
-                          "format": "date-time",
-                          "description": "When it takes effect."
-                        }
-                      },
-                      "required": [
-                        "tier",
-                        "effective_at"
-                      ]
-                    },
                     "features": {
                       "type": "array",
                       "items": {
@@ -151079,36 +151046,6 @@
                         ]
                       },
                       "description": "The features the Team has now. Empty when it has no Tier, and for a Tier that adds none."
-                    },
-                    "early_access": {
-                      "type": "array",
-                      "description": "One entry per Tier that is announced and not yet sold.",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "tier": {
-                            "type": "string",
-                            "enum": [
-                              "build",
-                              "automate",
-                              "enhance"
-                            ],
-                            "description": "The Tier."
-                          },
-                          "requested_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "format": "date-time",
-                            "description": "When this Team asked for early access to it. Null when it has not."
-                          }
-                        },
-                        "required": [
-                          "tier",
-                          "requested_at"
-                        ]
-                      }
                     }
                   },
                   "required": [
@@ -151118,9 +151055,7 @@
                     "period",
                     "trial",
                     "override",
-                    "pending",
-                    "features",
-                    "early_access"
+                    "features"
                   ]
                 },
                 "examples": {
@@ -151136,7 +151071,6 @@
                         "expires_at": "2026-10-18T09:00:00.000Z"
                       },
                       "override": null,
-                      "pending": null,
                       "features": [
                         "drafts",
                         "contacts",
@@ -151144,12 +151078,6 @@
                         "network",
                         "unibox",
                         "keep_connected"
-                      ],
-                      "early_access": [
-                        {
-                          "tier": "enhance",
-                          "requested_at": null
-                        }
                       ]
                     }
                   },
@@ -151162,14 +151090,7 @@
                       "period": "monthly",
                       "trial": null,
                       "override": null,
-                      "pending": null,
-                      "features": [],
-                      "early_access": [
-                        {
-                          "tier": "enhance",
-                          "requested_at": null
-                        }
-                      ]
+                      "features": []
                     }
                   },
                   "none": {
@@ -151181,14 +151102,7 @@
                       "period": null,
                       "trial": null,
                       "override": null,
-                      "pending": null,
-                      "features": [],
-                      "early_access": [
-                        {
-                          "tier": "enhance",
-                          "requested_at": null
-                        }
-                      ]
+                      "features": []
                     }
                   }
                 }

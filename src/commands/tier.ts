@@ -9,29 +9,25 @@ import { renderSuccess } from "../lib/output.js";
 import { readableObject } from "../lib/paginate.js";
 import { fail, outputOpts, rootClient, type RootFlags } from "../lib/root-command.js";
 
-type Until = { tier: string; expires_at?: string | null; effective_at?: string; requested_at?: string | null } | null;
+type Until = { tier: string; expires_at?: string | null } | null;
 type Tier = {
   tier: string | null;
   bought_tier: string | null;
   period: string | null;
   trial: Until;
   override: Until;
-  pending: Until;
   features: string[];
-  early_access: Array<{ tier: string; requested_at: string | null }>;
 };
 
-const at = (u: Until, key: "expires_at" | "effective_at") => (u ? `${u.tier}${u[key] ? ` until ${u[key]}` : ""}` : "none");
+const at = (u: Until) => (u ? `${u.tier}${u.expires_at ? ` until ${u.expires_at}` : ""}` : "none");
 
 export function humanTier(t: Tier): string {
   return [
     `tier           ${t.tier ?? "none"}`,
     `bought         ${t.bought_tier ?? "none"}${t.period ? ` (${t.period})` : ""}`,
-    `trial          ${at(t.trial, "expires_at")}`,
-    `override       ${at(t.override, "expires_at")}`,
-    `pending        ${t.pending ? `${t.pending.tier} from ${t.pending.effective_at}` : "none"}`,
+    `trial          ${at(t.trial)}`,
+    `override       ${at(t.override)}`,
     `features       ${t.features.length ? t.features.join(", ") : "none"}`,
-    `early access   ${t.early_access.map((e) => `${e.tier} (${e.requested_at ? `requested ${e.requested_at}` : "not requested"})`).join(", ") || "none"}`,
   ].join("\n") + "\n";
 }
 
