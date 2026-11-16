@@ -172,8 +172,8 @@ describe("team switch rewrites the profile's team", () => {
 
 const TIER = {
   object: "tier", tier: "automate", bought_tier: "build", period: "monthly",
-  trial: { tier: "automate", expires_at: "2026-11-05T00:00:00Z" }, override: null, pending: null,
-  features: ["drafts", "campaigns"], early_access: [{ tier: "enhance", requested_at: null }],
+  trial: { tier: "automate", expires_at: "2026-11-05T00:00:00Z" }, override: null,
+  features: ["drafts", "campaigns"],
 };
 
 /** Human mode: the CLI renders for a person only when stdout is a terminal. */
@@ -194,7 +194,8 @@ describe("the Tier", () => {
     expect([json.status, json.requests.map(line), JSON.parse(json.stdout)]).toEqual([0, ["GET /v1/billing/tier"], TIER]);
     const human = await asHuman(() => sink.run(["tier"]));
     expect(human.status).toBe(0);
-    for (const v of ["automate", "build (monthly)", "2026-11-05T00:00:00Z", "drafts, campaigns", "enhance (not requested)"]) expect(human.stdout).toContain(v);
+    for (const v of ["automate", "build (monthly)", "2026-11-05T00:00:00Z", "drafts, campaigns"]) expect(human.stdout).toContain(v);
+    expect(human.stdout).not.toMatch(/early|pending/);
   });
 
   it.each([
