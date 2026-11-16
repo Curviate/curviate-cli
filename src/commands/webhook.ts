@@ -537,7 +537,7 @@ const webhookEventsCommand = defineCommand({
     name: "events",
     description:
       "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. " +
-      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
+      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (campaign, unibox, api or linkedin); `message.received` never does.",
     risk: "read",
     examples: [
       "curviate webhook events",

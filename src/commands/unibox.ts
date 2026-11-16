@@ -267,7 +267,7 @@ const unreadCmd = defineCommand({
 const messagesCmd = defineCommand({
   meta: {
     name: "messages",
-    description: "Read one chat's messages, newest first. Each message carries `origin` when known: motion, unibox, api or linkedin.",
+    description: "Read one chat's messages, newest first. Each message carries `origin` when known: campaign, unibox, api or linkedin.",
     risk: "read",
     seeAlso: ["curviate core inbox messages"],
     examples: ["curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID", "curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --all"],
