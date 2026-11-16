@@ -4,7 +4,7 @@
  *   <file>:<line>:<col> error R12 <path>: <message>. <hint> -> <docs_url>
  *
  * `warning` for a warning. Line and column come from the entry's JSON Pointer,
- * resolved in the text as read (a Motion file's Sequence sits under
+ * resolved in the text as read (a Campaign file's Sequence sits under
  * `/sequence`); stdin is named `-`. The verdict itself is the SDK's
  * `validateSequence`: this module only places and prints it.
  * The arrow is ASCII `->`: CLI copy carries no arrow glyph.
@@ -64,7 +64,7 @@ export function lineCol(text: string, offsets: Map<string, number>, pointer: str
 
 type Entry = CurviateErrorDetail;
 
-/** One compiler-format line per entry. `prefix` is the Sequence's pointer in the file (`/sequence` in a Motion file). */
+/** One compiler-format line per entry. `prefix` is the Sequence's pointer in the file (`/sequence` in a Campaign file). */
 export function compilerLines(file: string, text: string, entries: { errors: Entry[]; warnings: Entry[] }, prefix = ""): string[] {
   let offsets: Map<string, number> | undefined;
   const line = (kind: string, e: Entry) => {

@@ -13,22 +13,22 @@ const q = (call: string, query: Record<string, string>, body?: unknown) => ({ ca
 
 describe("analytics: the request each command sends", () => {
   it.each([
-    [["analytics", "get", "--range", "30d", "--accounts", "acc_a", "--motions", "mot_1,mot_2", "--origin", "unibox,api", "--include", "motions", "--sort", "-reply.rate", "--limit", "5", "--compare", "previous_period"],
-      q("GET /v1/analytics/motions", { range: "30d", account_id: "acc_a", motion_id: "mot_1,mot_2", origin: "unibox,api", include: "motions", sort: "-reply.rate", limit: "5", compare: "previous_period" })],
-    [["analytics", "get", "--motion", "mot_1", "--from", "2024-01-01", "--to", "2026-10-01", "--timezone", "Europe/Berlin", "--version", "2"],
-      q("GET /v1/analytics/motions/mot_1", { from: "2024-01-01", to: "2026-10-01", timezone: "Europe/Berlin", version: "2" })],
+    [["analytics", "get", "--range", "30d", "--accounts", "acc_a", "--campaigns", "mot_1,mot_2", "--origin", "unibox,api", "--include", "campaigns", "--sort", "-reply.rate", "--limit", "5", "--compare", "previous_period"],
+      q("GET /v1/analytics/campaigns", { range: "30d", account_id: "acc_a", campaign_id: "mot_1,mot_2", origin: "unibox,api", include: "campaigns", sort: "-reply.rate", limit: "5", compare: "previous_period" })],
+    [["analytics", "get", "--campaign", "mot_1", "--from", "2024-01-01", "--to", "2026-10-01", "--timezone", "Europe/Berlin", "--version", "2"],
+      q("GET /v1/analytics/campaigns/mot_1", { from: "2024-01-01", to: "2026-10-01", timezone: "Europe/Berlin", version: "2" })],
     [["analytics", "get", "--view", "activity", "--range", "7d", "--accounts", "acc_a"], q("GET /v1/analytics/activity", { range: "7d", account_id: "acc_a" })],
-    [["analytics", "events", "list", "--motion", "mot_1", "--step", "opener"], q("GET /v1/analytics/events", { motion_id: "mot_1", step_id: "opener" })],
-    [["analytics", "events", "list", "--contact", "con_1", "--origin", "direct", "--kind", "step.executed,message.replied"],
-      q("GET /v1/analytics/events", { contact_id: "con_1", origin: "direct", kind: "step.executed,message.replied" })],
-    [["analytics", "export", "--table", "daily,motions", "--range", "90d", "--job"],
-      q("POST /v1/exports", {}, { entity: "analytics", tables: ["daily", "motions"], format: "csv", filters: { range: "90d" } })],
-    [["analytics", "export", "--table", "motion_activity", "--format", "ndjson", "--motions", "mot_1", "--job"],
-      q("POST /v1/exports", {}, { entity: "motion_activity", tables: ["motion_activity"], format: "ndjson", filters: { motion_id: ["mot_1"] } })],
+    [["analytics", "events", "list", "--campaign", "mot_1", "--step", "opener"], q("GET /v1/analytics/events", { campaign_id: "mot_1", step_id: "opener" })],
+    [["analytics", "events", "list", "--lead", "con_1", "--origin", "direct", "--kind", "step.executed,message.replied"],
+      q("GET /v1/analytics/events", { lead_id: "con_1", origin: "direct", kind: "step.executed,message.replied" })],
+    [["analytics", "export", "--table", "daily,campaigns", "--range", "90d", "--job"],
+      q("POST /v1/exports", {}, { entity: "analytics", tables: ["daily", "campaigns"], format: "csv", filters: { range: "90d" } })],
+    [["analytics", "export", "--table", "campaign_activity", "--format", "ndjson", "--campaigns", "mot_1", "--job"],
+      q("POST /v1/exports", {}, { entity: "campaign_activity", tables: ["campaign_activity"], format: "ndjson", filters: { campaign_id: ["mot_1"] } })],
     [["export", "get", "exp_1"], q("GET /v1/exports/exp_1", {})],
-    [["account", "overview", "acc_a", "--range", "30d", "--include", "performance,limits", "--origin", "motion"],
-      q("GET /v1/accounts/acc_a/overview", { range: "30d", include: "performance,limits", origin: "motion" })],
-    [["analytics", "get", "--motion", "mot_1", "--include", "forecast", "--forecast-days", "14"], q("GET /v1/analytics/motions/mot_1", { include: "forecast", forecast_days: "14" })],
+    [["account", "overview", "acc_a", "--range", "30d", "--include", "performance,limits", "--origin", "campaign"],
+      q("GET /v1/accounts/acc_a/overview", { range: "30d", include: "performance,limits", origin: "campaign" })],
+    [["analytics", "get", "--campaign", "mot_1", "--include", "forecast", "--forecast-days", "14"], q("GET /v1/analytics/campaigns/mot_1", { include: "forecast", forecast_days: "14" })],
     [["account", "overview", "acc_a", "--include", "forecast", "--forecast-days", "7"], q("GET /v1/accounts/acc_a/overview", { include: "forecast", forecast_days: "7" })],
     [["account", "metrics", "acc_a", "--from", "2026-10-01", "--to", "2026-10-28"], q("GET /v1/accounts/acc_a/metrics", { from: "2026-10-01", to: "2026-10-28" })],
   ])("%j", async (args, expected) => {
@@ -37,9 +37,9 @@ describe("analytics: the request each command sends", () => {
   });
 
   it.each([
-    [["analytics", "get", "--view", "activity", "--motion", "mot_x"]],
+    [["analytics", "get", "--view", "activity", "--campaign", "mot_x"]],
     [["analytics", "events", "list", "--step", "opener"]],
-    [["analytics", "export", "--table", "motion_activity"]],
+    [["analytics", "export", "--table", "campaign_activity"]],
     [["analytics", "export", "--json"]],
     [["analytics", "get", "--view", "activity", "--forecast-days", "7"]],
     [["analytics", "get", "--include", "forecast", "--forecast-days", "two"]],
@@ -81,21 +81,21 @@ describe("export files", () => {
 describe("analytics: human output", () => {
   const tty = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
   afterEach(() => (tty ? Object.defineProperty(process.stdout, "isTTY", tty) : delete (process.stdout as { isTTY?: boolean }).isTTY));
-  const motion = (paths_through: string | null) => ({
-    object: "analytics_motion",
+  const campaign = (paths_through: string | null) => ({
+    object: "analytics_campaign",
     window: { from: "2025-01-01", to: "2026-10-28", timezone: "UTC", counts_only_through: paths_through, paths_through },
     totals: { acceptance: { accepted: 9, sent: 16, rate: 0.5625 } },
     steps: [{ step_id: "invite", action: "invite.send", executed: 16, skipped: 2, failed: 1, acceptance: { accepted: 9, sent: 16, rate: 0.5625 }, reasons: { skipped: { already_connected: 2 }, failed: {} } }],
     paths: [{ path: "connected", totals: { acceptance: { accepted: 9, sent: 16, rate: 0.5625 } } }],
   });
 
-  it("--motion renders the step and paths tables, with the footer only when paths_through is set", async () => {
+  it("--campaign renders the step and paths tables, with the footer only when paths_through is set", async () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    const r = await wire(["analytics", "get", "--motion", "mot_1"], () => ({ body: motion("2025-10-28") }));
+    const r = await wire(["analytics", "get", "--campaign", "mot_1"], () => ({ body: campaign("2025-10-28") }));
     expect(r.stdout).toMatch(/invite\s+invite\.send\s+16\s+2\s+1\s+9\/16 56%/);
     expect(r.stdout).toContain("invite: skipped already_connected 2");
     expect(r.stdout).toContain("paths cover days after 2025-10-28");
-    const control = await wire(["analytics", "get", "--motion", "mot_1"], () => ({ body: motion(null) }));
+    const control = await wire(["analytics", "get", "--campaign", "mot_1"], () => ({ body: campaign(null) }));
     expect(control.stdout).toMatch(/connected\s+9\/16 56%/);
     expect(control.stdout).not.toContain("paths cover");
   });
@@ -106,7 +106,7 @@ describe("analytics: human output", () => {
     const r = await wire(["analytics", "get", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: { through: "2026-11-05", daily: [day] } } }));
     expect(r.stdout).toContain("forecast through 2026-11-05");
     expect(r.stdout).toMatch(/2026-11-05\s+14\s+4\s+9\s+2\s+0\s+0/);
-    const none = await wire(["analytics", "get", "--motion", "mot_d", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: null } }));
+    const none = await wire(["analytics", "get", "--campaign", "mot_d", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: null } }));
     expect(none.stdout).toContain("forecast: none");
     const computing = await wire(["analytics", "get", "--include", "forecast"], () => ({ body: { window: { from: "x", to: "y", timezone: "UTC" }, forecast: { status: "computing", through: "2026-11-05", daily: [{ ...day, invites_sent: 0 }] } } }));
     expect(computing.stdout).toContain("forecast: being computed");

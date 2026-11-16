@@ -200,22 +200,22 @@ const PARITY_MANIFEST: Record<string, string> = {
   "comment unreact":   "comments.removeReaction",
   "comment user":      "comments.listUserComments",
 
-  // motions (13)
-  "motion create":  "campaigns.create",
-  "motion list":    "campaigns.list",
-  "motion get":     "campaigns.get",
-  "motion update":  "campaigns.update",
-  "motion delete":  "campaigns.delete",
-  "motion start":   "campaigns.start",
-  "motion pause":   "campaigns.pause",
-  "motion resume":  "campaigns.resume",
-  "motion archive": "campaigns.archive",
-  "motion preview": "campaigns.preview",
-  "motion get --version": "campaigns.getSequenceVersion",
-  "motion add":     "campaigns.addLeads",
-  "motion remove":  "campaigns.removeLeads",
-  "motion voice-clip upload": "campaigns.voiceClips.upload",
-  "motion voice-clip get": "campaigns.voiceClips.get",
+  // campaigns (13)
+  "campaign create":  "campaigns.create",
+  "campaign list":    "campaigns.list",
+  "campaign get":     "campaigns.get",
+  "campaign update":  "campaigns.update",
+  "campaign delete":  "campaigns.delete",
+  "campaign start":   "campaigns.start",
+  "campaign pause":   "campaigns.pause",
+  "campaign resume":  "campaigns.resume",
+  "campaign archive": "campaigns.archive",
+  "campaign preview": "campaigns.preview",
+  "campaign get --version": "campaigns.getSequenceVersion",
+  "campaign add":     "campaigns.addLeads",
+  "campaign remove":  "campaigns.removeLeads",
+  "campaign voice-clip upload": "campaigns.voiceClips.upload",
+  "campaign voice-clip get": "campaigns.voiceClips.get",
 
   // enrollments (11): `enrollment signal` is the CLI alias of `event` and sends to events.
   "enrollment list":     "enrollments.list",
@@ -269,7 +269,7 @@ const PARITY_MANIFEST: Record<string, string> = {
 
   // analytics (5) + exports (3) + account overview/metrics (2)
   "analytics get":               "analytics.campaigns.list",
-  "analytics get --motion":      "analytics.campaigns.get",
+  "analytics get --campaign":      "analytics.campaigns.get",
   "analytics get --view activity": "analytics.activity",
   "analytics events list":       "analytics.events.list",
   "analytics export":            "analytics.export",

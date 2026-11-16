@@ -202,7 +202,7 @@ describe("the Tier", () => {
     ["anyone else is sent to an Owner", {}, "Ask an Owner"],
   ])("TIER_REQUIRED exits 5 naming the feature, the Tier and the remedy: %s", async (_l, extra, remedy) => {
     sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Motions are part of Automate.", user_fixable: true, retry_likely_to_succeed: false, feature: "motions", required_tier: "automate", current_tier: "build", ...extra } };
-    const r = await asHuman(() => sink.run(["motion", "start", "mot_1"]));
+    const r = await asHuman(() => sink.run(["campaign", "start", "mot_1"]));
     expect(r.status).toBe(5);
     expect(r.stderr).toContain("motions is part of automate; this Team has build.");
     expect(r.stderr).toContain(remedy);
@@ -211,8 +211,8 @@ describe("the Tier", () => {
 
   // The served OpenAPI marks each operation a Tier gates (`x-curviate-tier`); each command sending one says so in its help.
   it.each([
-    ["motion create", "post", "/v1/campaigns"], ["motion update", "patch", "/v1/campaigns/{id}"], ["motion start", "post", "/v1/campaigns/{id}/start"],
-    ["motion resume", "post", "/v1/campaigns/{id}/resume"], ["motion add", "post", "/v1/campaigns/{id}/leads"],
+    ["campaign create", "post", "/v1/campaigns"], ["campaign update", "patch", "/v1/campaigns/{id}"], ["campaign start", "post", "/v1/campaigns/{id}/start"],
+    ["campaign resume", "post", "/v1/campaigns/{id}/resume"], ["campaign add", "post", "/v1/campaigns/{id}/leads"],
     ["enrollment resume", "post", "/v1/enrollments/{id}/resume"], ["enrollment event", "post", "/v1/enrollments/{id}/events"],
     ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
     ["network resync", "post", "/v1/network/resync"], ["unibox refresh", "post", "/v1/unibox/refresh"],

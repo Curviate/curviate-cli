@@ -24,7 +24,7 @@
           "text": "{{comment}}",
           "fallback": "skip"
         },
-        "note": "Your AI writes one comment per Contact; no product mention."
+        "note": "Your AI writes one comment per Lead; no product mention."
       },
       {
         "id": "w_invite",

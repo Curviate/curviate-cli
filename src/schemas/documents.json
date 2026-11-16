@@ -883,7 +883,7 @@
     },
     "additionalProperties": false
   },
-  "motion create": {
+  "campaign create": {
     "type": "object",
     "properties": {
       "name": {
@@ -891,7 +891,7 @@
         "minLength": 1,
         "maxLength": 100
       },
-      "contact_list_ids": {
+      "lead_list_ids": {
         "type": "array",
         "items": {
           "type": "string",
@@ -975,7 +975,7 @@
               "prioritized"
             ]
           },
-          "accounts_per_contact": {
+          "accounts_per_lead": {
             "type": "integer",
             "minimum": 1,
             "maximum": 10
@@ -996,7 +996,7 @@
           "exclude": {
             "type": "object",
             "properties": {
-              "other_motions": {
+              "other_campaigns": {
                 "type": "boolean"
               },
               "known_chats": {
@@ -1080,7 +1080,7 @@
       "archived_at"
     ]
   },
-  "motion update": {
+  "campaign update": {
     "type": "object",
     "properties": {
       "name": {
@@ -1088,7 +1088,7 @@
         "minLength": 1,
         "maxLength": 100
       },
-      "contact_list_ids": {
+      "lead_list_ids": {
         "type": "array",
         "items": {
           "type": "string",
@@ -1172,7 +1172,7 @@
               "prioritized"
             ]
           },
-          "accounts_per_contact": {
+          "accounts_per_lead": {
             "type": "integer",
             "minimum": 1,
             "maximum": 10
@@ -1193,7 +1193,7 @@
           "exclude": {
             "type": "object",
             "properties": {
-              "other_motions": {
+              "other_campaigns": {
                 "type": "boolean"
               },
               "known_chats": {

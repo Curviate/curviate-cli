@@ -1,5 +1,5 @@
 /**
- * What a root-scoped product command (`motion`, `enrollment`) needs around its
+ * What a root-scoped product command (`campaign`, `enrollment`) needs around its
  * SDK call: a client from the effective config, the output options, the error
  * exit, and the repeatable comma-list flag. The acting `--account` is never
  * read here: these resources belong to the Team, and a configured default
