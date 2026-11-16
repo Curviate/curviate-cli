@@ -6,12 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [0.54.0] - 2026-11-16
-
-### `tier` stops printing `pending` and `early access`
-
-- **BREAKING (output):** `curviate tier` no longer prints the `pending` and `early access` lines, and `--json` no longer carries the `pending` and `early_access` keys: the server dropped both (no alias, no `null`). A script reading either key from `tier --json` gets nothing; delete the read. The command's help drops "pending change" and "early access".
-- Requires `@curviate/sdk` 0.50.1 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging 5f8e10405f79; `commands.json` regenerated.
+## [Unreleased]
 
 ### Breaking: Contacts become Leads, Motions become Campaigns
 
@@ -22,6 +17,13 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 - Flags: `--motion` is `--campaign` (`enrollment`, `analytics`, `incoming`, `unibox`), `--motions` is `--campaigns`, `--motion-ids` is `--campaign-ids`, `--contact` is `--lead` (`enrollment`, `analytics events`, `campaign add|remove|preview`), `--source motion` is `--source campaign` (`webhook`), `--view motions` is `--view campaigns`, `--origin motion` is `--origin campaign`.
 - Campaign files and templates: `lead_list_ids`, `settings.accounts_per_lead`, `settings.exclude.other_campaigns`, and `lead.*` conditions; the offline W17 hint says Campaign. Webhook events are `campaign.status_changed` and `campaign.custom_event`.
 - Built against the unreleased SDK of the same rename (commit pin until the release, then the exact version); the vendored OpenAPI fixture is re-copied from it.
+
+## [0.54.0] - 2026-11-16
+
+### `tier` stops printing `pending` and `early access`
+
+- **BREAKING (output):** `curviate tier` no longer prints the `pending` and `early access` lines, and `--json` no longer carries the `pending` and `early_access` keys: the server dropped both (no alias, no `null`). A script reading either key from `tier --json` gets nothing; delete the read. The command's help drops "pending change" and "early access".
+- Requires `@curviate/sdk` 0.50.1 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging 5f8e10405f79; `commands.json` regenerated.
 
 ## [0.53.0] - 2026-11-09
 
