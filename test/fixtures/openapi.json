@@ -81058,6 +81058,7 @@
                                     "post_likes",
                                     "follows",
                                     "content_poll",
+                                    "company_reads",
                                     "job_poll",
                                     "posts",
                                     "endorsements",
@@ -81830,6 +81831,7 @@
                               "post_likes",
                               "follows",
                               "content_poll",
+                              "company_reads",
                               "job_poll",
                               "posts",
                               "endorsements",
@@ -82661,6 +82663,26 @@
                           "source": "substrate"
                         },
                         {
+                          "budget_row": "company_reads",
+                          "kind": "debit",
+                          "window": "day",
+                          "window_start": "2026-06-10T00:00:00.000Z",
+                          "resets_at": "2026-06-11T00:00:00.000Z",
+                          "used": 0,
+                          "ceiling": 40,
+                          "effective_ceiling": 40,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 40,
+                          "interface_ceiling": null,
+                          "effective_interface_ceiling": null,
+                          "band": "green",
+                          "over_default": false,
+                          "halt": null,
+                          "observed_at": null,
+                          "source": "inferred"
+                        },
+                        {
                           "budget_row": "job_poll",
                           "kind": "debit",
                           "window": "day",
@@ -83173,6 +83195,26 @@
                           "halt": null,
                           "observed_at": null,
                           "source": "substrate"
+                        },
+                        {
+                          "budget_row": "company_reads",
+                          "kind": "debit",
+                          "window": "day",
+                          "window_start": "2026-06-10T00:00:00.000Z",
+                          "resets_at": "2026-06-11T00:00:00.000Z",
+                          "used": 0,
+                          "ceiling": 40,
+                          "effective_ceiling": 40,
+                          "target": null,
+                          "effective_target": null,
+                          "remaining": 40,
+                          "interface_ceiling": null,
+                          "effective_interface_ceiling": null,
+                          "band": "green",
+                          "over_default": false,
+                          "halt": null,
+                          "observed_at": null,
+                          "source": "inferred"
                         },
                         {
                           "budget_row": "job_poll",
@@ -86274,6 +86316,7 @@
                                   "post_likes",
                                   "follows",
                                   "content_poll",
+                                  "company_reads",
                                   "job_poll",
                                   "posts",
                                   "endorsements",
@@ -91063,9 +91106,10 @@
                       "type": "string",
                       "enum": [
                         "connect",
-                        "reconnect"
+                        "reconnect",
+                        "mailbox_connect"
                       ],
-                      "description": "connect asks for a new account; reconnect for the named one."
+                      "description": "connect asks for a new account; reconnect for the named one; mailbox_connect for a new Mailbox."
                     },
                     "status": {
                       "type": "string",
@@ -91110,6 +91154,20 @@
                         "null"
                       ],
                       "description": "ISO-8601 UTC completion time, else null."
+                    },
+                    "mailbox_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the connected Mailbox (mbx_...) once completed, else null."
+                    },
+                    "admin_consent_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the link for the person's administrator where their provider needs one, else null."
                     }
                   }
                 },
@@ -91143,6 +91201,40 @@
                       "created_at": "2026-10-08T10:00:00Z",
                       "completed_at": null
                     }
+                  },
+                  "mailbox_completed": {
+                    "summary": "A Mailbox connected with a sealed app password",
+                    "value": {
+                      "object": "connect_request",
+                      "id": "creq_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "kind": "mailbox_connect",
+                      "status": "completed",
+                      "account_id": null,
+                      "error_code": null,
+                      "url": "https://app.curviate.com/accounts/connect/creq_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "expires_at": "2026-10-08T10:15:00Z",
+                      "created_at": "2026-10-08T10:00:00Z",
+                      "completed_at": "2026-10-08T10:00:03Z",
+                      "mailbox_id": "mbx_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "admin_consent_url": null
+                    }
+                  },
+                  "mailbox_refused": {
+                    "summary": "A sealed app password the host refused: the attempt failed, nothing stored",
+                    "value": {
+                      "object": "connect_request",
+                      "id": "creq_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "kind": "mailbox_connect",
+                      "status": "pending",
+                      "account_id": null,
+                      "error_code": "MAILBOX_CREDENTIAL_REJECTED",
+                      "url": "https://app.curviate.com/accounts/connect/creq_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "expires_at": "2026-10-08T10:15:00Z",
+                      "created_at": "2026-10-08T10:00:00Z",
+                      "completed_at": null,
+                      "mailbox_id": null,
+                      "admin_consent_url": null
+                    }
                   }
                 }
               }
@@ -91157,7 +91249,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown body key (the error names it) or a malformed account_id. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown body key (the error names it), a malformed account_id or address, credentials on a connection that signs in, or a connection not available yet. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -91229,7 +91321,7 @@
             }
           },
           "404": {
-            "description": "ACCOUNT_NOT_FOUND: the account to reconnect is unknown, another team's, or disconnected.",
+            "description": "ACCOUNT_NOT_FOUND: the account to reconnect is unknown, another team's, or disconnected. RESOURCE_NOT_FOUND: Mailboxes are not available to this team.",
             "content": {
               "application/json": {
                 "schema": {
@@ -91245,6 +91337,16 @@
                       "retry_likely_to_succeed": false
                     }
                   }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MAILBOX_ALREADY_CONNECTED: the address is already a Mailbox of this team.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -91303,7 +91405,7 @@
             }
           }
         },
-        "description": "Credential-free connect: omit account_id for a new account, or name one to reconnect. Relay url to the person, who connects in their own Curviate dashboard. Never ask for a LinkedIn password, cookie or code. Read the request until status leaves pending. A retry makes a second request.",
+        "description": "Credential-free connect: omit account_id for a new account, or name one to reconnect. Relay url to the person, who connects in their own Curviate dashboard. Never ask for a LinkedIn password, cookie or code. Read the request until status leaves pending. A retry makes a second request. With mailbox, it asks for a Mailbox instead; for Google, a sealed app password in credentials is checked before the answer: completed with mailbox_id, or error_code says why and nothing is stored.",
         "requestBody": {
           "required": true,
           "content": {
@@ -91318,6 +91420,47 @@
                   "warm_up": {
                     "type": "boolean",
                     "description": "Optional, new connects only, default false (warm-up off: full limits from the start). true connects this account with warm-up on: its limits start at 15% and rise over 5 weeks, for a new account or one with few connections and little activity. Recovery after a LinkedIn restriction applies either way. Change it later with PATCH /v1/{account_id}/safety-policy and warm_up.enabled."
+                  },
+                  "mailbox": {
+                    "type": "object",
+                    "properties": {
+                      "connection": {
+                        "type": "string",
+                        "enum": [
+                          "google_app_password",
+                          "imap_smtp",
+                          "microsoft_sign_in"
+                        ],
+                        "description": "How the Mailbox connects: google_app_password (Gmail and Google Workspace), imap_smtp (any other host), microsoft_sign_in."
+                      },
+                      "address": {
+                        "type": "string",
+                        "maxLength": 320,
+                        "description": "The Mailbox's email address."
+                      }
+                    },
+                    "required": [
+                      "connection",
+                      "address"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Ask for a Mailbox instead of a LinkedIn account (kind mailbox_connect)."
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "properties": {
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "description": "The app password (Google) or the host's password. Never returned."
+                      }
+                    },
+                    "required": [
+                      "password"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Only with mailbox, for google_app_password and imap_smtp: Curviate checks the password before answering and keeps it sealed. Pass it only when the person handed it to you for this."
                   }
                 },
                 "additionalProperties": false
@@ -91337,6 +91480,18 @@
                   "summary": "Ask for an account's reconnect",
                   "value": {
                     "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                  }
+                },
+                "mailbox_sealed": {
+                  "summary": "Connect a Google Mailbox with an app password the person handed over",
+                  "value": {
+                    "mailbox": {
+                      "connection": "google_app_password",
+                      "address": "anna.berg@acme.example"
+                    },
+                    "credentials": {
+                      "password": "<app password>"
+                    }
                   }
                 }
               }
@@ -91423,9 +91578,10 @@
                       "type": "string",
                       "enum": [
                         "connect",
-                        "reconnect"
+                        "reconnect",
+                        "mailbox_connect"
                       ],
-                      "description": "connect asks for a new account; reconnect for the named one."
+                      "description": "connect asks for a new account; reconnect for the named one; mailbox_connect for a new Mailbox."
                     },
                     "status": {
                       "type": "string",
@@ -91470,6 +91626,20 @@
                         "null"
                       ],
                       "description": "ISO-8601 UTC completion time, else null."
+                    },
+                    "mailbox_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the connected Mailbox (mbx_...) once completed, else null."
+                    },
+                    "admin_consent_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the link for the person's administrator where their provider needs one, else null."
                     }
                   }
                 },
@@ -91678,9 +91848,10 @@
                       "type": "string",
                       "enum": [
                         "connect",
-                        "reconnect"
+                        "reconnect",
+                        "mailbox_connect"
                       ],
-                      "description": "connect asks for a new account; reconnect for the named one."
+                      "description": "connect asks for a new account; reconnect for the named one; mailbox_connect for a new Mailbox."
                     },
                     "status": {
                       "type": "string",
@@ -91725,6 +91896,20 @@
                         "null"
                       ],
                       "description": "ISO-8601 UTC completion time, else null."
+                    },
+                    "mailbox_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the connected Mailbox (mbx_...) once completed, else null."
+                    },
+                    "admin_consent_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Mailbox kinds only: the link for the person's administrator where their provider needs one, else null."
                     }
                   }
                 },
@@ -100736,6 +100921,7 @@
                         "post_likes",
                         "follows",
                         "content_poll",
+                        "company_reads",
                         "job_poll",
                         "posts",
                         "endorsements",
@@ -100777,6 +100963,7 @@
                             "post_likes",
                             "follows",
                             "content_poll",
+                            "company_reads",
                             "job_poll",
                             "posts",
                             "endorsements",
@@ -101206,6 +101393,7 @@
                 "post_likes",
                 "follows",
                 "content_poll",
+                "company_reads",
                 "job_poll",
                 "posts",
                 "endorsements",
@@ -101310,6 +101498,7 @@
                               "post_likes",
                               "follows",
                               "content_poll",
+                              "company_reads",
                               "job_poll",
                               "posts",
                               "endorsements",
@@ -103812,6 +104001,7 @@
                                   "post_likes",
                                   "follows",
                                   "content_poll",
+                                  "company_reads",
                                   "job_poll",
                                   "posts",
                                   "endorsements",
@@ -146567,6 +146757,7 @@
                               "post_likes",
                               "follows",
                               "content_poll",
+                              "company_reads",
                               "job_poll",
                               "posts",
                               "endorsements",
@@ -146576,7 +146767,7 @@
                               "inbox_sync",
                               "profile_snapshot"
                             ],
-                            "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; connection_requests_day, one invitation sent today, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
+                            "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; connection_requests_day, one invitation sent today, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; company_reads, one company page read; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
                           },
                           "used": {
                             "type": "integer",
@@ -146660,6 +146851,7 @@
                                     "post_likes",
                                     "follows",
                                     "content_poll",
+                                    "company_reads",
                                     "job_poll",
                                     "posts",
                                     "endorsements",
@@ -146669,7 +146861,7 @@
                                     "inbox_sync",
                                     "profile_snapshot"
                                   ],
-                                  "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; connection_requests_day, one invitation sent today, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
+                                  "description": "The budget row. Units differ per row: connection_requests_with_note, one invitation sent with a note (also counted in Invitations); connection_requests_no_note, one invitation sent, with or without a note; connection_requests_day, one invitation sent today, with or without a note; messages_first_degree, one message to a 1st-degree connection; inmail, one InMail sent; open_profile_inmail, one free message to an Open Profile; profile_views, one profile read; search, one search result line, not one query; comments, one comment posted; post_likes, one reaction to a post, a comment or a message; follows, one follow; content_poll, one content read: a page of posts, a feed, a company page or its followers; company_reads, one company page read; job_poll, one read of job postings; posts, one post published; endorsements, one skill endorsed; invite_responses, one received invitation accepted or declined; withdrawal_sweep, one sent invitation withdrawn; connections_sync, one background read of the connection list; inbox_sync, one background read of the inbox; profile_snapshot, one attempt of the daily Account snapshot."
                                 },
                                 "used": {
                                   "type": "integer",
@@ -146713,6 +146905,7 @@
                                     "post_likes",
                                     "follows",
                                     "content_poll",
+                                    "company_reads",
                                     "job_poll",
                                     "posts",
                                     "endorsements",

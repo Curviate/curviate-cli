@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@curviate/sdk':
-        specifier: github:Curviate/sdk#9bb23a5213a8e620f256c561977867ca871d720f
-        version: git+https://github.com/Curviate/sdk.git#9bb23a5213a8e620f256c561977867ca871d720f
+        specifier: github:Curviate/sdk#d4ffb74c21e5747783fa33574ded10bbb51437cb
+        version: git+https://github.com/Curviate/sdk.git#d4ffb74c21e5747783fa33574ded10bbb51437cb
       citty:
         specifier: ^0.1.6
         version: 0.1.6
@@ -39,9 +39,9 @@ importers:
 
 packages:
 
-  '@curviate/sdk@git+https://github.com/Curviate/sdk.git#9bb23a5213a8e620f256c561977867ca871d720f':
-    resolution: {commit: 9bb23a5213a8e620f256c561977867ca871d720f, repo: https://github.com/Curviate/sdk.git, type: git}
-    version: 0.49.0
+  '@curviate/sdk@git+https://github.com/Curviate/sdk.git#d4ffb74c21e5747783fa33574ded10bbb51437cb':
+    resolution: {commit: d4ffb74c21e5747783fa33574ded10bbb51437cb, repo: https://github.com/Curviate/sdk.git, type: git}
+    version: 0.50.1
     engines: {node: '>=18'}
 
   '@esbuild/aix-ppc64@0.27.7':
@@ -1214,7 +1214,7 @@ packages:
 
 snapshots:
 
-  '@curviate/sdk@git+https://github.com/Curviate/sdk.git#9bb23a5213a8e620f256c561977867ca871d720f':
+  '@curviate/sdk@git+https://github.com/Curviate/sdk.git#d4ffb74c21e5747783fa33574ded10bbb51437cb':
     dependencies:
       zod: 3.25.76
 
