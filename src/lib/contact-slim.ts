@@ -1,5 +1,5 @@
 /**
- * Slim-default projections for Contacts: what an agent reads to pick the next
+ * Slim-default projections for Leads: what an agent reads to pick the next
  * step. The free-text fields (`about`, `extra`) and the provenance (`sources`)
  * are verbose-only: they are untrusted data, and the largest part of a page.
  */

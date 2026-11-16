@@ -328,7 +328,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // Contacts: a cap or a name clash never succeeds as sent; a full import queue drains (6).
   NAME_TAKEN: 2,
   RESOURCE_IN_USE: 2,
-  CONTACT_LIMIT_REACHED: 2,
+  LEAD_LIMIT_REACHED: 2,
   IMPORT_QUEUE_FULL: 6,
 
   // Motions and Enrollments. Every refusal but one never succeeds as
@@ -337,14 +337,15 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // DRAFT_PUBLISHING precedent: read again, then retry).
   SEQUENCE_INVALID: 2,
   SEQUENCE_CONFLICT: 2,
-  MOTION_NOT_STARTABLE: 2,
-  MOTION_STATUS_CONFLICT: 2,
+  CAMPAIGN_NOT_STARTABLE: 2,
+  CAMPAIGN_STATUS_CONFLICT: 2,
   ENROLLMENT_NOT_ACTIVE: 2,
   NOTHING_TO_RETRY: 2,
   ACCOUNT_ALREADY_ENGAGED: 2,
+  ACCOUNT_NOT_IN_CAMPAIGN: 2,
   ALREADY_ENROLLED_ON_ACCOUNT: 2,
   KNOWN_CHAT: 2,
-  CONTACT_NOT_ENROLLABLE: 2,
+  LEAD_NOT_ENROLLABLE: 2,
   CHAT_NOT_ONE_TO_ONE: 2,
   STEP_IN_FLIGHT: 7,
 

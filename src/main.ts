@@ -45,7 +45,7 @@ export const main = defineCommand({
     account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
     motion: lazy("motion", () => import("./commands/motion.js").then((m) => m.motionCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
-    contact: lazy("contact", () => import("./commands/contact.js").then((m) => m.contactCommand)),
+    lead: lazy("lead", () => import("./commands/contact.js").then((m) => m.contactCommand)),
     "do-not-contact": lazy("do-not-contact", () => import("./commands/do-not-contact.js").then((m) => m.doNotContactCommand)),
     unibox: lazy("unibox", () => import("./commands/unibox.js").then((m) => m.uniboxCommand)),
     network: lazy("network", () => import("./commands/network.js").then((m) => m.networkCommand)),

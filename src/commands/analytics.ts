@@ -176,8 +176,8 @@ async function runGet(c: Curviate, f: AnalyticsFlags): Promise<void> {
     Object.assign(q, grammarParams(f));
     if (f.version !== undefined) q["version"] = intFlag("version", f.version);
     let body: Row;
-    if (f.motion !== undefined) body = (await c.analytics.motions.get(f.motion, q as never)) as unknown as Row;
-    else body = (await c.analytics.motions.list({ ...q, ...filterParams(f, ["motions"]) } as never)) as unknown as Row;
+    if (f.motion !== undefined) body = (await c.analytics.campaigns.get(f.motion, q as never)) as unknown as Row;
+    else body = (await c.analytics.campaigns.list({ ...q, ...filterParams(f, ["motions"]) } as never)) as unknown as Row;
     return outputOpts(f).json ? renderSuccess(body, outputOpts(f), process) : renderOverview(body);
   } catch (err) {
     await fail(err, f);

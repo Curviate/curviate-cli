@@ -8,7 +8,7 @@
  *   account link <body...>: link a new account (write)
  *   account connect-request create|get|cancel: the credential-free connect link (src/commands/connect-request.ts)
  *   account connect-session poll --session <id>: poll a hosted connect session for completion (write)
- *   account update <account_id> <body...>: update metadata / connection location / proxy / Save Connections as Contacts (write)
+ *   account update <account_id> <body...>: update metadata / connection location / proxy / Save Connections as Leads (write)
  *   account disconnect <account_id>: hard-disconnect an account (write)
  *   account checkpoint solve <account_id> --code: solve a checkpoint with an OTP/2FA code (write)
  *   account checkpoint poll <account_id>: poll mobile-app approval (write)
@@ -119,7 +119,7 @@ type AccountFlags = {
   // update body fields
   metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
-  "save-connections-as-contacts"?: boolean; // update: save the account's Connections as Contacts (Automate)
+  "save-connections-as-leads"?: boolean; // update: save the account's Connections as Leads (Automate)
   // connect-link / reconnect-link body fields
   "expires-in-seconds"?: string;
   "redirect-url"?: string;
@@ -1416,7 +1416,7 @@ export async function runAccountUpdate(
 
   assertLocationFlags(flags, out, { requireOne: false, fallbackAlone: true });
   Object.assign(body, managedLocationBody(flags));
-  if (flags["save-connections-as-contacts"] !== undefined) body["save_connections_as_contacts"] = flags["save-connections-as-contacts"];
+  if (flags["save-connections-as-leads"] !== undefined) body["save_connections_as_leads"] = flags["save-connections-as-leads"];
 
   if (flags["proxy-host"]) {
     // Proxy password is optional: flag > env > omitted, no prompt, no fail-fast.
@@ -2026,10 +2026,10 @@ const accountConnectSessionCommand = defineCommand({
 const accountUpdateCommand = defineCommand({
   meta: {
     name: "update",
-    description: "Update an account's metadata, connection location, own proxy or whether its Connections are saved as Contacts. Prints the updated account, with connection_location re-read after a location change.",
+    description: "Update an account's metadata, connection location, own proxy or whether its Connections are saved as Leads. Prints the updated account, with connection_location re-read after a location change.",
     risk: "write",
     rules: {
-      changes: "Changes the Account's metadata, connection location, own proxy or Save Connections as Contacts.",
+      changes: "Changes the Account's metadata, connection location, own proxy or Save Connections as Leads.",
       visible_to: "Your Team; LinkedIn sees the new location and may ask the owner to verify.",
       budget_rows: [],
       retry: "Safe: the same values written again leave the Account the same.",
@@ -2054,7 +2054,7 @@ const accountUpdateCommand = defineCommand({
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
-    "save-connections-as-contacts": { type: "boolean", description: "Save this account's Connections as Contacts (Automate; on by default): each person becomes one Contact in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-contacts stops it and keeps the Contacts saved so far." },
+    "save-connections-as-leads": { type: "boolean", description: "Save this account's Connections as Leads (Automate; on by default): each person becomes one Lead in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-leads stops it and keeps the Leads saved so far." },
   },
   async run({ args }) {
     const flags = args as AccountFlags;

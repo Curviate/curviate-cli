@@ -170,10 +170,10 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
   if (cursor) params["cursor"] = cursor;
   try {
     if (f.all) {
-      const page = (p: Body) => c.motions.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      const page = (p: Body) => c.campaigns.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
       for await (const item of streamAll(page, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
     } else {
-      renderSuccess(readablePage(await c.motions.list(params as never)), outputOpts(f), process);
+      renderSuccess(readablePage(await c.campaigns.list(params as never)), outputOpts(f), process);
     }
   } catch (err) {
     await fail(err, f);
@@ -183,8 +183,8 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
 async function runGet(c: Curviate, f: MotionFlags): Promise<void> {
   try {
     const result = f.version === undefined
-      ? await c.motions.get(f.id ?? "")
-      : await c.motions.getSequenceVersion(f.id ?? "", { version: intFlag("version", f.version) });
+      ? await c.campaigns.get(f.id ?? "")
+      : await c.campaigns.getSequenceVersion(f.id ?? "", { version: intFlag("version", f.version) });
     renderSuccess(readableObject(result), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
@@ -195,7 +195,7 @@ async function runCreate(c: Curviate, f: MotionFlags): Promise<void> {
   const { body, text } = await readMotionFile(f, "motion create");
   if (f.preview) return preview("motions.create", {}, body);
   try {
-    renderSuccess(await c.motions.create(body as never), outputOpts(f), process);
+    renderSuccess(await c.campaigns.create(body as never), outputOpts(f), process);
   } catch (err) {
     explain(err, f, text);
     await fail(err, f);
@@ -212,7 +212,7 @@ async function runUpdate(c: Curviate, f: MotionFlags): Promise<void> {
   if (f["if-revision"] !== undefined) body["if_sequence_revision"] = intFlag("if-revision", f["if-revision"], 0);
   if (f.preview) return preview("motions.update", { id: f.id }, body);
   try {
-    renderSuccess(await c.motions.update(f.id ?? "", body as never), outputOpts(f), process);
+    renderSuccess(await c.campaigns.update(f.id ?? "", body as never), outputOpts(f), process);
   } catch (err) {
     explain(err, f, text);
     await fail(err, f);
@@ -223,7 +223,7 @@ async function runUpdate(c: Curviate, f: MotionFlags): Promise<void> {
 const lifecycle = (method: "start" | "pause" | "resume" | "archive" | "delete") => async (c: Curviate, f: MotionFlags): Promise<void> => {
   if (f.preview) return preview(`motions.${method}`, { id: f.id });
   try {
-    renderSuccess(await c.motions[method](f.id ?? ""), outputOpts(f), process);
+    renderSuccess(await c.campaigns[method](f.id ?? ""), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -235,7 +235,7 @@ async function runPreview(c: Curviate, f: MotionFlags): Promise<void> {
   if (f.contact !== undefined) params["contact_ids"] = listFlag("contact", f.contact);
   if (params["sample"] !== undefined && params["contact_ids"] !== undefined) usage("--sample and --contact cannot be combined: name the Contacts, or let Curviate sample.");
   try {
-    renderSuccess(readableObject(await c.motions.preview(f.id ?? "", params as never)), outputOpts(f), process);
+    renderSuccess(readableObject(await c.campaigns.preview(f.id ?? "", params as never)), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -246,10 +246,10 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
   const ids = listFlag("contact", f.contact);
   if (!ids.length) usage("--contact is required: one or more Contact ids (con_...).");
   if (f.account !== undefined && f.account.trim() === "") usage("--account was given an empty value. Pass an acc_... id of the Motion, or omit it to let Curviate assign one.");
-  const body = (chunk: string[]) => ({ contact_ids: chunk, ...(f.account !== undefined ? { account_id: f.account } : {}) });
-  const method = kind === "add" ? "addContacts" : "removeContacts";
+  const body = (chunk: string[]) => ({ lead_ids: chunk, ...(f.account !== undefined ? { account_id: f.account } : {}) });
+  const method = kind === "add" ? "addLeads" : "removeLeads";
   if (f.preview) return preview(`motions.${method}`, { id: f.id }, body(ids.slice(0, BULK_MAX_IDS)));
-  const results = await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.motions[method](f.id ?? "", body(chunk) as never) as Promise<unknown>, f);
+  const results = await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.campaigns[method](f.id ?? "", body(chunk) as never) as Promise<unknown>, f);
   if (results.length === 1) return renderSuccess(results[0], outputOpts(f), process);
   // Several chunks: one answer, every chunk's entries in input order.
   const last = (results[results.length - 1] ?? {}) as Body;
@@ -279,7 +279,7 @@ async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
     return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "motions.voiceClips.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
   }
   try {
-    renderSuccess(await c.motions.voiceClips.upload(bytes, { filename }), outputOpts(f), process);
+    renderSuccess(await c.campaigns.voiceClips.upload(bytes, { filename }), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -287,7 +287,7 @@ async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
 
 async function runVoiceClipGet(c: Curviate, f: MotionFlags): Promise<void> {
   try {
-    renderSuccess(await c.motions.voiceClips.get(f.id ?? ""), outputOpts(f), process);
+    renderSuccess(await c.campaigns.voiceClips.get(f.id ?? ""), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }

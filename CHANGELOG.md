@@ -8,6 +8,13 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [Unreleased]
 
+### Breaking: Contacts become Leads (the Lead and Campaign rename, api/048)
+
+- **`curviate lead …` replaces `curviate contact …`** (`lead list|get|create|update|delete|import|imports|export|enrich`, `lead lists …`, `lead tags …`). `curviate contact` is removed: it answers as an unknown command, no alias.
+- Help, examples and next-call hints say Lead and Lead list; filter `--motion` is `--campaign`; `do-not-contact add --contact` is `--lead`; `account update --save-connections-as-leads` replaces `--save-connections-as-contacts`.
+- Error codes `LEAD_LIMIT_REACHED`, `LEAD_NOT_ENROLLABLE`, `CAMPAIGN_NOT_STARTABLE`, `CAMPAIGN_STATUS_CONFLICT`, `ACCOUNT_NOT_IN_CAMPAIGN` replace the old five.
+- Built against the unreleased SDK of the same rename (commit pin until the release, then the exact version); the vendored OpenAPI fixture is re-copied from it. The `campaign` group follows in the next change.
+
 ## [0.53.0] - 2026-11-09
 
 Requires `@curviate/sdk` 0.49.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, fetched from production 134827ce6.

@@ -101,8 +101,8 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["SEQUENCE_CONFLICT", 2],
     ["NOTHING_TO_RETRY", 2],
     ["ENROLLMENT_NOT_ACTIVE", 2],
-    ["MOTION_STATUS_CONFLICT", 2],
-    ["MOTION_NOT_STARTABLE", 2],
+    ["CAMPAIGN_STATUS_CONFLICT", 2],
+    ["CAMPAIGN_NOT_STARTABLE", 2],
     ["STEP_IN_FLIGHT", 7],
     ["TIER_REQUIRED", 5],
   ] as [ErrorCode, number][])(
