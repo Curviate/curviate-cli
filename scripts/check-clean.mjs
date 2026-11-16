@@ -137,8 +137,9 @@ export const PATTERNS = [
   },
   {
     label: "issue tracker refs (#NNN — 3+ digit numbers)",
-    // Matches: #289, #123 — but not #12 (2-digit) or markdown list items.
-    pattern: /#\d{3,}/,
+    // Matches: #289, #123 — but not #12 (2-digit), markdown list items, or a
+    // 40-hex commit pin (`github:Curviate/sdk#0243d57...`) that happens to start with digits.
+    pattern: /#(?![0-9a-f]{40}\b)\d{3,}/,
   },
   {
     label: "internal policy labels (Hard Rule)",
