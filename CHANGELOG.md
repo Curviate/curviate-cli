@@ -6,7 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.54.0] - 2026-11-16
+
+### `tier` stops printing `pending` and `early access`
+
+- **BREAKING (output):** `curviate tier` no longer prints the `pending` and `early access` lines, and `--json` no longer carries the `pending` and `early_access` keys: the server dropped both (no alias, no `null`). A script reading either key from `tier --json` gets nothing; delete the read. The command's help drops "pending change" and "early access".
+- Requires `@curviate/sdk` 0.50.1 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's, regenerated from staging 5f8e10405f79; `commands.json` regenerated.
 
 ### Breaking: Contacts become Leads, Motions become Campaigns
 
