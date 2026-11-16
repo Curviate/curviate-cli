@@ -30931,7 +30931,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A page of the account's notification cards, plus the account-level unread badge (unread_count) and newest-notification watermark (latest_published_at). Injected/promo cards are included and flagged (injected:true). Zero notifications is a valid 200 (items:[], cursor:null, unread_count:0). Page until cursor is null.",
+            "description": "A page of the account's notification cards, plus the account-level unread badge (unread_count) and newest-notification watermark (latest_published_at, on every page). Each card carries its kind, its actors (members and organizations) and the ids of the post and comment it is about. Injected/promo cards are included and flagged (injected:true). Zero notifications is a valid 200 (items:[], cursor:null, unread_count:0). Page until cursor is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -30969,7 +30969,10 @@
                           "read",
                           "published_at",
                           "target_url",
-                          "can_show_less"
+                          "can_show_less",
+                          "kind",
+                          "actors",
+                          "object_ids"
                         ],
                         "properties": {
                           "object": {
@@ -31043,6 +31046,74 @@
                           "can_show_less": {
                             "type": "boolean",
                             "description": "Whether the card exposes a 'show less like this' affordance."
+                          },
+                          "kind": {
+                            "type": "string",
+                            "nullable": true,
+                            "enum": [
+                              "post_engaged",
+                              "post_reposted",
+                              "network_posted",
+                              "profile_viewed",
+                              "followed_you",
+                              "mentioned_you"
+                            ],
+                            "description": "What the card means, decided from its `type` code alone through one fixed table, never from the `text`. REACTED_TO_YOUR_UPDATE and COMMENTED_ON_YOUR_UPDATE are post_engaged; RESHARED_YOUR_UPDATE is post_reposted; SHARED_BY_YOUR_NETWORK and COLLABORATED_BY_YOUR_NETWORK are network_posted (a post or a repost, the card does not say which); WVMP_V2 and WVMP_WHILE_ANONYMOUS are profile_viewed; PEOPLE_FOLLOW is followed_you; MENTIONED_YOU_IN_THIS is mentioned_you. null for every other type code and for injected cards."
+                          },
+                          "actors": {
+                            "type": "array",
+                            "description": "Everyone the card names, in card order: members and organizations (an organization that acts is kept, never dropped). [] for system cards. A superset of `actor_ids`, which lists members only.",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "type",
+                                "id"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "member",
+                                    "organization"
+                                  ],
+                                  "description": "Whether the actor is a person or an organization."
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "description": "The member profile id or the organization id."
+                                }
+                              }
+                            }
+                          },
+                          "object_ids": {
+                            "type": "object",
+                            "description": "The post and comment the card is about, parsed from the card's urns. Each is null when the card has none.",
+                            "required": [
+                              "post_id",
+                              "comment_id"
+                            ],
+                            "properties": {
+                              "post_id": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Numeric post id, the same value as activity_urn_id."
+                              },
+                              "comment_id": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Numeric comment id, for a card about a comment."
+                              }
+                            }
+                          },
+                          "aggregate": {
+                            "type": "object",
+                            "description": "Present only when LinkedIn groups several people into one card and says how many; absent otherwise.",
+                            "properties": {
+                              "count": {
+                                "type": "integer",
+                                "description": "How many people the card groups."
+                              }
+                            }
                           }
                         }
                       },
@@ -31060,7 +31131,7 @@
                     "latest_published_at": {
                       "type": "number",
                       "nullable": true,
-                      "description": "Timestamp (epoch ms) of the newest notification, a poll watermark to detect 'anything new since last poll'. null if unavailable."
+                      "description": "Timestamp (epoch ms) of the newest notification, a poll watermark to detect 'anything new since last poll'. Carried on every page, including pages read with a cursor. null if unavailable."
                     }
                   }
                 },
@@ -31076,6 +31147,7 @@
                           "object_urn": "urn:li:notificationV2:(urn:li:member:747216553,SHARED_BY_YOUR_NETWORK,urn:li:uniqueSuffix:(urn:li:none,rwpKFSX4QQKXFV6bDYxCsw))",
                           "injected": false,
                           "type": "SHARED_BY_YOUR_NETWORK",
+                          "kind": "network_posted",
                           "text": "Dana Ellison reposted a post about agent-native infrastructure.",
                           "actor_id": "ACoAADg2T7kBExample",
                           "actor_ids": [
@@ -31083,6 +31155,16 @@
                           ],
                           "actor_profile_url": "https://www.linkedin.com/in/ACoAADg2T7kBExample/",
                           "activity_urn_id": "7479820624010510336",
+                          "actors": [
+                            {
+                              "type": "member",
+                              "id": "ACoAADg2T7kBExample"
+                            }
+                          ],
+                          "object_ids": {
+                            "post_id": "7479820624010510336",
+                            "comment_id": null
+                          },
                           "read": false,
                           "published_at": 1783332707063,
                           "target_url": "/feed/?highlightedUpdateUrn=urn%3Ali%3Aactivity%3A7479820624010510336",
@@ -31094,11 +31176,17 @@
                           "object_urn": null,
                           "injected": true,
                           "type": null,
+                          "kind": null,
                           "text": null,
                           "actor_id": null,
                           "actor_ids": [],
                           "actor_profile_url": null,
                           "activity_urn_id": null,
+                          "actors": [],
+                          "object_ids": {
+                            "post_id": null,
+                            "comment_id": null
+                          },
                           "read": null,
                           "published_at": null,
                           "target_url": "/premium/products/",
@@ -31320,7 +31408,7 @@
             }
           }
         },
-        "description": "Returns the account's notification cards, cursor-paginated, plus unread_count and a latest_published_at watermark for cheap polling. Each post-related card carries the activity id for the Posts group. Page until cursor is null.",
+        "description": "Returns the account's notification cards, cursor-paginated, plus unread_count and a latest_published_at watermark for cheap polling. Each card carries a kind (from its type code, null outside the fixed table), its actors (members and organizations) and the post and comment ids it is about; a post-related card carries the activity id for the Posts group. Page until cursor is null.",
         "x-order": 1
       }
     },
