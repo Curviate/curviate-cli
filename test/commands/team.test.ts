@@ -211,16 +211,16 @@ describe("the Tier", () => {
 
   // The served OpenAPI marks each operation a Tier gates (`x-curviate-tier`); each command sending one says so in its help.
   it.each([
-    ["motion create", "post", "/v1/motions"], ["motion update", "patch", "/v1/motions/{id}"], ["motion start", "post", "/v1/motions/{id}/start"],
-    ["motion resume", "post", "/v1/motions/{id}/resume"], ["motion add", "post", "/v1/motions/{id}/contacts"],
+    ["motion create", "post", "/v1/campaigns"], ["motion update", "patch", "/v1/campaigns/{id}"], ["motion start", "post", "/v1/campaigns/{id}/start"],
+    ["motion resume", "post", "/v1/campaigns/{id}/resume"], ["motion add", "post", "/v1/campaigns/{id}/leads"],
     ["enrollment resume", "post", "/v1/enrollments/{id}/resume"], ["enrollment event", "post", "/v1/enrollments/{id}/events"],
     ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
     ["network resync", "post", "/v1/network/resync"], ["unibox refresh", "post", "/v1/unibox/refresh"],
-    ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/contact"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
-    ["contact create", "post", "/v1/contacts"], ["contact update", "patch", "/v1/contacts/{id}"], ["contact enrich", "post", "/v1/contacts/enrich"],
-    ["contact import", "post", "/v1/contacts/imports"], ["contact tags add", "post", "/v1/contacts/update"], ["contact lists remove", "post", "/v1/contacts/update"],
-    ["contact tags update", "patch", "/v1/tags/{id}"], ["contact lists create", "post", "/v1/contact-lists"], ["contact lists combine", "post", "/v1/contact-lists"],
-    ["contact lists update", "patch", "/v1/contact-lists/{id}"],
+    ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/lead"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
+    ["lead create", "post", "/v1/leads"], ["lead update", "patch", "/v1/leads/{id}"], ["lead enrich", "post", "/v1/leads/enrich"],
+    ["lead import", "post", "/v1/leads/imports"], ["lead tags add", "post", "/v1/leads/update"], ["lead lists remove", "post", "/v1/leads/update"],
+    ["lead tags update", "patch", "/v1/tags/{id}"], ["lead lists create", "post", "/v1/lead-lists"], ["lead lists combine", "post", "/v1/lead-lists"],
+    ["lead lists update", "patch", "/v1/lead-lists/{id}"],
     ["do-not-contact add", "post", "/v1/do-not-contact"], ["do-not-contact update", "patch", "/v1/do-not-contact/{id}"],
     ["incoming create", "post", "/v1/incoming-events"], ["incoming rotate", "post", "/v1/incoming-events/{id}/rotate"], ["incoming capture", "post", "/v1/incoming-events/{id}/capture"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],

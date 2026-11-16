@@ -1,6 +1,6 @@
 /**
- * The Contact filter shared by `contact list`, `contact export`, the bulk
- * update and delete, and `contact lists combine`: the same flags, the same
+ * The Lead filter shared by `lead list`, `lead export`, the bulk
+ * update and delete, and `lead lists combine`: the same flags, the same
  * checks, two wire shapes (a query string; a `filter` object whose lists are
  * arrays). Lists, tags and statuses are repeatable or comma lists.
  */
@@ -13,7 +13,7 @@ export type FilterFlags = {
   "list-match"?: string;
   "not-list"?: string | string[];
   tag?: string | string[];
-  motion?: string;
+  campaign?: string;
   status?: string;
   connected?: boolean;
   "connected-account"?: string | string[];
@@ -26,20 +26,20 @@ export type FilterFlags = {
 };
 
 export const FILTER_ARGS = {
-  list: { type: "string" as const, description: "Only Contacts in this Contact list (cl_...); repeatable, or a comma list. In any of them unless --list-match all." },
+  list: { type: "string" as const, description: "Only Leads in this Lead list (cl_...); repeatable, or a comma list. In any of them unless --list-match all." },
   "list-match": { type: "string" as const, description: "With --list: any (default, in at least one) or all (in every one)." },
-  "not-list": { type: "string" as const, description: "Only Contacts in none of these Contact lists (cl_...); repeatable, or a comma list." },
-  tag: { type: "string" as const, description: "Only Contacts with this Tag, any casing; repeatable: with any of them." },
-  motion: { type: "string" as const, description: "Only Contacts with an Enrollment in this Motion (mot_...)." },
-  status: { type: "string" as const, description: "With --motion: comma list of Enrollment statuses (queued, active, paused, finished, failed, skipped)." },
+  "not-list": { type: "string" as const, description: "Only Leads in none of these Lead lists (cl_...); repeatable, or a comma list." },
+  tag: { type: "string" as const, description: "Only Leads with this Tag, any casing; repeatable: with any of them." },
+  campaign: { type: "string" as const, description: "Only Leads with an Enrollment in this Campaign (mot_...)." },
+  status: { type: "string" as const, description: "With --campaign: comma list of Enrollment statuses (queued, active, paused, finished, failed, skipped)." },
   connected: { type: "boolean" as const, description: "Only Connections of your Accounts (--no-connected: everyone else)." },
   "connected-account": { type: "string" as const, description: "Only Connections of this Account (acc_... or its name); repeatable, or a comma list: of any of up to 50 Accounts. Explicit: never filled from the default Account." },
-  import: { type: "string" as const, description: "Only Contacts in this import's report (imp_...), while the import exists." },
+  import: { type: "string" as const, description: "Only Leads in this import's report (imp_...), while the import exists." },
   "enrichment-status": { type: "string" as const, description: "none, queued, done or failed." },
   query: { type: "string" as const, description: "Text match on names, headline, job title, company, email, location and profile slug." },
-  "linkedin-url": { type: "string" as const, description: "The Contact for this person, any URL spelling." },
-  "has-email": { type: "boolean" as const, description: "Only Contacts with an email address." },
-  "no-email": { type: "boolean" as const, description: "Only Contacts without an email address." },
+  "linkedin-url": { type: "string" as const, description: "The Lead for this person, any URL spelling." },
+  "has-email": { type: "boolean" as const, description: "Only Leads with an email address." },
+  "no-email": { type: "boolean" as const, description: "Only Leads without an email address." },
 };
 
 /** Does the command line carry any filter flag? */
@@ -77,10 +77,10 @@ export async function readFilter(c: Curviate, f: FilterFlags & RootFlags, shape:
   }
   const tags = listFlag("tag", f.tag);
   if (tags.length) q["tag"] = join(tags);
-  const motion = text("motion", f.motion);
-  if (motion) q["motion_id"] = motion;
+  const campaign = text("campaign", f.campaign);
+  if (campaign) q["campaign_id"] = campaign;
   if (f.status !== undefined) {
-    if (!motion) usage("--status needs --motion: it filters that Motion's Enrollments.");
+    if (!campaign) usage("--status needs --campaign: it filters that Campaign's Enrollments.");
     q["enrollment_status"] = join(listFlag("status", f.status));
   }
   // The parser reads `--no-email` as the negation of an `email` flag.

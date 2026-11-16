@@ -1,5 +1,5 @@
 /**
- * `curviate do-not-contact`: your Team's one list of people no Motion contacts
+ * `curviate do-not-contact`: your Team's one list of people no Campaign contacts
  * and no write reaches. Root-scoped (`curviate.doNotContact.*`).
  */
 import { defineCommand } from "citty";
@@ -20,7 +20,7 @@ import { chunkRows, csvRecords } from "./contact-import.js";
 
 type Flags = RootFlags & {
   id?: string;
-  contact?: string;
+  lead?: string;
   "linkedin-url"?: string;
   reason?: string;
   query?: string;
@@ -82,9 +82,9 @@ async function runGet(c: Curviate, f: Flags): Promise<void> {
 }
 
 async function runAdd(c: Curviate, f: Flags): Promise<void> {
-  if ((f.contact === undefined) === (f["linkedin-url"] === undefined)) usage("name the person with exactly one of --contact (con_...) or --linkedin-url.");
-  for (const [flag, v] of [["contact", f.contact], ["linkedin-url", f["linkedin-url"]]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
-  const body: Body = f.contact !== undefined ? { contact_id: f.contact } : { linkedin_url: f["linkedin-url"] };
+  if ((f.lead === undefined) === (f["linkedin-url"] === undefined)) usage("name the person with exactly one of --lead (con_...) or --linkedin-url.");
+  for (const [flag, v] of [["lead", f.lead], ["linkedin-url", f["linkedin-url"]]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
+  const body: Body = f.lead !== undefined ? { lead_id: f.lead } : { linkedin_url: f["linkedin-url"] };
   const why = reason(f, false);
   if (why) body["reason"] = why;
   if (f.preview) return preview("doNotContact.add", {}, body);
@@ -219,12 +219,12 @@ const listCmd = defineCommand({
   meta: {
     name: "list",
     description:
-      "List your Team's do-not-contact list, newest first. No Motion contacts a person on it and writes toward them are refused (exit 10); a reply in a conversation they wrote in stays allowed. " +
-      "An entry whose Contact was deleted still applies.",
+      "List your Team's do-not-contact list, newest first. No Campaign contacts a person on it and writes toward them are refused (exit 10); a reply in a conversation they wrote in stays allowed. " +
+      "An entry whose Lead was deleted still applies.",
     risk: "read",
     examples: ["curviate do-not-contact list", "curviate do-not-contact list --query jane"],
   },
-  args: { ...readOnly(GLOBAL_FLAGS), limit: { ...GLOBAL_FLAGS.limit, description: "Entries per page (1 to 100). The API returns no total: count with --all." }, query: { type: "string", description: "Only entries whose Contact name matches this text." } },
+  args: { ...readOnly(GLOBAL_FLAGS), limit: { ...GLOBAL_FLAGS.limit, description: "Entries per page (1 to 100). The API returns no total: count with --all." }, query: { type: "string", description: "Only entries whose Lead name matches this text." } },
   run: online(runList),
 });
 
@@ -238,24 +238,24 @@ const addCmd = defineCommand({
   meta: {
     name: "add",
     description:
-      "Put one person on the list, by Contact id or LinkedIn URL (a URL of someone who is not a Contact yet creates the Contact from stored data). No Motion contacts them afterwards and writes toward them are refused. " +
+      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data). No Campaign contacts them afterwards and writes toward them are refused. " +
       "One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "The person joins the list; Motions skip them and writes toward them are refused.",
+      changes: "The person joins the list; Campaigns skip them and writes toward them are refused.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe: a person already on the list answers with their existing entry.",
       undo: "`curviate do-not-contact remove <id>` (Owners and Managers).",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", RESOURCE_NOT_FOUND: "no Contact has this id." },
+    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", RESOURCE_NOT_FOUND: "no Lead has this id." },
     seeAlso: ["curviate do-not-contact list", "curviate do-not-contact import"],
-    examples: ["curviate do-not-contact add --contact con_YOUR_CONTACT_ID --reason asked_to_stop", "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe"],
+    examples: ["curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop", "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    contact: { type: "string", description: "The Contact (con_...). Not with --linkedin-url." },
-    "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --contact." },
+    lead: { type: "string", description: "The Lead (con_...). Not with --linkedin-url." },
+    "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --lead." },
     reason: REASON_ARG,
   },
   run: online(runAdd),
@@ -283,11 +283,11 @@ const updateCmd = defineCommand({
 const removeCmd = defineCommand({
   meta: {
     name: "remove",
-    description: "Take a person off the list: Motions and writes may reach them again. Owners and Managers only.",
+    description: "Take a person off the list: Campaigns and writes may reach them again. Owners and Managers only.",
     risk: "high",
     rules: {
-      changes: "The entry is deleted; Motions may enroll the person and writes toward them are allowed again.",
-      visible_to: "The person, if a Motion or write then reaches them on LinkedIn.",
+      changes: "The entry is deleted; Campaigns may enroll the person and writes toward them are allowed again.",
+      visible_to: "The person, if a Campaign or write then reaches them on LinkedIn.",
       budget_rows: [],
       retry: "Safe: a second call answers RESOURCE_NOT_FOUND.",
       undo: "`curviate do-not-contact add` again.",
@@ -305,7 +305,7 @@ const exportCmd = defineCommand({
   meta: {
     name: "export",
     description:
-      "Download your Team's whole do-not-contact list as csv, json or ndjson (default): LinkedIn URL (empty once the Contact was deleted), reason, who added it, when. The file imports as it is. " +
+      "Download your Team's whole do-not-contact list as csv, json or ndjson (default): LinkedIn URL (empty once the Lead was deleted), reason, who added it, when. The file imports as it is. " +
       "The data goes to stdout or --output and nothing else does; the count goes to stderr. --output is written whole or not at all, with mode 0600. Owners and Managers only.",
     risk: "read",
     output: ["The data only. No --json: use --format json."],
@@ -331,17 +331,17 @@ const importCmd = defineCommand({
     name: "import",
     description:
       "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: " +
-      "someone who is not a Contact yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. " +
+      "someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. " +
       "A file over 10,000 rows is sent in several requests. Any member may import. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "The people join the list; Motions skip them and writes toward them are refused. Nothing is sent to LinkedIn or to the people.",
+      changes: "The people join the list; Campaigns skip them and writes toward them are refused. Nothing is sent to LinkedIn or to the people.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe to repeat: a person already listed is reported unchanged. A run stopped part way: run it again.",
       undo: "`curviate do-not-contact remove <id>` per person (Owners and Managers).",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", CONTACT_LIMIT_REACHED: "the Team is at its Contact cap; rows that would add a Contact past it are skipped." },
+    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", LEAD_LIMIT_REACHED: "the Team is at its Lead cap; rows that would add a Lead past it are skipped." },
     output: ["One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."],
     seeAlso: ["curviate do-not-contact export", "curviate do-not-contact list"],
     examples: ["curviate do-not-contact import --file do-not-contact.csv", "curviate do-not-contact import --file - --format ndjson"],

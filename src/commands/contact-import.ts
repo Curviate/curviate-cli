@@ -1,5 +1,5 @@
 /**
- * `curviate contact import` and `curviate contact imports`.
+ * `curviate lead import` and `curviate lead imports`.
  *
  * `import --file` reads a CSV, JSON (an array of objects) or NDJSON file,
  * checks only its structure locally, and sends it in imports of at most
@@ -27,7 +27,7 @@ export const IMPORT_MAX_ROWS = 10_000;
 export const IMPORT_MAX_BODY_BYTES = 9_437_184;
 /** Room in the body for everything but the rows: list, tags, mapping. */
 const BODY_MARGIN = 16 * 1024;
-/** The most a file may weigh before it is read (100,000 Contacts is the Team cap). */
+/** The most a file may weigh before it is read (100,000 Leads is the Team cap). */
 const MAX_FILE_BYTES = 256 * 1024 * 1024;
 const POLL_MS = 1500;
 
@@ -114,7 +114,7 @@ function split(text: string, format: string): { header?: string; chunks: unknown
     } catch (err) {
       usage(`--file: not valid JSON, at ${whereJson(text, err)}.`);
     }
-    if (!Array.isArray(doc)) usage("--file: a JSON import is an array of objects, one per Contact.");
+    if (!Array.isArray(doc)) usage("--file: a JSON import is an array of objects, one per Lead.");
     objs = doc;
   } else {
     objs = text.split("\n").flatMap((line, i) => {
@@ -181,19 +181,19 @@ async function createChunk(c: Curviate, body: Body, rows: number, seen: string[]
     const notes: WireNotes = {};
     const started = Date.now();
     try {
-      return readableObject((await withWireNotes(notes, () => c.contacts.imports.create(body as never))) as Imp);
+      return readableObject((await withWireNotes(notes, () => c.leads.imports.create(body as never))) as Imp);
     } catch (err) {
       if (!(err instanceof CurviateError)) throw err;
       if (err.code === "RATE_LIMIT_TENANT") {
         const wait = notes.retryAfterS ?? RETRY_DEFAULT_S;
         // The API names the import holding the Team's write lock, when one does.
         const d = err.details as { import_id?: unknown; started_at?: unknown } | undefined;
-        const holder = typeof d?.import_id === "string" ? ` Import ${d.import_id} (started ${String(d.started_at)}) holds the Team's write lock: read it with \`curviate contact imports get ${d.import_id}\`.` : "";
+        const holder = typeof d?.import_id === "string" ? ` Import ${d.import_id} (started ${String(d.started_at)}) holds the Team's write lock: read it with \`curviate lead imports get ${d.import_id}\`.` : "";
         if (wait > RETRY_AFTER_BOUND_S || sends >= MAX_SENDS) {
           const why = wait > RETRY_AFTER_BOUND_S ? ` The API asked to wait ${wait} s, more than the ${RETRY_AFTER_BOUND_S} s the CLI waits.` : "";
           throw new CurviateError({ code: err.code, message: `${err.message}${why} Nothing in this chunk was imported; send it again later.${holder}`, httpStatus: 429, userFixable: false, retryLikelyToSucceed: true, ...(err.details ? { details: err.details } : {}) } as never);
         }
-        say(`Import ${k} of ${n}: the Team has other Contact writes running (nothing was imported); waiting ${wait} s, then sending it again.${holder}`);
+        say(`Import ${k} of ${n}: the Team has other Lead writes running (nothing was imported); waiting ${wait} s, then sending it again.${holder}`);
         await sleep(wait * 1000);
         continue;
       }
@@ -214,7 +214,7 @@ async function recover(c: Curviate, body: Body, rows: number, seen: string[], st
   // ponytail: the API names no credential and the CLI cannot learn the caller (no /v1/me), so an import is this request's by shape and time (rows, format, list, 30 s of clock skew); a concurrent identical import by the same Team is the ceiling. Upgrade when the API offers a caller id: also match the import's `created_by_user_id`.
   for (let tries = 0; ; tries++) {
     try {
-      const page = (await c.contacts.imports.list({ limit: 20 } as never)) as { items?: Array<Imp & { total_rows?: number; format?: string; list_id?: string | null; created_at?: string }> };
+      const page = (await c.leads.imports.list({ limit: 20 } as never)) as { items?: Array<Imp & { total_rows?: number; format?: string; list_id?: string | null; created_at?: string }> };
       found = (page.items ?? []).find(
         (i) =>
           !seen.includes(String(i.id)) &&
@@ -224,12 +224,12 @@ async function recover(c: Curviate, body: Body, rows: number, seen: string[], st
           Date.parse(i.created_at ?? "") >= started - CLOCK_SKEW_MS,
       );
     } catch {
-      throw fresh(`${err.message} The check for an import it made failed too: read \`curviate contact imports list\` before running this again, it may have been imported.`);
+      throw fresh(`${err.message} The check for an import it made failed too: read \`curviate lead imports list\` before running this again, it may have been imported.`);
     }
     if (found || tries >= RELIST_TRIES) break;
     await sleep(relistMs());
   }
-  if (!found) throw fresh(`${err.message} No import from this request appeared within 30 s, so nothing was imported so far. If the API is only slow, one may still appear: read \`curviate contact imports list\` before running this again.`);
+  if (!found) throw fresh(`${err.message} No import from this request appeared within 30 s, so nothing was imported so far. If the API is only slow, one may still appear: read \`curviate lead imports list\` before running this again.`);
   say(`Import ${k} of ${n}: the API did apply it. Import ${found.id} is ${found.status}${found.status === "completed" ? ` (${COUNTS.map((x) => `${x} ${found.counts?.[x] ?? 0}`).join(", ")})` : ""}.`);
   return found;
 }
@@ -267,14 +267,14 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
   const { header, chunks } = split(text, format);
   const bodyOf = (rows: unknown[]): Body => ({ ...base, ...(header !== undefined ? { csv: [header, ...rows].join("\n") } : { rows }) });
   const total = chunks.reduce((n, x) => n + x.length, 0);
-  if (f.preview) return preview("contacts.imports.create", chunks.length > 1 ? { imports: chunks.length, rows: total } : {}, bodyOf(chunks[0]!));
+  if (f.preview) return preview("leads.imports.create", chunks.length > 1 ? { imports: chunks.length, rows: total } : {}, bodyOf(chunks[0]!));
 
   // The parser reads `--no-wait` as the negation of a `wait` flag. `--async` is the same.
   const wait = !(f["no-wait"] === true || f.wait === false || f.async === true);
   const poll = async (made: Imp): Promise<Imp> => {
     let imp = made;
     while (wait && imp.status !== "completed" && imp.status !== "failed") {
-      imp = readableObject((await c.contacts.imports.get(String(imp.id))) as Imp);
+      imp = readableObject((await c.leads.imports.get(String(imp.id))) as Imp);
       if (imp.status !== "completed" && imp.status !== "failed") await sleep(POLL_MS);
     }
     return imp;
@@ -292,7 +292,7 @@ async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
       at += rows.length;
       done.push(imp);
       if (imp.status === "failed") throw await failedImport(imp);
-      if (!wait && imp.status !== "completed") say(`Import ${done.length} of ${chunks.length}: ${imp.id} is ${imp.status}; read its progress with \`curviate contact imports get ${imp.id}\`.`);
+      if (!wait && imp.status !== "completed") say(`Import ${done.length} of ${chunks.length}: ${imp.id} is ${imp.status}; read its progress with \`curviate lead imports get ${imp.id}\`.`);
       return imp;
     },
     f,
@@ -321,7 +321,7 @@ async function skippedRows(c: Curviate, imp: Imp): Promise<Skipped[]> {
   const rows: Skipped[] = [];
   let cursor: string | null | undefined;
   do {
-    const page = (await c.contacts.imports.rows(String(imp.id), { outcome: "skipped", limit: 100, ...(cursor ? { cursor } : {}) } as never)) as { items?: Skipped[]; cursor?: string | null };
+    const page = (await c.leads.imports.rows(String(imp.id), { outcome: "skipped", limit: 100, ...(cursor ? { cursor } : {}) } as never)) as { items?: Skipped[]; cursor?: string | null };
     rows.push(...(page.items ?? []));
     cursor = page.cursor;
   } while (cursor);
@@ -332,45 +332,45 @@ const importCmd = defineCommand({
   meta: {
     name: "import",
     description:
-      `Import Contacts from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
+      `Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
       "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. " +
-      "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Contact already there is updated or left as it is. " +
+      "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. " +
       `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs Automate.`,
     risk: "write",
     rules: {
-      changes: "Contacts are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
+      changes: "Leads are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
       visible_to: "Your Team.",
       budget_rows: [],
-      retry: "After a timeout the CLI reports the import it made; do not run it again then. Otherwise Contacts converge: a second run reports them `unchanged`. A run stopped part way: read `curviate contact imports list`, then import the rest.",
-      undo: "Cannot be undone as a whole. `curviate contact delete --import IMPORT_ID` deletes every Contact in its report, those it only updated included; Tags and list membership are undone with `curviate contact tags remove` and `curviate contact lists remove`.",
+      retry: "After a timeout the CLI reports the import it made; do not run it again then. Otherwise Leads converge: a second run reports them `unchanged`. A run stopped part way: read `curviate lead imports list`, then import the rest.",
+      undo: "Cannot be undone as a whole. `curviate lead delete --import IMPORT_ID` deletes every Lead in its report, those it only updated included; Tags and list membership are undone with `curviate lead tags remove` and `curviate lead lists remove`.",
     },
     errors: {
-      CONTACT_LIMIT_REACHED: "the Team is at its Contact cap; rows past it are skipped.",
+      LEAD_LIMIT_REACHED: "the Team is at its Lead cap; rows past it are skipped.",
       IMPORT_QUEUE_FULL: "too many imports are queued (429); wait, then run it again.",
-      RATE_LIMIT_TENANT: `the Team has other Contact or Motion writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run. When an import holds the Team's write lock, the message and \`details.import_id\` name it: read it with \`curviate contact imports get\`.`,
-      CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate contact imports list` before running it again.",
+      RATE_LIMIT_TENANT: `the Team has other Lead or Campaign writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run. When an import holds the Team's write lock, the message and \`details.import_id\` name it: read it with \`curviate lead imports get\`.`,
+      CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate lead imports list` before running it again.",
       NAME_TAKEN: "--list-name names a list that exists.",
     },
-    output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --async (or --no-wait): the imports' ids and statuses only, printed as soon as each is accepted; a queued one's progress is \`curviate contact imports get IMPORT_ID\` (stderr names it)."],
-    seeAlso: ["curviate contact imports get", "curviate contact list"],
+    output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --async (or --no-wait): the imports' ids and statuses only, printed as soon as each is accepted; a queued one's progress is \`curviate lead imports get IMPORT_ID\` (stderr names it)."],
+    seeAlso: ["curviate lead imports get", "curviate lead list"],
     examples: [
-      "curviate contact import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
-      "curviate contact import --file contacts-export.csv --apply-lists --async",
-      "curviate contact import --file - --format ndjson --list cl_YOUR_LIST_ID",
+      "curviate lead import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
+      "curviate lead import --file leads-export.csv --apply-lists --async",
+      "curviate lead import --file - --format ndjson --list cl_YOUR_LIST_ID",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     file: { type: "string", stdinArg: true, required: true, description: "The file: a path, or - to read it from stdin (then --format is required)." },
     format: { type: "string", description: "csv | json | ndjson. Default: from the file extension (.csv, .json, .ndjson)." },
-    list: { type: "string", description: "Add every imported Contact to this Contact list (cl_...)." },
+    list: { type: "string", description: "Add every imported Lead to this Lead list (cl_...)." },
     "list-name": { type: "string", description: "Add them to the list of this name (up to 100 characters), creating it. Not with --list." },
-    tag: { type: "string", description: "Put this Tag on every imported Contact (up to 64 characters); repeatable." },
-    "remove-tag": { type: "string", description: "Take this Tag off every imported Contact; repeatable." },
-    "apply-lists": { type: "boolean", description: "Add each Contact to the Contact lists named in its `lists` (an export's column), creating a missing list by name. Only adds. A row past the Team's list limit is skipped (list_limit_reached). Default: the column is ignored." },
-    map: { type: "string", description: "Map a file header to a Contact field: header=target, for example \"LinkedIn Profile=linkedin_url\"; repeatable." },
+    tag: { type: "string", description: "Put this Tag on every imported Lead (up to 64 characters); repeatable." },
+    "remove-tag": { type: "string", description: "Take this Tag off every imported Lead; repeatable." },
+    "apply-lists": { type: "boolean", description: "Add each Lead to the Lead lists named in its `lists` (an export's column), creating a missing list by name. Only adds. A row past the Team's list limit is skipped (list_limit_reached). Default: the column is ignored." },
+    map: { type: "string", description: "Map a file header to a Lead field: header=target, for example \"LinkedIn Profile=linkedin_url\"; repeatable." },
     delimiter: { type: "string", description: "A CSV's separator: comma, semicolon or tab. Default: found by the server." },
-    async: { type: "boolean", description: "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate contact imports get IMPORT_ID`. Stops only on a refused request." },
+    async: { type: "boolean", description: "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate lead imports get IMPORT_ID`. Stops only on a refused request." },
     "no-wait": { type: "boolean", description: "Same as --async." },
   },
   run: online(runImport),
@@ -381,7 +381,7 @@ const importCmd = defineCommand({
 const ID = { type: "positional" as const, description: "Import id (imp_...)." };
 
 const importsList = defineCommand({
-  meta: { name: "list", description: "List your Team's imports, newest first: status, counts and failure.", risk: "read", examples: ["curviate contact imports list"] },
+  meta: { name: "list", description: "List your Team's imports, newest first: status, counts and failure.", risk: "read", examples: ["curviate lead imports list"] },
   args: { ...readOnly(GLOBAL_FLAGS) },
   run: online(async (c, f) => {
     rejectPaginationModifiersWithoutAll(f, process);
@@ -391,10 +391,10 @@ const importsList = defineCommand({
     if (cursor) params["cursor"] = cursor;
     try {
       if (f.all) {
-        const next = (p: Body) => c.contacts.imports.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+        const next = (p: Body) => c.leads.imports.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
         for await (const item of streamAll(next, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
       } else {
-        renderSuccess(readablePage(await c.contacts.imports.list(params as never)), outputOpts(f), process);
+        renderSuccess(readablePage(await c.leads.imports.list(params as never)), outputOpts(f), process);
       }
     } catch (err) {
       await fail(err, f);
@@ -409,7 +409,7 @@ const importsGet = defineCommand({
       "One import: its status, counts, the columns it mapped or ignored, and its failure. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
       "Import records are kept for a limited time.",
     risk: "read",
-    examples: ["curviate contact imports get imp_YOUR_IMPORT_ID", "curviate contact imports get imp_YOUR_IMPORT_ID --outcome skipped"],
+    examples: ["curviate lead imports get imp_YOUR_IMPORT_ID", "curviate lead imports get imp_YOUR_IMPORT_ID --outcome skipped"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
@@ -419,17 +419,17 @@ const importsGet = defineCommand({
   run: online(async (c, f: ContactFlags & { outcome?: string }) => {
     const id = String(f.id ?? "");
     try {
-      if (f.outcome === undefined) return renderSuccess(readableObject(await c.contacts.imports.get(id)), outputOpts(f), process);
+      if (f.outcome === undefined) return renderSuccess(readableObject(await c.leads.imports.get(id)), outputOpts(f), process);
       rejectPaginationModifiersWithoutAll(f, process);
       const params: Body = { outcome: listFlag("outcome", f.outcome).join(",") };
       if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
       const cursor = readCursorFlag(f, process);
       if (cursor) params["cursor"] = cursor;
       if (f.all) {
-        const next = (p: Body) => c.contacts.imports.rows(id, p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+        const next = (p: Body) => c.leads.imports.rows(id, p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
         for await (const item of streamAll(next, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
       } else {
-        renderSuccess(readablePage(await c.contacts.imports.rows(id, params as never)), outputOpts(f), process);
+        renderSuccess(readablePage(await c.leads.imports.rows(id, params as never)), outputOpts(f), process);
       }
     } catch (err) {
       await fail(err, f);
@@ -443,7 +443,7 @@ export const contactImportsCommand = defineCommand({
   subCommands: { list: importsList, get: importsGet },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
-    await showHelp(contactImportsCommand, ["curviate", "contact", "imports"]);
+    await showHelp(contactImportsCommand, ["curviate", "lead", "imports"]);
   },
 });
 

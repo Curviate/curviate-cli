@@ -148,9 +148,9 @@ async function runMark(c: Curviate, f: UniboxFlags): Promise<void> {
 async function runTag(c: Curviate, f: UniboxFlags): Promise<void> {
   const { accountId, chatId } = ids(f);
   const body = f.tag === undefined ? {} : { tags: listFlag("tag", f.tag) };
-  if (f.preview) return preview("unibox.tagContact", { account_id: accountId, chat_id: chatId }, body);
+  if (f.preview) return preview("unibox.tagLead", { account_id: accountId, chat_id: chatId }, body);
   try {
-    renderSuccess(await c.unibox.tagContact(accountId, chatId, body), outputOpts(f), process);
+    renderSuccess(await c.unibox.tagLead(accountId, chatId, body), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -159,7 +159,7 @@ async function runTag(c: Curviate, f: UniboxFlags): Promise<void> {
 async function runEnroll(c: Curviate, f: UniboxFlags): Promise<void> {
   const { accountId, chatId } = ids(f);
   const motion = typeof f.motion === "string" && f.motion.trim() !== "" ? f.motion : usage("--motion is required: the Motion to enroll the person in (mot_...).");
-  const body = { motion_id: motion };
+  const body = { campaign_id: motion };
   if (f.preview) return preview("unibox.enroll", { account_id: accountId, chat_id: chatId }, body);
   try {
     renderSuccess(await c.unibox.enroll(accountId, chatId, body), outputOpts(f), process);
