@@ -40,7 +40,7 @@ export const DESCRIPTIONS = {
   analytics:
     "Motion outcomes and the budget your Accounts used. Read-only; Motion numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
   export: "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
-  tier: "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
+  tier: "Your Team's Tier now, what it bought, any trial or override, and the features it includes. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners and Managers manage (a Manager invites Members only); every role reads.",
