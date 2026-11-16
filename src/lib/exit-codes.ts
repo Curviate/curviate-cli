@@ -325,13 +325,13 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   CONNECT_REQUEST_IN_USE: 8,
   LINKEDIN_ACCOUNT_MISMATCH: 8,
 
-  // Contacts: a cap or a name clash never succeeds as sent; a full import queue drains (6).
+  // Leads: a cap or a name clash never succeeds as sent; a full import queue drains (6).
   NAME_TAKEN: 2,
   RESOURCE_IN_USE: 2,
   LEAD_LIMIT_REACHED: 2,
   IMPORT_QUEUE_FULL: 6,
 
-  // Motions and Enrollments. Every refusal but one never succeeds as
+  // Campaigns and Enrollments. Every refusal but one never succeeds as
   // sent (2): fix the document, merge the newer Sequence, or pick another
   // Enrollment or Account. STEP_IN_FLIGHT settles within a minute (7, the
   // DRAFT_PUBLISHING precedent: read again, then retry).

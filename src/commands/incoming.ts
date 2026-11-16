@@ -1,6 +1,6 @@
 /**
  * `curviate incoming`: incoming events. Each is a private URL any tool posts
- * to; Curviate finds the Contact in the post and moves the Enrollments waiting
+ * to; Curviate finds the Lead in the post and moves the Enrollments waiting
  * for that event. The URL is a secret: shown whole only by `create` and
  * `rotate`, masked on every read.
  */
@@ -19,7 +19,7 @@ type Flags = RootFlags & {
   event?: string;
   "event-name"?: string;
   "event-name-field"?: string;
-  motion?: string;
+  campaign?: string;
   "match-enrollment-id"?: string;
   "match-linkedin-url"?: string;
   "match-email"?: string;
@@ -39,7 +39,7 @@ function body(f: Flags): Row {
   const nul = (v: string) => (v === "" ? null : v);
   if (f["event-name"] !== undefined) b["event_name"] = nul(f["event-name"]);
   if (f["event-name-field"] !== undefined) b["event_name_field"] = nul(f["event-name-field"]);
-  if (f.motion !== undefined) b["motion_id"] = nul(f.motion);
+  if (f.campaign !== undefined) b["campaign_id"] = nul(f.campaign);
   const match: Row = {};
   if (f["match-enrollment-id"] !== undefined) match["enrollment_id"] = nul(f["match-enrollment-id"]);
   if (f["match-linkedin-url"] !== undefined) match["linkedin_url"] = nul(f["match-linkedin-url"]);
@@ -101,10 +101,10 @@ const EDITOR = { INSUFFICIENT_ROLE: "only its creator (or an Owner, when it has 
 const FIELDS = {
   "event-name": { type: "string" as const, description: "The fixed event name every post carries (for example reply_received). Exactly one of this and --event-name-field on create." },
   "event-name-field": { type: "string" as const, description: "The path in the post the event name is read from (for example event_type)." },
-  motion: { type: "string" as const, description: "Only this Motion's Enrollments move (mot_...); empty for any Motion's." },
+  campaign: { type: "string" as const, description: "Only this Campaign's Enrollments move (mot_...); empty for any Campaign's." },
   "match-enrollment-id": { type: "string" as const, description: "Path in the post to an Enrollment id (for example custom_variables.enrollment_id); empty removes it." },
   "match-linkedin-url": { type: "string" as const, description: "Path in the post to the person's LinkedIn URL; empty removes it." },
-  "match-email": { type: "string" as const, description: "Path in the post to an email address the Contact already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email." },
+  "match-email": { type: "string" as const, description: "Path in the post to an email address the Lead already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email." },
   "required-header": { type: "string" as const, description: "NAME:VALUE every post must carry, else 401; NAME alone keeps the stored value; empty removes it." },
 };
 
@@ -120,7 +120,7 @@ const createCmd = defineCommand({
       retry: "Each call creates another URL.",
       undo: "`curviate incoming delete <id>`.",
     },
-    errors: { MOTION_NOT_FOUND: "no Motion with that id." },
+    errors: { RESOURCE_NOT_FOUND: "no Campaign with that id." },
     examples: ["curviate incoming create --event-name reply_received --match-email lead_email"],
   },
   args: { ...WRITE_SINGLE_FLAGS, ...FIELDS },
@@ -130,7 +130,7 @@ const createCmd = defineCommand({
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "Your Team's incoming events, URLs masked, with the last arrival and the Motion steps waiting for each.",
+    description: "Your Team's incoming events, URLs masked, with the last arrival and the Campaign steps waiting for each.",
     risk: "read",
     examples: ["curviate incoming list", "curviate incoming list --event reply_received"],
   },
@@ -147,7 +147,7 @@ const getCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change an incoming event's name, Motion, match paths, required header or turn it off; the URL stays.",
+    description: "Change an incoming event's name, Campaign, match paths, required header or turn it off; the URL stays.",
     risk: "write",
     rules: { changes: "Changes how later posts are read.", visible_to: "Your Team.", budget_rows: [], retry: "Safe to repeat: the same values again.", undo: "Update it back." },
     errors: EDITOR,
@@ -160,7 +160,7 @@ const updateCmd = defineCommand({
 const deleteCmd = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete an incoming event: its URL stops working at once, and Motion steps waiting for it wait until their timeout.",
+    description: "Delete an incoming event: its URL stops working at once, and Campaign steps waiting for it wait until their timeout.",
     risk: "high",
     rules: {
       changes: "Deletes the URL; later posts answer 404.",
@@ -213,7 +213,7 @@ const captureCmd = defineCommand({
 });
 
 const arrivalsCmd = defineCommand({
-  meta: { name: "arrivals", description: "The latest posts to the URL: when, the event name, which Contact matched and how many Enrollments moved.", risk: "read", examples: ["curviate incoming arrivals inc_YOUR_INCOMING_ID"] },
+  meta: { name: "arrivals", description: "The latest posts to the URL: when, the event name, which Lead matched and how many Enrollments moved.", risk: "read", examples: ["curviate incoming arrivals inc_YOUR_INCOMING_ID"] },
   args: { ...readOnly(READ_SINGLE_FLAGS), id: ID },
   run: online(call("incomingEvents.arrivals", (c, f) => c.incomingEvents.arrivals(id(f)))),
 });

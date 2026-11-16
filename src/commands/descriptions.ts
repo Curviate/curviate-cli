@@ -10,21 +10,21 @@ export const DESCRIPTIONS = {
   login: "Save an API key to a local profile. Run `curviate core profile me` to verify.",
   config: "Manage CLI profiles and settings.",
   account: "LinkedIn account connection management.",
-  motion:
-    "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. " +
-    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate motion voice-clip`). " +
-    "Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
-  motionVoiceClip:
-    "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Motion that uses it is started. Uploads need the Automate plan.",
+  campaign:
+    "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. " +
+    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`). " +
+    "Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
+  campaignVoiceClip:
+    "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need the Automate plan.",
   enrollment:
-    "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
+    "Enrollments: one Lead in one Campaign on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
   lead:
     "Leads: the people in your Team's lists, not LinkedIn actions. List, read, add, change and delete them; import and export; enrich from LinkedIn profiles. " +
     "Subgroups: `curviate lead lists` (Lead lists, including combining lists), `curviate lead tags`, `curviate lead imports`. " +
     "Your Team's data: every role reads and writes; deleting is for Owners and Managers.",
   "do-not-contact":
-    "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. " +
+    "Do-not-contact: your Team's one list of people no Campaign contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. " +
     "Any member adds and imports; removing and exporting are for Owners and Managers.",
   billing: "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",
   contactImport: "Import Leads from a CSV, JSON or NDJSON file into a Lead list, splitting a large file into several imports.",
@@ -32,20 +32,20 @@ export const DESCRIPTIONS = {
   contactLists: "Lead lists: named sets of Leads a Campaign enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Leads.",
   contactTags: "Tags: labels on Leads. List, rename, delete, and add or remove one on Leads named by id or by filter.",
   unibox:
-    "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. " +
-    "An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
+    "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Campaign; refresh. " +
+    "An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Campaign chats.",
   network:
     "Network: each Account's LinkedIn Connections, synced and stored by Curviate. List, export, read the sync status, ask for a resync. " +
     "Your Team's data, for the Accounts you may operate.",
   analytics:
-    "Motion outcomes and the budget your Accounts used. Read-only; Motion numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
+    "Campaign outcomes and the budget your Accounts used. Read-only; Campaign numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
   export: "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
   tier: "Your Team's Tier now, what it bought, any trial, override or pending change, the features it includes, and early access. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners and Managers manage (a Manager invites Members only); every role reads.",
   incoming:
-    "Incoming events: a private URL any tool posts to. Curviate finds the Contact in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
+    "Incoming events: a private URL any tool posts to. Curviate finds the Lead in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
   beta: "Beta consent for your Team: whether beta operations run without --beta on each call. Owners change it.",
   webhook: "Webhook management and signature verification.",
   core:
@@ -66,7 +66,7 @@ export const DESCRIPTIONS = {
   group: "Read LinkedIn groups: your own membership list, one group's detail, and its member roster.",
   feed: "Read the connected account's LinkedIn home feed as agent-actionable posts.",
   notification:
-    "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. " +
+    "Curviate Notifications: an account that needs reconnecting, a paused Campaign, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. " +
     "LinkedIn's own notification cards are under `curviate core notification`.",
   coreNotification: "Read and act on LinkedIn notification cards. Curviate's own Notifications are `curviate notification`.",
   draft: "Drafts and scheduled posts.",

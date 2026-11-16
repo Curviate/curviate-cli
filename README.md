@@ -344,49 +344,49 @@ curviate core draft list --account none --all --json                            
 
 A scheduled post that fails to publish becomes a `failed` Draft with a `failure` code; any `curviate core draft update` on it clears the failure. Failed `outcome_unknown` means the post may be live: check the account's posts before retrying.
 
-## Motions and Enrollments
+## Campaigns and Enrollments
 
-A Motion runs one Sequence for the Contacts of your Contact lists, from its sending accounts, paced on a schedule. It is created as a draft and does nothing until you start it. An Enrollment is one Contact in one Motion on one account. Both belong to your team: `--account` is never read from your config for them.
+A Campaign runs one Sequence for the Leads of your Lead lists, from its sending accounts, paced on a schedule. It is created as a draft and does nothing until you start it. An Enrollment is one Lead in one Campaign on one account. Both belong to your team: `--account` is never read from your config for them.
 
-### 1. From a template to a running Motion
+### 1. From a template to a running Campaign
 
 ```bash
-curviate motion init --template connect-and-converse --output motion.json   # offline; fill contact_list_ids and account_ids
-curviate motion lint --file motion.json                                     # offline: the rules the API applies
-curviate motion create --file motion.json --json
-curviate motion preview mot_1 --sample 3 --json                             # rendered messages and the budget projection; spends nothing
-curviate motion start mot_1 --json
+curviate campaign init --template connect-and-converse --output campaign.json   # offline; fill lead_list_ids and account_ids
+curviate campaign lint --file campaign.json                                     # offline: the rules the API applies
+curviate campaign create --file campaign.json --json
+curviate campaign preview mot_1 --sample 3 --json                             # rendered messages and the budget projection; spends nothing
+curviate campaign start mot_1 --json
 ```
 
-`curviate motion lint` prints one line per finding, compiler style, and exits 2 on any error:
+`curviate campaign lint` prints one line per finding, compiler style, and exits 2 on any error:
 
 ```text
-motion.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
+campaign.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
 ```
 
-`curviate motion create` and `curviate motion update` check the same way before anything is sent. `curviate motion get mot_1 --json` prints a file `curviate motion update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
+`curviate campaign create` and `curviate campaign update` check the same way before anything is sent. `curviate campaign get mot_1 --json` prints a file `curviate campaign update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
 
 ### Voice notes in a Sequence
 
-A `voice.send` step plays an uploaded clip instead of text. Upload the file once, then put its id in the Sequence. Nothing reaches LinkedIn until you start the Motion.
+A `voice.send` step plays an uploaded clip instead of text. Upload the file once, then put its id in the Sequence. Nothing reaches LinkedIn until you start the Campaign.
 
 ```bash
-curviate motion voice-clip upload intro.mp3 --json      # {"id":"vc_...","duration_ms":42010,...}: 1 to 120 s, up to 20 MiB, 100 uploads per Team per 24 hours
-curviate motion voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
+curviate campaign voice-clip upload intro.mp3 --json      # {"id":"vc_...","duration_ms":42010,...}: 1 to 120 s, up to 20 MiB, 100 uploads per Team per 24 hours
+curviate campaign voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
 ```
 
 ```json
 { "id": "voice", "do": "voice.send", "with": { "clip_id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", "fallback": "Hi, thanks for connecting." }, "next": "end" }
 ```
 
-`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate motion lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Motion is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
+`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate campaign lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Campaign is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
 
 ### 2. Find and fix Enrollments
 
 ```bash
-curviate enrollment list --motion mot_1 --done-step opener --outcome failed --json
+curviate enrollment list --campaign mot_1 --done-step opener --outcome failed --json
 curviate enrollment retry enr_1 --json                  # only a failed Step; waits for the re-run and prints its outcome
-curviate enrollment bulk --action retry --motion mot_1 --done-step opener --outcome failed --json
+curviate enrollment bulk --action retry --campaign mot_1 --done-step opener --outcome failed --json
 curviate enrollment pause enr_1 --json
 curviate enrollment resume enr_1 --json                 # lifts your pause
 ```

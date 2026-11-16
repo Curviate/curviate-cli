@@ -17,7 +17,7 @@ type ExportFlags = RootFlags & { id?: string; output?: string };
 const ERRORS = {
   EXPORT_NOT_READY: "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
   EXPORT_EXPIRED: "the file has expired: run the export again.",
-  EXPORT_REMOVED: "the export was removed because a Contact was deleted: run it again.",
+  EXPORT_REMOVED: "the export was removed because a Lead was deleted: run it again.",
 };
 
 async function runGet(c: Curviate, f: ExportFlags): Promise<void> {

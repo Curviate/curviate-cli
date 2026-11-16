@@ -26,7 +26,7 @@ export const ANNOTATIONS = new Set(["description", "title", "default", "discrimi
 export function documentSchema(key: string): Schema {
   const s = (SCHEMAS as Record<string, Schema>)[key];
   if (!s) throw new Error(`no document schema for ${key}`);
-  return key === "motion create" || key === "motion update" ? withoutScheduleTimezone(s) : s;
+  return key === "campaign create" || key === "campaign update" ? withoutScheduleTimezone(s) : s;
 }
 
 /** The API still takes `schedule.timezone` and ignores it (hours read in each Account's zone): never offered, refused locally. */

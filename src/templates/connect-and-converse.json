@@ -13,7 +13,7 @@
       {
         "id": "has_post",
         "if": {
-          "contact.posted_within": "14d"
+          "lead.posted_within": "14d"
         },
         "then": "w_like",
         "else": "w_invite"

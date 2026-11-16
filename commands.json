@@ -1193,7 +1193,7 @@
         "account",
         "overview"
       ],
-      "description": "One Account's overview over a window: profile and status, latest metrics, outcomes so far (acceptance, reply, InMail reply), budget rows used today, its Motions, and flags with the next command to run. Each Contact counts once per Account.",
+      "description": "One Account's overview over a window: profile and status, latest metrics, outcomes so far (acceptance, reply, InMail reply), budget rows used today, its Campaigns, and flags with the next command to run. Each Lead counts once per Account.",
       "usageOnly": false,
       "args": [
         {
@@ -1204,7 +1204,7 @@
         {
           "name": "from",
           "type": "string",
-          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Campaign read (with or without --campaign) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
         },
         {
           "name": "to",
@@ -1227,19 +1227,19 @@
           "description": "Daily series grouping: auto, day, week or month."
         },
         {
-          "name": "motions",
+          "name": "campaigns",
           "type": "string",
-          "description": "Only these Motions, comma list (mot_...)."
+          "description": "Only these Campaigns, comma list (mot_...)."
         },
         {
           "name": "origin",
           "type": "string",
-          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+          "description": "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api."
         },
         {
           "name": "include",
           "type": "string",
-          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
+          "description": "Sections to return, comma list (for example performance,campaigns,accounts,steps,variants,paths,flags). forecast: what your Campaigns are expected to send and get per day from today, a simulation with their observed rates; Campaigns only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
         },
         {
           "name": "forecast-days",
@@ -1249,12 +1249,12 @@
         {
           "name": "sort",
           "type": "string",
-          "description": "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
+          "description": "Order of the Campaign and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
         },
         {
           "name": "limit",
           "type": "string",
-          "description": "How many Motions and Accounts to return."
+          "description": "How many Campaigns and Accounts to return."
         },
         {
           "name": "compare",
@@ -1493,7 +1493,7 @@
         "safety",
         "update"
       ],
-      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Motions and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+      "description": "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Campaigns and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Campaigns aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
       "usageOnly": false,
       "args": [
         {
@@ -1539,7 +1539,7 @@
         "budget_rows": [],
         "retry": "Safe: the same document leaves the same policy.",
         "undo": "Send the previous values, or null to fall back to the Team's default.",
-        "blast_radius": "One Account's pace, in every Motion and every direct action."
+        "blast_radius": "One Account's pace, in every Campaign and every direct action."
       },
       "errors": {
         "INVALID_REQUEST": "a field is unknown or not settable; the message names it."
@@ -1567,7 +1567,7 @@
         "team-access",
         "on"
       ],
-      "description": "Share the Account with its Team again (it does not rejoin a Motion). Only the person who connected it can.",
+      "description": "Share the Account with its Team again (it does not rejoin a Campaign). Only the person who connected it can.",
       "usageOnly": false,
       "args": [
         {
@@ -1615,7 +1615,7 @@
         "team-access",
         "off"
       ],
-      "description": "Keep the Account to its person: it leaves every Motion that held it and its queued enrichment visits are dropped. Only the person who connected it can.",
+      "description": "Keep the Account to its person: it leaves every Campaign that held it and its queued enrichment visits are dropped. Only the person who connected it can.",
       "usageOnly": false,
       "args": [
         {
@@ -1643,11 +1643,11 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "The Team loses the Account; it leaves every Motion that held it.",
+        "changes": "The Team loses the Account; it leaves every Campaign that held it.",
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "Safe to repeat: the switch ends in the same state.",
-        "undo": "Run `curviate account team-access on <account>`, then add it back to its Motions."
+        "undo": "Run `curviate account team-access on <account>`, then add it back to its Campaigns."
       },
       "errors": {
         "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
@@ -1659,9 +1659,9 @@
     },
     {
       "path": [
-        "motion"
+        "campaign"
       ],
-      "description": "Motions: one Sequence run for the Contacts of your Team's Contact lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Contacts; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate motion voice-clip`). Your Team's data: every role reads; writes need motion-send on each sending Account, and Motions need the Automate plan.",
+      "description": "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`). Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -1670,16 +1670,16 @@
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "list"
       ],
-      "description": "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. A cursor belongs to its sort.",
+      "description": "List your Team's Campaigns, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate campaign get <campaign_id>`. A cursor belongs to its sort.",
       "usageOnly": false,
       "args": [
         {
           "name": "accounts",
           "type": "string",
-          "description": "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
+          "description": "Only Campaigns sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter."
         },
         {
           "name": "sort",
@@ -1710,25 +1710,25 @@
         "beta"
       ],
       "examples": [
-        "curviate motion list",
-        "curviate motion list --status active,paused",
-        "curviate motion list --accounts acc_A,acc_B --sort activity"
+        "curviate campaign list",
+        "curviate campaign list --status active,paused",
+        "curviate campaign list --accounts acc_A,acc_B --sort activity"
       ],
       "requires": [],
       "risk": "read"
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "get"
       ],
-      "description": "One Motion with its current Sequence and lint warnings. With --version, that Sequence version instead, and how many Enrollments still run on it.",
+      "description": "One Campaign with its current Sequence and lint warnings. With --version, that Sequence version instead, and how many Enrollments still run on it.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         },
         {
           "name": "version",
@@ -1749,21 +1749,21 @@
         "beta"
       ],
       "examples": [
-        "curviate motion get mot_YOUR_MOTION_ID",
-        "curviate motion get mot_YOUR_MOTION_ID --version 1"
+        "curviate campaign get mot_YOUR_CAMPAIGN_ID",
+        "curviate campaign get mot_YOUR_CAMPAIGN_ID --version 1"
       ],
       "requires": [],
       "risk": "read",
       "output": [
-        "The full Motion, pasteable: `curviate motion create --file -` and `curviate motion update <motion_id> --file -` accept it as is, dropping the keys Curviate sets."
+        "The full Campaign, pasteable: `curviate campaign create --file -` and `curviate campaign update <campaign_id> --file -` accept it as is, dropping the keys Curviate sets."
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "create"
       ],
-      "description": "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's weight in each Account's budgets: 1 or 1.5, on every budget; every Motion with work due still progresses and no limit is passed. Needs Automate.",
+      "description": "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1771,7 +1771,7 @@
           "type": "string",
           "stdinArg": true,
           "required": true,
-          "description": "The Motion file: a path, or - to read it from stdin. `curviate motion get` output is accepted as is."
+          "description": "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is."
         }
       ],
       "globals": [
@@ -1788,55 +1788,55 @@
         "beta"
       ],
       "examples": [
-        "curviate motion create --file motion.json",
-        "curviate motion create --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"contact_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
+        "curviate campaign create --file campaign.json",
+        "curviate campaign create --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
       ],
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
+        "changes": "Creates a draft Campaign. No Lead is enrolled and nothing reaches LinkedIn until it is started.",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "A retry creates a second draft: list with `curviate motion list --status draft` first.",
-        "undo": "`curviate motion delete <motion_id>` deletes a draft."
+        "retry": "A retry creates a second draft: list with `curviate campaign list --status draft` first.",
+        "undo": "`curviate campaign delete <campaign_id>` deletes a draft."
       },
       "errors": {
-        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate motion lint` prints them.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Motions need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need the Automate plan."
       },
       "seeAlso": [
-        "curviate motion lint",
-        "curviate motion init",
-        "curviate motion preview"
+        "curviate campaign lint",
+        "curviate campaign init",
+        "curviate campaign preview"
       ],
-      "document": "motion create"
+      "document": "campaign create"
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "update"
       ],
-      "description": "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Motion 1 or 1.5 in each Account's budgets, on every budget (every Motion with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
+      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         },
         {
           "name": "file",
           "type": "string",
           "stdinArg": true,
           "required": true,
-          "description": "The Motion file: a path, or - to read it from stdin. `curviate motion get` output is accepted as is."
+          "description": "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is."
         },
         {
           "name": "if-revision",
           "type": "string",
-          "description": "The sequence_revision you read (`curviate motion get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins."
+          "description": "The sequence_revision you read (`curviate campaign get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins."
         }
       ],
       "globals": [
@@ -1853,43 +1853,43 @@
         "beta"
       ],
       "examples": [
-        "curviate motion update mot_YOUR_MOTION_ID --file motion.json --if-revision 3",
-        "curviate motion update mot_YOUR_MOTION_ID --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"contact_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
+        "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
+        "curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
       ],
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
-        "visible_to": "Your Team, and the Contacts its next Steps reach.",
+        "changes": "Changes the Campaign. A running Campaign picks the change up at each Enrollment's next Step.",
+        "visible_to": "Your Team, and the Leads its next Steps reach.",
         "budget_rows": [],
         "retry": "Safe: the same file sends the same change. Without --if-revision the last save wins.",
-        "undo": "Send the previous file again (`curviate motion get <motion_id> --version <n>` reads an earlier Sequence)."
+        "undo": "Send the previous file again (`curviate campaign get <campaign_id> --version <n>` reads an earlier Sequence)."
       },
       "errors": {
-        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate motion lint` prints them.",
+        "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them.",
         "SEQUENCE_CONFLICT": "with --if-revision: someone saved the Sequence since that revision; the message names the newer revision and who saved it.",
-        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, cannot change.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, cannot change.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
-        "curviate motion get",
-        "curviate motion lint"
+        "curviate campaign get",
+        "curviate campaign lint"
       ],
-      "document": "motion update"
+      "document": "campaign update"
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "start"
       ],
-      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
+      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         }
       ],
       "globals": [
@@ -1906,42 +1906,42 @@
         "beta"
       ],
       "examples": [
-        "curviate motion start mot_YOUR_MOTION_ID"
+        "curviate campaign start mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
-        "visible_to": "The Contacts each Step reaches on LinkedIn.",
+        "changes": "The Campaign starts enrolling its Leads and running its Steps from its sending Accounts, paced on its schedule.",
+        "visible_to": "The Leads each Step reaches on LinkedIn.",
         "budget_rows": [],
-        "retry": "A retry on a started Motion answers MOTION_STATUS_CONFLICT; nothing runs twice.",
-        "undo": "`curviate motion pause <motion_id>` stops new Steps; what was sent stays sent.",
-        "blast_radius": "Every Contact of its Contact lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`)."
+        "retry": "A retry on a started Campaign answers CAMPAIGN_STATUS_CONFLICT; nothing runs twice.",
+        "undo": "`curviate campaign pause <campaign_id>` stops new Steps; what was sent stays sent.",
+        "blast_radius": "Every Lead of its Lead lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`)."
       },
       "errors": {
-        "MOTION_NOT_STARTABLE": "a gap stops it (Contact list, sending Account, Sequence); each is listed.",
-        "MOTION_STATUS_CONFLICT": "only a draft starts.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_NOT_STARTABLE": "a gap stops it (Lead list, sending Account, Sequence); each is listed.",
+        "CAMPAIGN_STATUS_CONFLICT": "only a draft starts.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Motions need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need the Automate plan."
       },
       "seeAlso": [
-        "curviate motion preview",
-        "curviate motion pause"
+        "curviate campaign preview",
+        "curviate campaign pause"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "pause"
       ],
-      "description": "Pause an active or scheduled Motion: no Step runs until it is resumed. Waits keep their time.",
+      "description": "Pause an active or scheduled Campaign: no Step runs until it is resumed. Waits keep their time.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         }
       ],
       "globals": [
@@ -1958,39 +1958,39 @@
         "beta"
       ],
       "examples": [
-        "curviate motion pause mot_YOUR_MOTION_ID"
+        "curviate campaign pause mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "No Step of the Motion runs while it is paused.",
+        "changes": "No Step of the Campaign runs while it is paused.",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "Safe: a paused Motion answers MOTION_STATUS_CONFLICT.",
-        "undo": "`curviate motion resume <motion_id>`."
+        "retry": "Safe: a paused Campaign answers CAMPAIGN_STATUS_CONFLICT.",
+        "undo": "`curviate campaign resume <campaign_id>`."
       },
       "errors": {
-        "MOTION_STATUS_CONFLICT": "only an active or scheduled Motion pauses.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_STATUS_CONFLICT": "only an active or scheduled Campaign pauses.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
-        "curviate motion get",
+        "curviate campaign get",
         "curviate enrollment list"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "resume"
       ],
-      "description": "Resume a paused Motion. Runs the start checks again. Needs Automate.",
+      "description": "Resume a paused Campaign. Runs the start checks again. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         }
       ],
       "globals": [
@@ -2007,42 +2007,42 @@
         "beta"
       ],
       "examples": [
-        "curviate motion resume mot_YOUR_MOTION_ID"
+        "curviate campaign resume mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "The Motion's Steps run again from its sending Accounts.",
-        "visible_to": "The Contacts each Step reaches on LinkedIn.",
+        "changes": "The Campaign's Steps run again from its sending Accounts.",
+        "visible_to": "The Leads each Step reaches on LinkedIn.",
         "budget_rows": [],
-        "retry": "A retry on a running Motion answers MOTION_STATUS_CONFLICT.",
-        "undo": "`curviate motion pause <motion_id>`; what was sent stays sent.",
-        "blast_radius": "Every open Enrollment of the Motion."
+        "retry": "A retry on a running Campaign answers CAMPAIGN_STATUS_CONFLICT.",
+        "undo": "`curviate campaign pause <campaign_id>`; what was sent stays sent.",
+        "blast_radius": "Every open Enrollment of the Campaign."
       },
       "errors": {
-        "MOTION_NOT_STARTABLE": "a gap stops it; each is listed.",
-        "MOTION_STATUS_CONFLICT": "only a paused Motion resumes.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_NOT_STARTABLE": "a gap stops it; each is listed.",
+        "CAMPAIGN_STATUS_CONFLICT": "only a paused Campaign resumes.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Motions need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need the Automate plan."
       },
       "seeAlso": [
-        "curviate motion get",
+        "curviate campaign get",
         "curviate enrollment list"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "archive"
       ],
-      "description": "Archive a Motion: its open Enrollments end (motion_archived) and it never runs again.",
+      "description": "Archive a Campaign: its open Enrollments end (campaign_archived) and it never runs again.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         }
       ],
       "globals": [
@@ -2059,40 +2059,40 @@
         "beta"
       ],
       "examples": [
-        "curviate motion archive mot_YOUR_MOTION_ID"
+        "curviate campaign archive mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "Ends every open Enrollment and freezes the Motion.",
+        "changes": "Ends every open Enrollment and freezes the Campaign.",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "A retry answers MOTION_STATUS_CONFLICT.",
-        "undo": "Cannot be undone. Create a new Motion from `curviate motion get <motion_id>` output.",
-        "blast_radius": "Every open Enrollment of the Motion."
+        "retry": "A retry answers CAMPAIGN_STATUS_CONFLICT.",
+        "undo": "Cannot be undone. Create a new Campaign from `curviate campaign get <campaign_id>` output.",
+        "blast_radius": "Every open Enrollment of the Campaign."
       },
       "errors": {
-        "MOTION_STATUS_CONFLICT": "already archived.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_STATUS_CONFLICT": "already archived.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
-        "curviate motion get",
+        "curviate campaign get",
         "curviate enrollment list"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "delete"
       ],
-      "description": "Delete a draft Motion with its Sequence versions. Any other status: archive it instead.",
+      "description": "Delete a draft Campaign with its Sequence versions. Any other status: archive it instead.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         }
       ],
       "globals": [
@@ -2109,7 +2109,7 @@
         "beta"
       ],
       "examples": [
-        "curviate motion delete mot_YOUR_MOTION_ID"
+        "curviate campaign delete mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "high",
@@ -2118,42 +2118,42 @@
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "A retry answers RESOURCE_NOT_FOUND.",
-        "undo": "Cannot be undone. Keep `curviate motion get <motion_id>` output to create it again.",
-        "blast_radius": "One draft Motion; it has no Enrollments."
+        "undo": "Cannot be undone. Keep `curviate campaign get <campaign_id>` output to create it again.",
+        "blast_radius": "One draft Campaign; it has no Enrollments."
       },
       "errors": {
-        "RESOURCE_NOT_FOUND": "no Motion with this id.",
-        "MOTION_STATUS_CONFLICT": "only a draft is deleted; archive the others.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "RESOURCE_NOT_FOUND": "no Campaign with this id.",
+        "CAMPAIGN_STATUS_CONFLICT": "only a draft is deleted; archive the others.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
-        "curviate motion archive",
-        "curviate motion list"
+        "curviate campaign archive",
+        "curviate campaign list"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "preview"
       ],
-      "description": "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
+      "description": "What the Campaign would do, in any status: every path through its Sequence, rendered messages for sampled or named Leads, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         },
         {
           "name": "sample",
           "type": "string",
-          "description": "How many Contacts to render (default 5)."
+          "description": "How many Leads to render (default 5)."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
-          "description": "A Contact id (con_...) to render; repeatable, or a comma list. Not with --sample."
+          "description": "A Lead id (con_...) to render; repeatable, or a comma list. Not with --sample."
         }
       ],
       "globals": [
@@ -2169,35 +2169,35 @@
         "beta"
       ],
       "examples": [
-        "curviate motion preview mot_YOUR_MOTION_ID",
-        "curviate motion preview mot_YOUR_MOTION_ID --sample 3"
+        "curviate campaign preview mot_YOUR_CAMPAIGN_ID",
+        "curviate campaign preview mot_YOUR_CAMPAIGN_ID --sample 3"
       ],
       "requires": [],
       "risk": "read"
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "add"
       ],
-      "description": "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate.",
+      "description": "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
           "name": "account",
           "type": "string",
-          "description": "Enroll them on this sending Account of the Motion (acc_...). Never defaulted: omit it and Curviate assigns one."
+          "description": "Enroll them on this sending Account of the Campaign (acc_...). Never defaulted: omit it and Curviate assigns one."
         },
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
           "required": true,
-          "description": "A Contact id (con_...); repeatable, or a comma list."
+          "description": "A Lead id (con_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -2213,22 +2213,22 @@
         "beta"
       ],
       "examples": [
-        "curviate motion add mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID",
-        "curviate motion add mot_YOUR_MOTION_ID --contact con_A,con_B --account acc_YOUR_ACCOUNT_ID"
+        "curviate campaign add mot_YOUR_CAMPAIGN_ID --lead con_YOUR_LEAD_ID",
+        "curviate campaign add mot_YOUR_CAMPAIGN_ID --lead con_A,con_B --account acc_YOUR_ACCOUNT_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "Each queued Contact becomes a pending Enrollment; a running Motion reaches it on its schedule.",
-        "visible_to": "Your Team now; the Contacts once their Steps run.",
+        "changes": "Each queued Lead becomes a pending Enrollment; a running Campaign reaches it on its schedule.",
+        "visible_to": "Your Team now; the Leads once their Steps run.",
         "budget_rows": [],
-        "retry": "Safe: a Contact already in the Motion answers already_enrolled. After a failed request, send the ids from the failed one on.",
-        "undo": "`curviate motion remove <motion_id> --contact <contact_id>`; what was sent stays sent.",
-        "blast_radius": "Every Contact given."
+        "retry": "Safe: a Lead already in the Campaign answers already_enrolled. After a failed request, send the ids from the failed one on.",
+        "undo": "`curviate campaign remove <campaign_id> --lead <lead_id>`; what was sent stays sent.",
+        "blast_radius": "Every Lead given."
       },
       "errors": {
-        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, takes no Contacts.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, takes no Leads.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2237,22 +2237,22 @@
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "remove"
       ],
-      "description": "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
+      "description": "Take Leads out of the Campaign: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Motion id (mot_...)."
+          "description": "Campaign id (mot_...)."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
           "required": true,
-          "description": "A Contact id (con_...); repeatable, or a comma list."
+          "description": "A Lead id (con_...); repeatable, or a comma list."
         }
       ],
       "globals": [
@@ -2269,21 +2269,21 @@
         "beta"
       ],
       "examples": [
-        "curviate motion remove mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID"
+        "curviate campaign remove mot_YOUR_CAMPAIGN_ID --lead con_YOUR_LEAD_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "Ends each named Contact's open Enrollments in the Motion (removed).",
+        "changes": "Ends each named Lead's open Enrollments in the Campaign (removed).",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "Safe: a Contact no longer in the Motion is listed in not_found.",
-        "undo": "`curviate motion add <motion_id> --contact <contact_id>` enrolls it again.",
-        "blast_radius": "Every Contact given."
+        "retry": "Safe: a Lead no longer in the Campaign is listed in not_found.",
+        "undo": "`curviate campaign add <campaign_id> --lead <lead_id>` enrolls it again.",
+        "blast_radius": "Every Lead given."
       },
       "errors": {
-        "MOTION_STATUS_CONFLICT": "an archived Motion, or one past its end, takes no Contacts.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, takes no Leads.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2292,10 +2292,10 @@
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "lint"
       ],
-      "description": "Check a Sequence offline with the rules the API applies: a Motion file (its sequence) or a bare Sequence document. One line per finding, `<file>:<line>:<col> error|warning <code> <path>: <message>. <hint> -> <docs_url>`; exit 2 on any error, 0 otherwise.",
+      "description": "Check a Sequence offline with the rules the API applies: a Campaign file (its sequence) or a bare Sequence document. One line per finding, `<file>:<line>:<col> error|warning <code> <path>: <message>. <hint> -> <docs_url>`; exit 2 on any error, 0 otherwise.",
       "usageOnly": false,
       "args": [
         {
@@ -2303,14 +2303,14 @@
           "type": "string",
           "stdinArg": true,
           "required": true,
-          "description": "A Motion file or a Sequence document: a path, or - to read it from stdin."
+          "description": "A Campaign file or a Sequence document: a path, or - to read it from stdin."
         }
       ],
       "globals": [
         "json"
       ],
       "examples": [
-        "curviate motion lint --file motion.json"
+        "curviate campaign lint --file campaign.json"
       ],
       "requires": [],
       "risk": "read",
@@ -2325,10 +2325,10 @@
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "init"
       ],
-      "description": "Write a Motion file from a template (connect-and-converse, engage-then-connect, nurture-connections). Fill contact_list_ids and account_ids, then create it.",
+      "description": "Write a Campaign file from a template (connect-and-converse, engage-then-connect, nurture-connections). Fill lead_list_ids and account_ids, then create it.",
       "usageOnly": false,
       "args": [
         {
@@ -2346,7 +2346,7 @@
       ],
       "globals": [],
       "examples": [
-        "curviate motion init --template connect-and-converse --output motion.json"
+        "curviate campaign init --template connect-and-converse --output campaign.json"
       ],
       "requires": [],
       "risk": "read",
@@ -2356,15 +2356,15 @@
         ]
       },
       "output": [
-        "The Motion file on stdout, or in the --output file."
+        "The Campaign file on stdout, or in the --output file."
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "voice-clip"
       ],
-      "description": "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Motion that uses it is started. Uploads need the Automate plan.",
+      "description": "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need the Automate plan.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2373,7 +2373,7 @@
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "voice-clip",
         "upload"
       ],
@@ -2401,13 +2401,13 @@
         "beta"
       ],
       "examples": [
-        "curviate motion voice-clip upload intro.mp3",
-        "curviate motion voice-clip upload intro.m4a --preview"
+        "curviate campaign voice-clip upload intro.mp3",
+        "curviate campaign voice-clip upload intro.m4a --preview"
       ],
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Stores one converted clip for your Team. No Motion changes and nothing is sent to anyone.",
+        "changes": "Stores one converted clip for your Team. No Campaign changes and nothing is sent to anyone.",
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "A retry stores a second clip (it counts toward the 24-hour cap); an unused clip is deleted 30 days after its upload.",
@@ -2421,18 +2421,18 @@
         "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
         "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
         "TIER_REQUIRED": "Voice clips need the Automate plan.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Motion.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
-        "curviate motion voice-clip get",
-        "curviate motion lint",
-        "curviate motion create"
+        "curviate campaign voice-clip get",
+        "curviate campaign lint",
+        "curviate campaign create"
       ]
     },
     {
       "path": [
-        "motion",
+        "campaign",
         "voice-clip",
         "get"
       ],
@@ -2458,7 +2458,7 @@
         "beta"
       ],
       "examples": [
-        "curviate motion voice-clip get vc_YOUR_CLIP_ID"
+        "curviate campaign voice-clip get vc_YOUR_CLIP_ID"
       ],
       "requires": [],
       "risk": "read"
@@ -2467,7 +2467,7 @@
       "path": [
         "enrollment"
       ],
-      "description": "Enrollments: one Contact in one Motion on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
+      "description": "Enrollments: one Lead in one Campaign on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. Your Team's data: every role reads; writes need operate on the Enrollment's Account.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2479,18 +2479,18 @@
         "enrollment",
         "list"
       ],
-      "description": "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account. A pending Enrollment waiting in its Motion's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
+      "description": "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
       "usageOnly": false,
       "args": [
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Only this Motion's Enrollments (mot_...)."
+          "description": "Only this Campaign's Enrollments (mot_...)."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
-          "description": "Only this Contact's Enrollments (con_...)."
+          "description": "Only this Lead's Enrollments (con_...)."
         },
         {
           "name": "status",
@@ -2530,7 +2530,7 @@
         {
           "name": "relationship",
           "type": "string",
-          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Lead's relationship to the Account when it started."
         },
         {
           "name": "accounts",
@@ -2556,9 +2556,9 @@
         "beta"
       ],
       "examples": [
-        "curviate enrollment list --motion mot_YOUR_MOTION_ID",
-        "curviate enrollment list --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed",
-        "curviate enrollment list --motion mot_YOUR_MOTION_ID --reason already_connected,known_chat --relationship connected"
+        "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID",
+        "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID --done-step opener --outcome failed",
+        "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID --reason already_connected,known_chat --relationship connected"
       ],
       "requires": [],
       "risk": "read",
@@ -2640,7 +2640,7 @@
       "errors": {
         "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
         "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
-        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "CAMPAIGN_STATUS_CONFLICT": "the Campaign is archived or past its end.",
         "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
         "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
       }
@@ -2685,16 +2685,16 @@
       "risk": "high",
       "rules": {
         "changes": "The Enrollment runs again from its Account; with --at, from the named Step.",
-        "visible_to": "The Contact, once its next Step reaches LinkedIn.",
+        "visible_to": "The Lead, once its next Step reaches LinkedIn.",
         "budget_rows": [],
         "retry": "With --at, every call jumps again and may send again: read `curviate enrollment get <enrollment_id>` first.",
         "undo": "`curviate enrollment pause <enrollment_id>`; what was sent stays sent.",
-        "blast_radius": "One Enrollment: one Contact, from one Account."
+        "blast_radius": "One Enrollment: one Lead, from one Account."
       },
       "errors": {
         "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
         "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
-        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "CAMPAIGN_STATUS_CONFLICT": "the Campaign is archived or past its end.",
         "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
         "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
       },
@@ -2743,7 +2743,7 @@
       "risk": "high",
       "rules": {
         "changes": "Resumes the Enrollment at its failed Step, which runs again when its Account may send.",
-        "visible_to": "The Contact, if the Step reaches LinkedIn.",
+        "visible_to": "The Lead, if the Step reaches LinkedIn.",
         "budget_rows": [],
         "retry": "Safe: with nothing failed it answers NOTHING_TO_RETRY and sends nothing.",
         "undo": "`curviate enrollment pause <enrollment_id>` before the Step runs; what was sent stays sent.",
@@ -2756,7 +2756,7 @@
         "NOTHING_TO_RETRY": "nothing to retry: the Enrollment's latest Step outcome is not failed.",
         "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
         "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
-        "MOTION_STATUS_CONFLICT": "the Motion is archived or past its end.",
+        "CAMPAIGN_STATUS_CONFLICT": "the Campaign is archived or past its end.",
         "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
         "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
       },
@@ -2815,7 +2815,7 @@
         "enrollment",
         "event"
       ],
-      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook. Needs Automate.",
+      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -2849,7 +2849,7 @@
       "risk": "write",
       "rules": {
         "changes": "Records the event; a Step waiting for it continues. Fires no webhook.",
-        "visible_to": "Your Team; the Contact once the next Step runs.",
+        "visible_to": "Your Team; the Lead once the next Step runs.",
         "budget_rows": [],
         "retry": "A second event is recorded again; a Step already past the wait ignores it.",
         "undo": "Cannot be undone; pause or stop the Enrollment to keep its next Step from running."
@@ -2900,7 +2900,7 @@
       "risk": "write",
       "rules": {
         "changes": "Records the event; a Step waiting for it continues. Fires no webhook.",
-        "visible_to": "Your Team; the Contact once the next Step runs.",
+        "visible_to": "Your Team; the Lead once the next Step runs.",
         "budget_rows": [],
         "retry": "A second event is recorded again; a Step already past the wait ignores it.",
         "undo": "Cannot be undone; pause or stop the Enrollment to keep its next Step from running."
@@ -2917,14 +2917,14 @@
         "enrollment",
         "reassign"
       ],
-      "description": "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
+      "description": "Move an Enrollment to another sending Account of its Campaign; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
           "name": "account",
           "type": "string",
           "required": true,
-          "description": "The target sending Account of the Motion (acc_...). Never defaulted."
+          "description": "The target sending Account of the Campaign (acc_...). Never defaulted."
         },
         {
           "name": "id",
@@ -2951,25 +2951,25 @@
       "risk": "high",
       "rules": {
         "changes": "The Enrollment restarts on the target Account; Steps already skipped are named in warnings.",
-        "visible_to": "The Contact, once the target Account's first Step reaches LinkedIn.",
+        "visible_to": "The Lead, once the target Account's first Step reaches LinkedIn.",
         "budget_rows": [],
         "retry": "A second call to the same Account answers ALREADY_ENROLLED_ON_ACCOUNT.",
         "undo": "Reassign it back while the target has not engaged the person yet.",
-        "blast_radius": "One Enrollment: one Contact, from one Account."
+        "blast_radius": "One Enrollment: one Lead, from one Account."
       },
       "errors": {
-        "ACCOUNT_NOT_FOUND": "the target is not a sending Account of the Motion.",
+        "ACCOUNT_NOT_FOUND": "the target is not a sending Account of the Campaign.",
         "ENROLLMENT_NOT_ACTIVE": "the Enrollment's status does not take this operation.",
         "STEP_IN_FLIGHT": "a Step of the Enrollment is being sent right now; read it again in a minute, then retry.",
         "ACCOUNT_ALREADY_ENGAGED": "its current Account already did something the person can see.",
-        "ALREADY_ENROLLED_ON_ACCOUNT": "the target already holds this Contact in the Motion, or is the current Account.",
+        "ALREADY_ENROLLED_ON_ACCOUNT": "the target already holds this Lead in the Campaign, or is the current Account.",
         "KNOWN_CHAT": "the target already has a chat with the person.",
         "INSUFFICIENT_ROLE": "your role cannot operate the Enrollment's Account.",
         "ACCOUNT_NOT_SHARED": "the Enrollment's Account is not shared with you."
       },
       "seeAlso": [
         "curviate enrollment get",
-        "curviate motion get"
+        "curviate campaign get"
       ]
     },
     {
@@ -2977,7 +2977,7 @@
         "enrollment",
         "bulk"
       ],
-      "description": "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
+      "description": "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --campaign and the list filters. Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
       "usageOnly": false,
       "args": [
         {
@@ -2994,17 +2994,17 @@
         {
           "name": "id",
           "type": "string",
-          "description": "An Enrollment id (enr_...); repeatable, or a comma list. Not with --motion."
+          "description": "An Enrollment id (enr_...); repeatable, or a comma list. Not with --campaign."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Act on this Motion's Enrollments (mot_...) that the other filters match. Not with --id."
+          "description": "Act on this Campaign's Enrollments (mot_...) that the other filters match. Not with --id."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
-          "description": "Only this Contact's Enrollments (con_...)."
+          "description": "Only this Lead's Enrollments (con_...)."
         },
         {
           "name": "status",
@@ -3044,7 +3044,7 @@
         {
           "name": "relationship",
           "type": "string",
-          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started."
+          "description": "Comma list of connected, not_connected, invite_pending, unknown: the Lead's relationship to the Account when it started."
         },
         {
           "name": "at",
@@ -3071,17 +3071,17 @@
       ],
       "examples": [
         "curviate enrollment bulk --action stop --id enr_A,enr_B",
-        "curviate enrollment bulk --action retry --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed"
+        "curviate enrollment bulk --action retry --campaign mot_YOUR_CAMPAIGN_ID --done-step opener --outcome failed"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
         "changes": "Each Enrollment gets the action as its single command would.",
-        "visible_to": "The Contacts whose next Step reaches LinkedIn.",
+        "visible_to": "The Leads whose next Step reaches LinkedIn.",
         "budget_rows": [],
         "retry": "A retried call is a new call: each Enrollment answers again on its own (a second stop is ENROLLMENT_NOT_ACTIVE for it).",
         "undo": "Per Enrollment, as its single command says; what was sent stays sent.",
-        "blast_radius": "Up to 1000 items (Enrollments), every Contact and Account they cover."
+        "blast_radius": "Up to 1000 items (Enrollments), every Lead and Account they cover."
       },
       "output": [
         "One line per Enrollment, `<enrollment_id> ok` or `<enrollment_id> error <code>: <message>`; with --json (or piped) the API's answer. Exit 0 when every one is ok, else the first refusal's exit."
@@ -5032,7 +5032,7 @@
       "path": [
         "do-not-contact"
       ],
-      "description": "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. Any member adds and imports; removing and exporting are for Owners and Managers.",
+      "description": "Do-not-contact: your Team's one list of people no Campaign contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. Any member adds and imports; removing and exporting are for Owners and Managers.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5382,7 +5382,7 @@
       "path": [
         "unibox"
       ],
-      "description": "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Motion; refresh. An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Motion chats.",
+      "description": "Unibox: one inbox over the chats of every Account you may operate, served from Curviate's store. List, read and count chats; reply, mark, tag the person, enroll them in a Campaign; refresh. An Account shows its whole inbox only with Sync full inbox, which its own person turns on (`curviate unibox consent`); otherwise only its Campaign chats.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5394,7 +5394,7 @@
         "unibox",
         "list"
       ],
-      "description": "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. An Account without full-inbox sync shows only its Motion chats; a disconnected Account's chats are listed read-only.",
+      "description": "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only.",
       "usageOnly": false,
       "args": [
         {
@@ -5408,19 +5408,19 @@
           "description": "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Only chats linked to these Motions (mot_...), repeatable or a comma list; `none` for chats no Motion links."
+          "description": "Only chats linked to these Campaigns (mot_...), repeatable or a comma list; `none` for chats no Campaign links."
         },
         {
           "name": "person",
           "type": "string",
-          "description": "Only chats with this person: a Contact id (con_...) or a LinkedIn id (ACo...)."
+          "description": "Only chats with this person: a Lead id (con_...) or a LinkedIn id (ACo...)."
         },
         {
           "name": "tag",
           "type": "string",
-          "description": "Only chats whose Contact has this tag; repeatable or a comma list."
+          "description": "Only chats whose Lead has this tag; repeatable or a comma list."
         },
         {
           "name": "unread",
@@ -5466,12 +5466,12 @@
       ],
       "examples": [
         "curviate unibox list --unread",
-        "curviate unibox list --person con_YOUR_CONTACT_ID --motion none --total"
+        "curviate unibox list --person con_YOUR_LEAD_ID --campaign none --total"
       ],
       "requires": [],
       "risk": "read",
       "output": [
-        "A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Motion and tags; with --total the count of matching chats. --json (or piped) prints the API page."
+        "A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Campaign and tags; with --total the count of matching chats. --json (or piped) prints the API page."
       ]
     },
     {
@@ -5479,7 +5479,7 @@
         "unibox",
         "get"
       ],
-      "description": "One chat as the Unibox lists it, with `marked_unread` ({origin, at}, or null) and its Motion context.",
+      "description": "One chat as the Unibox lists it, with `marked_unread` ({origin, at}, or null) and its Campaign context.",
       "usageOnly": false,
       "args": [
         {
@@ -5549,7 +5549,7 @@
         "unibox",
         "messages"
       ],
-      "description": "Read one chat's messages, newest first. Each message carries `origin` when known: motion, unibox, api or linkedin.",
+      "description": "Read one chat's messages, newest first. Each message carries `origin` when known: campaign, unibox, api or linkedin.",
       "usageOnly": false,
       "args": [
         {
@@ -5711,7 +5711,7 @@
         "unibox",
         "tag"
       ],
-      "description": "Save the other person of a one-to-one chat as a Contact (or find the one you hold) and add tags, never removing any. Needs Automate.",
+      "description": "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5727,7 +5727,7 @@
         {
           "name": "tag",
           "type": "string",
-          "description": "A tag to add; repeatable or a comma list. Omit to only save the Contact."
+          "description": "A tag to add; repeatable or a comma list. Omit to only save the Lead."
         }
       ],
       "globals": [
@@ -5749,11 +5749,11 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "Creates or finds the Contact and adds the tags.",
+        "changes": "Creates or finds the Lead and adds the tags.",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "Safe to repeat: the same Contact, tags already there stay.",
-        "undo": "Remove the tags or the Contact with `curviate contact`."
+        "retry": "Safe to repeat: the same Lead, tags already there stay.",
+        "undo": "Remove the tags or the Lead with `curviate lead`."
       },
       "errors": {
         "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
@@ -5765,7 +5765,7 @@
         "unibox",
         "enroll"
       ],
-      "description": "Save the other person of a one-to-one chat as a Contact and enroll them in a Motion through this chat's Account (one of its sending Accounts). A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
+      "description": "Save the other person of a one-to-one chat as a Lead and enroll them in a Campaign through this chat's Account (one of its sending Accounts). A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5779,10 +5779,10 @@
           "description": "The chat id, as `curviate unibox list` prints it."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
           "required": true,
-          "description": "The Motion (mot_...)."
+          "description": "The Campaign (mot_...)."
         }
       ],
       "globals": [
@@ -5799,12 +5799,12 @@
         "beta"
       ],
       "examples": [
-        "curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --motion mot_YOUR_MOTION_ID"
+        "curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --campaign mot_YOUR_CAMPAIGN_ID"
       ],
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "Creates the Enrollment; the Motion's Steps run for this person from this Account.",
+        "changes": "Creates the Enrollment; the Campaign's Steps run for this person from this Account.",
         "visible_to": "The person, once a Step reaches LinkedIn.",
         "budget_rows": [],
         "retry": "A second call answers that the person is already enrolled.",
@@ -5814,7 +5814,7 @@
       "errors": {
         "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
         "CHAT_NOT_ONE_TO_ONE": "the chat is a group chat: there is no one person to save.",
-        "ALREADY_ENROLLED_ON_ACCOUNT": "the person is already in this Motion on this Account."
+        "ALREADY_ENROLLED_ON_ACCOUNT": "the person is already in this Campaign on this Account."
       },
       "seeAlso": [
         "curviate enrollment get"
@@ -5825,7 +5825,7 @@
         "unibox",
         "refresh"
       ],
-      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
+      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Campaign conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -5897,7 +5897,7 @@
         "unibox",
         "consent"
       ],
-      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Motion chats at once and deletes them shortly after.",
+      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Campaign chats at once and deletes them shortly after.",
       "usageOnly": false,
       "args": [
         {
@@ -5935,7 +5935,7 @@
       "requires": [],
       "risk": "high",
       "rules": {
-        "changes": "Copies the Account's whole inbox into the Unibox (on), or removes the non-Motion chats from it (off).",
+        "changes": "Copies the Account's whole inbox into the Unibox (on), or removes the non-Campaign chats from it (off).",
         "visible_to": "Your Team: every teammate who may operate the Account reads its whole inbox while on.",
         "budget_rows": [
           "inbox_sync"
@@ -6177,7 +6177,7 @@
       "path": [
         "analytics"
       ],
-      "description": "Motion outcomes and the budget your Accounts used. Read-only; Motion numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
+      "description": "Campaign outcomes and the budget your Accounts used. Read-only; Campaign numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6189,33 +6189,33 @@
         "analytics",
         "get"
       ],
-      "description": "Motion outcomes over a window: invitations, acceptance, messages, reply and InMail reply as outcomes so far, with each Motion and Account. With --motion: one Motion's steps, paths and Accounts. With --view activity: the budget rows your Accounts used. Each Contact counts once per Account.",
+      "description": "Campaign outcomes over a window: invitations, acceptance, messages, reply and InMail reply as outcomes so far, with each Campaign and Account. With --campaign: one Campaign's steps, paths and Accounts. With --view activity: the budget rows your Accounts used. Each Lead counts once per Account.",
       "usageOnly": false,
       "args": [
         {
           "name": "view",
           "type": "string",
-          "description": "motions (default): Motion outcomes; activity: budget rows used, not with --motion."
+          "description": "campaigns (default): Campaign outcomes; activity: budget rows used, not with --campaign."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "One Motion (mot_...): its steps, paths and Accounts."
+          "description": "One Campaign (mot_...): its steps, paths and Accounts."
         },
         {
-          "name": "motions",
+          "name": "campaigns",
           "type": "string",
-          "description": "Without --motion: only these Motions, comma list (mot_...)."
+          "description": "Without --campaign: only these Campaigns, comma list (mot_...)."
         },
         {
           "name": "version",
           "type": "string",
-          "description": "With --motion: only this Sequence version."
+          "description": "With --campaign: only this Sequence version."
         },
         {
           "name": "from",
           "type": "string",
-          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Campaign read (with or without --campaign) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
         },
         {
           "name": "to",
@@ -6245,12 +6245,12 @@
         {
           "name": "origin",
           "type": "string",
-          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+          "description": "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api."
         },
         {
           "name": "include",
           "type": "string",
-          "description": "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
+          "description": "Sections to return, comma list (for example performance,campaigns,accounts,steps,variants,paths,flags). forecast: what your Campaigns are expected to send and get per day from today, a simulation with their observed rates; Campaigns only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary."
         },
         {
           "name": "forecast-days",
@@ -6260,12 +6260,12 @@
         {
           "name": "sort",
           "type": "string",
-          "description": "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
+          "description": "Order of the Campaign and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending."
         },
         {
           "name": "limit",
           "type": "string",
-          "description": "How many Motions and Accounts to return."
+          "description": "How many Campaigns and Accounts to return."
         },
         {
           "name": "compare",
@@ -6287,7 +6287,7 @@
       ],
       "examples": [
         "curviate analytics get --range 30d",
-        "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths,forecast --forecast-days 14",
+        "curviate analytics get --campaign mot_YOUR_CAMPAIGN_ID --include steps,paths,forecast --forecast-days 14",
         "curviate analytics get --view activity --from 2026-10-01 --to 2026-10-28"
       ],
       "requires": [],
@@ -6295,8 +6295,8 @@
       "output": [
         "acceptance: invitations accepted over invitations sent in the window, so far.",
         "reply: people who replied over people messaged; InMail reply the same for InMails. Rates move as replies and acceptances arrive; `maturing` counts what was sent under 7 days ago and `low_sample` marks fewer than 30.",
-        "seen (--motion): messages read or replied over messages sent, per message step.",
-        "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Motion as if turned on now.",
+        "seen (--campaign): messages read or replied over messages sent, per message step.",
+        "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Campaign as if turned on now.",
         "A compact table by default; --json (or piped) prints the API body."
       ],
       "seeAlso": [
@@ -6327,19 +6327,19 @@
       "usageOnly": false,
       "args": [
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Only this Motion's records (mot_...)."
+          "description": "Only this Campaign's records (mot_...)."
         },
         {
           "name": "step",
           "type": "string",
-          "description": "With --motion: only this step's records."
+          "description": "With --campaign: only this step's records."
         },
         {
-          "name": "contact",
+          "name": "lead",
           "type": "string",
-          "description": "Only this Contact's records (con_...): its Motion records and its direct ones."
+          "description": "Only this Lead's records (con_...): its Campaign records and its direct ones."
         },
         {
           "name": "kind",
@@ -6354,7 +6354,7 @@
         {
           "name": "origin",
           "type": "string",
-          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+          "description": "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api."
         }
       ],
       "globals": [
@@ -6375,8 +6375,8 @@
         "beta"
       ],
       "examples": [
-        "curviate analytics events list --motion mot_YOUR_MOTION_ID --step opener",
-        "curviate analytics events list --contact con_YOUR_CONTACT_ID --origin unibox,api --all"
+        "curviate analytics events list --campaign mot_YOUR_CAMPAIGN_ID --step opener",
+        "curviate analytics events list --lead con_YOUR_LEAD_ID --origin unibox,api --all"
       ],
       "requires": [],
       "risk": "read"
@@ -6386,13 +6386,13 @@
         "analytics",
         "export"
       ],
-      "description": "Export the Analytics tables (daily, accounts, motions, enrollments) under the same window and filters: streamed now, or with --job built in the background (then `curviate export get` and `curviate export download`). One table is one file; several are one ZIP. Never message text. Owners and Managers only.",
+      "description": "Export the Analytics tables (daily, accounts, campaigns, enrollments) under the same window and filters: streamed now, or with --job built in the background (then `curviate export get` and `curviate export download`). One table is one file; several are one ZIP. Never message text. Owners and Managers only.",
       "usageOnly": false,
       "args": [
         {
           "name": "table",
           "type": "string",
-          "description": "Comma list of daily, accounts, motions, enrollments (default all four); or, with --job, one of motion_activity, account_activity, account_metrics."
+          "description": "Comma list of daily, accounts, campaigns, enrollments (default all four); or, with --job, one of campaign_activity, account_activity, account_metrics."
         },
         {
           "name": "format",
@@ -6411,14 +6411,14 @@
           "description": "Build it in the background and print the export record instead of streaming it."
         },
         {
-          "name": "motions",
+          "name": "campaigns",
           "type": "string",
-          "description": "Only these Motions, comma list (mot_...)."
+          "description": "Only these Campaigns, comma list (mot_...)."
         },
         {
           "name": "from",
           "type": "string",
-          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
+          "description": "First day, YYYY-MM-DD, inclusive, in --timezone. A Campaign read (with or without --campaign) or an Account overview may start more than a year back: up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. --view activity and the activity exports keep their own cap, named in the refusal."
         },
         {
           "name": "to",
@@ -6448,7 +6448,7 @@
         {
           "name": "origin",
           "type": "string",
-          "description": "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api."
+          "description": "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api."
         },
         {
           "name": "json",
@@ -6465,7 +6465,7 @@
       ],
       "examples": [
         "curviate analytics export --table enrollments --format csv --range 30d -o enrollments.csv",
-        "curviate analytics export --table daily,accounts,motions,enrollments --format csv --range 90d --job"
+        "curviate analytics export --table daily,accounts,campaigns,enrollments --format csv --range 90d --job"
       ],
       "requires": [],
       "risk": "read",
@@ -6485,7 +6485,7 @@
       "path": [
         "notification"
       ],
-      "description": "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
+      "description": "Curviate Notifications: an account that needs reconnecting, a paused Campaign, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6850,7 +6850,7 @@
       "errors": {
         "EXPORT_NOT_READY": "the export is queued, running or failed: read its status with `curviate export get <export_id>`.",
         "EXPORT_EXPIRED": "the file has expired: run the export again.",
-        "EXPORT_REMOVED": "the export was removed because a Contact was deleted: run it again."
+        "EXPORT_REMOVED": "the export was removed because a Lead was deleted: run it again."
       }
     },
     {
@@ -6979,7 +6979,7 @@
         "team",
         "list"
       ],
-      "description": "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds each Team's Tier, trial, Accounts, active Motions and, where you are an Owner, seats.",
+      "description": "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds each Team's Tier, trial, Accounts, active Campaigns and, where you are an Owner, seats.",
       "usageOnly": false,
       "args": [
         {
@@ -7751,7 +7751,7 @@
       "path": [
         "incoming"
       ],
-      "description": "Incoming events: a private URL any tool posts to. Curviate finds the Contact in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
+      "description": "Incoming events: a private URL any tool posts to. Curviate finds the Lead in the post and moves the Enrollments waiting for that event (`until event.<name>`). Your Team's data.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -7777,9 +7777,9 @@
           "description": "The path in the post the event name is read from (for example event_type)."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Only this Motion's Enrollments move (mot_...); empty for any Motion's."
+          "description": "Only this Campaign's Enrollments move (mot_...); empty for any Campaign's."
         },
         {
           "name": "match-enrollment-id",
@@ -7794,7 +7794,7 @@
         {
           "name": "match-email",
           "type": "string",
-          "description": "Path in the post to an email address the Contact already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
+          "description": "Path in the post to an email address the Lead already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
         },
         {
           "name": "required-header",
@@ -7828,7 +7828,7 @@
         "undo": "`curviate incoming delete <id>`."
       },
       "errors": {
-        "MOTION_NOT_FOUND": "no Motion with that id."
+        "RESOURCE_NOT_FOUND": "no Campaign with that id."
       }
     },
     {
@@ -7836,7 +7836,7 @@
         "incoming",
         "list"
       ],
-      "description": "Your Team's incoming events, URLs masked, with the last arrival and the Motion steps waiting for each.",
+      "description": "Your Team's incoming events, URLs masked, with the last arrival and the Campaign steps waiting for each.",
       "usageOnly": false,
       "args": [
         {
@@ -7906,7 +7906,7 @@
         "incoming",
         "update"
       ],
-      "description": "Change an incoming event's name, Motion, match paths, required header or turn it off; the URL stays.",
+      "description": "Change an incoming event's name, Campaign, match paths, required header or turn it off; the URL stays.",
       "usageOnly": false,
       "args": [
         {
@@ -7925,9 +7925,9 @@
           "description": "The path in the post the event name is read from (for example event_type)."
         },
         {
-          "name": "motion",
+          "name": "campaign",
           "type": "string",
-          "description": "Only this Motion's Enrollments move (mot_...); empty for any Motion's."
+          "description": "Only this Campaign's Enrollments move (mot_...); empty for any Campaign's."
         },
         {
           "name": "match-enrollment-id",
@@ -7942,7 +7942,7 @@
         {
           "name": "match-email",
           "type": "string",
-          "description": "Path in the post to an email address the Contact already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
+          "description": "Path in the post to an email address the Lead already has (for example lead_email); empty removes it. Paths are tried in the order enrollment id, LinkedIn URL, email."
         },
         {
           "name": "required-header",
@@ -7989,7 +7989,7 @@
         "incoming",
         "delete"
       ],
-      "description": "Delete an incoming event: its URL stops working at once, and Motion steps waiting for it wait until their timeout.",
+      "description": "Delete an incoming event: its URL stops working at once, and Campaign steps waiting for it wait until their timeout.",
       "usageOnly": false,
       "args": [
         {
@@ -8126,7 +8126,7 @@
         "incoming",
         "arrivals"
       ],
-      "description": "The latest posts to the URL: when, the event name, which Contact matched and how many Enrollments moved.",
+      "description": "The latest posts to the URL: when, the event name, which Lead matched and how many Enrollments moved.",
       "usageOnly": false,
       "args": [
         {
@@ -8262,7 +8262,7 @@
         {
           "name": "custom-events",
           "type": "string",
-          "description": "With motion.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
+          "description": "With campaign.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
         },
         {
           "name": "header",
@@ -8272,7 +8272,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | motion (motion.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, motion.custom_event; opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
+          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | campaign (campaign.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, campaign.custom_event; opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
           "required": true
         },
         {
@@ -8287,9 +8287,9 @@
           "description": "Comma-separated account ids to target. Omit to cover every account you can operate, now and later."
         },
         {
-          "name": "motion-ids",
+          "name": "campaign-ids",
           "type": "string",
-          "description": "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter."
+          "description": "Comma-separated Campaign ids (mot_...): only events of these Campaigns are delivered, and events that carry no Campaign are not. Omit for no filter."
         },
         {
           "name": "name",
@@ -8328,7 +8328,7 @@
       ],
       "examples": [
         "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
-        "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
+        "curviate webhook create --source campaign --request-url https://example.com/hooks/curviate --campaign-ids mot_YOUR_CAMPAIGN_ID",
         "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
       ],
       "requires": [],
@@ -8380,7 +8380,7 @@
         "webhook",
         "events"
       ],
-      "description": "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
+      "description": "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (campaign, unibox, api or linkedin); `message.received` never does.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -8485,7 +8485,7 @@
         {
           "name": "custom-events",
           "type": "string",
-          "description": "With motion.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
+          "description": "With campaign.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event."
         },
         {
           "name": "header",
@@ -8631,14 +8631,14 @@
         {
           "name": "source",
           "type": "string",
-          "description": "The webhook's source, which decides the variables: messaging, user, account_status, post, motion (default motion)."
+          "description": "The webhook's source, which decides the variables: messaging, user, account_status, post, campaign (default campaign)."
         }
       ],
       "globals": [
         "json"
       ],
       "examples": [
-        "curviate webhook lint --template-file body.json --source motion"
+        "curviate webhook lint --template-file body.json --source campaign"
       ],
       "requires": [],
       "risk": "read",
@@ -8662,7 +8662,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "messaging, user, account_status, post, motion."
+          "description": "messaging, user, account_status, post, campaign."
         }
       ],
       "globals": [
@@ -8678,7 +8678,7 @@
         "beta"
       ],
       "examples": [
-        "curviate webhook variables --source motion"
+        "curviate webhook variables --source campaign"
       ],
       "requires": [],
       "risk": "read"
@@ -16242,7 +16242,7 @@
         "core",
         "notification"
       ],
-      "description": "Curviate Notifications: an account that needs reconnecting, a paused Motion, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
+      "description": "Curviate Notifications: an account that needs reconnecting, a paused Campaign, a finished import, a member who left. Yours alone, per Team; list, count, mark read, archive. LinkedIn's own notification cards are under `curviate core notification`.",
       "usageOnly": true,
       "args": [],
       "globals": [],

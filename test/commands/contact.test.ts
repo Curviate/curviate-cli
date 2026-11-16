@@ -32,7 +32,7 @@ const dir = mkdtempSync(join(tmpdir(), "lead-"));
 const file = (name: string, content: string | Buffer) => (writeFileSync(join(dir, name), content), join(dir, name));
 
 describe("lead list filters", () => {
-  it("lead list --json prints the Team's Lead ids in one request; the old `contact` group is an unknown command and help does not list it (AC-005)", async () => {
+  it("lead list --json prints the Team's Lead ids in one request; the old `contact` group is an unknown command and help does not list it", async () => {
     const r = await sink.run(["lead", "list", "--json"]);
     expect([r.status, r.requests.map(line), JSON.parse(r.stdout).items.map((i: { id: string }) => i.id)]).toEqual([0, ["GET /v1/leads"], ["con_1"]]);
     const old = await sink.run(["contact", "list"]);

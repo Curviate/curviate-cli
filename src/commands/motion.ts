@@ -1,13 +1,13 @@
 /**
- * `curviate motion`: Motions and their Sequences.
- * Root-scoped (`curviate.motions.*`). Enrollments are the root `enrollment`
+ * `curviate campaign`: Campaigns and their Sequences.
+ * Root-scoped (`curviate.campaigns.*`). Enrollments are the root `enrollment`
  * group.
  *
- * Documents: a Motion file (`motion create|update --file`) is checked before
- * any request, the Motion fields against the vendored request schema
+ * Documents: a Campaign file (`campaign create|update --file`) is checked before
+ * any request, the Campaign fields against the vendored request schema
  * (lib/document.ts, `<path>: <rule>`), then its `sequence` with the SDK's
  * `validateSequence` (compiler-format lines, lib/sequence-report.ts). A pasted
- * `motion get` output loses its read-only keys with a warning.
+ * `campaign get` output loses its read-only keys with a warning.
  * `lint` and `init` are offline.
  */
 import { defineCommand } from "citty";
@@ -30,7 +30,7 @@ import connectAndConverse from "../templates/connect-and-converse.json";
 import engageThenConnect from "../templates/engage-then-connect.json";
 import nurtureConnections from "../templates/nurture-connections.json";
 
-/** Contact ids per add/remove request: `x-curviate-limits.items` of both operations (test-held equal to the fixture). */
+/** Lead ids per add/remove request: `x-curviate-limits.items` of both operations (test-held equal to the fixture). */
 export const BULK_MAX_IDS = 1000;
 
 export const TEMPLATES: Record<string, unknown> = {
@@ -41,14 +41,14 @@ export const TEMPLATES: Record<string, unknown> = {
 
 const STATUSES = ["draft", "scheduled", "active", "paused", "completed", "archived"];
 
-type MotionFlags = RootFlags & {
+type CampaignFlags = RootFlags & {
   id?: string;
   file?: string;
   status?: string;
   version?: string;
   "if-revision"?: string;
   sample?: string;
-  contact?: string | string[];
+  lead?: string | string[];
   account?: string;
   accounts?: string;
   sort?: string;
@@ -68,7 +68,7 @@ function preview(method: string, args: Record<string, unknown>, body: unknown = 
 }
 
 /** `--file`'s path as the findings name it: `-` for stdin. */
-const shownFile = (f: MotionFlags) => (f.file === undefined || isStdinToken(f.file) ? "-" : f.file);
+const shownFile = (f: CampaignFlags) => (f.file === undefined || isStdinToken(f.file) ? "-" : f.file);
 
 /**
  * The Sequence verdict printed in the compiler format on stderr, and in JSON
@@ -86,11 +86,11 @@ function assignWarning(sequence: unknown, assign: unknown) {
   const at = steps.findIndex((s: Body | null) => s?.["do"] === "invite.send" && typeof s["id"] === "string");
   if (at < 0) return [];
   const rule = "settings.assign is already_connected, so anyone not already connected to a sending Account is skipped and this invitation never runs for them; use assign: auto";
-  const hint = "Set settings.assign to auto, the default: it prefers an Account already connected and invites everyone else. Keep already_connected only for a Motion that writes to existing Connections.";
+  const hint = "Set settings.assign to auto, the default: it prefers an Account already connected and invites everyone else. Keep already_connected only for a Campaign that writes to existing Connections.";
   return [{ code: "W17" as const, path: `${(steps[at] as Body)["id"]}.do`, rule, message: rule, pointer: `/steps/${at}/do`, hint, docs_url: "https://docs.curviate.com/reference/sequence-rules#w17", severity: "warning" as const }];
 }
 
-async function checkSequence(f: MotionFlags, text: string, sequence: unknown, prefix: string, settings?: unknown): Promise<{ warnings: unknown[] }> {
+async function checkSequence(f: CampaignFlags, text: string, sequence: unknown, prefix: string, settings?: unknown): Promise<{ warnings: unknown[] }> {
   const { validateSequence } = await import("@curviate/sdk");
   const verdict = validateSequence(sequence);
   verdict.warnings.push(...assignWarning(sequence, (settings as Body | null | undefined)?.["assign"]));
@@ -106,15 +106,15 @@ async function checkSequence(f: MotionFlags, text: string, sequence: unknown, pr
   return verdict;
 }
 
-/** A Motion file against the create/update schema: read-only keys dropped, then fields. Shared by `create`, `update` and `lint`, so lint cannot pass what create refuses. */
-function checkMotionFields(f: MotionFlags, command: "motion create" | "motion update", doc: unknown): Body {
+/** A Campaign file against the create/update schema: read-only keys dropped, then fields. Shared by `create`, `update` and `lint`, so lint cannot pass what create refuses. */
+function checkCampaignFields(f: CampaignFlags, command: "campaign create" | "campaign update", doc: unknown): Body {
   const schema = documentSchema(command);
   let body = doc as Body;
   if (doc && typeof doc === "object" && !Array.isArray(doc)) {
     const readOnlyKeys = schema["x-curviate-response-only"] as string[];
     const dropped = Object.keys(doc).filter((k) => readOnlyKeys.includes(k));
     if (dropped.length) {
-      process.stderr.write(`warning: dropped ${dropped.join(", ")}: set by Curviate, not part of a Motion file (\`curviate motion get\` output carries them).\n`);
+      process.stderr.write(`warning: dropped ${dropped.join(", ")}: set by Curviate, not part of a Campaign file (\`curviate campaign get\` output carries them).\n`);
       body = Object.fromEntries(Object.entries(doc).filter(([k]) => !dropped.includes(k)));
     }
   }
@@ -123,16 +123,16 @@ function checkMotionFields(f: MotionFlags, command: "motion create" | "motion up
   return body;
 }
 
-/** A Motion file, checked whole before any request: fields against the schema, then the Sequence. */
-async function readMotionFile(f: MotionFlags, command: "motion create" | "motion update"): Promise<{ body: Body; text: string }> {
+/** A Campaign file, checked whole before any request: fields against the schema, then the Sequence. */
+async function readCampaignFile(f: CampaignFlags, command: "campaign create" | "campaign update"): Promise<{ body: Body; text: string }> {
   const text = await readFileFlag("file", f.file ?? "", { others: f });
-  const body = checkMotionFields(f, command, parseDocument("file", text));
+  const body = checkCampaignFields(f, command, parseDocument("file", text));
   if (body["sequence"] != null) await checkSequence(f, text, body["sequence"], "/sequence", body["settings"]);
   return { body, text };
 }
 
 /** A refusal the server lists with the compiler keys (a newer server than this CLI's SDK) prints in the same format. */
-function explain(err: unknown, f: MotionFlags, text: string): void {
+function explain(err: unknown, f: CampaignFlags, text: string): void {
   const e = err as Partial<CurviateError> & { current?: { sequence_revision?: number; sequence_updated_by_user_id?: string | null; updated_at?: string } };
   if (e.code === "SEQUENCE_INVALID" && e.errors?.length) {
     process.stderr.write(compilerLines(shownFile(f), text, { errors: e.errors, warnings: [] }, "/sequence").map((l) => `${l}\n`).join(""));
@@ -141,7 +141,7 @@ function explain(err: unknown, f: MotionFlags, text: string): void {
     const c = e.current;
     process.stderr.write(
       `The Sequence was saved since revision ${f["if-revision"]}: revision ${c.sequence_revision} by ${c.sequence_updated_by_user_id ?? "an unknown user"} at ${c.updated_at ?? "an unknown time"}. ` +
-        `Read it with \`curviate motion get ${f.id}\` and merge, or send yours again with --if-revision ${c.sequence_revision} to replace it.\n`,
+        `Read it with \`curviate campaign get ${f.id}\` and merge, or send yours again with --if-revision ${c.sequence_revision} to replace it.\n`,
     );
   }
 }
@@ -150,7 +150,7 @@ function explain(err: unknown, f: MotionFlags, text: string): void {
 // Run functions
 // ---------------------------------------------------------------------------
 
-async function runList(c: Curviate, f: MotionFlags): Promise<void> {
+async function runList(c: Curviate, f: CampaignFlags): Promise<void> {
   rejectPaginationModifiersWithoutAll(f, process);
   const params: Body = {};
   if (f.status !== undefined) {
@@ -180,7 +180,7 @@ async function runList(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-async function runGet(c: Curviate, f: MotionFlags): Promise<void> {
+async function runGet(c: Curviate, f: CampaignFlags): Promise<void> {
   try {
     const result = f.version === undefined
       ? await c.campaigns.get(f.id ?? "")
@@ -191,9 +191,9 @@ async function runGet(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-async function runCreate(c: Curviate, f: MotionFlags): Promise<void> {
-  const { body, text } = await readMotionFile(f, "motion create");
-  if (f.preview) return preview("motions.create", {}, body);
+async function runCreate(c: Curviate, f: CampaignFlags): Promise<void> {
+  const { body, text } = await readCampaignFile(f, "campaign create");
+  if (f.preview) return preview("campaigns.create", {}, body);
   try {
     renderSuccess(await c.campaigns.create(body as never), outputOpts(f), process);
   } catch (err) {
@@ -202,15 +202,15 @@ async function runCreate(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-async function runUpdate(c: Curviate, f: MotionFlags): Promise<void> {
-  const { body, text } = await readMotionFile(f, "motion update");
+async function runUpdate(c: Curviate, f: CampaignFlags): Promise<void> {
+  const { body, text } = await readCampaignFile(f, "campaign update");
   // The precondition is sent only when asked for, never read from the file.
   if ("if_sequence_revision" in body) {
     process.stderr.write("warning: dropped if_sequence_revision from the file: pass --if-revision <n> to send it.\n");
     delete body["if_sequence_revision"];
   }
   if (f["if-revision"] !== undefined) body["if_sequence_revision"] = intFlag("if-revision", f["if-revision"], 0);
-  if (f.preview) return preview("motions.update", { id: f.id }, body);
+  if (f.preview) return preview("campaigns.update", { id: f.id }, body);
   try {
     renderSuccess(await c.campaigns.update(f.id ?? "", body as never), outputOpts(f), process);
   } catch (err) {
@@ -219,9 +219,9 @@ async function runUpdate(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-/** start, pause, resume, archive, delete: one call on one Motion. */
-const lifecycle = (method: "start" | "pause" | "resume" | "archive" | "delete") => async (c: Curviate, f: MotionFlags): Promise<void> => {
-  if (f.preview) return preview(`motions.${method}`, { id: f.id });
+/** start, pause, resume, archive, delete: one call on one Campaign. */
+const lifecycle = (method: "start" | "pause" | "resume" | "archive" | "delete") => async (c: Curviate, f: CampaignFlags): Promise<void> => {
+  if (f.preview) return preview(`campaigns.${method}`, { id: f.id });
   try {
     renderSuccess(await c.campaigns[method](f.id ?? ""), outputOpts(f), process);
   } catch (err) {
@@ -229,11 +229,11 @@ const lifecycle = (method: "start" | "pause" | "resume" | "archive" | "delete") 
   }
 };
 
-async function runPreview(c: Curviate, f: MotionFlags): Promise<void> {
+async function runPreview(c: Curviate, f: CampaignFlags): Promise<void> {
   const params: Body = {};
   if (f.sample !== undefined) params["sample"] = intFlag("sample", f.sample, 1, 20);
-  if (f.contact !== undefined) params["contact_ids"] = listFlag("contact", f.contact);
-  if (params["sample"] !== undefined && params["contact_ids"] !== undefined) usage("--sample and --contact cannot be combined: name the Contacts, or let Curviate sample.");
+  if (f.lead !== undefined) params["lead_ids"] = listFlag("lead", f.lead);
+  if (params["sample"] !== undefined && params["lead_ids"] !== undefined) usage("--sample and --lead cannot be combined: name the Leads, or let Curviate sample.");
   try {
     renderSuccess(readableObject(await c.campaigns.preview(f.id ?? "", params as never)), outputOpts(f), process);
   } catch (err) {
@@ -241,14 +241,14 @@ async function runPreview(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-/** `add` and `remove`: Contact ids in chunks of BULK_MAX_IDS, in order. */
-const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlags): Promise<void> => {
-  const ids = listFlag("contact", f.contact);
-  if (!ids.length) usage("--contact is required: one or more Contact ids (con_...).");
-  if (f.account !== undefined && f.account.trim() === "") usage("--account was given an empty value. Pass an acc_... id of the Motion, or omit it to let Curviate assign one.");
+/** `add` and `remove`: Lead ids in chunks of BULK_MAX_IDS, in order. */
+const membership = (kind: "add" | "remove") => async (c: Curviate, f: CampaignFlags): Promise<void> => {
+  const ids = listFlag("lead", f.lead);
+  if (!ids.length) usage("--lead is required: one or more Lead ids (con_...).");
+  if (f.account !== undefined && f.account.trim() === "") usage("--account was given an empty value. Pass an acc_... id of the Campaign, or omit it to let Curviate assign one.");
   const body = (chunk: string[]) => ({ lead_ids: chunk, ...(f.account !== undefined ? { account_id: f.account } : {}) });
   const method = kind === "add" ? "addLeads" : "removeLeads";
-  if (f.preview) return preview(`motions.${method}`, { id: f.id }, body(ids.slice(0, BULK_MAX_IDS)));
+  if (f.preview) return preview(`campaigns.${method}`, { id: f.id }, body(ids.slice(0, BULK_MAX_IDS)));
   const results = await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.campaigns[method](f.id ?? "", body(chunk) as never) as Promise<unknown>, f);
   if (results.length === 1) return renderSuccess(results[0], outputOpts(f), process);
   // Several chunks: one answer, every chunk's entries in input order.
@@ -264,9 +264,9 @@ const membership = (kind: "add" | "remove") => async (c: Curviate, f: MotionFlag
 };
 
 /** `voice-clip upload <file>`: the file's bytes as the raw body (Content-Length set), one clip back. */
-async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
+async function runVoiceClipUpload(c: Curviate, f: CampaignFlags): Promise<void> {
   const path = f.file ?? "";
-  if (path.trim() === "") usage("the audio file is missing. Pass its path: `curviate motion voice-clip upload intro.mp3`.");
+  if (path.trim() === "") usage("the audio file is missing. Pass its path: `curviate campaign voice-clip upload intro.mp3`.");
   const filename = basename(path);
   let bytes: Buffer;
   try {
@@ -276,7 +276,7 @@ async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
     throw err;
   }
   if (f.preview) {
-    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "motions.voiceClips.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
+    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "campaigns.voiceClips.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
   }
   try {
     renderSuccess(await c.campaigns.voiceClips.upload(bytes, { filename }), outputOpts(f), process);
@@ -285,7 +285,7 @@ async function runVoiceClipUpload(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-async function runVoiceClipGet(c: Curviate, f: MotionFlags): Promise<void> {
+async function runVoiceClipGet(c: Curviate, f: CampaignFlags): Promise<void> {
   try {
     renderSuccess(await c.campaigns.voiceClips.get(f.id ?? ""), outputOpts(f), process);
   } catch (err) {
@@ -293,22 +293,22 @@ async function runVoiceClipGet(c: Curviate, f: MotionFlags): Promise<void> {
   }
 }
 
-/** `lint`: offline. A Motion file's Sequence (under `/sequence`) or a bare Sequence document. */
-export async function runLint(f: MotionFlags): Promise<void> {
+/** `lint`: offline. A Campaign file's Sequence (under `/sequence`) or a bare Sequence document. */
+export async function runLint(f: CampaignFlags): Promise<void> {
   const text = await readFileFlag("file", f.file ?? "", { others: f });
   const doc = parseDocument("file", text) as Body | null;
-  const motionFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
-  if (motionFile) checkMotionFields(f, "motion create", doc); // the fields create refuses, lint refuses
-  if (motionFile && doc["sequence"] == null) usage("--file: the Motion file has no sequence; there is nothing to lint.");
-  const verdict = await checkSequence(f, text, motionFile ? doc["sequence"] : doc, motionFile ? "/sequence" : "", motionFile ? doc["settings"] : undefined);
+  const campaignFile = !!doc && typeof doc === "object" && !Array.isArray(doc) && !("steps" in doc) && ("sequence" in doc || "name" in doc);
+  if (campaignFile) checkCampaignFields(f, "campaign create", doc); // the fields create refuses, lint refuses
+  if (campaignFile && doc["sequence"] == null) usage("--file: the Campaign file has no sequence; there is nothing to lint.");
+  const verdict = await checkSequence(f, text, campaignFile ? doc["sequence"] : doc, campaignFile ? "/sequence" : "", campaignFile ? doc["settings"] : undefined);
   if (outputOpts(f).json) process.stdout.write(JSON.stringify({ errors: [], warnings: verdict.warnings }) + "\n");
 }
 
-/** `init`: offline. A template as a Motion file: `{name, sequence}` only; the server fills schedule and settings. */
-export async function runInit(f: MotionFlags): Promise<void> {
+/** `init`: offline. A template as a Campaign file: `{name, sequence}` only; the server fills schedule and settings. */
+export async function runInit(f: CampaignFlags): Promise<void> {
   const tpl = Object.prototype.hasOwnProperty.call(TEMPLATES, f.template ?? "") ? TEMPLATES[f.template!] : undefined;
   if (!tpl) usage(`--template takes one of ${Object.keys(TEMPLATES).join(", ")}.`);
-  const { name, sequence } = tpl as { name: string; sequence: unknown }; // description is not a Motion field
+  const { name, sequence } = tpl as { name: string; sequence: unknown }; // description is not a Campaign field
   const doc = { name, sequence: structuredClone(sequence) };
   const text = JSON.stringify(doc, null, 2) + "\n";
   if (f.output === undefined) return void process.stdout.write(text);
@@ -317,39 +317,39 @@ export async function runInit(f: MotionFlags): Promise<void> {
   } catch (err) {
     usage(`--output: cannot write ${f.output}: ${(err as NodeJS.ErrnoException).code ?? "write error"}.`);
   }
-  process.stderr.write(`Wrote ${f.output}. Next: fill contact_list_ids and account_ids, then \`curviate motion create --file ${f.output}\`.\n`);
+  process.stderr.write(`Wrote ${f.output}. Next: fill lead_list_ids and account_ids, then \`curviate campaign create --file ${f.output}\`.\n`);
 }
 
 // ---------------------------------------------------------------------------
 // citty definitions
 // ---------------------------------------------------------------------------
 
-const online = (fn: (c: Curviate, f: MotionFlags) => Promise<void>) => async ({ args }: { args: unknown }) => {
-  const f = args as MotionFlags;
+const online = (fn: (c: Curviate, f: CampaignFlags) => Promise<void>) => async ({ args }: { args: unknown }) => {
+  const f = args as CampaignFlags;
   await fn(await rootClient(f), f);
 };
 
-const ID = { type: "positional" as const, description: "Motion id (mot_...)." };
-const FILE_DESC = "The Motion file: a path, or - to read it from stdin. `curviate motion get` output is accepted as is.";
-const SEQUENCE_ERRORS = { SEQUENCE_INVALID: "the Sequence breaks a rule; every error is listed, one line each, as `curviate motion lint` prints them." };
+const ID = { type: "positional" as const, description: "Campaign id (mot_...)." };
+const FILE_DESC = "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is.";
+const SEQUENCE_ERRORS = { SEQUENCE_INVALID: "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them." };
 const ROLE_ERRORS = {
-  INSUFFICIENT_ROLE: "your role cannot send from a sending Account of this Motion.",
+  INSUFFICIENT_ROLE: "your role cannot send from a sending Account of this Campaign.",
   ACCOUNT_NOT_SHARED: "a sending Account is not shared with you.",
 };
-const SEE_LIFECYCLE = ["curviate motion get", "curviate enrollment list"];
+const SEE_LIFECYCLE = ["curviate campaign get", "curviate enrollment list"];
 
 const listCmd = defineCommand({
   meta: {
     name: "list",
     description:
-      "List your Team's Motions, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate motion get <motion_id>`. " +
+      "List your Team's Campaigns, most recently updated first (--sort activity: latest activity first, `last_activity_at`). Items carry no Sequence: read one with `curviate campaign get <campaign_id>`. " +
       "A cursor belongs to its sort.",
     risk: "read",
-    examples: ["curviate motion list", "curviate motion list --status active,paused", "curviate motion list --accounts acc_A,acc_B --sort activity"],
+    examples: ["curviate campaign list", "curviate campaign list --status active,paused", "curviate campaign list --accounts acc_A,acc_B --sort activity"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    accounts: { type: "string", description: "Only Motions sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
+    accounts: { type: "string", description: "Only Campaigns sending from one of these Accounts: a comma list of ids (acc_...). --account a,b is accepted as the same filter." },
     sort: { type: "string", description: "updated (default) or activity." },
     status: { type: "string", description: `Comma list of ${STATUSES.join(", ")}. Default: all but archived.` },
   },
@@ -359,10 +359,10 @@ const listCmd = defineCommand({
 const getCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One Motion with its current Sequence and lint warnings. With --version, that Sequence version instead, and how many Enrollments still run on it.",
+    description: "One Campaign with its current Sequence and lint warnings. With --version, that Sequence version instead, and how many Enrollments still run on it.",
     risk: "read",
-    output: ["The full Motion, pasteable: `curviate motion create --file -` and `curviate motion update <motion_id> --file -` accept it as is, dropping the keys Curviate sets."],
-    examples: ["curviate motion get mot_YOUR_MOTION_ID", "curviate motion get mot_YOUR_MOTION_ID --version 1"],
+    output: ["The full Campaign, pasteable: `curviate campaign create --file -` and `curviate campaign update <campaign_id> --file -` accept it as is, dropping the keys Curviate sets."],
+    examples: ["curviate campaign get mot_YOUR_CAMPAIGN_ID", "curviate campaign get mot_YOUR_CAMPAIGN_ID --version 1"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
@@ -372,9 +372,9 @@ const getCmd = defineCommand({
   run: online(runGet),
 });
 
-const MOTION_DOC = `{
+const CAMPAIGN_DOC = `{
   "name": "Q4 webinar follow-up",
-  "contact_list_ids": ["cl_YOUR_LIST_ID"],
+  "lead_list_ids": ["cl_YOUR_LIST_ID"],
   "account_ids": ["acc_YOUR_ACCOUNT_ID"],
   "sequence": {
     "on_reply": "end",
@@ -387,21 +387,21 @@ const MOTION_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Motion from a Motion file, always as a draft: nothing runs until `curviate motion start`. The file is checked before anything is sent, its Sequence as `curviate motion lint` checks it. settings.priority (normal or prioritized) sets the Motion's weight in each Account's budgets: 1 or 1.5, on every budget; every Motion with work due still progresses and no limit is passed. Needs Automate.",
+    description: "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "Creates a draft Motion. No Contact is enrolled and nothing reaches LinkedIn until it is started.",
+      changes: "Creates a draft Campaign. No Lead is enrolled and nothing reaches LinkedIn until it is started.",
       visible_to: "Your Team.",
       budget_rows: [],
-      retry: "A retry creates a second draft: list with `curviate motion list --status draft` first.",
-      undo: "`curviate motion delete <motion_id>` deletes a draft.",
+      retry: "A retry creates a second draft: list with `curviate campaign list --status draft` first.",
+      undo: "`curviate campaign delete <campaign_id>` deletes a draft.",
     },
-    errors: { ...SEQUENCE_ERRORS, ...ROLE_ERRORS, TIER_REQUIRED: "Motions need the Automate plan." },
-    seeAlso: ["curviate motion lint", "curviate motion init", "curviate motion preview"],
-    document: "motion create",
+    errors: { ...SEQUENCE_ERRORS, ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
+    seeAlso: ["curviate campaign lint", "curviate campaign init", "curviate campaign preview"],
+    document: "campaign create",
     examples: [
-      "curviate motion create --file motion.json",
-      `curviate motion create --file - <<'EOF'\n${MOTION_DOC}\nEOF`,
+      "curviate campaign create --file campaign.json",
+      `curviate campaign create --file - <<'EOF'\n${CAMPAIGN_DOC}\nEOF`,
     ],
   },
   args: {
@@ -415,132 +415,132 @@ const updateCmd = defineCommand({
   meta: {
     name: "update",
     description:
-      "Change a Motion from a Motion file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
-      "settings.priority (normal or prioritized) weighs the Motion 1 or 1.5 in each Account's budgets, on every budget (every Motion with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
+      "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
+      "settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
       "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "Changes the Motion. A running Motion picks the change up at each Enrollment's next Step.",
-      visible_to: "Your Team, and the Contacts its next Steps reach.",
+      changes: "Changes the Campaign. A running Campaign picks the change up at each Enrollment's next Step.",
+      visible_to: "Your Team, and the Leads its next Steps reach.",
       budget_rows: [],
       retry: "Safe: the same file sends the same change. Without --if-revision the last save wins.",
-      undo: "Send the previous file again (`curviate motion get <motion_id> --version <n>` reads an earlier Sequence).",
+      undo: "Send the previous file again (`curviate campaign get <campaign_id> --version <n>` reads an earlier Sequence).",
     },
     errors: {
       ...SEQUENCE_ERRORS,
       SEQUENCE_CONFLICT: "with --if-revision: someone saved the Sequence since that revision; the message names the newer revision and who saved it.",
-      MOTION_STATUS_CONFLICT: "an archived Motion, or one past its end, cannot change.",
+      CAMPAIGN_STATUS_CONFLICT: "an archived Campaign, or one past its end, cannot change.",
       ...ROLE_ERRORS,
     },
-    seeAlso: ["curviate motion get", "curviate motion lint"],
-    document: "motion update",
+    seeAlso: ["curviate campaign get", "curviate campaign lint"],
+    document: "campaign update",
     examples: [
-      "curviate motion update mot_YOUR_MOTION_ID --file motion.json --if-revision 3",
-      `curviate motion update mot_YOUR_MOTION_ID --file - <<'EOF'\n${MOTION_DOC}\nEOF`,
+      "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
+      `curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n${CAMPAIGN_DOC}\nEOF`,
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: ID,
     file: { type: "string", stdinArg: true, required: true, description: FILE_DESC },
-    "if-revision": { type: "string", description: "The sequence_revision you read (`curviate motion get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins." },
+    "if-revision": { type: "string", description: "The sequence_revision you read (`curviate campaign get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins." },
   },
   run: online(runUpdate),
 });
 
 const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete", meta: Record<string, unknown>) =>
   defineCommand({
-    meta: { name, ...meta, examples: [`curviate motion ${name} mot_YOUR_MOTION_ID`] },
+    meta: { name, ...meta, examples: [`curviate campaign ${name} mot_YOUR_CAMPAIGN_ID`] },
     args: { ...WRITE_SINGLE_FLAGS, id: ID },
     run: online(lifecycle(name)),
   });
 
 const startCmd = lifecycleCmd("start", {
-  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Motion missing what it needs is refused with every gap listed. Needs Automate.",
+  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. Needs Automate.",
   risk: "high",
   rules: {
-    changes: "The Motion starts enrolling its Contacts and running its Steps from its sending Accounts, paced on its schedule.",
-    visible_to: "The Contacts each Step reaches on LinkedIn.",
+    changes: "The Campaign starts enrolling its Leads and running its Steps from its sending Accounts, paced on its schedule.",
+    visible_to: "The Leads each Step reaches on LinkedIn.",
     budget_rows: [],
-    retry: "A retry on a started Motion answers MOTION_STATUS_CONFLICT; nothing runs twice.",
-    undo: "`curviate motion pause <motion_id>` stops new Steps; what was sent stays sent.",
-    blast_radius: "Every Contact of its Contact lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`).",
+    retry: "A retry on a started Campaign answers CAMPAIGN_STATUS_CONFLICT; nothing runs twice.",
+    undo: "`curviate campaign pause <campaign_id>` stops new Steps; what was sent stays sent.",
+    blast_radius: "Every Lead of its Lead lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`).",
   },
-  errors: { MOTION_NOT_STARTABLE: "a gap stops it (Contact list, sending Account, Sequence); each is listed.", MOTION_STATUS_CONFLICT: "only a draft starts.", ...ROLE_ERRORS, TIER_REQUIRED: "Motions need the Automate plan." },
-  seeAlso: ["curviate motion preview", "curviate motion pause"],
+  errors: { CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence); each is listed.", CAMPAIGN_STATUS_CONFLICT: "only a draft starts.", ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
+  seeAlso: ["curviate campaign preview", "curviate campaign pause"],
 });
 
 const pauseCmd = lifecycleCmd("pause", {
-  description: "Pause an active or scheduled Motion: no Step runs until it is resumed. Waits keep their time.",
+  description: "Pause an active or scheduled Campaign: no Step runs until it is resumed. Waits keep their time.",
   risk: "write",
   rules: {
-    changes: "No Step of the Motion runs while it is paused.",
+    changes: "No Step of the Campaign runs while it is paused.",
     visible_to: "Your Team.",
     budget_rows: [],
-    retry: "Safe: a paused Motion answers MOTION_STATUS_CONFLICT.",
-    undo: "`curviate motion resume <motion_id>`.",
+    retry: "Safe: a paused Campaign answers CAMPAIGN_STATUS_CONFLICT.",
+    undo: "`curviate campaign resume <campaign_id>`.",
   },
-  errors: { MOTION_STATUS_CONFLICT: "only an active or scheduled Motion pauses.", ...ROLE_ERRORS },
+  errors: { CAMPAIGN_STATUS_CONFLICT: "only an active or scheduled Campaign pauses.", ...ROLE_ERRORS },
   seeAlso: SEE_LIFECYCLE,
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Motion. Runs the start checks again. Needs Automate.",
+  description: "Resume a paused Campaign. Runs the start checks again. Needs Automate.",
   risk: "high",
   rules: {
-    changes: "The Motion's Steps run again from its sending Accounts.",
-    visible_to: "The Contacts each Step reaches on LinkedIn.",
+    changes: "The Campaign's Steps run again from its sending Accounts.",
+    visible_to: "The Leads each Step reaches on LinkedIn.",
     budget_rows: [],
-    retry: "A retry on a running Motion answers MOTION_STATUS_CONFLICT.",
-    undo: "`curviate motion pause <motion_id>`; what was sent stays sent.",
-    blast_radius: "Every open Enrollment of the Motion.",
+    retry: "A retry on a running Campaign answers CAMPAIGN_STATUS_CONFLICT.",
+    undo: "`curviate campaign pause <campaign_id>`; what was sent stays sent.",
+    blast_radius: "Every open Enrollment of the Campaign.",
   },
-  errors: { MOTION_NOT_STARTABLE: "a gap stops it; each is listed.", MOTION_STATUS_CONFLICT: "only a paused Motion resumes.", ...ROLE_ERRORS, TIER_REQUIRED: "Motions need the Automate plan." },
+  errors: { CAMPAIGN_NOT_STARTABLE: "a gap stops it; each is listed.", CAMPAIGN_STATUS_CONFLICT: "only a paused Campaign resumes.", ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
   seeAlso: SEE_LIFECYCLE,
 });
 
 const archiveCmd = lifecycleCmd("archive", {
-  description: "Archive a Motion: its open Enrollments end (motion_archived) and it never runs again.",
+  description: "Archive a Campaign: its open Enrollments end (campaign_archived) and it never runs again.",
   risk: "high",
   rules: {
-    changes: "Ends every open Enrollment and freezes the Motion.",
+    changes: "Ends every open Enrollment and freezes the Campaign.",
     visible_to: "Your Team.",
     budget_rows: [],
-    retry: "A retry answers MOTION_STATUS_CONFLICT.",
-    undo: "Cannot be undone. Create a new Motion from `curviate motion get <motion_id>` output.",
-    blast_radius: "Every open Enrollment of the Motion.",
+    retry: "A retry answers CAMPAIGN_STATUS_CONFLICT.",
+    undo: "Cannot be undone. Create a new Campaign from `curviate campaign get <campaign_id>` output.",
+    blast_radius: "Every open Enrollment of the Campaign.",
   },
-  errors: { MOTION_STATUS_CONFLICT: "already archived.", ...ROLE_ERRORS },
+  errors: { CAMPAIGN_STATUS_CONFLICT: "already archived.", ...ROLE_ERRORS },
   seeAlso: SEE_LIFECYCLE,
 });
 
 const deleteCmd = lifecycleCmd("delete", {
-  description: "Delete a draft Motion with its Sequence versions. Any other status: archive it instead.",
+  description: "Delete a draft Campaign with its Sequence versions. Any other status: archive it instead.",
   risk: "high",
   rules: {
     changes: "Deletes the draft and its Sequence versions.",
     visible_to: "Your Team.",
     budget_rows: [],
     retry: "A retry answers RESOURCE_NOT_FOUND.",
-    undo: "Cannot be undone. Keep `curviate motion get <motion_id>` output to create it again.",
-    blast_radius: "One draft Motion; it has no Enrollments.",
+    undo: "Cannot be undone. Keep `curviate campaign get <campaign_id>` output to create it again.",
+    blast_radius: "One draft Campaign; it has no Enrollments.",
   },
-  errors: { RESOURCE_NOT_FOUND: "no Motion with this id.", MOTION_STATUS_CONFLICT: "only a draft is deleted; archive the others.", ...ROLE_ERRORS },
-  seeAlso: ["curviate motion archive", "curviate motion list"],
+  errors: { RESOURCE_NOT_FOUND: "no Campaign with this id.", CAMPAIGN_STATUS_CONFLICT: "only a draft is deleted; archive the others.", ...ROLE_ERRORS },
+  seeAlso: ["curviate campaign archive", "curviate campaign list"],
 });
 
 const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "What the Motion would do, in any status: every path through its Sequence, rendered messages for sampled or named Contacts, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
+    description: "What the Campaign would do, in any status: every path through its Sequence, rendered messages for sampled or named Leads, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
     risk: "read",
-    examples: ["curviate motion preview mot_YOUR_MOTION_ID", "curviate motion preview mot_YOUR_MOTION_ID --sample 3"],
+    examples: ["curviate campaign preview mot_YOUR_CAMPAIGN_ID", "curviate campaign preview mot_YOUR_CAMPAIGN_ID --sample 3"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     id: ID,
-    sample: { type: "string", description: "How many Contacts to render (default 5)." },
-    contact: { type: "string", description: "A Contact id (con_...) to render; repeatable, or a comma list. Not with --sample." },
+    sample: { type: "string", description: "How many Leads to render (default 5)." },
+    lead: { type: "string", description: "A Lead id (con_...) to render; repeatable, or a comma list. Not with --sample." },
   },
   run: online(runPreview),
 });
@@ -550,37 +550,37 @@ const membershipCmd = (kind: "add" | "remove") =>
     meta: {
       name: kind,
       description: kind === "add"
-        ? "Enroll Contacts directly, on an Account of the Motion (--account) or one Curviate assigns. Every exclusion and filter applies; each Contact's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
-        : "Take Contacts out of the Motion: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
+        ? "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
+        : "Take Leads out of the Campaign: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       risk: "high",
       rules: kind === "add"
         ? {
-            changes: "Each queued Contact becomes a pending Enrollment; a running Motion reaches it on its schedule.",
-            visible_to: "Your Team now; the Contacts once their Steps run.",
+            changes: "Each queued Lead becomes a pending Enrollment; a running Campaign reaches it on its schedule.",
+            visible_to: "Your Team now; the Leads once their Steps run.",
             budget_rows: [],
-            retry: "Safe: a Contact already in the Motion answers already_enrolled. After a failed request, send the ids from the failed one on.",
-            undo: "`curviate motion remove <motion_id> --contact <contact_id>`; what was sent stays sent.",
-            blast_radius: "Every Contact given.",
+            retry: "Safe: a Lead already in the Campaign answers already_enrolled. After a failed request, send the ids from the failed one on.",
+            undo: "`curviate campaign remove <campaign_id> --lead <lead_id>`; what was sent stays sent.",
+            blast_radius: "Every Lead given.",
           }
         : {
-            changes: "Ends each named Contact's open Enrollments in the Motion (removed).",
+            changes: "Ends each named Lead's open Enrollments in the Campaign (removed).",
             visible_to: "Your Team.",
             budget_rows: [],
-            retry: "Safe: a Contact no longer in the Motion is listed in not_found.",
-            undo: "`curviate motion add <motion_id> --contact <contact_id>` enrolls it again.",
-            blast_radius: "Every Contact given.",
+            retry: "Safe: a Lead no longer in the Campaign is listed in not_found.",
+            undo: "`curviate campaign add <campaign_id> --lead <lead_id>` enrolls it again.",
+            blast_radius: "Every Lead given.",
           },
-      errors: { MOTION_STATUS_CONFLICT: "an archived Motion, or one past its end, takes no Contacts.", ...ROLE_ERRORS },
+      errors: { CAMPAIGN_STATUS_CONFLICT: "an archived Campaign, or one past its end, takes no Leads.", ...ROLE_ERRORS },
       seeAlso: ["curviate enrollment list"],
       examples: kind === "add"
-        ? ["curviate motion add mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID", "curviate motion add mot_YOUR_MOTION_ID --contact con_A,con_B --account acc_YOUR_ACCOUNT_ID"]
-        : ["curviate motion remove mot_YOUR_MOTION_ID --contact con_YOUR_CONTACT_ID"],
+        ? ["curviate campaign add mot_YOUR_CAMPAIGN_ID --lead con_YOUR_LEAD_ID", "curviate campaign add mot_YOUR_CAMPAIGN_ID --lead con_A,con_B --account acc_YOUR_ACCOUNT_ID"]
+        : ["curviate campaign remove mot_YOUR_CAMPAIGN_ID --lead con_YOUR_LEAD_ID"],
     },
     args: {
       ...WRITE_SINGLE_FLAGS,
       id: ID,
-      contact: { type: "string", required: true, description: "A Contact id (con_...); repeatable, or a comma list." },
-      ...(kind === "add" ? { account: { type: "string" as const, description: "Enroll them on this sending Account of the Motion (acc_...). Never defaulted: omit it and Curviate assigns one." } } : {}),
+      lead: { type: "string", required: true, description: "A Lead id (con_...); repeatable, or a comma list." },
+      ...(kind === "add" ? { account: { type: "string" as const, description: "Enroll them on this sending Account of the Campaign (acc_...). Never defaulted: omit it and Curviate assigns one." } } : {}),
     },
     run: online(membership(kind)),
   });
@@ -591,36 +591,36 @@ const lintCmd = defineCommand({
   meta: {
     name: "lint",
     description:
-      "Check a Sequence offline with the rules the API applies: a Motion file (its sequence) or a bare Sequence document. One line per finding, `<file>:<line>:<col> error|warning <code> <path>: <message>. <hint> -> <docs_url>`; exit 2 on any error, 0 otherwise.",
+      "Check a Sequence offline with the rules the API applies: a Campaign file (its sequence) or a bare Sequence document. One line per finding, `<file>:<line>:<col> error|warning <code> <path>: <message>. <hint> -> <docs_url>`; exit 2 on any error, 0 otherwise.",
     risk: "read",
     rules: OFFLINE,
     output: ["Findings on stderr. With --json (or piped), stdout carries `{errors, warnings}`, or on errors the SEQUENCE_INVALID refusal the API would send."],
-    examples: ["curviate motion lint --file motion.json"],
+    examples: ["curviate campaign lint --file campaign.json"],
   },
   args: {
     json: GLOBAL_FLAGS.json,
-    file: { type: "string", stdinArg: true, required: true, description: "A Motion file or a Sequence document: a path, or - to read it from stdin." },
+    file: { type: "string", stdinArg: true, required: true, description: "A Campaign file or a Sequence document: a path, or - to read it from stdin." },
   },
   async run({ args }) {
-    await runLint(args as MotionFlags);
+    await runLint(args as CampaignFlags);
   },
 });
 
 const initCmd = defineCommand({
   meta: {
     name: "init",
-    description: `Write a Motion file from a template (${Object.keys(TEMPLATES).join(", ")}). Fill contact_list_ids and account_ids, then create it.`,
+    description: `Write a Campaign file from a template (${Object.keys(TEMPLATES).join(", ")}). Fill lead_list_ids and account_ids, then create it.`,
     risk: "read",
     rules: OFFLINE,
-    output: ["The Motion file on stdout, or in the --output file."],
-    examples: ["curviate motion init --template connect-and-converse --output motion.json"],
+    output: ["The Campaign file on stdout, or in the --output file."],
+    examples: ["curviate campaign init --template connect-and-converse --output campaign.json"],
   },
   args: {
     template: { type: "string", required: true, description: `One of ${Object.keys(TEMPLATES).join(", ")}.` },
     output: { type: "string", alias: "o", description: "Write to this path, replacing what is there. Omitted: stdout." },
   },
   async run({ args }) {
-    await runInit(args as MotionFlags);
+    await runInit(args as CampaignFlags);
   },
 });
 
@@ -632,7 +632,7 @@ const voiceClipUploadCmd = defineCommand({
       "The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "Stores one converted clip for your Team. No Motion changes and nothing is sent to anyone.",
+      changes: "Stores one converted clip for your Team. No Campaign changes and nothing is sent to anyone.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "A retry stores a second clip (it counts toward the 24-hour cap); an unused clip is deleted 30 days after its upload.",
@@ -646,8 +646,8 @@ const voiceClipUploadCmd = defineCommand({
       TIER_REQUIRED: "Voice clips need the Automate plan.",
       ...ROLE_ERRORS,
     },
-    seeAlso: ["curviate motion voice-clip get", "curviate motion lint", "curviate motion create"],
-    examples: ["curviate motion voice-clip upload intro.mp3", "curviate motion voice-clip upload intro.m4a --preview"],
+    seeAlso: ["curviate campaign voice-clip get", "curviate campaign lint", "curviate campaign create"],
+    examples: ["curviate campaign voice-clip upload intro.mp3", "curviate campaign voice-clip upload intro.m4a --preview"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -661,7 +661,7 @@ const voiceClipGetCmd = defineCommand({
     name: "get",
     description: "One Voice clip: duration, size, file name and upload time. No download link. Another Team's clip is RESOURCE_NOT_FOUND, like an unknown id.",
     risk: "read",
-    examples: ["curviate motion voice-clip get vc_YOUR_CLIP_ID"],
+    examples: ["curviate campaign voice-clip get vc_YOUR_CLIP_ID"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
@@ -671,16 +671,16 @@ const voiceClipGetCmd = defineCommand({
 });
 
 const voiceClipCommand = defineCommand({
-  meta: { name: "voice-clip", description: DESCRIPTIONS.motionVoiceClip },
+  meta: { name: "voice-clip", description: DESCRIPTIONS.campaignVoiceClip },
   subCommands: { upload: voiceClipUploadCmd, get: voiceClipGetCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
-    await showHelp(voiceClipCommand, ["curviate", "motion", "voice-clip"]);
+    await showHelp(voiceClipCommand, ["curviate", "campaign", "voice-clip"]);
   },
 });
 
-export const motionCommand = defineCommand({
-  meta: { name: "motion", description: DESCRIPTIONS.motion },
+export const campaignCommand = defineCommand({
+  meta: { name: "campaign", description: DESCRIPTIONS.campaign },
   subCommands: {
     list: listCmd,
     get: getCmd,
@@ -700,6 +700,6 @@ export const motionCommand = defineCommand({
   },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
-    await showHelp(motionCommand, ["curviate", "motion"]);
+    await showHelp(campaignCommand, ["curviate", "campaign"]);
   },
 });

@@ -37,7 +37,7 @@ const getCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Motions and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Motions aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+    description: "Change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Campaigns and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Campaigns aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
     risk: "write",
     rules: {
       changes: "The Account's limits, Active hours or Activity level, from the next action on.",
@@ -45,7 +45,7 @@ const updateCmd = defineCommand({
       budget_rows: [],
       retry: "Safe: the same document leaves the same policy.",
       undo: "Send the previous values, or null to fall back to the Team's default.",
-      blast_radius: "One Account's pace, in every Motion and every direct action.",
+      blast_radius: "One Account's pace, in every Campaign and every direct action.",
     },
     errors: { INVALID_REQUEST: "a field is unknown or not settable; the message names it." },
     seeAlso: ["curviate account safety get", "curviate account warm-up"],
@@ -100,15 +100,15 @@ const accessCommand = (name: "on" | "off") => defineCommand({
   meta: {
     name,
     description: name === "on"
-      ? "Share the Account with its Team again (it does not rejoin a Motion). Only the person who connected it can."
-      : "Keep the Account to its person: it leaves every Motion that held it and its queued enrichment visits are dropped. Only the person who connected it can.",
+      ? "Share the Account with its Team again (it does not rejoin a Campaign). Only the person who connected it can."
+      : "Keep the Account to its person: it leaves every Campaign that held it and its queued enrichment visits are dropped. Only the person who connected it can.",
     risk: "write",
     rules: {
-      changes: name === "on" ? "The Team may use the Account again." : "The Team loses the Account; it leaves every Motion that held it.",
+      changes: name === "on" ? "The Team may use the Account again." : "The Team loses the Account; it leaves every Campaign that held it.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe to repeat: the switch ends in the same state.",
-      undo: name === "on" ? "Run `curviate account team-access off <account>`." : "Run `curviate account team-access on <account>`, then add it back to its Motions.",
+      undo: name === "on" ? "Run `curviate account team-access off <account>`." : "Run `curviate account team-access on <account>`, then add it back to its Campaigns.",
     },
     errors: { ACCOUNT_OWNER_ONLY: "only the person who connected the Account can change this." },
     seeAlso: ["curviate account get", "curviate team members"],

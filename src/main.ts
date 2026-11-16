@@ -43,7 +43,7 @@ export const main = defineCommand({
     config: lazy("config", () => import("./commands/config.js").then((m) => m.configCommand)),
 
     account: lazy("account", () => import("./commands/account.js").then((m) => m.accountCommand)),
-    motion: lazy("motion", () => import("./commands/motion.js").then((m) => m.motionCommand)),
+    campaign: lazy("campaign", () => import("./commands/motion.js").then((m) => m.campaignCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
     lead: lazy("lead", () => import("./commands/contact.js").then((m) => m.contactCommand)),
     "do-not-contact": lazy("do-not-contact", () => import("./commands/do-not-contact.js").then((m) => m.doNotContactCommand)),

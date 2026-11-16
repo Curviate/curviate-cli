@@ -1,20 +1,22 @@
 /**
- * `curviate motion` and `curviate enrollment` list filters on the wire: comma
+ * `curviate campaign` and `curviate enrollment` list filters on the wire: comma
  * lists stay lists.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { lines, wire } from "../helpers/wire.js";
+import { pkgRoot } from "../helpers/pkg.js";
 
-describe("motion and enrollment lists: the request each filter sends", () => {
+describe("campaign and enrollment lists: the request each filter sends", () => {
   it.each([
-    [["enrollment", "list", "--motion", "mot_1", "--step", "opener,bump", "--step", "follow"],
-      { call: "GET /v1/enrollments", query: { motion_id: "mot_1", step_id: "opener,bump,follow" }, body: undefined }],
+    [["enrollment", "list", "--campaign", "mot_1", "--step", "opener,bump", "--step", "follow"],
+      { call: "GET /v1/enrollments", query: { campaign_id: "mot_1", step_id: "opener,bump,follow" }, body: undefined }],
     [["enrollment", "list", "--accounts", "acc_a,acc_b"], { call: "GET /v1/enrollments", query: { account_id: "acc_a,acc_b" }, body: undefined }],
     [["enrollment", "list", "--account", "acc_a,acc_b"], { call: "GET /v1/enrollments", query: { account_id: "acc_a,acc_b" }, body: undefined }],
-    [["motion", "list", "--account", "acc_a,acc_b", "--sort", "activity"], { call: "GET /v1/motions", query: { account_id: "acc_a,acc_b", sort: "activity" }, body: undefined }],
+    [["campaign", "list", "--account", "acc_a,acc_b", "--sort", "activity"], { call: "GET /v1/campaigns", query: { account_id: "acc_a,acc_b", sort: "activity" }, body: undefined }],
   ])("%j", async (args, expected) => {
     const r = await wire(args, () => ({ body: { object: "list", items: [], cursor: null } }));
     expect([r.status, lines(r.sent)]).toEqual([0, [expected]]);
@@ -39,29 +41,39 @@ describe("enrollment get: history_truncated", () => {
   });
 });
 
-it("motion list --sort outside updated|activity exits 2 with no request", async () => {
-  const r = await wire(["motion", "list", "--sort", "name"]);
+it("`motion` is an unknown command with no request; root help lists campaign, not motion or contact; no help text, example or hint names `curviate (contact|motion)`", async () => {
+  const old = await wire(["motion", "list"]);
+  expect([old.status, old.sent.length, old.stderr]).toEqual([2, 0, expect.stringContaining("unknown command")]);
+  const help = (await wire(["--help"])).stdout;
+  expect(help).toMatch(/^\s+`campaign`\s/m);
+  expect(help).not.toMatch(/^\s+`(motion|contact)`\s/m);
+  // commands.json holds every command's description, examples, seeAlso, undo and error text
+  expect(readFileSync(join(pkgRoot, "commands.json"), "utf8").match(/curviate (contact|motion)\b/g)).toBeNull();
+});
+
+it("campaign list --sort outside updated|activity exits 2 with no request", async () => {
+  const r = await wire(["campaign", "list", "--sort", "name"]);
   expect([r.status, r.sent.length]).toEqual([2, 0]);
 });
 
-describe("motion create: schedule.timezone is retired", () => {
+describe("campaign create: schedule.timezone is retired", () => {
   it("is refused locally, nothing sent; the same file without it is sent", async () => {
     const file = (schedule: object) => {
-      const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+      const p = join(mkdtempSync(join(tmpdir(), "campaign-")), "m.json");
       writeFileSync(p, JSON.stringify({ name: "M", schedule }));
       return p;
     };
     const hours = { days: ["mon"], hours: { start: "09:00", end: "17:00" } };
-    const send = (schedule: object) => wire(["motion", "create", "--file", file(schedule)], () => ({ body: { object: "motion", id: "mot_1" } }));
+    const send = (schedule: object) => wire(["campaign", "create", "--file", file(schedule)], () => ({ body: { object: "campaign", id: "mot_1" } }));
     const bad = await send({ ...hours, timezone: "Europe/Berlin" });
     expect([bad.status, bad.sent]).toEqual([2, []]);
     expect(bad.stderr + bad.stdout).toContain("timezone");
     const ok = await send(hours);
-    expect([ok.status, lines(ok.sent).map((l) => l.call)]).toEqual([0, ["POST /v1/motions"]]);
+    expect([ok.status, lines(ok.sent).map((l) => l.call)]).toEqual([0, ["POST /v1/campaigns"]]);
   });
 });
 
-describe("motion lint and create: one verdict on a Motion file's fields", () => {
+describe("campaign lint and create: one verdict on a Campaign file's fields", () => {
   const seq = { on_reply: "end", steps: [{ id: "t", tag: "warm", next: "end" }] };
   it.each([
     ["an unknown top-level key", { name: "M", description: "x", sequence: seq }, 2],
@@ -69,31 +81,31 @@ describe("motion lint and create: one verdict on a Motion file's fields", () => 
     ["no name", { sequence: seq }, 2],
     ["a clean file", { name: "M", sequence: seq }, 0],
   ])("%s: lint and create exit alike, lint sends nothing", async (_what, doc, status) => {
-    const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+    const p = join(mkdtempSync(join(tmpdir(), "campaign-")), "m.json");
     writeFileSync(p, JSON.stringify(doc));
-    const lint = await wire(["motion", "lint", "--file", p]);
-    const create = await wire(["motion", "create", "--file", p], () => ({ body: { object: "motion", id: "mot_1" } }));
+    const lint = await wire(["campaign", "lint", "--file", p]);
+    const create = await wire(["campaign", "create", "--file", p], () => ({ body: { object: "campaign", id: "mot_1" } }));
     expect([lint.status, create.status, lint.sent.length]).toEqual([status, status, 0]);
   });
 });
 
-describe("motion create and update: settings.priority, and the retired keys the API still accepts", () => {
+describe("campaign create and update: settings.priority, and the retired keys the API still accepts", () => {
   it.each([["create"], ["update mot_1"]])("%s sends priority and the retired keys as written, and prints the API's SETTING_REMOVED notice", async (verb) => {
     const settings = { priority: "prioritized", new_enrollments_per_account_per_day: 15, assign: "even" };
-    const p = join(mkdtempSync(join(tmpdir(), "motion-")), "m.json");
+    const p = join(mkdtempSync(join(tmpdir(), "campaign-")), "m.json");
     writeFileSync(p, JSON.stringify({ name: "M", settings }));
     const notices = [{ code: "SETTING_REMOVED", message: "settings.assign even is retired" }];
-    const r = await wire(["motion", ...verb.split(" "), "--file", p], () => ({ body: { object: "motion", id: "mot_1", notices } }));
+    const r = await wire(["campaign", ...verb.split(" "), "--file", p], () => ({ body: { object: "campaign", id: "mot_1", notices } }));
     expect(r.status, r.stderr).toBe(0);
     expect((r.sent[0]!.body as { settings: unknown }).settings).toEqual(settings);
     expect(r.stderr + r.stdout).toContain("SETTING_REMOVED");
     writeFileSync(p, JSON.stringify({ name: "M", settings: { priority: "high" } }));
-    const refused = await wire(["motion", ...verb.split(" "), "--file", p], () => ({ body: {} }));
+    const refused = await wire(["campaign", ...verb.split(" "), "--file", p], () => ({ body: {} }));
     expect([refused.status, refused.sent]).toEqual([2, []]);
   });
 });
 
-describe("motion voice-clip", () => {
+describe("campaign voice-clip", () => {
   const clip = { object: "voice_clip", id: "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", duration_ms: 42010, bytes: 3, filename: "intro.mp3", created_at: "2026-10-31T09:30:00.000Z" };
   const audio = () => {
     const p = join(mkdtempSync(join(tmpdir(), "clip-")), "intro.mp3");
@@ -102,20 +114,20 @@ describe("motion voice-clip", () => {
   };
 
   it("upload sends the file's bytes raw with its name and prints the clip; get reads one back", async () => {
-    const up = await wire(["motion", "voice-clip", "upload", audio()], () => ({ status: 201, body: clip }));
+    const up = await wire(["campaign", "voice-clip", "upload", audio()], () => ({ status: 201, body: clip }));
     expect(up.status, up.stderr).toBe(0);
-    expect(up.sent.map((s) => [s.method, s.path, s.query, s.bytes, s.headers.get("content-type")])).toEqual([["POST", "/v1/motions/voice-clips", { filename: "intro.mp3" }, [1, 2, 3], "audio/mpeg"]]);
+    expect(up.sent.map((s) => [s.method, s.path, s.query, s.bytes, s.headers.get("content-type")])).toEqual([["POST", "/v1/campaigns/voice-clips", { filename: "intro.mp3" }, [1, 2, 3], "audio/mpeg"]]);
     expect(JSON.parse(up.stdout).id).toBe(clip.id);
-    const get = await wire(["motion", "voice-clip", "get", clip.id], () => ({ body: clip }));
-    expect([get.status, lines(get.sent).map((l) => l.call)]).toEqual([0, [`GET /v1/motions/voice-clips/${clip.id}`]]);
+    const get = await wire(["campaign", "voice-clip", "get", clip.id], () => ({ body: clip }));
+    expect([get.status, lines(get.sent).map((l) => l.call)]).toEqual([0, [`GET /v1/campaigns/voice-clips/${clip.id}`]]);
   });
 
   it("--preview and a missing file send nothing; the API's refusal exits 2 and names the reason", async () => {
-    const preview = await wire(["motion", "voice-clip", "upload", audio(), "--preview"]);
+    const preview = await wire(["campaign", "voice-clip", "upload", audio(), "--preview"]);
     expect([preview.status, preview.sent, JSON.parse(preview.stdout).attachments]).toEqual([0, [], ["intro.mp3 (3 bytes)"]]);
-    const missing = await wire(["motion", "voice-clip", "upload", "/nope/x.mp3"]);
+    const missing = await wire(["campaign", "voice-clip", "upload", "/nope/x.mp3"]);
     expect([missing.status, missing.sent]).toEqual([2, []]);
-    const refused = await wire(["motion", "voice-clip", "upload", audio()], () => ({
+    const refused = await wire(["campaign", "voice-clip", "upload", audio()], () => ({
       status: 422,
       body: { code: "VOICE_CLIP_INVALID", message: "The clip is 121.0 s; the limit is 120 s.", user_fixable: true, retry_likely_to_succeed: false },
     }));

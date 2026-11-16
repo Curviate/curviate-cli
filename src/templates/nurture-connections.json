@@ -7,7 +7,7 @@
       {
         "id": "is_connected",
         "if": {
-          "contact.connected": true
+          "lead.connected": true
         },
         "then": "dm",
         "else": "not_connected"
