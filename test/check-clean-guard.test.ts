@@ -450,6 +450,12 @@ describe("check:clean guard — scanCommitMessages / commitVerdict (--commits mo
   const CLAUDE_TRAILER = ["Claude", "-Session", ":"].join("") + " https://claude.ai/code/session_abc";
   const PRIVATE_REPO_REF = "rapha-red" + "/curviate" + "#" + "1018";
 
+  it("an issue ref is a leak; a 40-hex commit pin starting with digits is not", () => {
+    const issue = PATTERNS.find((p: { label: string }) => p.label.startsWith("issue tracker refs"))!.pattern;
+    expect(issue.test(`refs ${ISSUE_REF}`)).toBe(true);
+    expect(issue.test("github:Curviate/sdk#" + "0243d57b014c7e32015ce5265b0268d7f0b17872")).toBe(false);
+  });
+
   it("catches an issue-tracker ref left in a commit message the diff itself stripped", async () => {
     const dir = await makeCommitFixture([`fix(config): stop the fallthrough\n\nrefs ${ISSUE_REF}`]);
     const result = await scanCommitMessages(dir, { baseRef: "main" });

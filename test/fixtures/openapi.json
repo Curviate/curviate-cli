@@ -81164,6 +81164,24 @@
                                   ],
                                   "description": "`interface_ceiling` with the account's warm-up ramp applied, and null wherever `interface_ceiling` is null. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` rather than `ceiling` answers that for a standard one."
                                 },
+                                "hard_maximum": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only."
+                                },
+                                "interface_hard_maximum": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only."
+                                },
+                                "above_hard_maximum": {
+                                  "type": "boolean",
+                                  "description": "True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only."
+                                },
                                 "band": {
                                   "type": "string",
                                   "enum": [
@@ -81937,6 +81955,24 @@
                             ],
                             "description": "`interface_ceiling` with the account's warm-up ramp applied, and null wherever `interface_ceiling` is null. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` rather than `ceiling` answers that for a standard one."
                           },
+                          "hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only."
+                          },
+                          "interface_hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only."
+                          },
+                          "above_hard_maximum": {
+                            "type": "boolean",
+                            "description": "True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only."
+                          },
                           "band": {
                             "type": "string",
                             "enum": [
@@ -82436,6 +82472,9 @@
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "amber",
                           "over_default": false,
                           "halt": null,
@@ -82456,6 +82495,9 @@
                           "remaining": 109,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82476,6 +82518,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82496,6 +82541,9 @@
                           "remaining": 138,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82516,6 +82564,9 @@
                           "remaining": 0,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "over",
                           "over_default": false,
                           "halt": null,
@@ -82536,6 +82587,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82556,6 +82610,9 @@
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82576,6 +82633,9 @@
                           "remaining": 750,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82596,6 +82656,9 @@
                           "remaining": 297,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82616,6 +82679,9 @@
                           "remaining": 92,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82636,6 +82702,9 @@
                           "remaining": 99,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82656,6 +82725,9 @@
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82676,6 +82748,9 @@
                           "remaining": 40,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82696,6 +82771,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82716,6 +82794,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82736,6 +82817,9 @@
                           "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82756,6 +82840,9 @@
                           "remaining": 95,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82776,6 +82863,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82796,6 +82886,9 @@
                           "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82816,6 +82909,9 @@
                           "remaining": 359,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82836,6 +82932,9 @@
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "amber",
                           "over_default": false,
                           "halt": null,
@@ -82856,6 +82955,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82876,6 +82978,9 @@
                           "remaining": 436,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -82970,6 +83075,9 @@
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "amber",
                           "over_default": false,
                           "halt": null,
@@ -82990,6 +83098,9 @@
                           "remaining": 109,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83010,6 +83121,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83030,6 +83144,9 @@
                           "remaining": 138,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83050,6 +83167,9 @@
                           "remaining": 0,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "over",
                           "over_default": false,
                           "halt": null,
@@ -83070,6 +83190,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83090,6 +83213,9 @@
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83110,6 +83236,9 @@
                           "remaining": 750,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83130,6 +83259,9 @@
                           "remaining": 297,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83150,6 +83282,9 @@
                           "remaining": 92,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83170,6 +83305,9 @@
                           "remaining": 99,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83190,6 +83328,9 @@
                           "remaining": 63,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83210,6 +83351,9 @@
                           "remaining": 40,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83230,6 +83374,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83250,6 +83397,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83270,6 +83420,9 @@
                           "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83290,6 +83443,9 @@
                           "remaining": 95,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83310,6 +83466,9 @@
                           "remaining": 100,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83330,6 +83489,9 @@
                           "remaining": 60,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83350,6 +83512,9 @@
                           "remaining": 359,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83370,6 +83535,9 @@
                           "remaining": 1,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "amber",
                           "over_default": false,
                           "halt": null,
@@ -83390,6 +83558,9 @@
                           "remaining": null,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -83410,6 +83581,9 @@
                           "remaining": 436,
                           "interface_ceiling": null,
                           "effective_interface_ceiling": null,
+                          "hard_maximum": null,
+                          "interface_hard_maximum": null,
+                          "above_hard_maximum": false,
                           "band": "green",
                           "over_default": false,
                           "halt": null,
@@ -98398,6 +98572,24 @@
                             ],
                             "description": "`interface_ceiling` with the account's warm-up ramp applied, and null wherever `interface_ceiling` is null. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` rather than `ceiling` answers that for a standard one."
                           },
+                          "hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only."
+                          },
+                          "interface_hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only."
+                          },
+                          "above_hard_maximum": {
+                            "type": "boolean",
+                            "description": "True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only."
+                          },
                           "over_default": {
                             "type": "array",
                             "items": {
@@ -99906,6 +100098,24 @@
                             ],
                             "description": "`interface_ceiling` with the account's warm-up ramp applied, and null wherever `interface_ceiling` is null. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` rather than `ceiling` answers that for a standard one."
                           },
+                          "hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only."
+                          },
+                          "interface_hard_maximum": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only."
+                          },
+                          "above_hard_maximum": {
+                            "type": "boolean",
+                            "description": "True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only."
+                          },
                           "over_default": {
                             "type": "array",
                             "items": {
@@ -101116,6 +101326,15 @@
                         },
                         "effective_interface_ceiling": {
                           "description": "READ-ONLY. `interface_ceiling` with the account's warm-up ramp applied. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` and not `ceiling` answers that for a standard one. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                        },
+                        "hard_maximum": {
+                          "description": "READ-ONLY. The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                        },
+                        "interface_hard_maximum": {
+                          "description": "READ-ONLY. The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
+                        },
+                        "above_hard_maximum": {
+                          "description": "READ-ONLY. True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only. Sent back on a write it is accepted and ignored, so the whole document round-trips; it is never stored and never ledgered."
                         },
                         "posture_source": {
                           "description": "REMOVED from the read (SF-04). Accepted and ignored until 2027-02-01 so an older document round-trips; refused after."
@@ -147010,6 +147229,24 @@
                                     "null"
                                   ],
                                   "description": "`interface_ceiling` with the account's warm-up ramp applied, and null wherever `interface_ceiling` is null. Read THIS to know where an elevated-interface call stops, for the same reason `effective_ceiling` rather than `ceiling` answers that for a standard one."
+                                },
+                                "hard_maximum": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "The highest `ceiling` a standard-interface call on this row is held to, whatever is configured: a stored value above it is kept and held to it (`effective_ceiling` shows the held figure). Null on a row with no maximum. Read-only."
+                                },
+                                "interface_hard_maximum": {
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ],
+                                  "description": "The highest figure a call through this plan's own interface (the Sales Navigator or Recruiter operations) is held to on this row. Null where the plan has none. Read-only."
+                                },
+                                "above_hard_maximum": {
+                                  "type": "boolean",
+                                  "description": "True when the stored `ceiling` is above the highest maximum this Account's plan allows on this row; it is kept and held to the maximum, and a write above the maximum is refused. Read-only."
                                 },
                                 "band": {
                                   "type": "string",
