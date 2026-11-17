@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+Pins the unpublished SDK build `fa892f6` (`github:Curviate/curviate-sdk#<sha>`, Mailboxes and Team email safety); not publishable until the SDK is on npm and the pin is back to an exact version. The vendored OpenAPI fixture is re-copied from that build; `commands.json` regenerated.
+
+### Mailboxes, domains and Team email safety
+
+- **`mailbox list|get|update|pause|resume|remove`**: your Team's own email Mailboxes. `list` filters by `--state`, `--sends-for` (an Account id, `shared` or `none`) and `--domain`; `update` takes `--sends-for <acc_...|shared>`, `--daily-cap` and `--signature-file` (a path or `-`). A cap above 50 and a signature over 2,000 characters are refused by the API (exit 2, the message names the limit). Connecting a Mailbox is not here yet.
+- **`domain check <domain> [--now]`**: a sending domain's MX, SPF, DKIM, DMARC and tracking checks as last run, or run now.
+- **`account safety get --team`** and **`account safety update --team --email-default-cap --email-opt-out-scope --email-opt-out-text --email-opt-out-link-text --email-opt-out-link-word`**: the Team's email defaults. `--team` here is the scope switch: bare it names your current Team, with `tnt_...` another of yours. `""` on a text flag restores the shipped default.
+- New exit-code rows for the Mailbox codes: not found 4, a state that forbids it 8, past the allowance or a private Gmail address sent through sign-in 2, an administrator's approval 5; `SPENDING_CAP_REACHED` and `CANCEL_IN_DASHBOARD` 5.
+
 ## [0.54.0] - 2026-11-16
 
 ### `tier` stops printing `pending` and `early access`
