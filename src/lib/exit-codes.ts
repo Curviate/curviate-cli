@@ -325,6 +325,25 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   CONNECT_REQUEST_IN_USE: 8,
   LINKEDIN_ACCOUNT_MISMATCH: 8,
 
+  // Mailboxes and sending domains. A missing one is 4; a state that forbids the action (pause of a
+  // paused Mailbox, an address already connected, a provider or host refusing) is 8, the same input
+  // works in another state; a Team past its Mailbox allowance, or a private Gmail address sent
+  // through sign-in, never succeeds as sent (2). An administrator's approval is someone else's
+  // act first (5). The Mailbox Connect request carries the same codes as its `error_code`.
+  MAILBOX_NOT_FOUND: 4,
+  DOMAIN_NOT_FOUND: 4,
+  MAILBOX_STATE_CONFLICT: 8,
+  MAILBOX_ALREADY_CONNECTED: 8,
+  MAILBOX_CREDENTIAL_REJECTED: 8,
+  MAILBOX_TLS_FAILED: 8,
+  MAILBOX_ADDRESS_MISMATCH: 8,
+  MAILBOX_LIMIT_REACHED: 2,
+  MAILBOX_APP_PASSWORD_REQUIRED: 2,
+  MAILBOX_ADMIN_APPROVAL_REQUIRED: 5,
+  // Seat calls: only an Owner raises the spending cap or cancels in the dashboard (5, someone else acts first).
+  SPENDING_CAP_REACHED: 5,
+  CANCEL_IN_DASHBOARD: 5,
+
   // Leads: a cap or a name clash never succeeds as sent; a full import queue drains (6).
   NAME_TAKEN: 2,
   RESOURCE_IN_USE: 2,

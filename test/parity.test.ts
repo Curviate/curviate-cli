@@ -27,6 +27,18 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account disconnect": "accounts.disconnect",
   "account warm-up on|off": "accounts.updateSafetyPolicy",
   "account safety get":    "accounts.getSafetyPolicy",
+  "account safety get --team":    "accounts.getTeamSafetyPolicy",
+  "account safety update --team": "accounts.updateTeamSafetyPolicy",
+
+  // mailboxes (7) and domains (1). `mailbox connect` and `reconnect` reuse connectRequests.create (a convenience route, no entry).
+  "mailbox list":   "mailboxes.list",
+  "mailbox get":    "mailboxes.get",
+  "mailbox update": "mailboxes.update",
+  "mailbox pause":  "mailboxes.pause",
+  "mailbox resume": "mailboxes.resume",
+  "mailbox remove": "mailboxes.remove",
+  "mailbox discover": "mailboxes.discover",
+  "domain check":   "domains.check",
   "account team-access on|off": "accounts.setTeamAccess",
 
   // webhooks (6)

@@ -301,10 +301,13 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
       "ACCOUNT_OWNER_ONLY",
       "BETA_NOT_ENABLED",
       "BILLING_OWNER_REQUIRED",
+      "CANCEL_IN_DASHBOARD",
       "INSUFFICIENT_ROLE",
       "LAST_OWNER",
       "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
+      "MAILBOX_ADMIN_APPROVAL_REQUIRED",
       "NO_ACTIVE_SEAT",
+      "SPENDING_CAP_REACHED",
       "TIER_REQUIRED",
     ]);
   });
