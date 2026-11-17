@@ -49,8 +49,10 @@ const STATES = ["connected", "ramping", "paused", "paused_by_bounces", "paused_b
 /** The API's cap and signature limits are its own: the CLI sends what it is given and prints the API's 400. */
 const SIGNATURE_MAX_BYTES = 64 * 1024;
 
-const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
+const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args, rawArgs }: { args: unknown; rawArgs?: string[] }) => {
   const f = args as Flags;
+  // A boolean flag parses `--password-stdin=x` as plain true and drops x: refuse it, never echoing x.
+  if ((rawArgs ?? []).some((t) => t.startsWith("--password-stdin="))) usage("--password-stdin takes no value: the password is read from stdin.");
   await fn(await rootClient(f), f);
 };
 

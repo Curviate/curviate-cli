@@ -60,6 +60,10 @@ const ROWS: Row[] = [
   { name: "HTTP 503: 7", args: GMAIL, reply: API_ERROR(503, "PLATFORM_ERROR"), exit: 7, call: CREATE, body: { mailbox: { connection: "google_app_password", address: "anna@gmail.com" }, ...PW } },
   { name: "an answer that is not JSON", args: GMAIL, reply: { status: 201, type: "text/html", body: "<html>gateway</html>" }, exit: 0, call: CREATE, body: { mailbox: { connection: "google_app_password", address: "anna@gmail.com" }, ...PW }, says: "do not retry it" },
   { name: "no server at the base URL", args: GMAIL, env: { CURVIATE_BASE_URL: "http://127.0.0.1:1" }, exit: 7 },
+  { name: "piped: leading and inner spaces kept, trailing whitespace and CRLF dropped", args: GMAIL, stdin: `  sp ace ${CANARY}  \r\n`, reply: { status: 201, body: DONE }, exit: 0, call: CREATE, body: { mailbox: { connection: "google_app_password", address: "anna@gmail.com" }, credentials: { password: `  sp ace ${CANARY}` } } },
+  { name: "piped: more than one line is refused, nothing half-read", args: GMAIL, stdin: `${CANARY}\nsecond line\n`, exit: 2, says: "more than one line" },
+  { name: "--password-stdin=VALUE is refused, the value never echoed", args: ["mailbox", "connect", "anna@gmail.com", "--connection", "google_app_password", `--password-stdin=${CANARY}`], exit: 2 },
+  { name: "reconnect --password-stdin=VALUE is refused", args: ["mailbox", "reconnect", "mbx_1", `--password-stdin=${CANARY}`], exit: 2 },
   // reconnect
   { name: "reconnect: new password checked and stored", args: ["mailbox", "reconnect", "mbx_1", "--password-stdin"], reply: { status: 201, body: { ...DONE, kind: "mailbox_reconnect" } }, exit: 0, call: CREATE, body: { mailbox_id: "mbx_1", ...PW } },
   { name: "reconnect: an app password beside a Google sign-in (the same call)", args: ["mailbox", "reconnect", "mbx_gsi", "--password-stdin", "--json"], reply: { status: 201, body: { ...DONE, kind: "mailbox_reconnect", mailbox_id: "mbx_gsi" } }, exit: 0, call: CREATE, body: { mailbox_id: "mbx_gsi", ...PW } },

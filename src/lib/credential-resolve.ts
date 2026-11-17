@@ -170,7 +170,13 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
     } else {
       const reader = params.readStdin ?? defaultReadStdin;
       const raw = await reader();
-      const trimmed = raw.trim();
+      // Trailing whitespace and the newline only: leading and inner spaces belong to a password.
+      const trimmed = raw.trimEnd();
+      // One secret is one line: a pasted file or a second line is refused, never half-read.
+      if (/[\r\n]/.test(trimmed)) {
+        params.out.stderr.write("error: stdin held more than one line. Pipe the secret alone, on one line.\n");
+        process.exit(2);
+      }
       if (trimmed !== "") {
         return trimmed;
       }
