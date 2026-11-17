@@ -148,7 +148,7 @@ export const loginCommand = defineCommand({
     // If no --api-key and we have a TTY, prompt interactively.
     if (apiKey === undefined) {
       if (process.stdin.isTTY) {
-        apiKey = await promptMasked("Enter your API key: ");
+        apiKey = (await promptMasked("Enter your API key: ")).trim(); // a key is one token, as the piped read above
       } else {
         process.stderr.write(
           "error: no API key, pass --api-key or run interactively on a TTY.\n",

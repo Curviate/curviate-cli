@@ -766,6 +766,14 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   }
   setBetaOverride(beta.ok ? beta.value : undefined);
   const argsAfterBeta = beta.ok ? beta.rest : rawArgs;
+  // A `--*-stdin` flag is a boolean: citty reads `--password-stdin=x` as plain true and drops x, so the secret
+  // would be read from stdin while the caller believed it passed it. Refused on every command, never echoing x.
+  const end = argsAfterBeta.indexOf("--");
+  const inline = (end === -1 ? argsAfterBeta : argsAfterBeta.slice(0, end)).find((a) => /^--[a-z-]+-stdin=/.test(a));
+  if (inline !== undefined) {
+    const flag = inline.slice(0, inline.indexOf("="));
+    usageError(`${flag} takes no value: the secret is read from stdin.`, `pipe it in: printf '%s' "$SECRET" | curviate ... ${flag}`);
+  }
 
   // The resolved leaf, kept for the missing-argument hint below.
   let hintLeaf: AnyCommand | undefined;

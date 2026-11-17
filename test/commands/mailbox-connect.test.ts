@@ -64,6 +64,9 @@ const ROWS: Row[] = [
   { name: "piped: more than one line is refused, nothing half-read", args: GMAIL, stdin: `${CANARY}\nsecond line\n`, exit: 2, says: "more than one line" },
   { name: "--password-stdin=VALUE is refused, the value never echoed", args: ["mailbox", "connect", "anna@gmail.com", "--connection", "google_app_password", `--password-stdin=${CANARY}`], exit: 2 },
   { name: "reconnect --password-stdin=VALUE is refused", args: ["mailbox", "reconnect", "mbx_1", `--password-stdin=${CANARY}`], exit: 2 },
+  { name: "CLI-wide (MBX-33): account link --password-stdin=VALUE is refused, never echoed", args: ["account", "link", "--seat-id", "seat_1", "--auth-method", "credentials", "--email", "a@b.c", "--country", "US", `--password-stdin=${CANARY}`], exit: 2, says: "takes no value" },
+  { name: "CLI-wide (MBX-33): account link --li-at-stdin=VALUE is refused", args: ["account", "link", "--seat-id", "seat_1", "--auth-method", "cookie", `--li-at-stdin=${CANARY}`], exit: 2, says: "takes no value" },
+  { name: "typed on a terminal (MBX-33): leading and inner spaces kept, trailing dropped, as piped", args: GMAIL, tty: true, stdin: `  sp ace ${CANARY}  \n`, reply: { status: 201, body: DONE }, exit: 0, call: CREATE, body: { mailbox: { connection: "google_app_password", address: "anna@gmail.com" }, credentials: { password: `  sp ace ${CANARY}` } } },
   // reconnect
   { name: "reconnect: new password checked and stored", args: ["mailbox", "reconnect", "mbx_1", "--password-stdin"], reply: { status: 201, body: { ...DONE, kind: "mailbox_reconnect" } }, exit: 0, call: CREATE, body: { mailbox_id: "mbx_1", ...PW } },
   { name: "reconnect: an app password beside a Google sign-in (the same call)", args: ["mailbox", "reconnect", "mbx_gsi", "--password-stdin", "--json"], reply: { status: 201, body: { ...DONE, kind: "mailbox_reconnect", mailbox_id: "mbx_gsi" } }, exit: 0, call: CREATE, body: { mailbox_id: "mbx_gsi", ...PW } },
