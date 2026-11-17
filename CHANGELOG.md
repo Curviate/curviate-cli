@@ -18,7 +18,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 - Campaign files and templates: `lead_list_ids`, `settings.accounts_per_lead`, `settings.exclude.other_campaigns`, and `lead.*` conditions; the offline W17 hint says Campaign. Webhook events are `campaign.status_changed` and `campaign.custom_event`.
 - Built against the unreleased SDK of the same rename (commit pin until the release, then the exact version); the vendored OpenAPI fixture is re-copied from it.
 
-Pins the unpublished SDK build `fa892f6` (`github:Curviate/curviate-sdk#<sha>`, Mailboxes and Team email safety); not publishable until the SDK is on npm and the pin is back to an exact version. The vendored OpenAPI fixture is re-copied from that build; `commands.json` regenerated.
+Pins the unpublished SDK build `2d20d90` (`github:Curviate/curviate-sdk#<sha>`, the SDK rename head, which carries the Mailboxes and Team email safety build `fa892f6`); not publishable until the SDK is on npm and the pin is back to an exact version. The vendored OpenAPI fixture is re-copied from that build; `commands.json` regenerated.
 
 ### Mailboxes, domains and Team email safety
 
