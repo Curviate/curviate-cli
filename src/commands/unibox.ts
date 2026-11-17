@@ -20,7 +20,7 @@ type UniboxFlags = RootFlags & {
   chatId?: string;
   text?: string;
   accounts?: string | string[];
-  motion?: string | string[];
+  campaign?: string | string[];
   person?: string;
   tag?: string | string[];
   unread?: boolean;
@@ -70,7 +70,7 @@ function chatWith(i: Row): unknown {
 async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
   const q: Row = {};
   if (f.accounts !== undefined) q["account_ids"] = listFlag("accounts", f.accounts);
-  if (f.motion !== undefined) q["motion_ids"] = listFlag("motion", f.motion);
+  if (f.campaign !== undefined) q["campaign_ids"] = listFlag("campaign", f.campaign);
   if (f.tag !== undefined) q["tags"] = listFlag("tag", f.tag);
   if (f.person !== undefined) q["person"] = f.person;
   if (f.unread !== undefined) q["unread"] = f.unread;
@@ -82,9 +82,9 @@ async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
   try {
     await paged(f, q, (p) => c.unibox.list(p as never) as unknown as Promise<unknown>, (page) => {
       const unread = (i: Row) => (i["unread"] ? (i["marked_unread"] ? "marked" : "yes") : "");
-      const motion = (i: Row) => (i["motion_context"] as Row | null)?.["motion_name"];
-      print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "MOTION", "TAGS"],
-        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], motion(i), (i["tags"] as string[] | undefined)?.join(", ")])));
+      const campaign = (i: Row) => (i["campaign_context"] as Row | null)?.["campaign_name"];
+      print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "CAMPAIGN", "TAGS"],
+        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], campaign(i), (i["tags"] as string[] | undefined)?.join(", ")])));
       if (typeof page["total"] === "number") print(`total: ${page["total"]} chats match`);
     });
   } catch (err) {
@@ -148,9 +148,9 @@ async function runMark(c: Curviate, f: UniboxFlags): Promise<void> {
 async function runTag(c: Curviate, f: UniboxFlags): Promise<void> {
   const { accountId, chatId } = ids(f);
   const body = f.tag === undefined ? {} : { tags: listFlag("tag", f.tag) };
-  if (f.preview) return preview("unibox.tagContact", { account_id: accountId, chat_id: chatId }, body);
+  if (f.preview) return preview("unibox.tagLead", { account_id: accountId, chat_id: chatId }, body);
   try {
-    renderSuccess(await c.unibox.tagContact(accountId, chatId, body), outputOpts(f), process);
+    renderSuccess(await c.unibox.tagLead(accountId, chatId, body), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -158,8 +158,8 @@ async function runTag(c: Curviate, f: UniboxFlags): Promise<void> {
 
 async function runEnroll(c: Curviate, f: UniboxFlags): Promise<void> {
   const { accountId, chatId } = ids(f);
-  const motion = typeof f.motion === "string" && f.motion.trim() !== "" ? f.motion : usage("--motion is required: the Motion to enroll the person in (mot_...).");
-  const body = { motion_id: motion };
+  const campaign = typeof f.campaign === "string" && f.campaign.trim() !== "" ? f.campaign : usage("--campaign is required: the Campaign to enroll the person in (mot_...).");
+  const body = { campaign_id: campaign };
   if (f.preview) return preview("unibox.enroll", { account_id: accountId, chat_id: chatId }, body);
   try {
     renderSuccess(await c.unibox.enroll(accountId, chatId, body), outputOpts(f), process);
@@ -221,18 +221,18 @@ const listCmd = defineCommand({
     name: "list",
     description:
       "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. " +
-      "An Account without full-inbox sync shows only its Motion chats; a disconnected Account's chats are listed read-only.",
+      "An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only.",
     risk: "read",
-    output: ["A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Motion and tags; with --total the count of matching chats. --json (or piped) prints the API page."],
-    examples: ["curviate unibox list --unread", "curviate unibox list --person con_YOUR_CONTACT_ID --motion none --total"],
+    output: ["A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Campaign and tags; with --total the count of matching chats. --json (or piped) prints the API page."],
+    examples: ["curviate unibox list --unread", "curviate unibox list --person con_YOUR_LEAD_ID --campaign none --total"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     limit: { ...GLOBAL_FLAGS.limit, description: "Chats per page (1 to 100)." },
     accounts: ACCOUNTS,
-    motion: { type: "string" as const, description: "Only chats linked to these Motions (mot_...), repeatable or a comma list; `none` for chats no Motion links." },
-    person: { type: "string" as const, description: "Only chats with this person: a Contact id (con_...) or a LinkedIn id (ACo...)." },
-    tag: { type: "string" as const, description: "Only chats whose Contact has this tag; repeatable or a comma list." },
+    campaign: { type: "string" as const, description: "Only chats linked to these Campaigns (mot_...), repeatable or a comma list; `none` for chats no Campaign links." },
+    person: { type: "string" as const, description: "Only chats with this person: a Lead id (con_...) or a LinkedIn id (ACo...)." },
+    tag: { type: "string" as const, description: "Only chats whose Lead has this tag; repeatable or a comma list." },
     unread: { type: "boolean" as const, description: "--unread for unread chats only, --no-unread for read ones; omit for both." },
     "last-from": { type: "string" as const, description: "Who wrote the last message: me or them." },
     type: { type: "string" as const, description: "classic, inmail, sales_navigator or recruiter." },
@@ -245,7 +245,7 @@ const listCmd = defineCommand({
 const getCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One chat as the Unibox lists it, with `marked_unread` ({origin, at}, or null) and its Motion context.",
+    description: "One chat as the Unibox lists it, with `marked_unread` ({origin, at}, or null) and its Campaign context.",
     risk: "read",
     examples: ["curviate unibox get acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID"],
   },
@@ -267,7 +267,7 @@ const unreadCmd = defineCommand({
 const messagesCmd = defineCommand({
   meta: {
     name: "messages",
-    description: "Read one chat's messages, newest first. Each message carries `origin` when known: motion, unibox, api or linkedin.",
+    description: "Read one chat's messages, newest first. Each message carries `origin` when known: campaign, unibox, api or linkedin.",
     risk: "read",
     seeAlso: ["curviate core inbox messages"],
     examples: ["curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID", "curviate unibox messages acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --all"],
@@ -323,19 +323,19 @@ const markCmd = defineCommand({
 const tagCmd = defineCommand({
   meta: {
     name: "tag",
-    description: "Save the other person of a one-to-one chat as a Contact (or find the one you hold) and add tags, never removing any. Needs Automate.",
+    description: "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "Creates or finds the Contact and adds the tags.",
+      changes: "Creates or finds the Lead and adds the tags.",
       visible_to: "Your Team.",
       budget_rows: [],
-      retry: "Safe to repeat: the same Contact, tags already there stay.",
-      undo: "Remove the tags or the Contact with `curviate contact`.",
+      retry: "Safe to repeat: the same Lead, tags already there stay.",
+      undo: "Remove the tags or the Lead with `curviate lead`.",
     },
     errors: { ...AUTOMATE, ...ONE_TO_ONE },
     examples: ["curviate unibox tag acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --tag warm"],
   },
-  args: { ...WRITE_SINGLE_FLAGS, accountId: ACCOUNT, chatId: CHAT, tag: { type: "string" as const, description: "A tag to add; repeatable or a comma list. Omit to only save the Contact." } },
+  args: { ...WRITE_SINGLE_FLAGS, accountId: ACCOUNT, chatId: CHAT, tag: { type: "string" as const, description: "A tag to add; repeatable or a comma list. Omit to only save the Lead." } },
   run: online(runTag),
 });
 
@@ -343,22 +343,22 @@ const enrollCmd = defineCommand({
   meta: {
     name: "enroll",
     description:
-      "Save the other person of a one-to-one chat as a Contact and enroll them in a Motion through this chat's Account (one of its sending Accounts). " +
+      "Save the other person of a one-to-one chat as a Lead and enroll them in a Campaign through this chat's Account (one of its sending Accounts). " +
       "A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
     risk: "high",
     rules: {
-      changes: "Creates the Enrollment; the Motion's Steps run for this person from this Account.",
+      changes: "Creates the Enrollment; the Campaign's Steps run for this person from this Account.",
       visible_to: "The person, once a Step reaches LinkedIn.",
       budget_rows: [],
       retry: "A second call answers that the person is already enrolled.",
       undo: "`curviate enrollment stop <enrollment_id>`; what was sent stays sent.",
       blast_radius: "One person, from one Account.",
     },
-    errors: { ...AUTOMATE, ...ONE_TO_ONE, ALREADY_ENROLLED_ON_ACCOUNT: "the person is already in this Motion on this Account." },
+    errors: { ...AUTOMATE, ...ONE_TO_ONE, ALREADY_ENROLLED_ON_ACCOUNT: "the person is already in this Campaign on this Account." },
     seeAlso: ["curviate enrollment get"],
-    examples: ["curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --motion mot_YOUR_MOTION_ID"],
+    examples: ["curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --campaign mot_YOUR_CAMPAIGN_ID"],
   },
-  args: { ...WRITE_SINGLE_FLAGS, accountId: ACCOUNT, chatId: CHAT, motion: { type: "string" as const, required: true, description: "The Motion (mot_...)." } },
+  args: { ...WRITE_SINGLE_FLAGS, accountId: ACCOUNT, chatId: CHAT, campaign: { type: "string" as const, required: true, description: "The Campaign (mot_...)." } },
   run: online(runEnroll),
 });
 
@@ -368,7 +368,7 @@ const refreshCmd = defineCommand({
     description:
       "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. " +
       "Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. " +
-      "An Account without Sync full inbox is re-read for its Motion conversations only; one with neither answers not_synced. " +
+      "An Account without Sync full inbox is re-read for its Campaign conversations only; one with neither answers not_synced. " +
       "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
     risk: "write",
     rules: {
@@ -401,10 +401,10 @@ const consentCmd = defineCommand({
     name: "consent",
     description:
       "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); " +
-      "off hides the Account's non-Motion chats at once and deletes them shortly after.",
+      "off hides the Account's non-Campaign chats at once and deletes them shortly after.",
     risk: "high",
     rules: {
-      changes: "Copies the Account's whole inbox into the Unibox (on), or removes the non-Motion chats from it (off).",
+      changes: "Copies the Account's whole inbox into the Unibox (on), or removes the non-Campaign chats from it (off).",
       visible_to: "Your Team: every teammate who may operate the Account reads its whole inbox while on.",
       budget_rows: ["inbox_sync"],
       retry: "Safe to repeat: the same setting again.",

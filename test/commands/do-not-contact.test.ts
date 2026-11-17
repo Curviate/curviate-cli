@@ -22,8 +22,8 @@ const sink = useSink((h: Hit) => {
 describe("do-not-contact", () => {
   it("one add and one list: the entry added is the entry listed", async () => {
     entries.length = 0;
-    const add = await sink.run(["do-not-contact", "add", "--contact", "con_1", "--reason", "asked_to_stop", "--json"]);
-    expect([add.status, line(add.requests[0]!), JSON.parse(add.requests[0]!.body)]).toEqual([0, "POST /v1/do-not-contact", { contact_id: "con_1", reason: "asked_to_stop" }]);
+    const add = await sink.run(["do-not-contact", "add", "--lead", "con_1", "--reason", "asked_to_stop", "--json"]);
+    expect([add.status, line(add.requests[0]!), JSON.parse(add.requests[0]!.body)]).toEqual([0, "POST /v1/do-not-contact", { lead_id: "con_1", reason: "asked_to_stop" }]);
     const list = await sink.run(["do-not-contact", "list", "--query", "jane", "--json"]);
     expect(list.requests[0]!.url).toBe("/v1/do-not-contact?q=jane");
     expect(JSON.parse(list.stdout).items).toEqual([ENTRY]);

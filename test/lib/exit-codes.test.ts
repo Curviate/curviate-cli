@@ -96,13 +96,13 @@ describe("lib/exit-codes — spot checks (per spec)", () => {
     ["TEAM_ACCESS_DENIED", 3],
     ["DEFAULT_TEAM_PROTECTED", 2],
     ["TRIAL_IDENTITY_ALREADY_USED", 11],
-    // Motions: never succeeds as sent (2); a Step mid-send settles within a minute (7, the DRAFT_PUBLISHING precedent).
+    // Campaigns: never succeeds as sent (2); a Step mid-send settles within a minute (7, the DRAFT_PUBLISHING precedent).
     ["SEQUENCE_INVALID", 2],
     ["SEQUENCE_CONFLICT", 2],
     ["NOTHING_TO_RETRY", 2],
     ["ENROLLMENT_NOT_ACTIVE", 2],
-    ["MOTION_STATUS_CONFLICT", 2],
-    ["MOTION_NOT_STARTABLE", 2],
+    ["CAMPAIGN_STATUS_CONFLICT", 2],
+    ["CAMPAIGN_NOT_STARTABLE", 2],
     ["STEP_IN_FLIGHT", 7],
     ["TIER_REQUIRED", 5],
   ] as [ErrorCode, number][])(

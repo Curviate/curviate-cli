@@ -32,7 +32,7 @@ describe("webhook create, tenant-wide account_status", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it.each(["messaging", "user", "post", "motion"])("%s without --account-ids sends no account_ids key: every Account the creator can operate", async (source) => {
+  it.each(["messaging", "user", "post", "campaign"])("%s without --account-ids sends no account_ids key: every Account the creator can operate", async (source) => {
     create.mockResolvedValue({ object: "webhook", id: "wh_1" });
     await go({ source, json: true });
     expect(create.mock.calls[0]![0]).toMatchObject({ source });
@@ -40,14 +40,14 @@ describe("webhook create, tenant-wide account_status", () => {
     create.mockClear();
   });
 
-  it("--motion-ids is sent as motion_ids; an empty one is refused, never read as no filter", async () => {
+  it("--campaign-ids is sent as campaign_ids; an empty one is refused, never read as no filter", async () => {
     create.mockResolvedValue({ object: "webhook", id: "wh_1" });
-    await go({ source: "motion", "motion-ids": "mot_1, mot_2", json: true });
-    expect(create.mock.calls[0]![0]).toMatchObject({ source: "motion", motion_ids: ["mot_1", "mot_2"] });
+    await go({ source: "campaign", "campaign-ids": "mot_1, mot_2", json: true });
+    expect(create.mock.calls[0]![0]).toMatchObject({ source: "campaign", campaign_ids: ["mot_1", "mot_2"] });
     create.mockClear();
     const out = makeOut();
-    expect(await exitCode(() => go({ source: "motion", "motion-ids": " , " }, out))).toBe(2);
-    expect(text(out.stderr.write)).toContain("--motion-ids was given an empty value");
+    expect(await exitCode(() => go({ source: "campaign", "campaign-ids": " , " }, out))).toBe(2);
+    expect(text(out.stderr.write)).toContain("--campaign-ids was given an empty value");
     expect(create).not.toHaveBeenCalled();
   });
 

@@ -18,15 +18,15 @@ const file = (name: string, text: string) => {
   writeFileSync(p, text);
   return p;
 };
-const TEMPLATE = '{"email": "{{contact.email}}"}';
+const TEMPLATE = '{"email": "{{lead.email}}"}';
 const q = (call: string, query: Record<string, string> = {}, body?: unknown) => ({ call, query, body });
 
 describe("webhook, incoming, beta: the request each command sends", () => {
   it.each([
-    [["webhook", "create", "--source", "motion", "--request-url", "https://example.com/h", "--template-file", file("t.json", TEMPLATE), "--custom-events", "research_ready", "--header", "X-Token: abc", "--header", "X-Keep"],
-      q("POST /v1/webhooks", {}, { source: "motion", request_url: "https://example.com/h", enabled: true, body_template: TEMPLATE, custom_event_names: ["research_ready"], headers: [{ key: "X-Token", value: "abc" }, { key: "X-Keep" }] })],
+    [["webhook", "create", "--source", "campaign", "--request-url", "https://example.com/h", "--template-file", file("t.json", TEMPLATE), "--custom-events", "research_ready", "--header", "X-Token: abc", "--header", "X-Keep"],
+      q("POST /v1/webhooks", {}, { source: "campaign", request_url: "https://example.com/h", enabled: true, body_template: TEMPLATE, custom_event_names: ["research_ready"], headers: [{ key: "X-Token", value: "abc" }, { key: "X-Keep" }] })],
     [["webhook", "update", "wh_1", "--header", "X-Keep"], q("PATCH /v1/webhooks/wh_1", {}, { headers: [{ key: "X-Keep" }] })],
-    [["webhook", "variables", "--source", "motion"], q("GET /v1/webhooks/variables", { source: "motion" })],
+    [["webhook", "variables", "--source", "campaign"], q("GET /v1/webhooks/variables", { source: "campaign" })],
     [["webhook", "deliveries", "wh_1", "--failed"], q("GET /v1/webhooks/wh_1/deliveries", { failed: "true" })],
     [["webhook", "deliveries", "wh_1", "dlv_1"], q("GET /v1/webhooks/wh_1/deliveries/dlv_1")],
     [["webhook", "redeliver", "wh_1", "dlv_1"], q("POST /v1/webhooks/wh_1/deliveries/dlv_1/redeliver")],
@@ -36,7 +36,7 @@ describe("webhook, incoming, beta: the request each command sends", () => {
       q("POST /v1/incoming-events", {}, { event_name: "reply_received", match: { email: "lead_email" }, required_header: { name: "X-Auth", value: "s3" } })],
     [["incoming", "list", "--event", "reply_received"], q("GET /v1/incoming-events", { event: "reply_received" })],
     [["incoming", "get", "inc_1"], q("GET /v1/incoming-events/inc_1")],
-    [["incoming", "update", "inc_1", "--no-enabled", "--motion", ""], q("PATCH /v1/incoming-events/inc_1", {}, { motion_id: null, enabled: false })],
+    [["incoming", "update", "inc_1", "--no-enabled", "--campaign", ""], q("PATCH /v1/incoming-events/inc_1", {}, { campaign_id: null, enabled: false })],
     [["incoming", "delete", "inc_1"], q("DELETE /v1/incoming-events/inc_1")],
     [["incoming", "rotate", "inc_1"], q("POST /v1/incoming-events/inc_1/rotate")],
     [["incoming", "capture", "inc_1"], q("POST /v1/incoming-events/inc_1/capture")],
@@ -65,25 +65,25 @@ describe("webhook, incoming, beta: the request each command sends", () => {
 
 describe("offline lints (no request, exit 2 on a finding)", () => {
   it("webhook lint: a clean template exits 0; an unknown variable is reported with its code and place", async () => {
-    const ok = await wire(["webhook", "lint", "--template-file", file("ok.json", TEMPLATE), "--source", "motion"]);
+    const ok = await wire(["webhook", "lint", "--template-file", file("ok.json", TEMPLATE), "--source", "campaign"]);
     expect([ok.status, ok.sent.length]).toEqual([0, 0]);
-    const bad = await wire(["webhook", "lint", "--template-file", file("bad.json", '{"x": "{{nope.var}}"}'), "--source", "motion", "--json"]);
+    const bad = await wire(["webhook", "lint", "--template-file", file("bad.json", '{"x": "{{nope.var}}"}'), "--source", "campaign", "--json"]);
     expect([bad.status, bad.sent.length]).toEqual([2, 0]);
     expect(JSON.parse(bad.stdout).error.errors.map((e: { code: string }) => e.code)).toEqual(["T6"]);
     expect(bad.stderr).toMatch(/bad\.json:1:\d+ error T6/);
   });
 
-  it("motion lint reads a Motion file's settings.assign: W17 with an invitation and already_connected, none with auto, none on a bare Sequence", async () => {
-    const sequence = { on_reply: "end", steps: [{ id: "c", if: { "contact.connected": true }, then: "t", else: "i" }, { id: "t", tag: "warm", next: "end" }, { id: "i", do: "invite.send", next: "end" }] };
-    const codes = async (doc: unknown) => (JSON.parse((await wire(["motion", "lint", "--file", file("m.json", JSON.stringify(doc)), "--json"])).stdout) as { warnings: { code: string; pointer: string }[] }).warnings;
+  it("campaign lint reads a Campaign file's settings.assign: W17 with an invitation and already_connected, none with auto, none on a bare Sequence", async () => {
+    const sequence = { on_reply: "end", steps: [{ id: "c", if: { "lead.connected": true }, then: "t", else: "i" }, { id: "t", tag: "warm", next: "end" }, { id: "i", do: "invite.send", next: "end" }] };
+    const codes = async (doc: unknown) => (JSON.parse((await wire(["campaign", "lint", "--file", file("m.json", JSON.stringify(doc)), "--json"])).stdout) as { warnings: { code: string; pointer: string }[] }).warnings;
     expect(await codes({ name: "m", sequence, settings: { assign: "already_connected" } })).toMatchObject([{ code: "W17", pointer: "/steps/2/do" }]);
     expect(await codes({ name: "m", sequence, settings: { assign: "auto" } })).toEqual([]);
     expect(await codes(sequence)).toEqual([]);
   });
 
-  it("motion lint inherits the Enrollment value rules: save outside an until step is R25", async () => {
+  it("campaign lint inherits the Enrollment value rules: save outside an until step is R25", async () => {
     const seq = file("s.json", JSON.stringify({ version: 1, steps: [{ id: "invite", do: "invite.send", save: { score: "lead.score" } }] }));
-    const r = await wire(["motion", "lint", "--file", seq]);
+    const r = await wire(["campaign", "lint", "--file", seq]);
     expect([r.status, r.sent.length]).toEqual([2, 0]);
     expect(r.stderr).toContain("R25");
   });

@@ -10,15 +10,15 @@ const CHAT = "/v1/unibox/chats/acc_a/chat_1";
 
 describe("unibox: the request each command sends", () => {
   it.each([
-    [["unibox", "list", "--accounts", "acc_a", "--motion", "none", "--motion", "mot_1", "--person", "con_1", "--tag", "warm", "--no-unread", "--last-from", "them", "--type", "inmail", "--query", "hello", "--total", "--limit", "10"],
-      { call: "GET /v1/unibox/chats", query: { account_ids: "acc_a", motion_ids: "none,mot_1", person: "con_1", tags: "warm", unread: "false", last_message_from: "them", type: "inmail", q: "hello", include_total: "true", limit: "10" }, body: undefined }],
+    [["unibox", "list", "--accounts", "acc_a", "--campaign", "none", "--campaign", "mot_1", "--person", "con_1", "--tag", "warm", "--no-unread", "--last-from", "them", "--type", "inmail", "--query", "hello", "--total", "--limit", "10"],
+      { call: "GET /v1/unibox/chats", query: { account_ids: "acc_a", campaign_ids: "none,mot_1", person: "con_1", tags: "warm", unread: "false", last_message_from: "them", type: "inmail", q: "hello", include_total: "true", limit: "10" }, body: undefined }],
     [["unibox", "get", "acc_a", "chat_1"], { call: `GET ${CHAT}`, query: {}, body: undefined }],
     [["unibox", "unread", "--accounts", "acc_a,acc_b"], { call: "GET /v1/unibox/unread-count", query: { account_ids: "acc_a,acc_b" }, body: undefined }],
     [["unibox", "messages", "acc_a", "chat_1", "--limit", "5"], { call: "GET /v1/acc_a/chats/chat_1/messages", query: { limit: "5" }, body: undefined }],
     [["unibox", "reply", "acc_a", "chat_1", "Tuesday works"], { call: "POST /v1/acc_a/chats/chat_1/messages", query: {}, body: { text: "Tuesday works" } }],
     [["unibox", "mark", "acc_a", "chat_1", "--unread"], { call: "PATCH /v1/acc_a/chats/chat_1", query: {}, body: { read: false } }],
-    [["unibox", "tag", "acc_a", "chat_1", "--tag", "warm,hot"], { call: `POST ${CHAT}/contact`, query: {}, body: { tags: ["warm", "hot"] } }],
-    [["unibox", "enroll", "acc_a", "chat_1", "--motion", "mot_1"], { call: `POST ${CHAT}/enrollments`, query: {}, body: { motion_id: "mot_1" } }],
+    [["unibox", "tag", "acc_a", "chat_1", "--tag", "warm,hot"], { call: `POST ${CHAT}/lead`, query: {}, body: { tags: ["warm", "hot"] } }],
+    [["unibox", "enroll", "acc_a", "chat_1", "--campaign", "mot_1"], { call: `POST ${CHAT}/enrollments`, query: {}, body: { campaign_id: "mot_1" } }],
     [["unibox", "refresh", "--accounts", "acc_a"], { call: "POST /v1/unibox/refresh", query: {}, body: { account_ids: ["acc_a"] } }],
     [["unibox", "accounts"], { call: "GET /v1/unibox/accounts", query: {}, body: undefined }],
     [["unibox", "consent", "acc_a", "--off"], { call: "PATCH /v1/unibox/accounts/acc_a", query: {}, body: { sync_full_inbox: false } }],

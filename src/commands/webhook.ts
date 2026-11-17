@@ -46,7 +46,7 @@ type WebhookFlags = {
   id?: string;
   "account-id"?: string;
   "account-ids"?: string;
-  "motion-ids"?: string;
+  "campaign-ids"?: string;
   "request-url"?: string;
   source?: string;
   name?: string;
@@ -125,7 +125,7 @@ async function handleError(err: unknown, outOpts: ReturnType<typeof resolveOutpu
  * Run `webhook create <body...>`.
  * Required: --source, --request-url. --account-ids is comma-separated and
  * maps to account_ids[]; omitted, the webhook covers every account the
- * creator can operate, now and later. --motion-ids filters by Motion.
+ * creator can operate, now and later. --campaign-ids filters by Campaign.
  */
 export async function runWebhookCreate(
   client: Curviate,
@@ -133,7 +133,7 @@ export async function runWebhookCreate(
   out: OutputStreams,
 ): Promise<void> {
   if (!flags.source) {
-    out.stderr.write("error: --source is required (messaging | user | account_status | post | motion).\n");
+    out.stderr.write("error: --source is required (messaging | user | account_status | post | campaign).\n");
     process.exit(2);
   }
   if (!flags["request-url"]) {
@@ -147,7 +147,7 @@ export async function runWebhookCreate(
   // `!== undefined`, not truthiness: `--account-ids "$IDS"` with IDS unset is
   // an empty value, and reading it as "omitted" would silently widen the
   // webhook to every account.
-  for (const [flag, key, omitted] of [["account-ids", "account_ids", "omit the flag to cover every account you can operate"], ["motion-ids", "motion_ids", "omit the flag for every Motion"]] as const) {
+  for (const [flag, key, omitted] of [["account-ids", "account_ids", "omit the flag to cover every account you can operate"], ["campaign-ids", "campaign_ids", "omit the flag for every Campaign"]] as const) {
     if (flags[flag] === undefined) continue;
     const ids = flags[flag]!.split(",").map((s) => s.trim()).filter(Boolean);
     if (ids.length === 0) {
@@ -463,7 +463,7 @@ const webhookCreateCommand = defineCommand({
     errors: { WEBHOOK_TEMPLATE_INVALID: "the body template is invalid: `curviate webhook lint` names every finding." },
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
-      "curviate webhook create --source motion --request-url https://example.com/hooks/curviate --motion-ids mot_YOUR_MOTION_ID",
+      "curviate webhook create --source campaign --request-url https://example.com/hooks/curviate --campaign-ids mot_YOUR_CAMPAIGN_ID",
       "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status",
     ],
   },
@@ -473,14 +473,14 @@ const webhookCreateCommand = defineCommand({
     source: {
       type: "string",
       description:
-        "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | motion " +
-        "(motion.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, motion.custom_event; " +
+        "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | campaign " +
+        "(campaign.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, campaign.custom_event; " +
         "opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
       required: true,
     },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },
     "account-ids": { type: "string", description: "Comma-separated account ids to target. Omit to cover every account you can operate, now and later." },
-    "motion-ids": { type: "string", description: "Comma-separated Motion ids (mot_...): only events of these Motions are delivered, and events that carry no Motion are not. Omit for no filter." },
+    "campaign-ids": { type: "string", description: "Comma-separated Campaign ids (mot_...): only events of these Campaigns are delivered, and events that carry no Campaign are not. Omit for no filter." },
     name: { type: "string", description: "Human-readable name (up to 100 characters)." },
     enabled: { type: "boolean", description: "Create as enabled (default: true).", default: true },
     events: { type: "string", description: "Comma-separated event names to subscribe to." },
@@ -537,7 +537,7 @@ const webhookEventsCommand = defineCommand({
     name: "events",
     description:
       "List the canonical webhook event catalogue. `chat.updated` always carries `chat_id`, plus `unread` and `origin` (unibox, api or linkedin) when the stored read state changed; a send from the Unibox or the API marks the chat read and reports it. " +
-      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (motion, unibox, api or linkedin); `message.received` never does.",
+      "Your own-message events (`message.read`, `message.reaction`, `message.edited`, `message.deleted`) carry `origin` (campaign, unibox, api or linkedin); `message.received` never does.",
     risk: "read",
     examples: [
       "curviate webhook events",

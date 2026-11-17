@@ -1,7 +1,7 @@
 /**
- * `curviate analytics`: Motion outcomes and the budget your Accounts used,
+ * `curviate analytics`: Campaign outcomes and the budget your Accounts used,
  * read from what Curviate recorded (no LinkedIn call). `get` is the overview
- * (`--motion` one Motion's, `--view activity` the core budget use); `events
+ * (`--campaign` one Campaign's, `--view activity` the core budget use); `events
  * list` the feed behind the numbers; `export` the tables as a file, streamed
  * now or built by a background job (`--job`, then `curviate export`).
  * Shared with `account overview`: the window and filter flags.
@@ -20,8 +20,8 @@ import { print, rate, table } from "../lib/table.js";
 
 export type AnalyticsFlags = RootFlags & {
   view?: string;
-  motion?: string;
-  motions?: string | string[];
+  campaign?: string;
+  campaigns?: string | string[];
   accounts?: string | string[];
   from?: string;
   to?: string;
@@ -37,7 +37,7 @@ export type AnalyticsFlags = RootFlags & {
   version?: string;
   step?: string;
   kind?: string;
-  contact?: string;
+  lead?: string;
   cursor?: string;
   all?: boolean;
   "max-pages"?: string;
@@ -78,10 +78,10 @@ export function grammarParams(f: AnalyticsFlags): Row {
   return q;
 }
 
-/** `--motions`, `--accounts`, `--origin`: each a comma list (or repeated). */
-function filterParams(f: AnalyticsFlags, keys: Array<"motions" | "accounts" | "origin">): Row {
+/** `--campaigns`, `--accounts`, `--origin`: each a comma list (or repeated). */
+function filterParams(f: AnalyticsFlags, keys: Array<"campaigns" | "accounts" | "origin">): Row {
   const q: Row = {};
-  if (keys.includes("motions") && f.motions !== undefined) q["motion_id"] = listFlag("motions", f.motions);
+  if (keys.includes("campaigns") && f.campaigns !== undefined) q["campaign_id"] = listFlag("campaigns", f.campaigns);
   if (keys.includes("accounts") && f.accounts !== undefined) q["account_id"] = listFlag("accounts", f.accounts);
   if (keys.includes("origin") && f.origin !== undefined) q["origin"] = listFlag("origin", f.origin);
   return q;
@@ -113,7 +113,7 @@ function windowLines(body: Row): string[] {
   return lines;
 }
 
-/** The overview bodies (Team, one Motion, one Account) as compact tables. Exported for `account overview`. */
+/** The overview bodies (Team, one Campaign, one Account) as compact tables. Exported for `account overview`. */
 export function renderOverview(body: Row): void {
   const out: Array<string | null> = [...windowLines(body)];
   const profile = body["profile"] as Row | undefined;
@@ -137,14 +137,14 @@ export function renderOverview(body: Row): void {
   }
   const limits = (body["limits"] as Row | undefined)?.["rows"];
   if (Array.isArray(limits) && limits.length) out.push(table(["BUDGET ROW", "USED", "CEILING", "LEFT"], (limits as Row[]).map((r) => [r["budget_row"], r["used"], r["effective_ceiling"], r["remaining"]])));
-  out.push(rowsTable("MOTION", "motion_id", "name", body["motions"]));
+  out.push(rowsTable("CAMPAIGN", "campaign_id", "name", body["campaigns"]));
   out.push(rowsTable("ACCOUNT", "account_id", "account_name", body["accounts"]));
   const forecast = body["forecast"] as { status?: string; through?: string; daily?: Row[] } | null | undefined;
   if (forecast?.status === "computing") out.push("forecast: being computed (an Account has had no simulation yet); read again in a few minutes");
   else if (forecast?.daily?.length) {
-    out.push(`forecast through ${forecast.through} (Motions only, the configuration as it is now)`);
+    out.push(`forecast through ${forecast.through} (Campaigns only, the configuration as it is now)`);
     out.push(table(["DATE", "INVITES", "ACCEPTED", "MESSAGES", "REPLIES", "INMAILS", "INMAIL REPLIES"], forecast.daily.map((d) => [d["date"], d["invites_sent"], d["accepted"], d["messages_sent"], d["replies"], d["inmails_sent"], d["inmail_replies"]])));
-  } else if (forecast === null) out.push("forecast: none (pick an Account for this Motion)");
+  } else if (forecast === null) out.push("forecast: none (pick an Account for this Campaign)");
   for (const fl of (body["flags"] ?? []) as Row[]) out.push(`${fl["code"]}: ${fl["message"]}${fl["next"] ? ` (${fl["next"]})` : ""}`);
   print(out.filter((x): x is string => !!x).join("\n"));
 }
@@ -160,13 +160,13 @@ function renderActivity(body: Row): void {
 // ---------------------------------------------------------------------------
 
 async function runGet(c: Curviate, f: AnalyticsFlags): Promise<void> {
-  const view = f.view ?? "motions";
-  if (view !== "motions" && view !== "activity") usage("--view takes motions or activity.");
+  const view = f.view ?? "campaigns";
+  if (view !== "campaigns" && view !== "activity") usage("--view takes campaigns or activity.");
   if (view === "activity") {
-    const motionOnly = (["motion", "motions", "origin", "include", "sort", "limit", "compare", "forecast-days", "version"] as const).find((k) => f[k] !== undefined);
-    if (motionOnly) usage(`--${motionOnly} reads Motions: --view activity takes the window and --accounts only.`);
+    const campaignOnly = (["campaign", "campaigns", "origin", "include", "sort", "limit", "compare", "forecast-days", "version"] as const).find((k) => f[k] !== undefined);
+    if (campaignOnly) usage(`--${campaignOnly} reads Campaigns: --view activity takes the window and --accounts only.`);
   }
-  if (f.version !== undefined && f.motion === undefined) usage("--version needs --motion.");
+  if (f.version !== undefined && f.campaign === undefined) usage("--version needs --campaign.");
   const q = { ...windowParams(f), ...filterParams(f, view === "activity" ? ["accounts"] : ["accounts", "origin"]) };
   try {
     if (view === "activity") {
@@ -176,8 +176,8 @@ async function runGet(c: Curviate, f: AnalyticsFlags): Promise<void> {
     Object.assign(q, grammarParams(f));
     if (f.version !== undefined) q["version"] = intFlag("version", f.version);
     let body: Row;
-    if (f.motion !== undefined) body = (await c.analytics.motions.get(f.motion, q as never)) as unknown as Row;
-    else body = (await c.analytics.motions.list({ ...q, ...filterParams(f, ["motions"]) } as never)) as unknown as Row;
+    if (f.campaign !== undefined) body = (await c.analytics.campaigns.get(f.campaign, q as never)) as unknown as Row;
+    else body = (await c.analytics.campaigns.list({ ...q, ...filterParams(f, ["campaigns"]) } as never)) as unknown as Row;
     return outputOpts(f).json ? renderSuccess(body, outputOpts(f), process) : renderOverview(body);
   } catch (err) {
     await fail(err, f);
@@ -186,11 +186,11 @@ async function runGet(c: Curviate, f: AnalyticsFlags): Promise<void> {
 
 async function runEvents(c: Curviate, f: AnalyticsFlags): Promise<void> {
   rejectPaginationModifiersWithoutAll(f, process);
-  if (f.step !== undefined && f.motion === undefined) usage("--step needs --motion: a step id names a step of one Motion.");
+  if (f.step !== undefined && f.campaign === undefined) usage("--step needs --campaign: a step id names a step of one Campaign.");
   const q: Row = { ...filterParams(f, ["origin"]) };
-  if (f.motion !== undefined) q["motion_id"] = f.motion;
+  if (f.campaign !== undefined) q["campaign_id"] = f.campaign;
   if (f.step !== undefined) q["step_id"] = f.step;
-  if (f.contact !== undefined) q["contact_id"] = f.contact;
+  if (f.lead !== undefined) q["lead_id"] = f.lead;
   if (f.accounts !== undefined) q["account_id"] = listFlag("accounts", f.accounts).join(",");
   if (f.kind !== undefined) q["kind"] = listFlag("kind", f.kind);
   if (f.limit !== undefined) q["limit"] = intFlag("limit", f.limit, 1, 100);
@@ -204,16 +204,16 @@ async function runEvents(c: Curviate, f: AnalyticsFlags): Promise<void> {
     }
     const page = readablePage(await c.analytics.events.list(q as never)) as Row & { items: Row[] };
     if (outputOpts(f).json) return renderSuccess(page, outputOpts(f), process);
-    print(table(["AT", "KIND", "ORIGIN", "MOTION", "STEP", "OUTCOME", "REASON", "CONTACT"],
-      page.items.map((e) => [e["occurred_at"], e["kind"], e["origin"], e["motion_name"], e["step_id"], e["outcome"], e["reason"] ? `${e["reason"]}: ${e["reason_message"] ?? ""}` : null, (e["contact"] as Row | null)?.["full_name"]])));
+    print(table(["AT", "KIND", "ORIGIN", "CAMPAIGN", "STEP", "OUTCOME", "REASON", "LEAD"],
+      page.items.map((e) => [e["occurred_at"], e["kind"], e["origin"], e["campaign_name"], e["step_id"], e["outcome"], e["reason"] ? `${e["reason"]}: ${e["reason_message"] ?? ""}` : null, (e["lead"] as Row | null)?.["full_name"]])));
     if (page["cursor"]) print(`next page: --cursor ${String(page["cursor"])}`);
   } catch (err) {
     await fail(err, f);
   }
 }
 
-const ANALYTICS_TABLES = ["daily", "accounts", "motions", "enrollments"];
-const JOB_ENTITIES = ["motion_activity", "account_activity", "account_metrics"];
+const ANALYTICS_TABLES = ["daily", "accounts", "campaigns", "enrollments"];
+const JOB_ENTITIES = ["campaign_activity", "account_activity", "account_metrics"];
 
 async function runExport(c: Curviate, f: AnalyticsFlags): Promise<void> {
   if (f.json) usage("export commands take no --json: pass --format json.");
@@ -223,7 +223,7 @@ async function runExport(c: Curviate, f: AnalyticsFlags): Promise<void> {
   const unknown = tables.find((t) => !ANALYTICS_TABLES.includes(t) && t !== entity);
   if (unknown !== undefined) usage(`--table takes ${ANALYTICS_TABLES.join(", ")}, or one of ${JOB_ENTITIES.join(", ")} with --job.`);
   const format = f.format ?? "csv";
-  const filters = { ...windowParams(f), ...filterParams(f, ["motions", "accounts", "origin"]) };
+  const filters = { ...windowParams(f), ...filterParams(f, ["campaigns", "accounts", "origin"]) };
   try {
     if (f.job) {
       const exp = (await c.exports.create({ entity, tables: tables.length ? tables : ANALYTICS_TABLES, format, filters } as never)) as unknown as Row;
@@ -253,7 +253,7 @@ export const WINDOW_ARGS = {
   from: {
     type: "string" as const,
     description:
-      "First day, YYYY-MM-DD, inclusive, in --timezone. A Motion read (with or without --motion) or an Account overview may start more than a year back: " +
+      "First day, YYYY-MM-DD, inclusive, in --timezone. A Campaign read (with or without --campaign) or an Account overview may start more than a year back: " +
       "up to `window.counts_only_through` the figures come from daily counts (UTC days, no step, variant or seen detail), and `paths` cover only the days after `window.paths_through`. " +
       "--view activity and the activity exports keep their own cap, named in the refusal.",
   },
@@ -264,13 +264,13 @@ export const WINDOW_ARGS = {
 };
 const FILTER_ARGS = {
   accounts: { type: "string" as const, description: "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account." },
-  origin: { type: "string" as const, description: "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api." },
+  origin: { type: "string" as const, description: "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api." },
 };
 export const GRAMMAR_ARGS = {
-  include: { type: "string" as const, description: "Sections to return, comma list (for example performance,motions,accounts,steps,variants,paths,flags). forecast: what your Motions are expected to send and get per day from today, a simulation with their observed rates; Motions only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary." },
+  include: { type: "string" as const, description: "Sections to return, comma list (for example performance,campaigns,accounts,steps,variants,paths,flags). forecast: what your Campaigns are expected to send and get per day from today, a simulation with their observed rates; Campaigns only, the configuration frozen as it is now (no new Enrollments, no edits), never in the summary." },
   "forecast-days": { type: "string" as const, description: "With --include forecast: days after today, 1-365 (default 30); the forecast ends sooner when activity does." },
-  sort: { type: "string" as const, description: "Order of the Motion and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending." },
-  limit: { type: "string" as const, description: "How many Motions and Accounts to return." },
+  sort: { type: "string" as const, description: "Order of the Campaign and Account lists, comma list of sent, acceptance.rate, reply.rate, inmail_reply.rate, last_activity_at, name; a leading - sorts descending." },
+  limit: { type: "string" as const, description: "How many Campaigns and Accounts to return." },
   compare: { type: "string" as const, description: "previous_period: add the same number of days before --from to every rate (`previous`, `delta`)." },
 };
 
@@ -278,29 +278,29 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "Motion outcomes over a window: invitations, acceptance, messages, reply and InMail reply as outcomes so far, with each Motion and Account. " +
-      "With --motion: one Motion's steps, paths and Accounts. With --view activity: the budget rows your Accounts used. Each Contact counts once per Account.",
+      "Campaign outcomes over a window: invitations, acceptance, messages, reply and InMail reply as outcomes so far, with each Campaign and Account. " +
+      "With --campaign: one Campaign's steps, paths and Accounts. With --view activity: the budget rows your Accounts used. Each Lead counts once per Account.",
     risk: "read",
     output: [
       "acceptance: invitations accepted over invitations sent in the window, so far.",
       "reply: people who replied over people messaged; InMail reply the same for InMails. Rates move as replies and acceptances arrive; `maturing` counts what was sent under 7 days ago and `low_sample` marks fewer than 30.",
-      "seen (--motion): messages read or replied over messages sent, per message step.",
-      "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Motion as if turned on now.",
+      "seen (--campaign): messages read or replied over messages sent, per message step.",
+      "forecast (--include forecast): per day from today, the expected invitations, acceptances, messages, replies (InMail replies included), InMails and InMail replies; a draft Campaign as if turned on now.",
       "A compact table by default; --json (or piped) prints the API body.",
     ],
     seeAlso: ["curviate analytics events list", "curviate account overview", "Judgement on reading the numbers: https://github.com/curviate/curviate-plugin"],
     examples: [
       "curviate analytics get --range 30d",
-      "curviate analytics get --motion mot_YOUR_MOTION_ID --include steps,paths,forecast --forecast-days 14",
+      "curviate analytics get --campaign mot_YOUR_CAMPAIGN_ID --include steps,paths,forecast --forecast-days 14",
       "curviate analytics get --view activity --from 2026-10-01 --to 2026-10-28",
     ],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
-    view: { type: "string" as const, description: "motions (default): Motion outcomes; activity: budget rows used, not with --motion." },
-    motion: { type: "string" as const, description: "One Motion (mot_...): its steps, paths and Accounts." },
-    motions: { type: "string" as const, description: "Without --motion: only these Motions, comma list (mot_...)." },
-    version: { type: "string" as const, description: "With --motion: only this Sequence version." },
+    view: { type: "string" as const, description: "campaigns (default): Campaign outcomes; activity: budget rows used, not with --campaign." },
+    campaign: { type: "string" as const, description: "One Campaign (mot_...): its steps, paths and Accounts." },
+    campaigns: { type: "string" as const, description: "Without --campaign: only these Campaigns, comma list (mot_...)." },
+    version: { type: "string" as const, description: "With --campaign: only this Sequence version." },
     ...WINDOW_ARGS,
     ...FILTER_ARGS,
     ...GRAMMAR_ARGS,
@@ -314,15 +314,15 @@ const eventsListCmd = defineCommand({
     description: "The records behind the numbers, newest first: steps executed or failed, invitations accepted, replies; each reason with its sentence. Metadata only, never message text.",
     risk: "read",
     examples: [
-      "curviate analytics events list --motion mot_YOUR_MOTION_ID --step opener",
-      "curviate analytics events list --contact con_YOUR_CONTACT_ID --origin unibox,api --all",
+      "curviate analytics events list --campaign mot_YOUR_CAMPAIGN_ID --step opener",
+      "curviate analytics events list --lead con_YOUR_LEAD_ID --origin unibox,api --all",
     ],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
-    motion: { type: "string" as const, description: "Only this Motion's records (mot_...)." },
-    step: { type: "string" as const, description: "With --motion: only this step's records." },
-    contact: { type: "string" as const, description: "Only this Contact's records (con_...): its Motion records and its direct ones." },
+    campaign: { type: "string" as const, description: "Only this Campaign's records (mot_...)." },
+    step: { type: "string" as const, description: "With --campaign: only this step's records." },
+    lead: { type: "string" as const, description: "Only this Lead's records (con_...): its Campaign records and its direct ones." },
     kind: { type: "string" as const, description: "Comma list of step.executed, step.failed, invite.accepted, message.replied." },
     accounts: FILTER_ARGS.accounts,
     origin: FILTER_ARGS.origin,
@@ -334,7 +334,7 @@ const exportCmd = defineCommand({
   meta: {
     name: "export",
     description:
-      "Export the Analytics tables (daily, accounts, motions, enrollments) under the same window and filters: streamed now, or with --job built in the background " +
+      "Export the Analytics tables (daily, accounts, campaigns, enrollments) under the same window and filters: streamed now, or with --job built in the background " +
       "(then `curviate export get` and `curviate export download`). One table is one file; several are one ZIP. Never message text. Owners and Managers only.",
     risk: "read",
     output: ["Data only on stdout or the --output file (mode 0600); with --job the export record."],
@@ -342,7 +342,7 @@ const exportCmd = defineCommand({
     seeAlso: ["curviate export get", "curviate export download"],
     examples: [
       "curviate analytics export --table enrollments --format csv --range 30d -o enrollments.csv",
-      "curviate analytics export --table daily,accounts,motions,enrollments --format csv --range 90d --job",
+      "curviate analytics export --table daily,accounts,campaigns,enrollments --format csv --range 90d --job",
     ],
   },
   args: {
@@ -351,11 +351,11 @@ const exportCmd = defineCommand({
     team: GLOBAL_FLAGS.team,
     "base-url": GLOBAL_FLAGS["base-url"],
     timeout: GLOBAL_FLAGS.timeout,
-    table: { type: "string" as const, description: "Comma list of daily, accounts, motions, enrollments (default all four); or, with --job, one of motion_activity, account_activity, account_metrics." },
+    table: { type: "string" as const, description: "Comma list of daily, accounts, campaigns, enrollments (default all four); or, with --job, one of campaign_activity, account_activity, account_metrics." },
     format: { type: "string" as const, description: "csv (default), json or ndjson (ndjson takes one table)." },
     output: { type: "string" as const, alias: "o", description: "File to write (mode 0600), or - for stdout (default)." },
     job: { type: "boolean" as const, description: "Build it in the background and print the export record instead of streaming it." },
-    motions: { type: "string" as const, description: "Only these Motions, comma list (mot_...)." },
+    campaigns: { type: "string" as const, description: "Only these Campaigns, comma list (mot_...)." },
     ...WINDOW_ARGS,
     ...FILTER_ARGS,
     json: { type: "boolean" as const, description: "Not taken by exports: pass --format json." },

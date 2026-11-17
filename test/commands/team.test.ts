@@ -173,7 +173,7 @@ describe("team switch rewrites the profile's team", () => {
 const TIER = {
   object: "tier", tier: "automate", bought_tier: "build", period: "monthly",
   trial: { tier: "automate", expires_at: "2026-11-05T00:00:00Z" }, override: null,
-  features: ["drafts", "motions"],
+  features: ["drafts", "campaigns"],
 };
 
 /** Human mode: the CLI renders for a person only when stdout is a terminal. */
@@ -194,7 +194,7 @@ describe("the Tier", () => {
     expect([json.status, json.requests.map(line), JSON.parse(json.stdout)]).toEqual([0, ["GET /v1/billing/tier"], TIER]);
     const human = await asHuman(() => sink.run(["tier"]));
     expect(human.status).toBe(0);
-    for (const v of ["automate", "build (monthly)", "2026-11-05T00:00:00Z", "drafts, motions"]) expect(human.stdout).toContain(v);
+    for (const v of ["automate", "build (monthly)", "2026-11-05T00:00:00Z", "drafts, campaigns"]) expect(human.stdout).toContain(v);
     expect(human.stdout).not.toMatch(/early|pending/);
   });
 
@@ -202,26 +202,26 @@ describe("the Tier", () => {
     ["an Owner gets the upgrade link", { upgrade_url: "https://app.curviate.com/settings/billing" }, "Upgrade: https://app.curviate.com/settings/billing"],
     ["anyone else is sent to an Owner", {}, "Ask an Owner"],
   ])("TIER_REQUIRED exits 5 naming the feature, the Tier and the remedy: %s", async (_l, extra, remedy) => {
-    sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Motions are part of Automate.", user_fixable: true, retry_likely_to_succeed: false, feature: "motions", required_tier: "automate", current_tier: "build", ...extra } };
-    const r = await asHuman(() => sink.run(["motion", "start", "mot_1"]));
+    sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Campaigns are part of Automate.", user_fixable: true, retry_likely_to_succeed: false, feature: "campaigns", required_tier: "automate", current_tier: "build", ...extra } };
+    const r = await asHuman(() => sink.run(["campaign", "start", "mot_1"]));
     expect(r.status).toBe(5);
-    expect(r.stderr).toContain("motions is part of automate; this Team has build.");
+    expect(r.stderr).toContain("campaigns is part of automate; this Team has build.");
     expect(r.stderr).toContain(remedy);
     expect(r.stderr.toLowerCase()).not.toContain(["uni", "pile"].join(""));
   });
 
   // The served OpenAPI marks each operation a Tier gates (`x-curviate-tier`); each command sending one says so in its help.
   it.each([
-    ["motion create", "post", "/v1/motions"], ["motion update", "patch", "/v1/motions/{id}"], ["motion start", "post", "/v1/motions/{id}/start"],
-    ["motion resume", "post", "/v1/motions/{id}/resume"], ["motion add", "post", "/v1/motions/{id}/contacts"],
+    ["campaign create", "post", "/v1/campaigns"], ["campaign update", "patch", "/v1/campaigns/{id}"], ["campaign start", "post", "/v1/campaigns/{id}/start"],
+    ["campaign resume", "post", "/v1/campaigns/{id}/resume"], ["campaign add", "post", "/v1/campaigns/{id}/leads"],
     ["enrollment resume", "post", "/v1/enrollments/{id}/resume"], ["enrollment event", "post", "/v1/enrollments/{id}/events"],
     ["enrollment signal", "post", "/v1/enrollments/{id}/signal"], ["enrollment reassign", "post", "/v1/enrollments/{id}/reassign"],
     ["network resync", "post", "/v1/network/resync"], ["unibox refresh", "post", "/v1/unibox/refresh"],
-    ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/contact"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
-    ["contact create", "post", "/v1/contacts"], ["contact update", "patch", "/v1/contacts/{id}"], ["contact enrich", "post", "/v1/contacts/enrich"],
-    ["contact import", "post", "/v1/contacts/imports"], ["contact tags add", "post", "/v1/contacts/update"], ["contact lists remove", "post", "/v1/contacts/update"],
-    ["contact tags update", "patch", "/v1/tags/{id}"], ["contact lists create", "post", "/v1/contact-lists"], ["contact lists combine", "post", "/v1/contact-lists"],
-    ["contact lists update", "patch", "/v1/contact-lists/{id}"],
+    ["unibox tag", "post", "/v1/unibox/chats/{account_id}/{chat_id}/lead"], ["unibox enroll", "post", "/v1/unibox/chats/{account_id}/{chat_id}/enrollments"],
+    ["lead create", "post", "/v1/leads"], ["lead update", "patch", "/v1/leads/{id}"], ["lead enrich", "post", "/v1/leads/enrich"],
+    ["lead import", "post", "/v1/leads/imports"], ["lead tags add", "post", "/v1/leads/update"], ["lead lists remove", "post", "/v1/leads/update"],
+    ["lead tags update", "patch", "/v1/tags/{id}"], ["lead lists create", "post", "/v1/lead-lists"], ["lead lists combine", "post", "/v1/lead-lists"],
+    ["lead lists update", "patch", "/v1/lead-lists/{id}"],
     ["do-not-contact add", "post", "/v1/do-not-contact"], ["do-not-contact update", "patch", "/v1/do-not-contact/{id}"],
     ["incoming create", "post", "/v1/incoming-events"], ["incoming rotate", "post", "/v1/incoming-events/{id}/rotate"], ["incoming capture", "post", "/v1/incoming-events/{id}/capture"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],

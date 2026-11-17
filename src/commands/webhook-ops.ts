@@ -32,7 +32,7 @@ type Flags = RootFlags & {
 };
 type Row = Record<string, unknown>;
 
-const SOURCES = ["messaging", "user", "account_status", "post", "motion"];
+const SOURCES = ["messaging", "user", "account_status", "post", "campaign"];
 
 /** `--template-file`, `--custom-events`, `--header KEY[:VALUE]` as body fields; `--header KEY` alone keeps the stored value. */
 export async function deliveryFields(f: Flags): Promise<Row> {
@@ -57,7 +57,7 @@ export const DELIVERY_ARGS = {
     stdinArg: true,
     description: "The delivery body as a JSON text with {{variables}} (`curviate webhook variables --source <source>`), from a path or - for stdin. Lint it offline first: `curviate webhook lint`.",
   },
-  "custom-events": { type: "string" as const, description: "With motion.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event." },
+  "custom-events": { type: "string" as const, description: "With campaign.custom_event subscribed: deliver only these custom event names (comma list). Omit for every custom event." },
   header: {
     type: "string" as const,
     description: "A custom header on every delivery, KEY:VALUE; repeatable, replaces the whole set. KEY alone keeps that header's stored value (values are never read back). Not covered by the signature.",
@@ -65,7 +65,7 @@ export const DELIVERY_ARGS = {
 };
 
 async function runLint(f: Flags): Promise<void> {
-  const source = f.source ?? "motion";
+  const source = f.source ?? "campaign";
   if (!SOURCES.includes(source)) usage(`--source takes ${SOURCES.join(", ")}.`);
   if (f["template-file"] === undefined) usage("--template-file is required: a path, or - for stdin.");
   const text = await readFileFlag("template-file", f["template-file"], { others: f });
@@ -138,12 +138,12 @@ export const webhookLintCommand = defineCommand({
     risk: "read",
     rules: { notes: ["Offline: no API call."] },
     output: ["Findings on stderr, one per line: <file>:<line>:<col> error <code>: <rule>. <hint> -> <docs_url>. With --json (or piped) stdout carries the WEBHOOK_TEMPLATE_INVALID shape, or {\"errors\": []}. Exit 2 on any finding."],
-    examples: ["curviate webhook lint --template-file body.json --source motion"],
+    examples: ["curviate webhook lint --template-file body.json --source campaign"],
   },
   args: {
     json: GLOBAL_FLAGS.json,
     "template-file": { ...DELIVERY_ARGS["template-file"], description: "The template, from a path or - for stdin." },
-    source: { type: "string" as const, description: `The webhook's source, which decides the variables: ${SOURCES.join(", ")} (default motion).` },
+    source: { type: "string" as const, description: `The webhook's source, which decides the variables: ${SOURCES.join(", ")} (default campaign).` },
   },
   run: async ({ args }) => runLint(args as Flags),
 });
@@ -153,7 +153,7 @@ export const webhookVariablesCommand = defineCommand({
     name: "variables",
     description: "The {{variables}} a body template may use for a source, with their types and an example.",
     risk: "read",
-    examples: ["curviate webhook variables --source motion"],
+    examples: ["curviate webhook variables --source campaign"],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS), source: { type: "string" as const, description: `${SOURCES.join(", ")}.` } },
   run: online(runVariables),

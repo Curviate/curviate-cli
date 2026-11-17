@@ -16,7 +16,7 @@ type Row = Record<string, unknown>;
 
 async function runOverview(c: Curviate, f: Flags): Promise<void> {
   const q: Row = { ...windowParams(f), ...grammarParams(f) };
-  if (f.motions !== undefined) q["motion_id"] = listFlag("motions", f.motions);
+  if (f.campaigns !== undefined) q["campaign_id"] = listFlag("campaigns", f.campaigns);
   if (f.origin !== undefined) q["origin"] = listFlag("origin", f.origin);
   try {
     const body = (await c.accounts.overview(String(f.accountId ?? ""), q as never)) as unknown as Row;
@@ -49,7 +49,7 @@ export const accountOverviewCommand = defineCommand({
   meta: {
     name: "overview",
     description:
-      "One Account's overview over a window: profile and status, latest metrics, outcomes so far (acceptance, reply, InMail reply), budget rows used today, its Motions, and flags with the next command to run. Each Contact counts once per Account.",
+      "One Account's overview over a window: profile and status, latest metrics, outcomes so far (acceptance, reply, InMail reply), budget rows used today, its Campaigns, and flags with the next command to run. Each Lead counts once per Account.",
     risk: "read",
     output: ["A compact table by default; --json (or piped) prints the API body."],
     seeAlso: ["curviate account metrics", "curviate analytics get"],
@@ -59,8 +59,8 @@ export const accountOverviewCommand = defineCommand({
     ...readOnly(READ_SINGLE_FLAGS),
     accountId: ACCOUNT_ID,
     ...WINDOW_ARGS,
-    motions: { type: "string" as const, description: "Only these Motions, comma list (mot_...)." },
-    origin: { type: "string" as const, description: "Who sent the actions: a comma list of motion, unibox, api; direct is an alias for unibox and api." },
+    campaigns: { type: "string" as const, description: "Only these Campaigns, comma list (mot_...)." },
+    origin: { type: "string" as const, description: "Who sent the actions: a comma list of campaign, unibox, api; direct is an alias for unibox and api." },
     ...GRAMMAR_ARGS,
   },
   run: online(runOverview),

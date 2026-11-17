@@ -1,7 +1,7 @@
 /**
- * `curviate contact lists` and `curviate contact tags`: Contact lists and Tags.
+ * `curviate lead lists` and `curviate lead tags`: Lead lists and Tags.
  * Root-scoped (`curviate.contactLists.*`, `tags.*`; membership and tagging are
- * the Contacts bulk update). Membership and tag changes name Contacts by id
+ * the Leads bulk update). Membership and tag changes name Leads by id
  * (sent in requests of BULK_MAX_IDS) or by filter (one request).
  */
 import { defineCommand } from "citty";
@@ -47,58 +47,58 @@ const named = (what: string, v: string | undefined): string => {
 };
 
 /**
- * Membership and tagging: the bulk update, with Contacts named by id (after the
+ * Membership and tagging: the bulk update, with Leads named by id (after the
  * first `skip` positionals) or by filter flags, never both and never neither.
  */
 async function bulkUpdate(c: Curviate, f: ContactFlags, skip: number, change: Body): Promise<void> {
   const ids = contactIds(f, skip);
   const filtered = hasFilter(f);
-  if (filtered && ids.length) usage("name the Contacts either by id or with filter flags, not both.");
-  if (!filtered && !ids.length) usage("name the Contacts: one or more Contact ids (con_...), --ids, or filter flags such as --list or --tag.");
+  if (filtered && ids.length) usage("name the Leads either by id or with filter flags, not both.");
+  if (!filtered && !ids.length) usage("name the Leads: one or more Lead ids (con_...), --ids, or filter flags such as --list or --tag.");
   try {
     if (filtered) {
       const body = { filter: await readFilter(c, f, "body"), ...change };
-      if (f.preview) return preview("contacts.updateMany", {}, body);
-      return show(await c.contacts.updateMany(body as never), f);
+      if (f.preview) return preview("leads.updateMany", {}, body);
+      return show(await c.leads.updateMany(body as never), f);
     }
-    if (f.preview) return preview("contacts.updateMany", {}, { contact_ids: ids.slice(0, BULK_MAX_IDS), ...change });
-    show(mergeChunks(await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.contacts.updateMany({ contact_ids: chunk, ...change } as never), f)), f);
+    if (f.preview) return preview("leads.updateMany", {}, { lead_ids: ids.slice(0, BULK_MAX_IDS), ...change });
+    show(mergeChunks(await sendInChunks(ids, BULK_MAX_IDS, (chunk) => c.leads.updateMany({ lead_ids: chunk, ...change } as never), f)), f);
   } catch (err) {
     await fail(err, f);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Contact lists
+// Lead lists
 // ---------------------------------------------------------------------------
 
-const ID = { type: "positional" as const, description: "Contact list id (cl_...)." };
+const ID = { type: "positional" as const, description: "Lead list id (cl_...)." };
 const IDS = {
-  id: { type: "positional" as const, required: false, variadic: true, description: "Contact id (con_...); several may follow." },
-  ids: { type: "string" as const, description: `Contact ids (con_...); repeatable, or a comma list. Sent in requests of up to ${BULK_MAX_IDS} ids, in order; a failed request stops the run and reports what was sent.` },
+  id: { type: "positional" as const, required: false, variadic: true, description: "Lead id (con_...); several may follow." },
+  ids: { type: "string" as const, description: `Lead ids (con_...); repeatable, or a comma list. Sent in requests of up to ${BULK_MAX_IDS} ids, in order; a failed request stops the run and reports what was sent.` },
 };
-const SEE_LISTS = ["curviate contact lists get", "curviate contact list"];
-const BULK_ERRORS = { INSUFFICIENT_ROLE: "your role cannot change Contacts here.", CONTACT_LIMIT_REACHED: "a Tag or list-membership cap would be exceeded (the Contact is under `refused`)." };
-const BULK_OUTPUT = ["`updated`, `unchanged`, `not_found` (ids that did not exist) and `refused` (a Contact over a cap, with the reason). Counts are summed over every request."];
-const BULK_RADIUS = `By id: up to ${BULK_MAX_IDS} Contacts per request. By filter: every Contact the filter matches; count it first with \`curviate contact list <same filters> --total --limit 1\`.`;
+const SEE_LISTS = ["curviate lead lists get", "curviate lead list"];
+const BULK_ERRORS = { INSUFFICIENT_ROLE: "your role cannot change Leads here.", LEAD_LIMIT_REACHED: "a Tag or list-membership cap would be exceeded (the Lead is under `refused`)." };
+const BULK_OUTPUT = ["`updated`, `unchanged`, `not_found` (ids that did not exist) and `refused` (a Lead over a cap, with the reason). Counts are summed over every request."];
+const BULK_RADIUS = `By id: up to ${BULK_MAX_IDS} Leads per request. By filter: every Lead the filter matches; count it first with \`curviate lead list <same filters> --total --limit 1\`.`;
 
 const listsList = defineCommand({
   meta: {
     name: "list",
-    description: "List your Team's Contact lists, with how many Contacts each holds.",
+    description: "List your Team's Lead lists, with how many Leads each holds.",
     risk: "read",
-    examples: ["curviate contact lists list", "curviate contact lists list --query warm"],
+    examples: ["curviate lead lists list", "curviate lead lists list --query warm"],
   },
   args: { ...readOnly(GLOBAL_FLAGS), query: { type: "string", description: "Only lists whose name matches this text." } },
-  run: online((c, f) => page(f, f.query !== undefined ? { q: named("--query", f.query) } : {}, (p) => c.contactLists.list(p as never))),
+  run: online((c, f) => page(f, f.query !== undefined ? { q: named("--query", f.query) } : {}, (p) => c.leadLists.list(p as never))),
 });
 
 const listsGet = defineCommand({
-  meta: { name: "get", description: "One Contact list: its name, description and Contact count.", risk: "read", examples: ["curviate contact lists get cl_YOUR_LIST_ID"] },
+  meta: { name: "get", description: "One Lead list: its name, description and Lead count.", risk: "read", examples: ["curviate lead lists get cl_YOUR_LIST_ID"] },
   args: { ...readOnly(READ_SINGLE_FLAGS), id: ID },
   run: online(async (c, f) => {
     try {
-      show(readableObject(await c.contactLists.get(String(f.id ?? ""))), f);
+      show(readableObject(await c.leadLists.get(String(f.id ?? ""))), f);
     } catch (err) {
       await fail(err, f);
     }
@@ -108,17 +108,17 @@ const listsGet = defineCommand({
 const listsCreate = defineCommand({
   meta: {
     name: "create",
-    description: "Create an empty Contact list. Fill it with `curviate contact lists add`, `curviate contact import --list`, or build it from other lists with `curviate contact lists combine`. Needs Automate.",
+    description: "Create an empty Lead list. Fill it with `curviate lead lists add`, `curviate lead import --list`, or build it from other lists with `curviate lead lists combine`. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "A new, empty Contact list.",
+      changes: "A new, empty Lead list.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Not safe: a list name is unique, so a repeat answers NAME_TAKEN.",
-      undo: "`curviate contact lists delete <id>`.",
+      undo: "`curviate lead lists delete <id>`.",
     },
     errors: { NAME_TAKEN: "a list of that name exists (409)." },
-    examples: ["curviate contact lists create \"Q4 prospects\" --description \"From the conference\""],
+    examples: ["curviate lead lists create \"Q4 prospects\" --description \"From the conference\""],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -128,9 +128,9 @@ const listsCreate = defineCommand({
   run: online(async (c, f) => {
     const body: Body = { name: named("the list name", (f as { name?: string }).name) };
     if ((f as { description?: string }).description !== undefined) body["description"] = (f as { description?: string }).description;
-    if (f.preview) return preview("contactLists.create", {}, body);
+    if (f.preview) return preview("leadLists.create", {}, body);
     try {
-      show(readableObject(await c.contactLists.create(body as never)), f);
+      show(readableObject(await c.leadLists.create(body as never)), f);
     } catch (err) {
       await fail(err, f);
     }
@@ -141,21 +141,21 @@ const listsCombine = defineCommand({
   meta: {
     name: "combine",
     description:
-      "Create a new Contact list from other lists: the Contacts in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). " +
-      "Any other filter flag narrows it too. The new list holds the Contacts that match now; it does not follow later changes to the source lists. Needs Automate.",
+      "Create a new Lead list from other lists: the Leads in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). " +
+      "Any other filter flag narrows it too. The new list holds the Leads that match now; it does not follow later changes to the source lists. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "A new Contact list holding every Contact the filter matches at this moment. The source lists are unchanged.",
+      changes: "A new Lead list holding every Lead the filter matches at this moment. The source lists are unchanged.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Not safe: a list name is unique, so a repeat answers NAME_TAKEN.",
-      undo: "`curviate contact lists delete <id>`; the Contacts stay.",
+      undo: "`curviate lead lists delete <id>`; the Leads stay.",
     },
-    errors: { NAME_TAKEN: "a list of that name exists (409).", CONTACT_LIMIT_REACHED: "the Team is at a list-membership cap." },
+    errors: { NAME_TAKEN: "a list of that name exists (409).", LEAD_LIMIT_REACHED: "the Team is at a list-membership cap." },
     seeAlso: SEE_LISTS,
     examples: [
-      "curviate contact lists combine \"Hot or warm\" --list cl_HOT --list cl_WARM",
-      "curviate contact lists combine \"Hot and replied\" --list cl_HOT --list cl_REPLIED --list-match all --not-list cl_DNC",
+      "curviate lead lists combine \"Hot or warm\" --list cl_HOT --list cl_WARM",
+      "curviate lead lists combine \"Hot and replied\" --list cl_HOT --list cl_REPLIED --list-match all --not-list cl_DNC",
     ],
   },
   args: {
@@ -168,9 +168,9 @@ const listsCombine = defineCommand({
     if (listFlag("list", f.list).length === 0) usage("--list is required: the source list or lists (cl_...), repeatable.");
     const body: Body = { name: named("the list name", (f as { name?: string }).name), from: await readFilter(c, f, "body") };
     if ((f as { description?: string }).description !== undefined) body["description"] = (f as { description?: string }).description;
-    if (f.preview) return preview("contactLists.create", {}, body);
+    if (f.preview) return preview("leadLists.create", {}, body);
     try {
-      show(readableObject(await c.contactLists.create(body as never)), f);
+      show(readableObject(await c.leadLists.create(body as never)), f);
     } catch (err) {
       await fail(err, f);
     }
@@ -180,7 +180,7 @@ const listsCombine = defineCommand({
 const listsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Contact list or change its description (--description \"\" clears it). Needs Automate.",
+    description: "Rename a Lead list or change its description (--description \"\" clears it). Needs Automate.",
     risk: "write",
     rules: {
       changes: "The list's name or description.",
@@ -190,7 +190,7 @@ const listsUpdate = defineCommand({
       undo: "Update again with the old values.",
     },
     errors: { NAME_TAKEN: "a list of that name exists (409)." },
-    examples: ["curviate contact lists update cl_YOUR_LIST_ID --name \"Q4 prospects\""],
+    examples: ["curviate lead lists update cl_YOUR_LIST_ID --name \"Q4 prospects\""],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -204,9 +204,9 @@ const listsUpdate = defineCommand({
     if (name !== undefined) body["name"] = named("--name", name);
     if (description !== undefined) body["description"] = description === "" ? null : description;
     if (Object.keys(body).length === 0) usage("name what to change: --name or --description.");
-    if (f.preview) return preview("contactLists.update", { id: f.id }, body);
+    if (f.preview) return preview("leadLists.update", { id: f.id }, body);
     try {
-      show(readableObject(await c.contactLists.update(String(f.id ?? ""), body as never)), f);
+      show(readableObject(await c.leadLists.update(String(f.id ?? ""), body as never)), f);
     } catch (err) {
       await fail(err, f);
     }
@@ -216,25 +216,25 @@ const listsUpdate = defineCommand({
 const listsDelete = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete a Contact list. Its Contacts stay; a Motion that enrolls from it needs another list. Any role may.",
+    description: "Delete a Lead list. Its Leads stay; a Campaign that enrolls from it needs another list. Any role may.",
     risk: "high",
     rules: {
-      changes: "The list and its memberships are deleted; the Contacts are not.",
+      changes: "The list and its memberships are deleted; the Leads are not.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe: a second call answers RESOURCE_NOT_FOUND.",
-      undo: "Cannot be undone for the list itself: create it again and add the Contacts.",
-      blast_radius: "One list and its membership; no Contact is deleted.",
+      undo: "Cannot be undone for the list itself: create it again and add the Leads.",
+      blast_radius: "One list and its membership; no Lead is deleted.",
     },
-    errors: { RESOURCE_IN_USE: "a Motion still uses the list (409)." },
+    errors: { RESOURCE_IN_USE: "a Campaign still uses the list (409)." },
     seeAlso: SEE_LISTS,
-    examples: ["curviate contact lists delete cl_YOUR_LIST_ID"],
+    examples: ["curviate lead lists delete cl_YOUR_LIST_ID"],
   },
   args: { ...WRITE_SINGLE_FLAGS, id: ID },
   run: online(async (c, f) => {
-    if (f.preview) return preview("contactLists.delete", { id: f.id });
+    if (f.preview) return preview("leadLists.delete", { id: f.id });
     try {
-      await c.contactLists.delete(String(f.id ?? ""));
+      await c.leadLists.delete(String(f.id ?? ""));
       show({}, f);
     } catch (err) {
       await fail(err, f);
@@ -247,32 +247,32 @@ const membership = (verb: "add" | "remove") =>
     meta: {
       name: verb,
       description:
-        `${verb === "add" ? "Add Contacts to" : "Remove Contacts from"} a Contact list. Name the Contacts by id, or with filter flags (the same as \`curviate contact list\`) to act on every match. ` +
-        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`contact list` calls it --list). Needs Automate.",
+        `${verb === "add" ? "Add Leads to" : "Remove Leads from"} a Lead list. Name the Leads by id, or with filter flags (the same as \`curviate lead list\`) to act on every match. ` +
+        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs Automate.",
       risk: "high",
       rules: {
-        changes: verb === "add" ? "The Contacts join the list." : "The Contacts leave the list; they are not deleted.",
-        visible_to: "Your Team; a Motion enrolling from the list sees the change.",
+        changes: verb === "add" ? "The Leads join the list." : "The Leads leave the list; they are not deleted.",
+        visible_to: "Your Team; a Campaign enrolling from the list sees the change.",
         budget_rows: [],
-        retry: "Safe: a Contact already in (or out) is `unchanged`.",
-        undo: verb === "add" ? "`curviate contact lists remove` with the same Contacts." : "`curviate contact lists add` with the same Contacts.",
+        retry: "Safe: a Lead already in (or out) is `unchanged`.",
+        undo: verb === "add" ? "`curviate lead lists remove` with the same Leads." : "`curviate lead lists add` with the same Leads.",
         blast_radius: BULK_RADIUS,
       },
       errors: BULK_ERRORS,
       output: BULK_OUTPUT,
       seeAlso: SEE_LISTS,
       examples: [
-        `curviate contact lists ${verb} cl_YOUR_LIST_ID con_A con_B`,
-        `curviate contact lists ${verb} cl_YOUR_LIST_ID --tag hot --no-email`,
-        `curviate contact lists ${verb} cl_YOUR_LIST_ID --from-list cl_SOURCE_LIST_ID --connected`,
+        `curviate lead lists ${verb} cl_YOUR_LIST_ID con_A con_B`,
+        `curviate lead lists ${verb} cl_YOUR_LIST_ID --tag hot --no-email`,
+        `curviate lead lists ${verb} cl_YOUR_LIST_ID --from-list cl_SOURCE_LIST_ID --connected`,
       ],
     },
     args: {
       ...WRITE_SINGLE_FLAGS,
-      listId: { type: "positional", description: "Contact list id (cl_...)." },
+      listId: { type: "positional", description: "Lead list id (cl_...)." },
       ...IDS,
       ...Object.fromEntries(Object.entries(FILTER_ARGS).filter(([k]) => k !== "list")),
-      "from-list": { type: "string", description: "Filter: only Contacts in this Contact list (cl_...); repeatable, or a comma list." },
+      "from-list": { type: "string", description: "Filter: only Leads in this Lead list (cl_...); repeatable, or a comma list." },
     },
     run: online(async (c, f) => {
       const listId = named("the list id", (f._ ?? [])[0]);
@@ -284,11 +284,11 @@ const membership = (verb: "add" | "remove") =>
   });
 
 export const contactListsCommand = defineCommand({
-  meta: { name: "lists", description: "Contact lists: named sets of Contacts a Motion enrolls from." },
+  meta: { name: "lists", description: "Lead lists: named sets of Leads a Campaign enrolls from." },
   subCommands: { list: listsList, get: listsGet, create: listsCreate, combine: listsCombine, update: listsUpdate, delete: listsDelete, add: membership("add"), remove: membership("remove") },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
-    await showHelp(contactListsCommand, ["curviate", "contact", "lists"]);
+    await showHelp(contactListsCommand, ["curviate", "lead", "lists"]);
   },
 });
 
@@ -296,10 +296,10 @@ export const contactListsCommand = defineCommand({
 // Tags
 // ---------------------------------------------------------------------------
 
-const TAG_ID = { type: "positional" as const, description: "Tag id, from `curviate contact tags list`." };
+const TAG_ID = { type: "positional" as const, description: "Tag id, from `curviate lead tags list`." };
 
 const tagsList = defineCommand({
-  meta: { name: "list", description: "List your Team's Tags with how many Contacts carry each.", risk: "read", examples: ["curviate contact tags list"] },
+  meta: { name: "list", description: "List your Team's Tags with how many Leads carry each.", risk: "read", examples: ["curviate lead tags list"] },
   args: { ...readOnly(GLOBAL_FLAGS) },
   run: online((c, f) => page(f, {}, (p) => c.tags.list(p as never))),
 });
@@ -307,17 +307,17 @@ const tagsList = defineCommand({
 const tagsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Tag on every Contact that carries it. A name another Tag has is refused. Needs Automate.",
+    description: "Rename a Tag on every Lead that carries it. A name another Tag has is refused. Needs Automate.",
     risk: "write",
     rules: {
-      changes: "The Tag's name, on all its Contacts.",
+      changes: "The Tag's name, on all its Leads.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe: the same call leaves the same name.",
       undo: "Rename it back.",
     },
     errors: { NAME_TAKEN: "a Tag of that name exists (409)." },
-    examples: ["curviate contact tags update TAG_ID --name warm-lead"],
+    examples: ["curviate lead tags update TAG_ID --name warm-lead"],
   },
   args: { ...WRITE_SINGLE_FLAGS, id: TAG_ID, name: { type: "string", required: true, description: "The new name (up to 64 characters)." } },
   run: online(async (c, f) => {
@@ -334,19 +334,19 @@ const tagsUpdate = defineCommand({
 const tagsDelete = defineCommand({
   meta: {
     name: "delete",
-    description: "Delete a Tag and take it off every Contact that carries it. Owners and Managers only.",
+    description: "Delete a Tag and take it off every Lead that carries it. Owners and Managers only.",
     risk: "high",
     rules: {
-      changes: "The Tag is removed from every Contact; the Contacts stay.",
+      changes: "The Tag is removed from every Lead; the Leads stay.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe: a second call answers RESOURCE_NOT_FOUND.",
-      undo: "Cannot be undone: tag the Contacts again.",
-      blast_radius: "One Tag, on every Contact that carries it (its `contact_count`).",
+      undo: "Cannot be undone: tag the Leads again.",
+      blast_radius: "One Tag, on every Lead that carries it (its `lead_count`).",
     },
     errors: { INSUFFICIENT_ROLE: "deleting Tags is for Owners and Managers." },
-    seeAlso: ["curviate contact tags list"],
-    examples: ["curviate contact tags delete TAG_ID"],
+    seeAlso: ["curviate lead tags list"],
+    examples: ["curviate lead tags delete TAG_ID"],
   },
   args: { ...WRITE_SINGLE_FLAGS, id: TAG_ID },
   run: online(async (c, f) => {
@@ -365,21 +365,21 @@ const tagging = (verb: "add" | "remove") =>
     meta: {
       name: verb,
       description:
-        `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Contacts, named by id or with filter flags (the same as \`curviate contact list\`) to act on every match. ` +
-        "Count a filter first: `curviate contact list <same filters> --total --limit 1`. Needs Automate.",
+        `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Leads, named by id or with filter flags (the same as \`curviate lead list\`) to act on every match. ` +
+        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs Automate.",
       risk: "high",
       rules: {
-        changes: verb === "add" ? "The Tag is put on the Contacts (created if new)." : "The Tag is taken off the Contacts.",
+        changes: verb === "add" ? "The Tag is put on the Leads (created if new)." : "The Tag is taken off the Leads.",
         visible_to: "Your Team.",
         budget_rows: [],
-        retry: "Safe: a Contact already tagged (or not) is `unchanged`.",
-        undo: verb === "add" ? "`curviate contact tags remove` with the same Contacts." : "`curviate contact tags add` with the same Contacts.",
+        retry: "Safe: a Lead already tagged (or not) is `unchanged`.",
+        undo: verb === "add" ? "`curviate lead tags remove` with the same Leads." : "`curviate lead tags add` with the same Leads.",
         blast_radius: BULK_RADIUS,
       },
       errors: BULK_ERRORS,
       output: BULK_OUTPUT,
-      seeAlso: ["curviate contact tags list", "curviate contact list"],
-      examples: [`curviate contact tags ${verb} hot con_A con_B`, `curviate contact tags ${verb} hot --list cl_YOUR_LIST_ID`],
+      seeAlso: ["curviate lead tags list", "curviate lead list"],
+      examples: [`curviate lead tags ${verb} hot con_A con_B`, `curviate lead tags ${verb} hot --list cl_YOUR_LIST_ID`],
     },
     args: {
       ...WRITE_SINGLE_FLAGS,
@@ -394,11 +394,11 @@ const tagging = (verb: "add" | "remove") =>
   });
 
 export const contactTagsCommand = defineCommand({
-  meta: { name: "tags", description: "Tags: labels on Contacts." },
+  meta: { name: "tags", description: "Tags: labels on Leads." },
   subCommands: { list: tagsList, update: tagsUpdate, delete: tagsDelete, add: tagging("add"), remove: tagging("remove") },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
-    await showHelp(contactTagsCommand, ["curviate", "contact", "tags"]);
+    await showHelp(contactTagsCommand, ["curviate", "lead", "tags"]);
   },
 });
 

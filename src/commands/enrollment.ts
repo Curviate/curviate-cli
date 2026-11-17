@@ -1,5 +1,5 @@
 /**
- * `curviate enrollment`: one Contact in one Motion on one Account.
+ * `curviate enrollment`: one Lead in one Campaign on one Account.
  * Root-scoped (`curviate.enrollments.*`).
  *
  * `retry` is the guarded Retry (`enrollments.retry`, acts only on a failed
@@ -24,8 +24,8 @@ type EnrollmentFlags = RootFlags & {
   account?: string;
   accounts?: string;
   action?: string;
-  motion?: string;
-  contact?: string;
+  campaign?: string;
+  lead?: string;
   status?: string;
   step?: string | string[];
   version?: string;
@@ -63,8 +63,8 @@ function filters(f: EnrollmentFlags): Record_ {
     if (typeof v !== "string" || v.trim() === "") usage(`--${String(flag)} was given an empty value.`);
     q[key] = v;
   };
-  one("motion", "motion_id");
-  one("contact", "contact_id");
+  one("campaign", "campaign_id");
+  one("lead", "lead_id");
   one("done-step", "done_step");
   one("outcome", "outcome");
   one("variant", "variant_id");
@@ -221,8 +221,8 @@ async function runBulk(c: Curviate, f: EnrollmentFlags): Promise<void> {
   if (!ACTIONS.includes(action)) usage(`--action takes one of ${ACTIONS.join(", ")}.`);
   const ids = listFlag("id", f.id);
   const filter = filters(f);
-  if ((ids.length > 0) === (f.motion !== undefined)) usage("name the Enrollments either with --id (repeatable, or a comma list) or with --motion and its filters, not both.");
-  if (ids.length && Object.keys(filter).length) usage("the list filters apply with --motion, not with --id.");
+  if ((ids.length > 0) === (f.campaign !== undefined)) usage("name the Enrollments either with --id (repeatable, or a comma list) or with --campaign and its filters, not both.");
+  if (ids.length && Object.keys(filter).length) usage("the list filters apply with --campaign, not with --id.");
   const body: Record_ = { action, ...(ids.length ? { ids } : { filter }) };
   if (f.at !== undefined) body["at"] = f.at;
   if (f.name !== undefined) body["name"] = f.name;
@@ -266,8 +266,8 @@ const IN_FLIGHT = { STEP_IN_FLIGHT: "a Step of the Enrollment is being sent righ
 const SEE = ["curviate enrollment get", "curviate enrollment list"];
 
 const FILTER_ARGS = {
-  motion: { type: "string" as const, description: "Only this Motion's Enrollments (mot_...)." },
-  contact: { type: "string" as const, description: "Only this Contact's Enrollments (con_...)." },
+  campaign: { type: "string" as const, description: "Only this Campaign's Enrollments (mot_...)." },
+  lead: { type: "string" as const, description: "Only this Lead's Enrollments (con_...)." },
   status: { type: "string" as const, description: "Comma list of pending, active, paused, finished, skipped." },
   step: { type: "string" as const, description: "Only Enrollments now at one of these Step ids: repeatable or a comma list." },
   version: { type: "string" as const, description: "Only Enrollments running this Sequence version (1 or more)." },
@@ -275,19 +275,19 @@ const FILTER_ARGS = {
   outcome: { type: "string" as const, description: "With --done-step: executed, skipped, failed, accepted, not_accepted, replied, no_reply or seen." },
   reason: { type: "string" as const, description: "Comma list of reason codes (skip, finish or Step reasons; narrowed to --done-step when given)." },
   variant: { type: "string" as const, description: "Only Enrollments given this variant id." },
-  relationship: { type: "string" as const, description: "Comma list of connected, not_connected, invite_pending, unknown: the Contact's relationship to the Account when it started." },
+  relationship: { type: "string" as const, description: "Comma list of connected, not_connected, invite_pending, unknown: the Lead's relationship to the Account when it started." },
 };
 
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List Enrollments, newest first, filtered by Motion, Contact, status, current Step, or how a Step ended. Each counts once per Contact, Motion and Account. A pending Enrollment waiting in its Motion's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
+    description: "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
     risk: "read",
     output: ["Each reason code comes with its sentence beside it (`skip_reason` and `skip_message`, `finish_reason` and `finish_message`)."],
     examples: [
-      "curviate enrollment list --motion mot_YOUR_MOTION_ID",
-      "curviate enrollment list --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed",
-      "curviate enrollment list --motion mot_YOUR_MOTION_ID --reason already_connected,known_chat --relationship connected",
+      "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID",
+      "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID --done-step opener --outcome failed",
+      "curviate enrollment list --campaign mot_YOUR_CAMPAIGN_ID --reason already_connected,known_chat --relationship connected",
     ],
   },
   args: {
@@ -321,7 +321,7 @@ const pauseCmd = defineCommand({
       retry: "A second pause answers ENROLLMENT_NOT_ACTIVE; nothing changes.",
       undo: "`curviate enrollment resume <enrollment_id>`.",
     },
-    errors: { ...NOT_ACTIVE, ...IN_FLIGHT, MOTION_STATUS_CONFLICT: "the Motion is archived or past its end.", ...ROLE },
+    errors: { ...NOT_ACTIVE, ...IN_FLIGHT, CAMPAIGN_STATUS_CONFLICT: "the Campaign is archived or past its end.", ...ROLE },
     examples: ["curviate enrollment pause enr_YOUR_ENROLLMENT_ID"],
   },
   args: { ...WRITE_SINGLE_FLAGS, id: ID },
@@ -338,13 +338,13 @@ const resumeCmd = defineCommand({
     risk: "high",
     rules: {
       changes: "The Enrollment runs again from its Account; with --at, from the named Step.",
-      visible_to: "The Contact, once its next Step reaches LinkedIn.",
+      visible_to: "The Lead, once its next Step reaches LinkedIn.",
       budget_rows: [],
       retry: "With --at, every call jumps again and may send again: read `curviate enrollment get <enrollment_id>` first.",
       undo: "`curviate enrollment pause <enrollment_id>`; what was sent stays sent.",
-      blast_radius: "One Enrollment: one Contact, from one Account.",
+      blast_radius: "One Enrollment: one Lead, from one Account.",
     },
-    errors: { ...NOT_ACTIVE, ...IN_FLIGHT, MOTION_STATUS_CONFLICT: "the Motion is archived or past its end.", ...ROLE },
+    errors: { ...NOT_ACTIVE, ...IN_FLIGHT, CAMPAIGN_STATUS_CONFLICT: "the Campaign is archived or past its end.", ...ROLE },
     seeAlso: ["curviate enrollment retry", "curviate enrollment get"],
     examples: ["curviate enrollment resume enr_YOUR_ENROLLMENT_ID", "curviate enrollment resume enr_YOUR_ENROLLMENT_ID --at bump"],
   },
@@ -365,7 +365,7 @@ const retryCmd = defineCommand({
     risk: "high",
     rules: {
       changes: "Resumes the Enrollment at its failed Step, which runs again when its Account may send.",
-      visible_to: "The Contact, if the Step reaches LinkedIn.",
+      visible_to: "The Lead, if the Step reaches LinkedIn.",
       budget_rows: [],
       retry: "Safe: with nothing failed it answers NOTHING_TO_RETRY and sends nothing.",
       undo: "`curviate enrollment pause <enrollment_id>` before the Step runs; what was sent stays sent.",
@@ -375,7 +375,7 @@ const retryCmd = defineCommand({
       NOTHING_TO_RETRY: "nothing to retry: the Enrollment's latest Step outcome is not failed.",
       ...IN_FLIGHT,
       ...NOT_ACTIVE,
-      MOTION_STATUS_CONFLICT: "the Motion is archived or past its end.",
+      CAMPAIGN_STATUS_CONFLICT: "the Campaign is archived or past its end.",
       ...ROLE,
     },
     output: ["The re-run's record, {step_id, outcome, reason, message}. Exit 7 when the wait runs out first: the Step is resumed; read it later."],
@@ -420,7 +420,7 @@ const eventMeta = (name: "event" | "signal", description: string, example: strin
   risk: "write" as const,
   rules: {
     changes: "Records the event; a Step waiting for it continues. Fires no webhook.",
-    visible_to: "Your Team; the Contact once the next Step runs.",
+    visible_to: "Your Team; the Lead once the next Step runs.",
     budget_rows: [],
     retry: "A second event is recorded again; a Step already past the wait ignores it.",
     undo: "Cannot be undone; pause or stop the Enrollment to keep its next Step from running.",
@@ -432,7 +432,7 @@ const eventMeta = (name: "event" | "signal", description: string, example: strin
 const eventCmd = defineCommand({
   meta: eventMeta(
     "event",
-    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Contact's custom fields. Input only: fires no webhook. Needs Automate.",
+    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs Automate.",
     "curviate enrollment event enr_YOUR_ENROLLMENT_ID research_ready",
   ),
   args: EVENT_ARGS,
@@ -456,33 +456,33 @@ const reassignCmd = defineCommand({
   meta: {
     name: "reassign",
     description:
-      "Move an Enrollment to another sending Account of its Motion; it restarts there at the first Step of its version (one you paused stays paused). " +
+      "Move an Enrollment to another sending Account of its Campaign; it restarts there at the first Step of its version (one you paused stays paused). " +
       "Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
     risk: "high",
     rules: {
       changes: "The Enrollment restarts on the target Account; Steps already skipped are named in warnings.",
-      visible_to: "The Contact, once the target Account's first Step reaches LinkedIn.",
+      visible_to: "The Lead, once the target Account's first Step reaches LinkedIn.",
       budget_rows: [],
       retry: "A second call to the same Account answers ALREADY_ENROLLED_ON_ACCOUNT.",
       undo: "Reassign it back while the target has not engaged the person yet.",
-      blast_radius: "One Enrollment: one Contact, from one Account.",
+      blast_radius: "One Enrollment: one Lead, from one Account.",
     },
     errors: {
-      ACCOUNT_NOT_FOUND: "the target is not a sending Account of the Motion.",
+      ACCOUNT_NOT_FOUND: "the target is not a sending Account of the Campaign.",
       ...NOT_ACTIVE,
       ...IN_FLIGHT,
       ACCOUNT_ALREADY_ENGAGED: "its current Account already did something the person can see.",
-      ALREADY_ENROLLED_ON_ACCOUNT: "the target already holds this Contact in the Motion, or is the current Account.",
+      ALREADY_ENROLLED_ON_ACCOUNT: "the target already holds this Lead in the Campaign, or is the current Account.",
       KNOWN_CHAT: "the target already has a chat with the person.",
       ...ROLE,
     },
-    seeAlso: ["curviate enrollment get", "curviate motion get"],
+    seeAlso: ["curviate enrollment get", "curviate campaign get"],
     examples: ["curviate enrollment reassign enr_YOUR_ENROLLMENT_ID --account acc_YOUR_ACCOUNT_ID"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: ID,
-    account: { type: "string", required: true, description: "The target sending Account of the Motion (acc_...). Never defaulted." },
+    account: { type: "string", required: true, description: "The target sending Account of the Campaign (acc_...). Never defaulted." },
   },
   run: online(single("reassign", (f) => ({ account_id: required("account", f.account, "the target Account (acc_...)") }))),
 });
@@ -491,31 +491,31 @@ const bulkCmd = defineCommand({
   meta: {
     name: "bulk",
     description:
-      "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --motion and the list filters. " +
+      "Pause, resume, stop, retry, send an event to or reassign many Enrollments in one call, named with --id or matched by --campaign and the list filters. " +
       "Each is decided alone, as its own command would be; not atomic. Up to 1000 items: ids, or Enrollments the filters match. List with the same filters first to see the matches.",
     risk: "high",
     rules: {
       changes: "Each Enrollment gets the action as its single command would.",
-      visible_to: "The Contacts whose next Step reaches LinkedIn.",
+      visible_to: "The Leads whose next Step reaches LinkedIn.",
       budget_rows: [],
       retry: "A retried call is a new call: each Enrollment answers again on its own (a second stop is ENROLLMENT_NOT_ACTIVE for it).",
       undo: "Per Enrollment, as its single command says; what was sent stays sent.",
-      blast_radius: "Up to 1000 items (Enrollments), every Contact and Account they cover.",
+      blast_radius: "Up to 1000 items (Enrollments), every Lead and Account they cover.",
     },
     errors: { ...NOT_ACTIVE, NOTHING_TO_RETRY: "retry, per Enrollment: nothing failed.", ...IN_FLIGHT, ...ROLE },
     output: ["One line per Enrollment, `<enrollment_id> ok` or `<enrollment_id> error <code>: <message>`; with --json (or piped) the API's answer. Exit 0 when every one is ok, else the first refusal's exit."],
     seeAlso: SEE,
     examples: [
       "curviate enrollment bulk --action stop --id enr_A,enr_B",
-      "curviate enrollment bulk --action retry --motion mot_YOUR_MOTION_ID --done-step opener --outcome failed",
+      "curviate enrollment bulk --action retry --campaign mot_YOUR_CAMPAIGN_ID --done-step opener --outcome failed",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     action: { type: "string", required: true, description: `One of ${ACTIONS.join(", ")}.` },
-    id: { type: "string", description: "An Enrollment id (enr_...); repeatable, or a comma list. Not with --motion." },
+    id: { type: "string", description: "An Enrollment id (enr_...); repeatable, or a comma list. Not with --campaign." },
     ...FILTER_ARGS,
-    motion: { type: "string", description: "Act on this Motion's Enrollments (mot_...) that the other filters match. Not with --id." },
+    campaign: { type: "string", description: "Act on this Campaign's Enrollments (mot_...) that the other filters match. Not with --id." },
     at: { type: "string", description: "With --action resume: jump to this Step id (not guarded, see `curviate enrollment resume`)." },
     name: { type: "string", description: "With --action event: the event name." },
     account: { type: "string", description: "With --action reassign: the target sending Account (acc_...). Never defaulted." },

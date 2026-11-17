@@ -6,9 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.55.0] - 2026-11-17
 
-Pins the unpublished SDK build `fa892f6` (`github:Curviate/curviate-sdk#<sha>`, Mailboxes and Team email safety); not publishable until the SDK is on npm and the pin is back to an exact version. The vendored OpenAPI fixture is re-copied from that build; `commands.json` regenerated.
+Requires `@curviate/sdk` 0.51.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's; `commands.json` regenerated.
+
+### Breaking: Contacts become Leads, Motions become Campaigns
+
+- **`curviate lead ...` replaces `curviate contact ...`** (`lead list|get|create|update|delete|import|imports|export|enrich`, `lead lists ...`, `lead tags ...`). `curviate contact` is removed: it answers as an unknown command, no alias.
+- Help, examples and next-call hints say Lead and Lead list; filter `--motion` is `--campaign`; `do-not-contact add --contact` is `--lead`; `account update --save-connections-as-leads` replaces `--save-connections-as-contacts`.
+- Error codes `LEAD_LIMIT_REACHED`, `LEAD_NOT_ENROLLABLE`, `CAMPAIGN_NOT_STARTABLE`, `CAMPAIGN_STATUS_CONFLICT`, `ACCOUNT_NOT_IN_CAMPAIGN` replace the old five.
+- **`curviate campaign ...` replaces `curviate motion ...`** (`campaign list|get|create|update|delete|start|pause|resume|archive|preview|add|remove|init|lint|voice-clip`). `curviate motion` is removed: it answers as an unknown command, no alias. `campaign lint` stays offline.
+- Flags: `--motion` is `--campaign` (`enrollment`, `analytics`, `incoming`, `unibox`), `--motions` is `--campaigns`, `--motion-ids` is `--campaign-ids`, `--contact` is `--lead` (`enrollment`, `analytics events`, `campaign add|remove|preview`), `--source motion` is `--source campaign` (`webhook`), `--view motions` is `--view campaigns`, `--origin motion` is `--origin campaign`.
+- Campaign files and templates: `lead_list_ids`, `settings.accounts_per_lead`, `settings.exclude.other_campaigns`, and `lead.*` conditions; the offline W17 hint says Campaign. Webhook events are `campaign.status_changed` and `campaign.custom_event`.
 
 ### Mailboxes, domains and Team email safety
 

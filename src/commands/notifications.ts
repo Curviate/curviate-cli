@@ -1,6 +1,6 @@
 /**
  * `curviate notification`: Curviate's own Notifications (an account needing
- * reconnection, a paused Motion, a finished import, a member leaving). Yours,
+ * reconnection, a paused Campaign, a finished import, a member leaving). Yours,
  * per Team. Root-scoped (`curviate.notifications.*`).
  *
  * Not LinkedIn's notification cards: those are `curviate core notification`
