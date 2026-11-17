@@ -6,6 +6,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [Unreleased]
+
+Proposed as 0.56.0. Pins the unpublished SDK build `github:Curviate/curviate-sdk#9e8146ec9bb311fe77e821297164891bf620be20` (SDK `[Unreleased]`, proposed 0.52.0); the release re-pins the published version. The vendored OpenAPI fixture is re-copied from that SDK build (server commit `8c675b5b8`); `src/schemas/documents.json` and `commands.json` regenerated.
+
+### Email in Campaigns
+
+- **`campaign check <id>`**: the Lead check (Leads without an email address, bounced, on the Do-not-contact list for email only, variables they lack). Stored as `lead_check` on the Campaign.
+- **`campaign start|resume --skip-missing-email`**: start a Campaign with an email step although some Leads have no address (they are never enrolled).
+- Campaign files take `shared_mailbox_ids`, `schedule.min_email_gap_minutes` and `settings.reply_scope` (checked offline against the vendored schema); `campaign lint` runs the email step, per-variable fallbacks (`{{lead.first_name|there}}`), `on_missing` and the changed R17/R19 rules offline through the SDK.
+
+### Campaign parity
+
+- **`campaign preview --limit --cursor --all`**: preview pages over every Lead (`next_cursor`); `--all` merges every page into one answer (`--max-pages`, `--page-delay`). `--sample` stays as an alias of `--limit`.
+- `enrollment get|list` print `next_action` as its sentence in human mode; `--json` keeps the object.
+- `campaign lint` checks weighted variants (2 to 5, `weight` 1 to 100) and business-day waits (`5bd`) offline.
+
+### Do-not-contact and Leads
+
+- **`do-not-contact add --scope everything|email_only`** and **`do-not-contact import --scope`** (the scope of every row that names none; a CSV with its own `scope` column is refused with the flag). `list` and `get` print `scope` and `how`; `--reason` takes `unsubscribed`.
+- `lead get|list` print `do_not_contact` (`{scope, reason, how, at}` or `null`; `scope: email_only` is "No email").
+
+### Billing (read only)
+
+- **`billing quote --seats <n> [--period monthly|annual]`**, **`billing cap`**, **`billing changes`** (paged, `--all`). Owners only. Nothing here buys or cancels.
+
+### Limits
+
+- **`account warm-up on --preset gradual|custom --start --step --every`**; help and the summary line describe the day ramp (Gradual: 30% on day 1 to 100% on day 14), and `account link --warm-up` / `account connect-request create --warm-up` help follows.
+
+### Other
+
+- Any `--*-stdin=VALUE` (`--password-stdin=`, `--li-at-stdin=`) is refused (exit 2) on every command, `account link` included, before anything is read or sent. A secret typed on a terminal keeps its leading spaces, so a secret typed and the same secret piped are the same bytes.
+
 ## [0.55.0] - 2026-11-17
 
 Requires `@curviate/sdk` 0.51.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's; `commands.json` regenerated.
@@ -24,7 +57,7 @@ Requires `@curviate/sdk` 0.51.0 (exact pin). The vendored OpenAPI fixture is re-
 - **`mailbox list|get|update|pause|resume|remove`**: your Team's own email Mailboxes. `list` filters by `--state`, `--sends-for` (an Account id, `shared` or `none`) and `--domain`; `update` takes `--sends-for <acc_...|shared>`, `--daily-cap` and `--signature-file` (a path or `-`). A cap above 50 and a signature over 2,000 characters are refused by the API (exit 2, the message names the limit).
 - **`mailbox discover <address>`**: the IMAP and SMTP settings for an address, to confirm with the person before connecting; takes no password.
 - **`mailbox connect <address> --connection google_app_password|google_sign_in|microsoft_sign_in|imap_smtp`** and **`mailbox reconnect <id>`**: create a Connect request and print its link (and the administrator link where the provider needs one). `imap_smtp` takes `--imap-host --imap-port --imap-security --smtp-host --smtp-port --smtp-security`. **`--password-stdin`** (`google_app_password`, `imap_smtp`, and `reconnect`, where on a Google sign-in Mailbox it adds an app password beside the sign-in for warm-up): one line from stdin, not echoed on a terminal, sent only in the request body, never printed or shown by `--preview`; the host checks it before the answer and the Mailbox is connected in that one call, a refused password exits 8 and leaves the request open. There is no flag that takes the password as a value, so it never reaches `ps` or shell history.
-- A piped `--password-stdin` or `--li-at-stdin` now drops trailing whitespace and the newline only (leading and inner spaces are kept, as they belong to a password), and refuses stdin of more than one line (exit 2). This also applies to `account link --password-stdin`. Typed on a terminal, the same rule holds (leading spaces are kept there too, so a secret typed and the same secret piped are the same bytes). Any `--*-stdin=VALUE` (`--password-stdin=`, `--li-at-stdin=`) is refused (exit 2) on every command, `account link` included, before anything is read or sent; the value is never echoed.
+- A piped `--password-stdin` or `--li-at-stdin` now drops trailing whitespace and the newline only (leading and inner spaces are kept, as they belong to a password), and refuses stdin of more than one line (exit 2). This also applies to `account link --password-stdin`. `--password-stdin=VALUE` is refused (exit 2) on `mailbox connect` and `reconnect`; the value is never echoed.
 - **`account connect-request get|cancel`** read and cancel the Mailbox kinds too (`mailbox_id`, `admin_consent_url`, `error_code`).
 - **`domain check <domain> [--now]`**: a sending domain's MX, SPF, DKIM, DMARC and tracking checks as last run, or run now.
 - **`account safety get --team`** and **`account safety update --team --email-default-cap --email-opt-out-scope --email-opt-out-text --email-opt-out-link-text --email-opt-out-link-word`**: the Team's email defaults. `--team` here is the scope switch: bare it names your current Team, with `tnt_...` another of yours. `""` on a text flag restores the shipped default.

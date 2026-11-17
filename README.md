@@ -354,14 +354,15 @@ A Campaign runs one Sequence for the Leads of your Lead lists, from its sending 
 curviate campaign init --template connect-and-converse --output campaign.json   # offline; fill lead_list_ids and account_ids
 curviate campaign lint --file campaign.json                                     # offline: the rules the API applies
 curviate campaign create --file campaign.json --json
-curviate campaign preview mot_1 --sample 3 --json                             # rendered messages and the budget projection; spends nothing
-curviate campaign start mot_1 --json
+curviate campaign preview mot_1 --limit 3 --json                              # rendered messages and the budget projection; spends nothing (--all: every Lead)
+curviate campaign check mot_1 --json                                           # with an email step: the Lead check start needs
+curviate campaign start mot_1 --json                                           # --skip-missing-email: start without the Leads lacking an address
 ```
 
 `curviate campaign lint` prints one line per finding, compiler style, and exits 2 on any error:
 
 ```text
-campaign.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
+campaign.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d, or business days from 1bd to 250bd. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
 ```
 
 `curviate campaign create` and `curviate campaign update` check the same way before anything is sent. `curviate campaign get mot_1 --json` prints a file `curviate campaign update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.

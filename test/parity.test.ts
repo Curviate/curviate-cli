@@ -212,7 +212,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "comment unreact":   "comments.removeReaction",
   "comment user":      "comments.listUserComments",
 
-  // campaigns (13)
+  // campaigns (14)
   "campaign create":  "campaigns.create",
   "campaign list":    "campaigns.list",
   "campaign get":     "campaigns.get",
@@ -223,6 +223,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "campaign resume":  "campaigns.resume",
   "campaign archive": "campaigns.archive",
   "campaign preview": "campaigns.preview",
+  "campaign check":   "campaigns.check",
   "campaign get --version": "campaigns.getSequenceVersion",
   "campaign add":     "campaigns.addLeads",
   "campaign remove":  "campaigns.removeLeads",
@@ -326,7 +327,10 @@ const PARITY_MANIFEST: Record<string, string> = {
   "team seats lend":     "billing.seats.lend",
   "team seats return":   "billing.seats.return",
 
-  // billing (2)
+  // billing (5)
+  "billing quote":        "billing.quote",
+  "billing cap":          "billing.spendingCap",
+  "billing changes":      "billing.changes",
   "billing invoices":     "billing.invoices.list",
   "billing invoices pdf": "billing.invoices.pdf",
 
@@ -381,6 +385,8 @@ const KNOWN_GAP_METHODS: readonly string[] = [
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
+  // Moves the plan to yearly billing (money): the CLI command waits for its own billing ticket with qa.
+  "billing.switchPeriod",
 ];
 
 // ---------------------------------------------------------------------------

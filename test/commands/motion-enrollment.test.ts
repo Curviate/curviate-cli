@@ -134,3 +134,62 @@ describe("campaign voice-clip", () => {
     expect([refused.status, refused.stderr + refused.stdout]).toEqual([2, expect.stringContaining("the limit is 120 s")]);
   });
 });
+
+describe("email, parity, Do-not-contact, billing and warm-up flags: the request each sends", () => {
+  it.each([
+    [["campaign", "start", "mot_1", "--skip-missing-email"], [{ call: "POST /v1/campaigns/mot_1/start", query: {}, body: { skip_missing_email: true } }]],
+    [["campaign", "start", "mot_1"], [{ call: "POST /v1/campaigns/mot_1/start", query: {}, body: undefined }]],
+    [["campaign", "resume", "mot_1", "--skip-missing-email"], [{ call: "POST /v1/campaigns/mot_1/resume", query: {}, body: { skip_missing_email: true } }]],
+    [["campaign", "check", "mot_1"], [{ call: "POST /v1/campaigns/mot_1/check", query: {}, body: undefined }]],
+    [["campaign", "preview", "mot_1", "--limit", "3", "--cursor", "c_1"], [{ call: "GET /v1/campaigns/mot_1/preview", query: { limit: "3", cursor: "c_1" }, body: undefined }]],
+    [["do-not-contact", "add", "--lead", "con_1", "--scope", "email_only"], [{ call: "POST /v1/do-not-contact", query: {}, body: { lead_id: "con_1", scope: "email_only" } }]],
+    [["do-not-contact", "add", "--lead", "con_1", "--scope", "all"], []],
+    [["billing", "quote", "--seats", "25"], [{ call: "GET /v1/billing/quote", query: { seats: "25", period: "monthly" }, body: undefined }]],
+    [["billing", "cap"], [{ call: "GET /v1/billing/spending-cap", query: {}, body: undefined }]],
+    [["account", "warm-up", "on", "acc_1", "--preset", "custom", "--start", "20", "--step", "10", "--every", "2"],
+      [{ call: "PATCH /v1/acc_1/safety-policy", query: {}, body: { warm_up: { enabled: true, preset: "custom", start: 20, step: 10, every: 2 } } }]],
+    [["account", "warm-up", "on", "acc_1", "--start", "95"], []],
+  ])("%j", async (args, expected) => {
+    const r = await wire(args, () => ({ body: { object: "x" } }));
+    expect([r.status, lines(r.sent)]).toEqual([expected.length ? 0 : 2, expected]);
+  });
+
+  it("do-not-contact import --scope fills the rows that name none, CSV and JSON", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "dnc-"));
+    writeFileSync(join(dir, "a.csv"), "linkedin_url\nhttps://www.linkedin.com/in/a/\n");
+    writeFileSync(join(dir, "a.json"), JSON.stringify([{ linkedin_url: "https://www.linkedin.com/in/a/" }, { linkedin_url: "https://www.linkedin.com/in/b/", scope: "everything" }]));
+    const send = (f: string) => wire(["do-not-contact", "import", "--file", join(dir, f), "--scope", "email_only"], () => ({ body: { counts: {}, report: [] } }));
+    expect(lines((await send("a.csv")).sent).map((l) => l.body)).toEqual([{ csv: "linkedin_url,scope\nhttps://www.linkedin.com/in/a/,email_only" }]);
+    expect(lines((await send("a.json")).sent).map((l) => l.body)).toEqual([
+      { rows: [{ linkedin_url: "https://www.linkedin.com/in/a/", scope: "email_only" }, { linkedin_url: "https://www.linkedin.com/in/b/", scope: "everything" }] },
+    ]);
+  });
+
+  it("campaign preview --all pages until next_cursor is null: one request a page, every Lead once, the first page's projection", async () => {
+    const leads = Array.from({ length: 47 }, (_, i) => `con_${i}`);
+    const r = await wire(["campaign", "preview", "mot_1", "--all", "--limit", "20", "--page-delay", "0", "--json"], (req) => {
+      const from = req.query["cursor"] ? Number(req.query["cursor"]) : 0;
+      const next = from + 20 < leads.length ? String(from + 20) : null;
+      return { body: { object: "campaign_preview", samples: leads.slice(from, from + 20).map((lead_id) => ({ lead_id })), next_cursor: next, ...(from === 0 ? { paths: [["a"]], projection: { leads: 47 } } : {}) } };
+    });
+    expect(r.status).toBe(0);
+    expect(r.sent.map((s) => s.query["cursor"] ?? null)).toEqual([null, "20", "40"]);
+    const out = JSON.parse(r.stdout) as { samples: { lead_id: string }[]; projection: unknown; next_cursor: unknown };
+    expect([out.samples.map((s) => s.lead_id), out.projection, out.next_cursor]).toEqual([leads, { leads: 47 }, null]);
+  });
+
+  it("enrollment get prints next_action as its sentence in human mode, the object with --json", async () => {
+    const next_action = { step_id: "m", action: "message.send", at: null, why: "wait", text: "Sends Step 2, message, after the 3-day wait." };
+    const tty = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    const get = (json: boolean) => wire(["enrollment", "get", "enr_1", ...(json ? ["--json"] : [])], () => ({ body: { object: "enrollment", id: "enr_1", history: [], next_action } }));
+    try {
+      Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+      const human = (await get(false)).stdout;
+      expect([human.includes("Sends Step 2, message, after the 3-day wait."), human.includes("message.send")]).toEqual([true, false]);
+    } finally {
+      if (tty) Object.defineProperty(process.stdout, "isTTY", tty);
+      else delete (process.stdout as { isTTY?: boolean }).isTTY;
+    }
+    expect(JSON.parse((await get(true)).stdout).next_action).toEqual(next_action);
+  });
+});
