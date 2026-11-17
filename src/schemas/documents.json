@@ -915,6 +915,14 @@
           "maxLength": 64
         }
       },
+      "shared_mailbox_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
       "schedule": {
         "type": "object",
         "properties": {
@@ -961,6 +969,11 @@
           "end_at": {
             "type": "string",
             "nullable": true
+          },
+          "min_email_gap_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080
           }
         },
         "additionalProperties": false
@@ -1033,6 +1046,13 @@
               "nullable": true
             }
           },
+          "reply_scope": {
+            "type": "string",
+            "enum": [
+              "both",
+              "own_channel"
+            ]
+          },
           "on_reply_elsewhere": {
             "type": "string",
             "enum": [
@@ -1070,6 +1090,7 @@
       "sequence_version",
       "sequence_revision",
       "sequence_updated_by_user_id",
+      "lead_check",
       "counts",
       "warnings",
       "created_by_user_id",
@@ -1112,6 +1133,14 @@
           "maxLength": 64
         }
       },
+      "shared_mailbox_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
       "schedule": {
         "type": "object",
         "properties": {
@@ -1158,6 +1187,11 @@
           "end_at": {
             "type": "string",
             "nullable": true
+          },
+          "min_email_gap_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080
           }
         },
         "additionalProperties": false
@@ -1230,6 +1264,13 @@
               "nullable": true
             }
           },
+          "reply_scope": {
+            "type": "string",
+            "enum": [
+              "both",
+              "own_channel"
+            ]
+          },
           "on_reply_elsewhere": {
             "type": "string",
             "enum": [
@@ -1268,6 +1309,7 @@
       "sequence_version",
       "sequence_revision",
       "sequence_updated_by_user_id",
+      "lead_check",
       "counts",
       "warnings",
       "created_by_user_id",

@@ -82,7 +82,8 @@ const paired = (code: unknown, message: unknown) => (code != null && message != 
 /**
  * Human mode reads each reason as `<code>: <message>`: `skip_reason`,
  * `finish_reason` and every history entry's `reason` carry their sentence, and
- * the separate `*_message` keys go. JSON keeps the API's pair.
+ * the separate `*_message` keys go; `next_action` reads as its `text`. JSON
+ * keeps the API's shape.
  */
 export function humanReasons(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(humanReasons);
@@ -98,6 +99,9 @@ export function humanReasons(data: unknown): unknown {
     o["reason"] = paired(o["reason"], o["reason_message"]);
     delete o["reason_message"];
   }
+  // The next action reads as its sentence; JSON keeps step_id, action, at and why.
+  const next = o["next_action"] as Record_ | null | undefined;
+  if (next && typeof next === "object" && typeof next["text"] === "string") o["next_action"] = next["text"];
   for (const k of ["items", "history"]) if (Array.isArray(o[k])) o[k] = (o[k] as unknown[]).map(humanReasons);
   return o;
 }

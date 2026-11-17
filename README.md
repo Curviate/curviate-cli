@@ -354,14 +354,15 @@ A Campaign runs one Sequence for the Leads of your Lead lists, from its sending 
 curviate campaign init --template connect-and-converse --output campaign.json   # offline; fill lead_list_ids and account_ids
 curviate campaign lint --file campaign.json                                     # offline: the rules the API applies
 curviate campaign create --file campaign.json --json
-curviate campaign preview mot_1 --sample 3 --json                             # rendered messages and the budget projection; spends nothing
-curviate campaign start mot_1 --json
+curviate campaign preview mot_1 --limit 3 --json                              # rendered messages and the budget projection; spends nothing (--all: every Lead)
+curviate campaign check mot_1 --json                                           # with an email step: the Lead check start needs
+curviate campaign start mot_1 --json                                           # --skip-missing-email: start without the Leads lacking an address
 ```
 
 `curviate campaign lint` prints one line per finding, compiler style, and exits 2 on any error:
 
 ```text
-campaign.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
+campaign.json:7:32 error R12 pause.wait: must be a duration between 1m and 365d: a number then m, h or d, like 30d, or business days from 1bd to 250bd. Use a duration between 1m and 365d, for example 1d. -> https://docs.curviate.com/reference/sequence-rules#r12
 ```
 
 `curviate campaign create` and `curviate campaign update` check the same way before anything is sent. `curviate campaign get mot_1 --json` prints a file `curviate campaign update mot_1 --file -` accepts as is; add `--if-revision <n>` to refuse the save when someone changed the Sequence since you read it.
@@ -379,7 +380,7 @@ curviate campaign voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
 { "id": "voice", "do": "voice.send", "with": { "clip_id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", "fallback": "Hi, thanks for connecting." }, "next": "end" }
 ```
 
-`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate campaign lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Campaign is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
+`fallback` is required and has no variables: it is sent as text when the audio cannot go. For variants, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate campaign lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Campaign is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
 
 ### 2. Find and fix Enrollments
 

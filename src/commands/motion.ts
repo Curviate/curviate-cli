@@ -18,7 +18,7 @@ import { DESCRIPTIONS } from "./descriptions.js";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { renderSuccess, writeNdjsonItem } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
-import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableObject, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
+import { DEFAULT_PAGE_DELAY_MS, streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableObject, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { documentSchema, parseDocument, readFileFlag, reportIssues, validate } from "../lib/document.js";
 import { intFlag } from "../lib/int-flag.js";
 import { isStdinToken } from "../lib/stdin.js";
@@ -59,6 +59,7 @@ type CampaignFlags = RootFlags & {
   all?: boolean;
   "max-pages"?: string;
   "page-delay"?: string;
+  "skip-missing-email"?: boolean;
 };
 
 type Body = Record<string, unknown>;
@@ -219,23 +220,60 @@ async function runUpdate(c: Curviate, f: CampaignFlags): Promise<void> {
   }
 }
 
-/** start, pause, resume, archive, delete: one call on one Campaign. */
+/** start, pause, resume, archive, delete: one call on one Campaign. start and resume send `{skip_missing_email: true}` when asked. */
 const lifecycle = (method: "start" | "pause" | "resume" | "archive" | "delete") => async (c: Curviate, f: CampaignFlags): Promise<void> => {
-  if (f.preview) return preview(`campaigns.${method}`, { id: f.id });
+  const body = f["skip-missing-email"] ? { skip_missing_email: true } : undefined;
+  if (f.preview) return preview(`campaigns.${method}`, { id: f.id }, body);
   try {
-    renderSuccess(await c.campaigns[method](f.id ?? ""), outputOpts(f), process);
+    const id = f.id ?? "";
+    renderSuccess(await (method === "start" || method === "resume" ? c.campaigns[method](id, body) : c.campaigns[method](id)), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
 };
 
+/** `--all`: every page merged into one answer, the first page's paths and projection, every page's samples. */
+async function previewAll(c: Curviate, f: CampaignFlags, params: Body): Promise<Body> {
+  const maxPages = readMaxPagesFlag(f, process);
+  const delay = pageDelayFromFlags(f) ?? DEFAULT_PAGE_DELAY_MS;
+  let merged: Body | undefined;
+  for (let pages = 1; ; pages++) {
+    const page = (await c.campaigns.preview(f.id ?? "", params as never)) as unknown as Body;
+    merged = merged ? { ...merged, samples: [...(merged["samples"] as unknown[]), ...((page["samples"] as unknown[]) ?? [])], next_cursor: page["next_cursor"] } : page;
+    const next = page["next_cursor"];
+    if (typeof next !== "string" || !next) return merged;
+    if (pages >= maxPages) {
+      process.stderr.write(`warning: stopped after ${maxPages} pages (--max-pages); next_cursor resumes it.\n`);
+      return merged;
+    }
+    params = { ...params, cursor: next };
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+  }
+}
+
 async function runPreview(c: Curviate, f: CampaignFlags): Promise<void> {
   const params: Body = {};
   if (f.sample !== undefined) params["sample"] = intFlag("sample", f.sample, 1, 20);
+  if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 20);
   if (f.lead !== undefined) params["lead_ids"] = listFlag("lead", f.lead);
-  if (params["sample"] !== undefined && params["lead_ids"] !== undefined) usage("--sample and --lead cannot be combined: name the Leads, or let Curviate sample.");
+  if (params["sample"] !== undefined && params["limit"] !== undefined) usage("--sample is an alias of --limit: pass one.");
+  if ((params["sample"] ?? params["limit"]) !== undefined && params["lead_ids"] !== undefined) usage("--limit and --lead cannot be combined: name the Leads, or let Curviate page.");
+  if (f.all && params["lead_ids"] !== undefined) usage("--all pages over every Lead; with --lead there is one page.");
+  rejectPaginationModifiersWithoutAll(f, process);
+  const cursor = readCursorFlag(f, process);
+  if (cursor) params["cursor"] = cursor;
   try {
-    renderSuccess(readableObject(await c.campaigns.preview(f.id ?? "", params as never)), outputOpts(f), process);
+    const result = f.all ? await previewAll(c, f, params) : await c.campaigns.preview(f.id ?? "", params as never);
+    renderSuccess(readableObject(result), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runCheck(c: Curviate, f: CampaignFlags): Promise<void> {
+  if (f.preview) return preview("campaigns.check", { id: f.id });
+  try {
+    renderSuccess(await c.campaigns.check(f.id ?? ""), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -448,15 +486,28 @@ const updateCmd = defineCommand({
   run: online(runUpdate),
 });
 
+const SKIP_MISSING_EMAIL = {
+  "skip-missing-email": {
+    type: "boolean" as const,
+    description: "With an email step: start even though some Leads have no email address (`curviate campaign check` counts them). They are never enrolled either way.",
+  },
+};
+
 const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete", meta: Record<string, unknown>) =>
   defineCommand({
-    meta: { name, ...meta, examples: [`curviate campaign ${name} mot_YOUR_CAMPAIGN_ID`] },
-    args: { ...WRITE_SINGLE_FLAGS, id: ID },
+    meta: {
+      name,
+      ...meta,
+      examples: [`curviate campaign ${name} mot_YOUR_CAMPAIGN_ID`, ...(name === "start" ? ["curviate campaign start mot_YOUR_CAMPAIGN_ID --skip-missing-email"] : [])],
+    },
+    args: { ...WRITE_SINGLE_FLAGS, id: ID, ...(name === "start" || name === "resume" ? SKIP_MISSING_EMAIL : {}) },
     run: online(lifecycle(name)),
   });
 
 const startCmd = lifecycleCmd("start", {
-  description: "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. Needs Automate.",
+  description:
+    "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. " +
+    "With an email step it needs `curviate campaign check` at the current Sequence revision, and is refused while Leads have no email address unless --skip-missing-email. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Campaign starts enrolling its Leads and running its Steps from its sending Accounts, paced on its schedule.",
@@ -466,8 +517,13 @@ const startCmd = lifecycleCmd("start", {
     undo: "`curviate campaign pause <campaign_id>` stops new Steps; what was sent stays sent.",
     blast_radius: "Every Lead of its Lead lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`).",
   },
-  errors: { CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence); each is listed.", CAMPAIGN_STATUS_CONFLICT: "only a draft starts.", ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
-  seeAlso: ["curviate campaign preview", "curviate campaign pause"],
+  errors: {
+    CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address); each is listed.",
+    CAMPAIGN_STATUS_CONFLICT: "only a draft starts.",
+    ...ROLE_ERRORS,
+    TIER_REQUIRED: "Campaigns need the Automate plan.",
+  },
+  seeAlso: ["curviate campaign check", "curviate campaign preview", "curviate campaign pause"],
 });
 
 const pauseCmd = lifecycleCmd("pause", {
@@ -485,7 +541,7 @@ const pauseCmd = lifecycleCmd("pause", {
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Campaign. Runs the start checks again. Needs Automate.",
+  description: "Resume a paused Campaign. Runs the start checks again, the Lead check and --skip-missing-email included. Needs Automate.",
   risk: "high",
   rules: {
     changes: "The Campaign's Steps run again from its sending Accounts.",
@@ -532,17 +588,43 @@ const deleteCmd = lifecycleCmd("delete", {
 const previewCmd = defineCommand({
   meta: {
     name: "preview",
-    description: "What the Campaign would do, in any status: every path through its Sequence, rendered messages for sampled or named Leads, and the budget projection: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
+    description:
+      "What the Campaign would do, in any status: every path through its Sequence, rendered messages for its Leads a page at a time (--limit, 1 to 20, default 5; --cursor the previous page's next_cursor; --all every page, merged) or for named Leads, and the budget projection on the first page: per Account the pool that binds its pace, the expected actions a day (a draft: the mean daily invitations, messages and InMails of the first 7 days of its forecast, as if turned on now), and warnings (hours_below_share, no_sending_account). A read: never reaches LinkedIn, spends nothing.",
     risk: "read",
-    examples: ["curviate campaign preview mot_YOUR_CAMPAIGN_ID", "curviate campaign preview mot_YOUR_CAMPAIGN_ID --sample 3"],
+    examples: [
+      "curviate campaign preview mot_YOUR_CAMPAIGN_ID",
+      "curviate campaign preview mot_YOUR_CAMPAIGN_ID --limit 3",
+      "curviate campaign preview mot_YOUR_CAMPAIGN_ID --all",
+    ],
   },
   args: {
-    ...readOnly(READ_SINGLE_FLAGS),
+    ...readOnly(GLOBAL_FLAGS),
     id: ID,
-    sample: { type: "string", description: "How many Leads to render (default 5)." },
-    lead: { type: "string", description: "A Lead id (con_...) to render; repeatable, or a comma list. Not with --sample." },
+    sample: { type: "string", description: "Alias of --limit." },
+    lead: { type: "string", description: "A Lead id (con_...) to render; repeatable, or a comma list. Not with --limit or --all." },
   },
   run: online(runPreview),
+});
+
+const checkCmd = defineCommand({
+  meta: {
+    name: "check",
+    description:
+      "Run the Lead check: one count over every Lead the Campaign would enroll (no usable email address, a bounced one, on the Do-not-contact list for email only) and the Lead variables without a fallback they lack. Stored as lead_check on the Campaign; starting a Campaign with an email step needs one at the current Sequence revision. Any status; sends nothing.",
+    risk: "write",
+    rules: {
+      changes: "Stores the check as the Campaign's lead_check, replacing the previous one. Nothing is sent.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Safe: a retry runs the check again.",
+      undo: "Not needed: it changes no Lead and no Step.",
+    },
+    output: ["The check: leads, without_email, email_bounced, no_email, fields[] (variable, steps, on_missing, missing), checked_at, sequence_revision."],
+    seeAlso: ["curviate campaign start", "curviate campaign preview"],
+    examples: ["curviate campaign check mot_YOUR_CAMPAIGN_ID"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, id: ID },
+  run: online(runCheck),
 });
 
 const membershipCmd = (kind: "add" | "remove") =>
@@ -692,6 +774,7 @@ export const campaignCommand = defineCommand({
     archive: archiveCmd,
     delete: deleteCmd,
     preview: previewCmd,
+    check: checkCmd,
     add: membershipCmd("add"),
     remove: membershipCmd("remove"),
     lint: lintCmd,
