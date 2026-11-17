@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.55.0] - 2026-11-17
+
+Requires `@curviate/sdk` 0.51.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's; `commands.json` regenerated.
 
 ### Breaking: Contacts become Leads, Motions become Campaigns
 
@@ -16,9 +18,6 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 - **`curviate campaign ...` replaces `curviate motion ...`** (`campaign list|get|create|update|delete|start|pause|resume|archive|preview|add|remove|init|lint|voice-clip`). `curviate motion` is removed: it answers as an unknown command, no alias. `campaign lint` stays offline.
 - Flags: `--motion` is `--campaign` (`enrollment`, `analytics`, `incoming`, `unibox`), `--motions` is `--campaigns`, `--motion-ids` is `--campaign-ids`, `--contact` is `--lead` (`enrollment`, `analytics events`, `campaign add|remove|preview`), `--source motion` is `--source campaign` (`webhook`), `--view motions` is `--view campaigns`, `--origin motion` is `--origin campaign`.
 - Campaign files and templates: `lead_list_ids`, `settings.accounts_per_lead`, `settings.exclude.other_campaigns`, and `lead.*` conditions; the offline W17 hint says Campaign. Webhook events are `campaign.status_changed` and `campaign.custom_event`.
-- Built against the unreleased SDK of the same rename (commit pin until the release, then the exact version); the vendored OpenAPI fixture is re-copied from it.
-
-Pins the unpublished SDK build `2d20d90` (`github:Curviate/curviate-sdk#<sha>`, the SDK rename head, which carries the Mailboxes and Team email safety build `fa892f6`); not publishable until the SDK is on npm and the pin is back to an exact version. The vendored OpenAPI fixture is re-copied from that build; `commands.json` regenerated.
 
 ### Mailboxes, domains and Team email safety
 
