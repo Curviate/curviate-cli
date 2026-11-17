@@ -115,7 +115,8 @@ export async function readlineSync(
         // every input it ever read. Unreachable while the only caller asked
         // for masked input on a real terminal; reached the moment a caller
         // wanted a visible prompt, which is what a pasted value needs.
-        resolve(line.trim());
+        // A masked read resolves un-trimmed, as the raw-mode branch does: its caller trims by its own rule.
+        resolve(opts.mask ? line : line.trim());
         rl.close();
       });
       rl.once("error", reject);

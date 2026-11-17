@@ -159,8 +159,10 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
         const reader = params.readSingleLine ?? defaultReadSingleLine;
         const raw = await reader(STDIN_TTY_CUE);
         // The raw-mode reader resolves un-trimmed, trimming is this
-        // resolver's job (matches the non-TTY EOF tier's own trim).
-        const trimmed = raw.trim();
+        // resolver's job, the same rule as the piped tier below (MBX-33):
+        // trailing whitespace only, so a secret typed and the same secret
+        // piped arrive as the same bytes (leading spaces belong to it).
+        const trimmed = raw.trimEnd();
         if (trimmed !== "") {
           return trimmed;
         }
