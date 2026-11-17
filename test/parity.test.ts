@@ -27,6 +27,17 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account disconnect": "accounts.disconnect",
   "account warm-up on|off": "accounts.updateSafetyPolicy",
   "account safety get":    "accounts.getSafetyPolicy",
+  "account safety get --team":    "accounts.getTeamSafetyPolicy",
+  "account safety update --team": "accounts.updateTeamSafetyPolicy",
+
+  // mailboxes (6) and domains (1)
+  "mailbox list":   "mailboxes.list",
+  "mailbox get":    "mailboxes.get",
+  "mailbox update": "mailboxes.update",
+  "mailbox pause":  "mailboxes.pause",
+  "mailbox resume": "mailboxes.resume",
+  "mailbox remove": "mailboxes.remove",
+  "domain check":   "domains.check",
   "account team-access on|off": "accounts.setTeamAccess",
 
   // webhooks (6)
@@ -366,6 +377,8 @@ const PARITY_MANIFEST: Record<string, string> = {
 const KNOWN_GAP_METHODS: readonly string[] = [
   // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
   "enrollments.signal",
+  // Mailbox connect and the connect request: MBX-30 (`--password-stdin`).
+  "mailboxes.discover",
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",

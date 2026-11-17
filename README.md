@@ -628,6 +628,19 @@ curviate core recruiter jobs --account acc_1 --limit 10 --json \
 curviate core recruiter job get "https://www.linkedin.com/jobs/view/4428113858" --account acc_1 --json
 ```
 
+## Mailboxes and email safety
+
+```bash
+curviate mailbox list --state paused                      # your Team's own email Mailboxes
+curviate mailbox update mbx_... --sends-for acc_... --daily-cap 40 --signature-file signature.txt
+curviate mailbox pause mbx_...                            # resume, remove likewise
+curviate domain check acme.example --now                  # MX, SPF, DKIM, DMARC, tracking
+curviate account safety get --team                        # the Team's email defaults
+curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden
+```
+
+A Mailbox sends only for the Account it is linked to, or for any Account when it is `shared`. The daily cap is at most 50; the API refuses more and says so.
+
 ## Retrieval modes
 
 Some reads can be answered from the copy Curviate already holds instead of
