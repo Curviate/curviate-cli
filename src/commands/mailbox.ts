@@ -1,7 +1,12 @@
 /**
  * `curviate mailbox`: your Team's own email Mailboxes. Root-scoped
  * (`curviate.mailboxes.*`): list, read, change (Sends for, daily cap,
- * signature), pause, resume, remove. Each command makes one API call.
+ * signature), pause, resume, remove, find settings for an address, connect and
+ * reconnect. Each command makes one API call.
+ *
+ * A password reaches the request body and nowhere else: `--password-stdin` only
+ * (never a value flag, which `ps` and shell history would keep), read once,
+ * trimmed, never echoed, never printed back, never in a preview.
  */
 import { defineCommand } from "citty";
 import type { Curviate } from "@curviate/sdk";
@@ -13,6 +18,8 @@ import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readab
 import { intFlag } from "../lib/int-flag.js";
 import { fail, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import { readFileFlag } from "../lib/document.js";
+import { resolveSecret } from "../lib/credential-resolve.js";
+import { getExitCode } from "../lib/exit-codes.js";
 
 type Flags = RootFlags & {
   id?: string;
@@ -26,6 +33,15 @@ type Flags = RootFlags & {
   "page-delay"?: string;
   "daily-cap"?: string;
   "signature-file"?: string;
+  address?: string;
+  connection?: string;
+  "password-stdin"?: boolean;
+  "imap-host"?: string;
+  "imap-port"?: string;
+  "imap-security"?: string;
+  "smtp-host"?: string;
+  "smtp-port"?: string;
+  "smtp-security"?: string;
 };
 type Body = Record<string, unknown>;
 
@@ -33,8 +49,10 @@ const STATES = ["connected", "ramping", "paused", "paused_by_bounces", "paused_b
 /** The API's cap and signature limits are its own: the CLI sends what it is given and prints the API's 400. */
 const SIGNATURE_MAX_BYTES = 64 * 1024;
 
-const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
+const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args, rawArgs }: { args: unknown; rawArgs?: string[] }) => {
   const f = args as Flags;
+  // A boolean flag parses `--password-stdin=x` as plain true and drops x: refuse it, never echoing x.
+  if ((rawArgs ?? []).some((t) => t.startsWith("--password-stdin="))) usage("--password-stdin takes no value: the password is read from stdin.");
   await fn(await rootClient(f), f);
 };
 
@@ -105,6 +123,100 @@ const act = (verb: "pause" | "resume" | "remove") => async (c: Curviate, f: Flag
     await fail(err, f);
   }
 };
+
+const CONNECTIONS = ["google_app_password", "google_sign_in", "microsoft_sign_in", "imap_smtp"];
+/** The connections that take a password; the sign-in ones never do (the person signs in on the provider's page). */
+const PASSWORD_CONNECTIONS = ["google_app_password", "imap_smtp"];
+const SERVER_FLAGS = ["imap-host", "imap-port", "imap-security", "smtp-host", "smtp-port", "smtp-security"] as const;
+
+/** What to tell the person; the words the MCP tools carry for a Mailbox request. */
+export const MAILBOX_REQUEST_INSTRUCTION =
+  "Ask your user to open this link in the browser where they're signed in to Curviate. It expires in 15 minutes. " +
+  "Never ask them for their email password in chat; to submit an app password yourself, pipe it to --password-stdin.";
+
+async function runDiscover(c: Curviate, f: Flags): Promise<void> {
+  const address = String(f.address ?? "");
+  if (address.trim() === "") usage("the address is empty. Pass the email address to look up.");
+  try {
+    renderSuccess(readableObject(await c.mailboxes.discover(address)), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+/** The password, from stdin only: `--password-stdin` and nothing else, never from argv, never in an env var. Undefined when the flag is absent. */
+async function readPassword(f: Flags): Promise<string | undefined> {
+  if (!f["password-stdin"]) return undefined;
+  // A preview renders the request without reading the terminal; the field shows masked.
+  if (f.preview) return "";
+  return resolveSecret({
+    stdinRequested: true,
+    isTTY: process.stdin.isTTY ?? false,
+    required: true,
+    failMessage: "--password-stdin read an empty password. Pipe the password in (printf '%s' \"$APP_PASSWORD\" | curviate mailbox ... --password-stdin), or leave the flag out and give the person the link.",
+    out: process,
+  });
+}
+
+type Request = { id?: string; kind?: string; status?: string; url?: string; expires_at?: string; mailbox_id?: string | null; admin_consent_url?: string | null; error_code?: string | null };
+
+/** The human-mode lines: the Mailbox once connected, else the link, its expiry, the request and any administrator link. */
+export const requestLines = (req: Request): string[] =>
+  req.status === "completed"
+    ? [`Mailbox: ${req.mailbox_id ?? ""}`, `Request: ${req.id ?? ""}`]
+    : [`Link: ${req.url ?? ""}`, `Expires: ${req.expires_at ?? ""}`, `Request: ${req.id ?? ""}`, ...(req.admin_consent_url ? [`Administrator link: ${req.admin_consent_url}`] : [])];
+
+/** One call; then the link to hand over, the Mailbox when the password was checked and stored, or the code the check ended with. */
+async function sendRequest(c: Curviate, f: Flags, body: Body): Promise<void> {
+  try {
+    const req = (await c.connectRequests.create(body as never)) as Request;
+    const opts = outputOpts(f);
+    if (opts.json) renderSuccess(req, opts, process);
+    if (req.error_code) {
+      // A refused password answers 201 with the request still open: the exit code is the refusal's, the request id is for a retry or the person's link.
+      process.stderr.write(`error [${req.error_code}] the request ${req.id ?? ""} is ${req.status ?? "open"}. Read it: curviate account connect-request get ${req.id ?? "<request_id>"}\n`);
+      process.exit(getExitCode(req.error_code as never));
+    }
+    if (!opts.json) process.stdout.write(requestLines(req).join("\n") + "\n");
+    if (req.status !== "completed") process.stderr.write(`${MAILBOX_REQUEST_INSTRUCTION}\nCheck on it: curviate account connect-request get ${req.id ?? "<request_id>"}\n`);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const withPassword = (body: Body, password: string | undefined): Body => (password === undefined ? body : { ...body, credentials: { password } });
+
+async function runConnect(c: Curviate, f: Flags): Promise<void> {
+  const address = String(f.address ?? "");
+  if (address.trim() === "") usage("the address is empty. Pass the email address to connect.");
+  const connection = f.connection ?? "";
+  if (!CONNECTIONS.includes(connection)) usage(`--connection takes one of ${CONNECTIONS.join(", ")}.`);
+  if (f["password-stdin"] && !PASSWORD_CONNECTIONS.includes(connection)) usage(`--password-stdin does not apply to ${connection}: the person signs in on the provider's page. It takes ${PASSWORD_CONNECTIONS.join(" or ")}.`);
+  const mailbox: Body = { connection, address };
+  if (connection === "imap_smtp") {
+    const missing = SERVER_FLAGS.filter((k) => f[k] === undefined || f[k]!.trim() === "");
+    if (missing.length > 0) usage(`--connection imap_smtp needs ${missing.map((k) => `--${k}`).join(", ")} (the settings from \`curviate mailbox discover\`, as the person confirmed them).`);
+    for (const side of ["imap", "smtp"] as const) {
+      const security = f[`${side}-security`]!;
+      if (security !== "tls" && security !== "starttls") usage(`--${side}-security takes tls or starttls, never cleartext.`);
+      mailbox[side] = { host: f[`${side}-host`], port: intFlag(`${side}-port`, f[`${side}-port`]!, 1, 65535), security };
+    }
+  } else {
+    const given = SERVER_FLAGS.filter((k) => f[k] !== undefined);
+    if (given.length > 0) usage(`${given.map((k) => `--${k}`).join(", ")} apply to --connection imap_smtp only.`);
+  }
+  const body = withPassword({ mailbox }, await readPassword(f));
+  if (f.preview) return preview("connectRequests.create", {}, body);
+  await sendRequest(c, f, body);
+}
+
+async function runReconnect(c: Curviate, f: Flags): Promise<void> {
+  const id = String(f.id ?? "");
+  if (id.trim() === "") usage("the Mailbox id is empty. Pass the mbx_... id from `curviate mailbox list`.");
+  const body = withPassword({ mailbox_id: id }, await readPassword(f));
+  if (f.preview) return preview("connectRequests.create", {}, body);
+  await sendRequest(c, f, body);
+}
 
 const ID = { type: "positional" as const, description: "The Mailbox (mbx_...), from `curviate mailbox list`." };
 const NOT_FOUND = { MAILBOX_NOT_FOUND: "no Mailbox of your Team has this id (another Team's id answers the same)." };
@@ -241,9 +353,99 @@ const removeCmd = defineCommand({
   run: online(act("remove")),
 });
 
+const ADDRESS = { type: "positional" as const, description: "The email address." };
+const PASSWORD_STDIN = {
+  type: "boolean" as const,
+  description: "Check and keep a password the person gave you: one line from stdin, never echoed, sent only in the request body and never printed. No flag takes the password as a value: it would show in `ps` and in shell history.",
+  default: false,
+};
+
+const discoverCmd = defineCommand({
+  meta: {
+    name: "discover",
+    description:
+      "Find the IMAP and SMTP settings for an email address, to show the person and confirm before connecting. An address on Google or Microsoft answers with its connection. " +
+      "confirm_required marks settings that arrived unencrypted. Takes no password and the answer holds none.",
+    risk: "read",
+    seeAlso: ["curviate mailbox connect"],
+    examples: ["curviate mailbox discover anna@acme.example"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS), address: ADDRESS },
+  run: online(runDiscover),
+});
+
+const connectCmd = defineCommand({
+  meta: {
+    name: "connect",
+    description:
+      "Connect a new Mailbox: creates a Connect request and prints its link for the person, who finishes in their Curviate dashboard. " +
+      "--connection google_sign_in (a Google Workspace whose administrator trusts Curviate) and microsoft_sign_in print the sign-in link and, where the provider needs one, the administrator link. " +
+      "google_app_password and imap_smtp can also take the password from you: pipe it to --password-stdin, Curviate checks it before answering, and the Mailbox is connected in this one call. " +
+      "imap_smtp needs the six server flags (the settings from `curviate mailbox discover`, as the person confirmed them). One API call.",
+    risk: "write",
+    rules: {
+      changes: "Creates a Connect request. With --password-stdin on google_app_password or imap_smtp, the password is checked and, if it works, the Mailbox is connected and the password is stored sealed (never returned).",
+      visible_to: "Your Team: the request is listed under Accounts for the person it is for.",
+      budget_rows: [],
+      retry: "Not safe: a repeated call creates a second request. Read `curviate account connect-request get <request_id>` first.",
+      undo: "`curviate account connect-request cancel <request_id>` before it completes; `curviate mailbox remove <id>` after.",
+    },
+    errors: {
+      MAILBOX_ALREADY_CONNECTED: "this address is already a Mailbox of your Team.",
+      MAILBOX_APP_PASSWORD_REQUIRED: "a private Gmail address connects with an app password, not google_sign_in; or the password is Google's own, not an app password.",
+      MAILBOX_CREDENTIAL_REJECTED: "the host refused the password (exit 8); the request stays open for another try.",
+      MAILBOX_TLS_FAILED: "the host does not offer the encryption the settings name (exit 8).",
+      MAILBOX_LIMIT_REACHED: "your Team is past its Mailbox allowance (exit 2).",
+    },
+    seeAlso: ["curviate mailbox discover", "curviate mailbox reconnect", "curviate account connect-request get"],
+    examples: [
+      "curviate mailbox connect anna@acme.example --connection google_sign_in",
+      "curviate mailbox connect anna@gmail.com --connection google_app_password --password-stdin < app-password.txt",
+      "curviate mailbox connect anna@acme.example --connection imap_smtp --imap-host imap.acme.example --imap-port 993 --imap-security tls --smtp-host smtp.acme.example --smtp-port 465 --smtp-security tls --password-stdin < mail-password.txt",
+    ],
+    requires: ["--connection: google_app_password, google_sign_in, microsoft_sign_in or imap_smtp.", "--connection imap_smtp: --imap-host, --imap-port, --imap-security, --smtp-host, --smtp-port, --smtp-security."],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    address: ADDRESS,
+    connection: { type: "string", description: `How the Mailbox connects: ${CONNECTIONS.join(" | ")}.` },
+    "password-stdin": PASSWORD_STDIN,
+    "imap-host": { type: "string", description: "imap_smtp only: the IMAP host." },
+    "imap-port": { type: "string", description: "imap_smtp only: the IMAP port (usually 993 with tls, 143 with starttls)." },
+    "imap-security": { type: "string", description: "imap_smtp only: tls (TLS from the first byte) or starttls. Never cleartext." },
+    "smtp-host": { type: "string", description: "imap_smtp only: the SMTP submission host." },
+    "smtp-port": { type: "string", description: "imap_smtp only: the SMTP submission port (usually 465 with tls, 587 with starttls)." },
+    "smtp-security": { type: "string", description: "imap_smtp only: tls or starttls. Never cleartext." },
+  },
+  run: online(runConnect),
+});
+
+const reconnectCmd = defineCommand({
+  meta: {
+    name: "reconnect",
+    description:
+      "Reconnect a Mailbox of your Team (state reconnect_needed, or any other): creates a Connect request and prints its link for the person. " +
+      "With --password-stdin on a google_app_password or imap_smtp Mailbox, the new password is checked and replaces the old one in this one call. " +
+      "On a google_sign_in Mailbox, --password-stdin adds an app password beside the sign-in, for warm-up; sending and reply checks stay on the sign-in. A microsoft_sign_in Mailbox takes no password. One API call.",
+    risk: "write",
+    rules: {
+      changes: "Creates a Connect request. With --password-stdin, the password is checked and stored sealed in place of the old one (never returned).",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Not safe: a repeated call creates a second request. Read `curviate account connect-request get <request_id>` first.",
+      undo: "`curviate account connect-request cancel <request_id>` before it completes.",
+    },
+    errors: { ...NOT_FOUND, MAILBOX_CREDENTIAL_REJECTED: "the host refused the password (exit 8); the request stays open for another try.", MAILBOX_ADDRESS_MISMATCH: "the sign-in was for another address; nothing changed." },
+    seeAlso: ["curviate mailbox connect", "curviate account connect-request get"],
+    examples: ["curviate mailbox reconnect mbx_YOUR_MAILBOX_ID", "curviate mailbox reconnect mbx_YOUR_MAILBOX_ID --password-stdin < app-password.txt"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, id: ID, "password-stdin": PASSWORD_STDIN },
+  run: online(runReconnect),
+});
+
 export const mailboxCommand = defineCommand({
   meta: { name: "mailbox", description: DESCRIPTIONS["mailbox"] },
-  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd },
+  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd, discover: discoverCmd, connect: connectCmd, reconnect: reconnectCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(mailboxCommand, ["curviate", "mailbox"]);

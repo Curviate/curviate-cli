@@ -27,7 +27,7 @@ export const DESCRIPTIONS = {
     "Do-not-contact: your Team's one list of people no Motion contacts and no write reaches (a write toward them exits 10). List, read, add, change the reason, remove, export and import a file. " +
     "Any member adds and imports; removing and exporting are for Owners and Managers.",
   mailbox:
-    "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove. " +
+    "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin). " +
     "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
   domain: "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
   billing: "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",

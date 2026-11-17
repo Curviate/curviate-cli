@@ -725,13 +725,13 @@
         "connect-request",
         "get"
       ],
-      "description": "Read a connect request: pending, completed (with the connected account_id), expired, failed or cancelled. Poll it until it leaves pending.",
+      "description": "Read a connect request: pending, completed (with the connected account_id, or mailbox_id for a Mailbox request), expired, failed or cancelled. Poll it until it leaves pending. A Mailbox request (kind mailbox_connect or mailbox_reconnect, from `curviate mailbox connect` or `reconnect`) also carries mailbox_id and, where the provider needs one, admin_consent_url.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Connect request id (creq_...)."
+          "description": "Connect request id (creq_...), LinkedIn account or Mailbox."
         }
       ],
       "globals": [
@@ -752,7 +752,7 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "The request: status, and account_id once completed. Never a credential, code or the step the person is on."
+        "The request: status, and account_id (or mailbox_id) once completed; error_code when the last attempt failed. Never a credential, code or the step the person is on."
       ]
     },
     {
@@ -761,13 +761,13 @@
         "connect-request",
         "cancel"
       ],
-      "description": "Cancel a pending connect request; its link stops working. A request that is no longer pending is refused.",
+      "description": "Cancel a pending connect request, a LinkedIn account's or a Mailbox's; its link stops working. A request that is no longer pending is refused.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "Connect request id (creq_...)."
+          "description": "Connect request id (creq_...), LinkedIn account or Mailbox."
         }
       ],
       "globals": [
@@ -5419,7 +5419,7 @@
       "path": [
         "mailbox"
       ],
-      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove. Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
+      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5735,6 +5735,195 @@
       "seeAlso": [
         "curviate mailbox list",
         "curviate mailbox pause"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "discover"
+      ],
+      "description": "Find the IMAP and SMTP settings for an email address, to show the person and confirm before connecting. An address on Google or Microsoft answers with its connection. confirm_required marks settings that arrived unencrypted. Takes no password and the answer holds none.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "address",
+          "type": "positional",
+          "description": "The email address."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox discover anna@acme.example"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate mailbox connect"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "connect"
+      ],
+      "description": "Connect a new Mailbox: creates a Connect request and prints its link for the person, who finishes in their Curviate dashboard. --connection google_sign_in (a Google Workspace whose administrator trusts Curviate) and microsoft_sign_in print the sign-in link and, where the provider needs one, the administrator link. google_app_password and imap_smtp can also take the password from you: pipe it to --password-stdin, Curviate checks it before answering, and the Mailbox is connected in this one call. imap_smtp needs the six server flags (the settings from `curviate mailbox discover`, as the person confirmed them). One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "address",
+          "type": "positional",
+          "description": "The email address."
+        },
+        {
+          "name": "connection",
+          "type": "string",
+          "description": "How the Mailbox connects: google_app_password | google_sign_in | microsoft_sign_in | imap_smtp."
+        },
+        {
+          "name": "password-stdin",
+          "type": "boolean",
+          "description": "Check and keep a password the person gave you: one line from stdin, never echoed, sent only in the request body and never printed. No flag takes the password as a value: it would show in `ps` and in shell history.",
+          "default": false
+        },
+        {
+          "name": "imap-host",
+          "type": "string",
+          "description": "imap_smtp only: the IMAP host."
+        },
+        {
+          "name": "imap-port",
+          "type": "string",
+          "description": "imap_smtp only: the IMAP port (usually 993 with tls, 143 with starttls)."
+        },
+        {
+          "name": "imap-security",
+          "type": "string",
+          "description": "imap_smtp only: tls (TLS from the first byte) or starttls. Never cleartext."
+        },
+        {
+          "name": "smtp-host",
+          "type": "string",
+          "description": "imap_smtp only: the SMTP submission host."
+        },
+        {
+          "name": "smtp-port",
+          "type": "string",
+          "description": "imap_smtp only: the SMTP submission port (usually 465 with tls, 587 with starttls)."
+        },
+        {
+          "name": "smtp-security",
+          "type": "string",
+          "description": "imap_smtp only: tls or starttls. Never cleartext."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox connect anna@acme.example --connection google_sign_in",
+        "curviate mailbox connect anna@gmail.com --connection google_app_password --password-stdin < app-password.txt",
+        "curviate mailbox connect anna@acme.example --connection imap_smtp --imap-host imap.acme.example --imap-port 993 --imap-security tls --smtp-host smtp.acme.example --smtp-port 465 --smtp-security tls --password-stdin < mail-password.txt"
+      ],
+      "requires": [
+        "--connection: google_app_password, google_sign_in, microsoft_sign_in or imap_smtp.",
+        "--connection imap_smtp: --imap-host, --imap-port, --imap-security, --smtp-host, --smtp-port, --smtp-security."
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a Connect request. With --password-stdin on google_app_password or imap_smtp, the password is checked and, if it works, the Mailbox is connected and the password is stored sealed (never returned).",
+        "visible_to": "Your Team: the request is listed under Accounts for the person it is for.",
+        "budget_rows": [],
+        "retry": "Not safe: a repeated call creates a second request. Read `curviate account connect-request get <request_id>` first.",
+        "undo": "`curviate account connect-request cancel <request_id>` before it completes; `curviate mailbox remove <id>` after."
+      },
+      "errors": {
+        "MAILBOX_ALREADY_CONNECTED": "this address is already a Mailbox of your Team.",
+        "MAILBOX_APP_PASSWORD_REQUIRED": "a private Gmail address connects with an app password, not google_sign_in; or the password is Google's own, not an app password.",
+        "MAILBOX_CREDENTIAL_REJECTED": "the host refused the password (exit 8); the request stays open for another try.",
+        "MAILBOX_TLS_FAILED": "the host does not offer the encryption the settings name (exit 8).",
+        "MAILBOX_LIMIT_REACHED": "your Team is past its Mailbox allowance (exit 2)."
+      },
+      "seeAlso": [
+        "curviate mailbox discover",
+        "curviate mailbox reconnect",
+        "curviate account connect-request get"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "reconnect"
+      ],
+      "description": "Reconnect a Mailbox of your Team (state reconnect_needed, or any other): creates a Connect request and prints its link for the person. With --password-stdin on a google_app_password or imap_smtp Mailbox, the new password is checked and replaces the old one in this one call. On a google_sign_in Mailbox, --password-stdin adds an app password beside the sign-in, for warm-up; sending and reply checks stay on the sign-in. A microsoft_sign_in Mailbox takes no password. One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The Mailbox (mbx_...), from `curviate mailbox list`."
+        },
+        {
+          "name": "password-stdin",
+          "type": "boolean",
+          "description": "Check and keep a password the person gave you: one line from stdin, never echoed, sent only in the request body and never printed. No flag takes the password as a value: it would show in `ps` and in shell history.",
+          "default": false
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox reconnect mbx_YOUR_MAILBOX_ID",
+        "curviate mailbox reconnect mbx_YOUR_MAILBOX_ID --password-stdin < app-password.txt"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Creates a Connect request. With --password-stdin, the password is checked and stored sealed in place of the old one (never returned).",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Not safe: a repeated call creates a second request. Read `curviate account connect-request get <request_id>` first.",
+        "undo": "`curviate account connect-request cancel <request_id>` before it completes."
+      },
+      "errors": {
+        "MAILBOX_NOT_FOUND": "no Mailbox of your Team has this id (another Team's id answers the same).",
+        "MAILBOX_CREDENTIAL_REJECTED": "the host refused the password (exit 8); the request stays open for another try.",
+        "MAILBOX_ADDRESS_MISMATCH": "the sign-in was for another address; nothing changed."
+      },
+      "seeAlso": [
+        "curviate mailbox connect",
+        "curviate account connect-request get"
       ]
     },
     {

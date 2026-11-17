@@ -64,8 +64,8 @@ export interface ResolveSecretParams {
   flagValue?: string;
   /** Whether the paired `--<flag>-stdin` boolean was passed. */
   stdinRequested?: boolean;
-  /** Env var name checked at tier 2. */
-  envVar: string;
+  /** Env var name checked at tier 2; omitted, a secret that has no env tier (a Mailbox password). */
+  envVar?: string;
   /**
    * `stdin.isTTY`: top-level (not nested in `prompt`), injectable so tests
    * never touch the real terminal. Gates the tier-1b `stdinRequested`
@@ -170,7 +170,13 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
     } else {
       const reader = params.readStdin ?? defaultReadStdin;
       const raw = await reader();
-      const trimmed = raw.trim();
+      // Trailing whitespace and the newline only: leading and inner spaces belong to a password.
+      const trimmed = raw.trimEnd();
+      // One secret is one line: a pasted file or a second line is refused, never half-read.
+      if (/[\r\n]/.test(trimmed)) {
+        params.out.stderr.write("error: stdin held more than one line. Pipe the secret alone, on one line.\n");
+        process.exit(2);
+      }
       if (trimmed !== "") {
         return trimmed;
       }
@@ -180,7 +186,7 @@ export async function resolveSecret(params: ResolveSecretParams): Promise<string
   }
 
   // Tier 2: environment variable (non-empty).
-  const envValue = process.env[params.envVar];
+  const envValue = params.envVar ? process.env[params.envVar] : undefined;
   if (envValue !== undefined && envValue !== "") {
     return envValue;
   }

@@ -76,7 +76,7 @@ async function runCancel(c: Curviate, f: Flags): Promise<void> {
   }
 }
 
-const ID = { type: "positional" as const, description: "Connect request id (creq_...)." };
+const ID = { type: "positional" as const, description: "Connect request id (creq_...), LinkedIn account or Mailbox." };
 
 const createCmd = defineCommand({
   meta: {
@@ -112,9 +112,11 @@ const createCmd = defineCommand({
 const getCmd = defineCommand({
   meta: {
     name: "get",
-    description: "Read a connect request: pending, completed (with the connected account_id), expired, failed or cancelled. Poll it until it leaves pending.",
+    description:
+      "Read a connect request: pending, completed (with the connected account_id, or mailbox_id for a Mailbox request), expired, failed or cancelled. Poll it until it leaves pending. " +
+      "A Mailbox request (kind mailbox_connect or mailbox_reconnect, from `curviate mailbox connect` or `reconnect`) also carries mailbox_id and, where the provider needs one, admin_consent_url.",
     risk: "read",
-    output: ["The request: status, and account_id once completed. Never a credential, code or the step the person is on."],
+    output: ["The request: status, and account_id (or mailbox_id) once completed; error_code when the last attempt failed. Never a credential, code or the step the person is on."],
     examples: ["curviate account connect-request get creq_YOUR_REQUEST_ID"],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS), id: ID },
@@ -124,7 +126,7 @@ const getCmd = defineCommand({
 const cancelCmd = defineCommand({
   meta: {
     name: "cancel",
-    description: "Cancel a pending connect request; its link stops working. A request that is no longer pending is refused.",
+    description: "Cancel a pending connect request, a LinkedIn account's or a Mailbox's; its link stops working. A request that is no longer pending is refused.",
     risk: "write",
     rules: {
       changes: "The request becomes cancelled and its link stops working.",

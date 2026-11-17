@@ -30,13 +30,14 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account safety get --team":    "accounts.getTeamSafetyPolicy",
   "account safety update --team": "accounts.updateTeamSafetyPolicy",
 
-  // mailboxes (6) and domains (1)
+  // mailboxes (7) and domains (1). `mailbox connect` and `reconnect` reuse connectRequests.create (a convenience route, no entry).
   "mailbox list":   "mailboxes.list",
   "mailbox get":    "mailboxes.get",
   "mailbox update": "mailboxes.update",
   "mailbox pause":  "mailboxes.pause",
   "mailbox resume": "mailboxes.resume",
   "mailbox remove": "mailboxes.remove",
+  "mailbox discover": "mailboxes.discover",
   "domain check":   "domains.check",
   "account team-access on|off": "accounts.setTeamAccess",
 
@@ -377,8 +378,6 @@ const PARITY_MANIFEST: Record<string, string> = {
 const KNOWN_GAP_METHODS: readonly string[] = [
   // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
   "enrollments.signal",
-  // Mailbox connect and the connect request: MBX-30 (`--password-stdin`).
-  "mailboxes.discover",
   "accounts.addSeats",
   "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
