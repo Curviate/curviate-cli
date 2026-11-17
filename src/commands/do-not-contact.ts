@@ -23,6 +23,7 @@ type Flags = RootFlags & {
   lead?: string;
   "linkedin-url"?: string;
   reason?: string;
+  scope?: string;
   query?: string;
   limit?: string;
   cursor?: string;
@@ -35,7 +36,8 @@ type Flags = RootFlags & {
 };
 type Body = Record<string, unknown>;
 
-const REASONS = ["asked_to_stop", "existing_customer", "competitor", "partner", "employee", "other"];
+const REASONS = ["asked_to_stop", "existing_customer", "competitor", "partner", "employee", "unsubscribed", "other"];
+const SCOPES = ["everything", "email_only"];
 
 const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
   const f = args as Flags;
@@ -44,6 +46,12 @@ const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }
 
 const preview = (method: string, args: Body, body: Body = {}) =>
   void process.stdout.write(JSON.stringify(buildPreviewOutput({ method, args, body })) + "\n");
+
+const scope = (f: Flags): string | undefined => {
+  if (f.scope === undefined) return undefined;
+  if (!SCOPES.includes(f.scope)) usage(`--scope takes everything or email_only (got ${JSON.stringify(f.scope)}).`);
+  return f.scope;
+};
 
 const reason = (f: Flags, requiredFlag: boolean): string | undefined => {
   if (f.reason === undefined) return requiredFlag ? usage(`--reason is required: one of ${REASONS.join(", ")}.`) : undefined;
@@ -87,6 +95,8 @@ async function runAdd(c: Curviate, f: Flags): Promise<void> {
   const body: Body = f.lead !== undefined ? { lead_id: f.lead } : { linkedin_url: f["linkedin-url"] };
   const why = reason(f, false);
   if (why) body["reason"] = why;
+  const what = scope(f);
+  if (what) body["scope"] = what;
   if (f.preview) return preview("doNotContact.add", {}, body);
   try {
     renderSuccess(readableObject(await c.doNotContact.add(body as never)), outputOpts(f), process);
@@ -160,6 +170,7 @@ async function runImport(c: Curviate, f: Flags): Promise<void> {
     if (format === undefined) usage(dash ? "--format is required with --file -: csv, json or ndjson." : "--format could not be told from the file name: pass csv, json or ndjson.");
   }
   if (!FORMATS.includes(format)) usage(`--format takes one of ${FORMATS.join(", ")}.`);
+  const what = scope(f);
   // Structure first, nothing sent on a refusal.
   const text = await readFileFlag("file", file, { allowBom: true, maxBytes: 64 * 1024 * 1024, others: f as Record<string, unknown> });
   let header: string | undefined;
@@ -185,6 +196,14 @@ async function runImport(c: Curviate, f: Flags): Promise<void> {
   if (rows.length === 0) usage("--file: no rows to import.");
   const bad = header === undefined ? rows.findIndex((o) => o === null || typeof o !== "object" || Array.isArray(o)) : -1;
   if (bad >= 0) usage(`--file: row ${bad + 1} is not an object.`);
+  // --scope: the scope of every row that names none.
+  if (what !== undefined && header !== undefined) {
+    if (header.split(",").some((h) => h.trim().replace(/^"|"$/g, "").toLowerCase() === "scope")) usage("--scope: the file has a scope column; set it there, or drop the column.");
+    header = `${header},scope`;
+    rows = rows.map((r) => `${r as string},${what}`);
+  } else if (what !== undefined) {
+    rows = rows.map((r) => ("scope" in (r as Body) ? r : { ...(r as Body), scope: what }));
+  }
   const chunks = chunkRows(rows, (r) => Buffer.byteLength(typeof r === "string" ? r : JSON.stringify(r)) + 1, IMPORT_MAX_ROWS);
   const bodyOf = (part: unknown[]): Body => (header !== undefined ? { csv: [header, ...part].join("\n") } : { rows: part });
   if (f.preview) return preview("doNotContact.import", chunks.length > 1 ? { requests: chunks.length, rows: rows.length } : {}, bodyOf(chunks[0]!));
@@ -214,6 +233,10 @@ async function runImport(c: Curviate, f: Flags): Promise<void> {
 
 const ID = { type: "positional" as const, description: "Entry id (dnc_...), from `curviate do-not-contact list`." };
 const REASON_ARG = { type: "string" as const, description: `Why: ${REASONS.join(" | ")}.` };
+const SCOPE_ARG = {
+  type: "string" as const,
+  description: "What the entry stops: everything (default) or email_only (No email: email steps skip the person; LinkedIn Campaigns and writes still reach them).",
+};
 
 const listCmd = defineCommand({
   meta: {
@@ -229,7 +252,7 @@ const listCmd = defineCommand({
 });
 
 const getCmd = defineCommand({
-  meta: { name: "get", description: "One do-not-contact entry: the person, the reason, and who added it.", risk: "read", examples: ["curviate do-not-contact get dnc_YOUR_ENTRY_ID"] },
+  meta: { name: "get", description: "One do-not-contact entry: the person, the reason, the scope (everything or email_only), how it was added and by whom.", risk: "read", examples: ["curviate do-not-contact get dnc_YOUR_ENTRY_ID"] },
   args: { ...readOnly(READ_SINGLE_FLAGS), id: ID },
   run: online(runGet),
 });
@@ -238,7 +261,7 @@ const addCmd = defineCommand({
   meta: {
     name: "add",
     description:
-      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data). No Campaign contacts them afterwards and writes toward them are refused. " +
+      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data). No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). " +
       "One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
     risk: "write",
     rules: {
@@ -250,13 +273,18 @@ const addCmd = defineCommand({
     },
     errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", RESOURCE_NOT_FOUND: "no Lead has this id." },
     seeAlso: ["curviate do-not-contact list", "curviate do-not-contact import"],
-    examples: ["curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop", "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe"],
+    examples: [
+      "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
+      "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe",
+      "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only",
+    ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     lead: { type: "string", description: "The Lead (con_...). Not with --linkedin-url." },
     "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --lead." },
     reason: REASON_ARG,
+    scope: SCOPE_ARG,
   },
   run: online(runAdd),
 });
@@ -350,6 +378,7 @@ const importCmd = defineCommand({
     ...WRITE_SINGLE_FLAGS,
     file: { type: "string", stdinArg: true, required: true, description: "The file: a path, or - to read it from stdin (then --format is required)." },
     format: { type: "string", description: "csv | json | ndjson. Default: from the file extension (.csv, .json, .ndjson)." },
+    scope: { ...SCOPE_ARG, description: "The scope of every row that names none: everything (default) or email_only." },
   },
   run: online(runImport),
 });

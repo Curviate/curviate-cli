@@ -1925,7 +1925,7 @@ const accountLinkCommand = defineCommand({
     products: { type: "string", description: "Comma-separated premium products to ask for: sales_navigator, recruiter. Omit to ask for both (--linkedin-premium still narrows). Classic LinkedIn and company pages are always included." },
     "external-id": { type: "string", description: "Your own id for this account's end user (1-255 chars, not unique). Returned on the account and every account webhook; filter with `curviate account list --external-id`. Use an opaque id, not an email." },
     timezone: { type: "string", description: "Ignored: the account's time zone follows its connection location. Accepted so existing scripts keep working; nothing is sent." },
-    "warm-up": { type: "boolean", description: "--warm-up connects the new account with warm-up on: its limits start at 15% and rise to full over 5 weeks. Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only; for a connected account use `curviate account warm-up`." },
+    "warm-up": { type: "boolean", description: "--warm-up connects the new account with warm-up on: its limits start at 30% and rise to full by day 14 of its sending days (the Gradual ramp). Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only; for a connected account use `curviate account warm-up`." },
     "account-id": { type: "string", description: "Existing account id (acc_...) to re-authenticate IN PLACE. Passing it makes this an in-place reconnect of that account. Omit to connect a NEW account into --seat-id." },
     "no-interactive": {
       type: "boolean",

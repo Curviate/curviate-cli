@@ -104,7 +104,7 @@ const createCmd = defineCommand({
   args: {
     ...WRITE_SINGLE_FLAGS,
     reconnect: { type: "string", description: "Reconnect this account (acc_...) instead of connecting a new one." },
-    "warm-up": { type: "boolean", description: "--warm-up: the new account starts with warm-up on once the person connects it (limits at 15%, rising to full over 5 weeks). Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only." },
+    "warm-up": { type: "boolean", description: "--warm-up: the new account starts with warm-up on once the person connects it (limits at 30%, rising to full by day 14 of its sending days). Default off (full limits from the start); --no-warm-up is accepted and changes nothing. A new connect only." },
   },
   run: online(runCreate),
 });

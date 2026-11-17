@@ -18,6 +18,8 @@ export function slimContact(data: unknown): Rec {
     company: c["company"] ?? null,
     company_linkedin_url: c["company_linkedin_url"] ?? null,
     email: c["email"] ?? null,
+    // The Lead's Do-not-contact entry, { scope, reason, how, at }, or null; scope email_only is "No email".
+    do_not_contact: c["do_not_contact"] ?? null,
     tags: c["tags"] ?? [],
     list_ids: c["list_ids"] ?? [],
     connected_account_ids: c["connected_account_ids"] ?? [],

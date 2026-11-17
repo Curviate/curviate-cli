@@ -379,7 +379,7 @@ curviate campaign voice-clip get vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8
 { "id": "voice", "do": "voice.send", "with": { "clip_id": "vc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8", "fallback": "Hi, thanks for connecting." }, "next": "end" }
 ```
 
-`fallback` is required and has no variables: it is sent as text when the audio cannot go. For A/B, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate campaign lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Campaign is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
+`fallback` is required and has no variables: it is sent as text when the audio cannot go. For variants, use `variants: [{ "id": "a", "clip_id": "vc_..." }, { "id": "b", "clip_id": "vc_..." }]` with a shared `with.fallback`, and no text. `curviate campaign lint` checks the shape (`R13` a malformed `clip_id`, `R19` no `fallback`); a `clip_id` that is not a clip of your Team is refused when the Campaign is saved. `VOICE_CLIP_INVALID` (exit 2) names the reason an upload was refused: not audio, unreadable, under 1 or over 120 seconds; a clip is never shortened. Over 20 MiB is `PAYLOAD_TOO_LARGE`; the 101st upload in 24 hours is `RATE_LIMIT_TENANT` (exit 6, `Retry-After`). A clip no Sequence uses is deleted 30 days after its upload.
 
 ### 2. Find and fix Enrollments
 

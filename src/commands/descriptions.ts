@@ -30,7 +30,7 @@ export const DESCRIPTIONS = {
     "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin). " +
     "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
   domain: "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
-  billing: "Billing: your Team's invoices, listed and downloaded as PDFs. Owners only. Seats and the Tier are under `curviate team` and `curviate tier`.",
+  billing: "Billing: the price of seats, the spending cap, the change log and your Team's invoices (listed and downloaded as PDFs). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
   contactImport: "Import Leads from a CSV, JSON or NDJSON file into a Lead list, splitting a large file into several imports.",
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
   contactLists: "Lead lists: named sets of Leads a Campaign enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Leads.",

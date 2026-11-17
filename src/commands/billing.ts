@@ -1,11 +1,12 @@
 /**
- * `curviate billing`: the Team's invoices (Owners only). Root-scoped
- * (`curviate.billing.invoices.*`). Seats and the Tier have their own groups.
+ * `curviate billing`: the price of seats, the spending cap, the change log and
+ * the Team's invoices (Owners only). Root-scoped (`curviate.billing.*`). Seats
+ * and the Tier have their own groups. Read only: nothing here buys or cancels.
  */
 import { defineCommand } from "citty";
 import type { Curviate } from "@curviate/sdk";
 import { DESCRIPTIONS } from "./descriptions.js";
-import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { renderSuccess, writeNdjsonItem } from "../lib/output.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
 import { intFlag } from "../lib/int-flag.js";
@@ -13,12 +14,49 @@ import { downloadBinary } from "../lib/client.js";
 import { writeAtomic } from "../lib/write-atomic.js";
 import { fail, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 
-type Flags = RootFlags & { _?: string[]; number?: string; output?: string; limit?: string; cursor?: string; all?: boolean; "max-pages"?: string; "page-delay"?: string };
+type Flags = RootFlags & { _?: string[]; number?: string; output?: string; limit?: string; cursor?: string; all?: boolean; "max-pages"?: string; "page-delay"?: string; seats?: string; period?: string };
 
 const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
   const f = args as Flags;
   await fn(await rootClient(f), f);
 };
+
+async function runQuote(c: Curviate, f: Flags): Promise<void> {
+  const seats = intFlag("seats", f.seats ?? usage("--seats is required: how many seats to price, 1 or more."), 1);
+  const period = f.period ?? "monthly";
+  if (period !== "monthly" && period !== "annual") usage("--period takes monthly or annual.");
+  try {
+    renderSuccess(await c.billing.quote({ seats: String(seats), period } as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runCap(c: Curviate, f: Flags): Promise<void> {
+  try {
+    renderSuccess(await c.billing.spendingCap(), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runChanges(c: Curviate, f: Flags): Promise<void> {
+  rejectPaginationModifiersWithoutAll(f, process);
+  const params: Record<string, unknown> = {};
+  if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
+  const cursor = readCursorFlag(f, process);
+  if (cursor) params["cursor"] = cursor;
+  try {
+    if (f.all) {
+      const page = (p: Record<string, unknown>) => c.billing.changes(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
+      for await (const item of streamAll(page, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
+    } else {
+      renderSuccess(readablePage(await c.billing.changes(params as never)), outputOpts(f), process);
+    }
+  } catch (err) {
+    await fail(err, f);
+  }
+}
 
 async function runList(c: Curviate, f: Flags): Promise<void> {
   rejectPaginationModifiersWithoutAll(f, process);
@@ -93,9 +131,54 @@ const invoicesCmd = defineCommand({
   run: online(runList),
 });
 
+const quoteCmd = defineCommand({
+  meta: {
+    name: "quote",
+    description:
+      "Price a number of seats for one period, step by step: each seat costs the price of the step it falls in, so adding a seat never changes what the earlier ones cost. " +
+      "Amounts in cents. Computed from the price list; charges nothing. Owners only.",
+    risk: "read",
+    output: ["`total` and `steps[]` (from, up_to, unit_amount, seats, amount), in cents, with `currency` and `period`."],
+    examples: ["curviate billing quote --seats 25", "curviate billing quote --seats 25 --period annual"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    seats: { type: "string", required: true, description: "How many seats to price, 1 or more." },
+    period: { type: "string", description: "monthly (default) or annual." },
+  },
+  run: online(runQuote),
+});
+
+const capCmd = defineCommand({
+  meta: {
+    name: "cap",
+    description:
+      "The spending cap: the most seats an agent may bring your Team to (100 until an Owner sets one), the seats now, the room left and what the cap's seats cost a month. " +
+      "Read only: an Owner changes it in the dashboard. Adding a seat past it is refused with SPENDING_CAP_REACHED. Owners only.",
+    risk: "read",
+    output: ["`cap_seats`, `is_default`, `seats`, `room_seats`, `monthly_amount` (cents), `currency`."],
+    examples: ["curviate billing cap"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS) },
+  run: online(runCap),
+});
+
+const changesCmd = defineCommand({
+  meta: {
+    name: "changes",
+    description:
+      "Every seat added or removed and every spending cap change on your Team, newest first: who made it (a person or an API key), the way it came in, the seat counts before and after and what it adds to the monthly price. Owners only.",
+    risk: "read",
+    output: ["`items` and a `cursor`; with --all, one change per line."],
+    examples: ["curviate billing changes", "curviate billing changes --all"],
+  },
+  args: { ...readOnly(GLOBAL_FLAGS) },
+  run: online(runChanges),
+});
+
 export const billingCommand = defineCommand({
   meta: { name: "billing", description: DESCRIPTIONS.billing },
-  subCommands: { invoices: invoicesCmd },
+  subCommands: { quote: quoteCmd, cap: capCmd, changes: changesCmd, invoices: invoicesCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(billingCommand, ["curviate", "billing"]);
