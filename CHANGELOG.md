@@ -6,9 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.56.0] - 2026-11-17
 
-Proposed as 0.56.0. Pins the unpublished SDK build `github:Curviate/curviate-sdk#9e8146ec9bb311fe77e821297164891bf620be20` (SDK `[Unreleased]`, proposed 0.52.0); the release re-pins the published version. The vendored OpenAPI fixture is re-copied from that SDK build (server commit `8c675b5b8`); `src/schemas/documents.json` and `commands.json` regenerated.
+Requires `@curviate/sdk` 0.52.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (server commit `8c675b5b8`); `src/schemas/documents.json` and `commands.json` regenerated.
 
 ### Email in Campaigns
 
