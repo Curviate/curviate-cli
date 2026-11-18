@@ -1,6 +1,7 @@
 /**
  * `curviate signal`: the Signal stream of the Accounts you may operate, each
- * Account's Signal watch, the Team's follow-up settings, and Signal rules.
+ * Account's Signal watch and its switch, the Team's follow-up settings, Signal
+ * rules and what they did.
  * Root-scoped (`curviate.signals.*`); every read is Curviate's own store.
  */
 import { defineCommand } from "citty";
@@ -26,7 +27,14 @@ type Flags = RootFlags & {
   accounts?: string | string[];
   "all-accounts"?: boolean;
   "add-to-list"?: string;
+  enroll?: string;
   "send-event"?: boolean;
+  "act-on-last-7-days"?: boolean;
+  account?: string;
+  state?: string;
+  "lead-id"?: string;
+  "rule-id"?: string;
+  outcome?: string;
   "unknown-people"?: string;
   on?: boolean;
   off?: boolean;
@@ -43,6 +51,7 @@ type Page = { items?: unknown[]; cursor?: string | null };
 
 const KINDS = ["post_engaged", "post_reposted", "network_posted", "profile_viewed", "followed_you", "mentioned_you", "connection_added", "post_engaged.reaction", "post_engaged.comment"];
 const MATCHES = ["lead", "connection", "followed", "unknown", "anonymous"];
+const OUTCOMES = ["added_to_list", "already_in_list", "event_sent", "skipped"];
 
 const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
   const f = args as Flags;
@@ -142,14 +151,35 @@ function ruleBody(f: Flags, create: boolean): Row {
   }
   const outcomes: Row[] = [];
   if (f["add-to-list"] !== undefined) outcomes.push({ type: "add_to_list", list_id: nonEmpty("--add-to-list", f["add-to-list"]) });
+  if (f.enroll !== undefined) outcomes.push({ type: "enroll", campaign_id: nonEmpty("--enroll", f.enroll) });
   if (f["send-event"]) outcomes.push({ type: "send_event" });
   if (outcomes.length) body["outcomes"] = outcomes;
+  if (f["act-on-last-7-days"]) {
+    if (!create) usage("--act-on-last-7-days goes with `signal rules create` only.");
+    body["act_on_last_7_days"] = true;
+  }
   if (create) {
     if (body["name"] === undefined) usage("--name is required: the rule's name, 1 to 100 characters.");
     if (body["kinds"] === undefined) usage("--kind is required: the Signal kinds the rule acts on, repeatable or a comma list.");
-    if (!outcomes.length) usage("pass --add-to-list <cl_...>, --send-event, or both: what the rule does.");
-  } else if (!Object.keys(body).length) usage("pass what changes: --name, --kind, --accounts, --all-accounts, --add-to-list, --send-event, --unknown-people, --on or --off.");
+    if (!outcomes.length) usage("pass --add-to-list <cl_...>, --enroll <mot_...>, --send-event, or several: what the rule does.");
+  } else if (!Object.keys(body).length) usage("pass what changes: --name, --kind, --accounts, --all-accounts, --add-to-list, --enroll, --send-event, --unknown-people, --on or --off.");
   return body;
+}
+
+async function runActions(c: Curviate, f: Flags): Promise<void> {
+  const q: Row = {};
+  if (f["lead-id"] !== undefined) q["lead_id"] = f["lead-id"];
+  if (f["rule-id"] !== undefined) q["rule_id"] = f["rule-id"];
+  if (f.outcome !== undefined) {
+    if (!OUTCOMES.includes(f.outcome)) usage(`--outcome takes one of ${OUTCOMES.join(", ")}.`);
+    q["outcome"] = f.outcome;
+  }
+  try {
+    await paged(f, q, (p) => c.signals.actions(p as never) as unknown as Promise<unknown>, (items) =>
+      print(table(["SIGNAL", "RULE", "LEAD", "OUTCOME", "AT"], items.map((i) => [i["signal_id"], i["rule_id"], i["lead_id"], i["reason"] ? `${String(i["outcome"])} (${String(i["reason"])})` : i["outcome"], i["created_at"]]))));
+  } catch (err) {
+    await fail(err, f);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -188,20 +218,78 @@ const getCmd = defineCommand({
   run: online((c, f) => one(f, () => c.signals.get(nonEmpty("the Signal id", f.id)))),
 });
 
+const actionsCmd = defineCommand({
+  meta: {
+    name: "actions",
+    description:
+      "What Signal rules did, newest first: added_to_list, already_in_list, event_sent, or skipped with its reason. Records stay while the Lead exists, after the Signal is gone. " +
+      "Filter by --lead-id, --rule-id and --outcome. Every role; only the Accounts you may operate. No LinkedIn call.",
+    risk: "read",
+    output: ["A table of Signal, rule, Lead, outcome and when; --json (or piped) prints the API page."],
+    seeAlso: ["curviate signal rules list", "curviate signal list"],
+    examples: ["curviate signal actions", "curviate signal actions --outcome skipped", "curviate signal actions --rule-id sgr_YOUR_RULE_ID --all"],
+  },
+  args: {
+    ...readOnly(GLOBAL_FLAGS),
+    limit: { ...GLOBAL_FLAGS.limit, description: "Records per page (1 to 100)." },
+    "lead-id": { type: "string" as const, description: "Only what rules did for this Lead (con_...)." },
+    "rule-id": { type: "string" as const, description: "Only what this rule did (sgr_...)." },
+    outcome: { type: "string" as const, description: "Only this outcome: added_to_list, already_in_list, event_sent or skipped." },
+  },
+  run: online(runActions),
+});
+
 const kindsCmd = defineCommand({
   meta: { name: "kinds", description: "Every Signal kind with its sub-kinds, the follow-up read a card of that kind can trigger (engagers, viewers or none), whether it is on for your Team, and the limit rows it uses.", risk: "read", examples: ["curviate signal kinds"] },
   args: readOnly(READ_SINGLE_FLAGS),
   run: online((c, f) => one(f, () => c.signals.kinds())),
 });
 
+const watchSetCmd = defineCommand({
+  meta: {
+    name: "set",
+    description:
+      "Switch one Account's Signal watch on or off. Off is the default, and this is the only way an Account becomes watched: once a day, inside its Active hours, Curviate reads its notifications and turns them into Signals. " +
+      "Off stops it from the next plan on; the Signals already stored stay until they are 7 days old. An Account that needs reconnecting can be switched on and reads paused until it is reconnected. Owners and Managers. The switch itself makes no LinkedIn call.",
+    risk: "write",
+    rules: {
+      changes: "Whether this Account's daily visit reads its notifications into Signals, from its next plan on.",
+      visible_to: "Your Team. On LinkedIn, the watch reads what the Account's own notifications show, like a person opening them.",
+      budget_rows: [],
+      retry: "Safe to repeat: the same state again.",
+      undo: "Run it again with the other value.",
+    },
+    errors: { INSUFFICIENT_ROLE: "only an Owner or a Manager switches the Signal watch.", ACCOUNT_NOT_FOUND: "the Account is not one you may operate, or not this Team's." },
+    seeAlso: ["curviate signal watch", "curviate signal list"],
+    examples: ["curviate signal watch set acc_YOUR_ACCOUNT_ID on", "curviate signal watch set acc_YOUR_ACCOUNT_ID off"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    account: { type: "positional" as const, description: "The Account (acc_...)." },
+    state: { type: "positional" as const, description: "on or off." },
+  },
+  run: async ({ args }: { args: unknown }) => {
+    const f = args as Flags;
+    const account = nonEmpty("the Account id", f.account);
+    const on = onOff("state", f.state);
+    if (on === undefined) usage("say on or off: `curviate signal watch set <account_id> on`.");
+    const body = { signal_watch: on };
+    if (f.preview) return void preview("signals.setWatch", { account_id: account }, body);
+    await one(f, async () => (await rootClient(f)).signals.setWatch(account, body as never));
+  },
+});
+
 const watchCmd = defineCommand({
   meta: {
     name: "watch",
-    description: "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call.",
+    description:
+      "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call. " +
+      "`curviate signal watch set <account_id> on|off` switches one.",
     risk: "read",
-    examples: ["curviate signal watch"],
+    examples: ["curviate signal watch", "curviate signal watch set acc_YOUR_ACCOUNT_ID on"],
   },
   args: readOnly(READ_SINGLE_FLAGS),
+  subCommands: { set: watchSetCmd },
   run: online(runWatch),
 });
 
@@ -241,6 +329,7 @@ const RULE_FLAGS = {
   accounts: { type: "string" as const, description: "Only these Accounts (acc_...), a comma list. Default on create: every Account of the Team, now and later." },
   "all-accounts": { type: "boolean" as const, description: "Every Account of the Team, now and later." },
   "add-to-list": { type: "string" as const, description: "Outcome: add the person to this Lead list (cl_...)." },
+  enroll: { type: "string" as const, description: "Outcome: enroll the person in this Campaign (mot_...) through the Account that caught the Signal." },
   "send-event": { type: "boolean" as const, description: "Outcome: send signal.matched to your webhooks." },
   "unknown-people": { type: "string" as const, description: "skip (default): a person Curviate knows nothing about is skipped. visit_profile: read their profile once; the person may see the visit." },
   on: { type: "boolean" as const, description: "Turn the rule on." },
@@ -251,8 +340,35 @@ const RULE_ERRORS = {
   ACCOUNT_NOT_SHARED: "--accounts names an Account you may not operate.",
 };
 
+/** `rules enable|disable <id>`: the rule's switch, nothing else. */
+const switchCmd = (name: "enable" | "disable") =>
+  defineCommand({
+    meta: {
+      name,
+      description: name === "enable" ? "Turn a rule on: it acts on every matching Signal from now on." : "Turn a rule off: it acts on no Signal until it is enabled again. What it did stays.",
+      risk: "write",
+      rules: {
+        changes: name === "enable" ? "The rule acts again, from the next Signal on." : "The rule stops acting, from the next Signal on.",
+        visible_to: "Your Team.",
+        budget_rows: [],
+        retry: "Safe to repeat: the same state again.",
+        undo: `\`curviate signal rules ${name === "enable" ? "disable" : "enable"} <rule_id>\`.`,
+      },
+      errors: RULE_ERRORS,
+      examples: [`curviate signal rules ${name} sgr_YOUR_RULE_ID`],
+    },
+    args: { ...WRITE_SINGLE_FLAGS, id: RULE_ID },
+    run: async ({ args }: { args: unknown }) => {
+      const f = args as Flags;
+      const id = nonEmpty("the rule id", f.id);
+      const body = { enabled: name === "enable" };
+      if (f.preview) return void preview("signals.rules.update", { id }, body);
+      await one(f, async () => (await rootClient(f)).signals.rules.update(id, body as never));
+    },
+  });
+
 const rulesCmd = defineCommand({
-  meta: { name: "rules", description: "Signal rules: what happens to a person when a Signal of a kind arrives on an Account (add them to a Lead list, send signal.matched to your webhooks)." },
+  meta: { name: "rules", description: "Signal rules: what happens to a person when a Signal of a kind arrives on an Account (add them to a Lead list, enroll them in a Campaign, send signal.matched to your webhooks)." },
   subCommands: {
     list: defineCommand({
       meta: { name: "list", description: "This Team's rules, newest first, each with its one-sentence summary. Every role may read them.", risk: "read", examples: ["curviate signal rules list", "curviate signal rules list --no-enabled"] },
@@ -277,11 +393,11 @@ const rulesCmd = defineCommand({
       meta: {
         name: "create",
         description:
-          "Create a rule: for --kind on --accounts (default every Account), add the person to a Lead list (--add-to-list) and/or send signal.matched to your webhooks (--send-event). " +
-          "--unknown-people visit_profile reads the profile of a person Curviate does not know, once; the person may see the visit. The answer's summary is the rule as one sentence.",
+          "Create a rule: for --kind on --accounts (default every Account), add the person to a Lead list (--add-to-list), enroll them in a Campaign through the Account that caught the Signal (--enroll) and/or send signal.matched to your webhooks (--send-event). " +
+          "--unknown-people visit_profile reads the profile of a person Curviate does not know, once; the person may see the visit. --act-on-last-7-days also acts, once, on the Team's Signals of the last 7 days. The answer's summary is the rule as one sentence.",
         risk: "write",
         rules: {
-          changes: "A rule that acts on every matching Signal from now on: Leads join the list, events are sent.",
+          changes: "A rule that acts on every matching Signal from now on: Leads join the list or the Campaign, events are sent.",
           visible_to: "Your Team; with --unknown-people visit_profile, the people whose profiles are read.",
           budget_rows: [],
           retry: "A second call creates a second rule: list them first.",
@@ -290,7 +406,7 @@ const rulesCmd = defineCommand({
         errors: RULE_ERRORS,
         examples: ["curviate signal rules create --name \"Viewers to list\" --kind profile_viewed --add-to-list cl_YOUR_LIST_ID", "curviate signal rules create --name \"Engagers\" --kind post_engaged --send-event --accounts acc_YOUR_ACCOUNT_ID"],
       },
-      args: { ...WRITE_SINGLE_FLAGS, ...RULE_FLAGS },
+      args: { ...WRITE_SINGLE_FLAGS, ...RULE_FLAGS, "act-on-last-7-days": { type: "boolean" as const, description: "Also act, once, on the Team's Signals of the last 7 days." } },
       run: async ({ args }: { args: unknown }) => {
         const f = args as Flags;
         const body = ruleBody(f, true);
@@ -322,6 +438,8 @@ const rulesCmd = defineCommand({
         await one(f, async () => (await rootClient(f)).signals.rules.update(id, body as never));
       },
     }),
+    enable: switchCmd("enable"),
+    disable: switchCmd("disable"),
     delete: defineCommand({
       meta: {
         name: "delete",
@@ -348,7 +466,7 @@ const rulesCmd = defineCommand({
 
 export const signalCommand = defineCommand({
   meta: { name: "signal", description: DESCRIPTIONS.signal },
-  subCommands: { list: listCmd, get: getCmd, kinds: kindsCmd, watch: watchCmd, settings: settingsCmd, rules: rulesCmd },
+  subCommands: { list: listCmd, get: getCmd, actions: actionsCmd, kinds: kindsCmd, watch: watchCmd, settings: settingsCmd, rules: rulesCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(signalCommand, ["curviate", "signal"]);

@@ -47,6 +47,7 @@ export type AnalyticsFlags = RootFlags & {
   output?: string;
   job?: boolean;
   accountId?: string;
+  "account-id"?: string;
 };
 type Row = Record<string, unknown>;
 
@@ -387,6 +388,44 @@ async function runEmail(c: Curviate, f: AnalyticsFlags): Promise<void> {
   }
 }
 
+/** Needs a fix: one line per problem, what stops sending first, with the CLI call to its fix. */
+async function runAttention(c: Curviate, f: AnalyticsFlags): Promise<void> {
+  const q: Row = {};
+  if (f.campaign !== undefined) q["campaign_id"] = f.campaign;
+  if (f["account-id"] !== undefined) q["account_id"] = f["account-id"];
+  try {
+    const body = (await c.analytics.emailAttention(q as never)) as unknown as { items?: Row[] };
+    if (outputOpts(f).json) return renderSuccess(body, outputOpts(f), process);
+    const items = body.items ?? [];
+    if (!items.length) return void print("Nothing needs a fix.");
+    print(table(["PROBLEM", "ON", "SINCE", "FIX"], items.map((i) => {
+      const on = i["subject"] as Row | undefined;
+      return [i["kind"], on ? `${String(on["type"])} ${String(on["id"])}` : "", i["since"], i["next"]];
+    })));
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const attentionCmd = defineCommand({
+  meta: {
+    name: "attention",
+    description:
+      "Needs a fix: what to fix in your email sending now, one row per problem, what stops sending first: paused or disconnected Mailboxes, failing DMARC or DKIM, mail landing in spam, Accounts without a Mailbox, and advice. " +
+      "Each row names the call that leads to its fix; a row leaves once its problem ends. Read-only.",
+    risk: "read",
+    output: ["A table of problem (a Notification type), what it is on, since when, and the fix command; --json (or piped) prints the API body (`values` carries the problem's codes and numbers)."],
+    seeAlso: ["curviate analytics email", "curviate mailbox list", "curviate notification list --channel email"],
+    examples: ["curviate analytics attention", "curviate analytics attention --campaign mot_YOUR_CAMPAIGN_ID --json"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    campaign: { type: "string" as const, description: "Only problems that touch this Campaign (mot_...)." },
+    "account-id": { type: "string" as const, description: "Only problems that touch this Account (acc_...)." },
+  },
+  run: online(runAttention),
+});
+
 const emailCmd = defineCommand({
   meta: {
     name: "email",
@@ -418,6 +457,7 @@ export const analyticsCommand = defineCommand({
   subCommands: {
     get: getCmd,
     email: emailCmd,
+    attention: attentionCmd,
     events: eventsCommand,
     export: exportCmd,
   },

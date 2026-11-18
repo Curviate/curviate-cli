@@ -12,8 +12,10 @@ export const DESCRIPTIONS = {
   account: "LinkedIn account connection management.",
   campaign:
     "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. " +
-    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`). " +
+    "Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`) and the files of an email step (`curviate campaign attachment`). " +
     "Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
+  campaignAttachment:
+    "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need the Automate plan.",
   campaignVoiceClip:
     "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need the Automate plan.",
   enrollment:
@@ -59,8 +61,8 @@ export const DESCRIPTIONS = {
   company: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources.",
   companyRecord: "Your Team's own record of a company, by LinkedIn's numeric company id: what Curviate stored and your company fields ({{company.extra.<key>}} in a Sequence). No LinkedIn call. The LinkedIn company page is `curviate core company`.",
   signal:
-    "Signals: what people did around your Accounts in the last 7 days (reacted, commented, viewed a profile, followed, mentioned, reposted, posted, connected), each Account's Signal watch, " +
-    "and the rules that add those people to a Lead list or send `signal.matched` to your webhooks. Reads Curviate's own store: no LinkedIn call.",
+    "Signals: what people did around your Accounts in the last 7 days (reacted, commented, viewed a profile, followed, mentioned, reposted, posted, connected), each Account's Signal watch and its switch, " +
+    "and the rules that add those people to a Lead list, enroll them in a Campaign or send `signal.matched` to your webhooks, with what each rule did. Reads Curviate's own store: no LinkedIn call.",
   job: "Classic LinkedIn job-posting operations.",
   connect: "Send or manage connection invitations. Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
   search: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",

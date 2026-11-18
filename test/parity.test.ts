@@ -229,6 +229,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   "campaign remove":  "campaigns.removeLeads",
   "campaign voice-clip upload": "campaigns.voiceClips.upload",
   "campaign voice-clip get": "campaigns.voiceClips.get",
+  "campaign attachment upload": "campaigns.attachments.upload",
+  "campaign attachment get": "campaigns.attachments.get",
 
   // enrollments (11): `enrollment signal` is the CLI alias of `event` and sends to events.
   "enrollment list":     "enrollments.list",
@@ -273,6 +275,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   // unibox (8). `unibox messages|reply|mark` call messaging.* (convenience routes, no entry).
   "unibox list":     "unibox.list",
   "unibox get":      "unibox.get",
+  "unibox conversation": "unibox.getConversation",
+  "unibox timeline": "unibox.listConversationMessages",
   "unibox unread":   "unibox.unreadCount",
   "unibox refresh":  "unibox.refresh",
   "unibox tag":      "unibox.tagLead",
@@ -288,6 +292,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "analytics get --view activity": "analytics.activity",
   "analytics events list":       "analytics.events.list",
   "analytics email":             "analytics.email",
+  "analytics attention":         "analytics.emailAttention",
   "analytics export":            "analytics.export",
   "analytics export --job":      "exports.create",
   "export get":                  "exports.get",
@@ -346,6 +351,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   "signal get":           "signals.get",
   "signal kinds":         "signals.kinds",
   "signal watch":         "signals.watch",
+  "signal watch set":     "signals.setWatch",
+  "signal actions":       "signals.actions",
   "signal settings":      "signals.updateSettings",
   "signal rules list":    "signals.rules.list",
   "signal rules create":  "signals.rules.create",

@@ -450,7 +450,16 @@ const importCmd = defineCommand({
     "no-wait": { type: "boolean", description: "Same as --async." },
     source: { type: "string", description: "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names." },
     "source-url": { type: "string", description: "A pasted LinkedIn search URL (people, Sales Navigator, Recruiter or company search)." },
-    filter: { type: "string", description: "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys are the kind's search filters." },
+    filter: {
+      type: "string",
+      description:
+        "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: " +
+        "people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); " +
+        "company_people (the company step): keywords, industry, location, headcount, has_job_postings; " +
+        "recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; " +
+        "sales_nav_search and sales_nav_company_people: the Sales Navigator lead and account search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). " +
+        "Any other key is refused naming it (connections_of and followers_of are not offered on people_search).",
+    },
     "filters-json": { type: "string", description: "The built search as one JSON object. Not with --filter." },
     "list-id": { type: "string", description: "The Sales Navigator lead list id (sales_nav_lead_list)." },
     "post-id": { type: "string", description: "The post id or URL (post_engagers)." },

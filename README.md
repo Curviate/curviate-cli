@@ -642,6 +642,9 @@ printf '%s' "$APP_PASSWORD" | curviate mailbox reconnect mbx_... --password-stdi
 curviate domain check acme.example --now                  # MX, SPF, DKIM, DMARC, tracking
 curviate account safety get --team                        # the Team's email defaults
 curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden
+curviate analytics attention                              # Needs a fix: each problem with the command to its fix
+curviate campaign attachment upload pricing.pdf --json    # {"id":"cat_..."}: put it in an email step's attachment_ids
+curviate unibox timeline cnv_...                          # one person's LinkedIn messages and emails in one list
 ```
 
 A password goes in only through `--password-stdin` (one line, never echoed, sent only in the request body), never as a flag value. A Mailbox sends only for the Account it is linked to, or for any Account when it is `shared`. The daily cap is at most 50; the API refuses more and says so.

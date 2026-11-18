@@ -1719,7 +1719,7 @@
       "path": [
         "campaign"
       ],
-      "description": "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`). Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
+      "description": "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`) and the files of an email step (`curviate campaign attachment`). Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2582,6 +2582,110 @@
       ],
       "examples": [
         "curviate campaign voice-clip get vc_YOUR_CLIP_ID"
+      ],
+      "requires": [],
+      "risk": "read"
+    },
+    {
+      "path": [
+        "campaign",
+        "attachment"
+      ],
+      "description": "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need the Automate plan.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "campaign",
+        "attachment",
+        "upload"
+      ],
+      "description": "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "file",
+          "type": "positional",
+          "required": true,
+          "description": "The file's path."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate campaign attachment upload pricing.pdf",
+        "curviate campaign attachment upload deck.pdf --preview"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Stores one file for your Team. No Campaign changes and nothing is sent to anyone.",
+        "visible_to": "Your Team; the recipients of the emails whose step names it.",
+        "budget_rows": [],
+        "retry": "A retry stores a second file (it counts toward the 24-hour cap); a file no Sequence uses is deleted 30 days after its upload.",
+        "undo": "Not needed: a file no Sequence uses is deleted after 30 days."
+      },
+      "output": [
+        "The file: `id`, `filename`, `content_type`, `bytes`, `created_at`. No download link."
+      ],
+      "errors": {
+        "UNSUPPORTED_MEDIA_TYPE": "an executable, a script, an installer, a shortcut, a disk image or a macro-enabled Office file; the message names the type. Nothing is stored.",
+        "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
+        "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
+        "TIER_REQUIRED": "Campaign attachments need the Automate plan.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
+      },
+      "seeAlso": [
+        "curviate campaign attachment get",
+        "curviate campaign lint",
+        "curviate campaign check"
+      ]
+    },
+    {
+      "path": [
+        "campaign",
+        "attachment",
+        "get"
+      ],
+      "description": "One Campaign attachment: file name, type, size and upload time. No download link. Another Team's file is RESOURCE_NOT_FOUND, like an unknown id.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Attachment id (cat_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate campaign attachment get cat_YOUR_ATTACHMENT_ID"
       ],
       "requires": [],
       "risk": "read"
@@ -3786,7 +3890,7 @@
         {
           "name": "filter",
           "type": "string",
-          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys are the kind's search filters."
+          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search and sales_nav_company_people: the Sales Navigator lead and account search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
         },
         {
           "name": "filters-json",
@@ -5464,7 +5568,7 @@
       "path": [
         "signal"
       ],
-      "description": "Signals: what people did around your Accounts in the last 7 days (reacted, commented, viewed a profile, followed, mentioned, reposted, posted, connected), each Account's Signal watch, and the rules that add those people to a Lead list or send `signal.matched` to your webhooks. Reads Curviate's own store: no LinkedIn call.",
+      "description": "Signals: what people did around your Accounts in the last 7 days (reacted, commented, viewed a profile, followed, mentioned, reposted, posted, connected), each Account's Signal watch and its switch, and the rules that add those people to a Lead list, enroll them in a Campaign or send `signal.matched` to your webhooks, with what each rule did. Reads Curviate's own store: no LinkedIn call.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5576,6 +5680,66 @@
     {
       "path": [
         "signal",
+        "actions"
+      ],
+      "description": "What Signal rules did, newest first: added_to_list, already_in_list, event_sent, or skipped with its reason. Records stay while the Lead exists, after the Signal is gone. Filter by --lead-id, --rule-id and --outcome. Every role; only the Accounts you may operate. No LinkedIn call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Records per page (1 to 100)."
+        },
+        {
+          "name": "lead-id",
+          "type": "string",
+          "description": "Only what rules did for this Lead (con_...)."
+        },
+        {
+          "name": "rule-id",
+          "type": "string",
+          "description": "Only what this rule did (sgr_...)."
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "description": "Only this outcome: added_to_list, already_in_list, event_sent or skipped."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate signal actions",
+        "curviate signal actions --outcome skipped",
+        "curviate signal actions --rule-id sgr_YOUR_RULE_ID --all"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "A table of Signal, rule, Lead, outcome and when; --json (or piped) prints the API page."
+      ],
+      "seeAlso": [
+        "curviate signal rules list",
+        "curviate signal list"
+      ]
+    },
+    {
+      "path": [
+        "signal",
         "kinds"
       ],
       "description": "Every Signal kind with its sub-kinds, the follow-up read a card of that kind can trigger (engagers, viewers or none), whether it is on for your Team, and the limit rows it uses.",
@@ -5604,8 +5768,8 @@
         "signal",
         "watch"
       ],
-      "description": "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call.",
-      "usageOnly": false,
+      "description": "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call. `curviate signal watch set <account_id> on|off` switches one.",
+      "usageOnly": true,
       "args": [],
       "globals": [
         "api-key",
@@ -5620,10 +5784,65 @@
         "beta"
       ],
       "examples": [
-        "curviate signal watch"
+        "curviate signal watch",
+        "curviate signal watch set acc_YOUR_ACCOUNT_ID on"
       ],
       "requires": [],
       "risk": "read"
+    },
+    {
+      "path": [
+        "signal",
+        "watch",
+        "set"
+      ],
+      "description": "Switch one Account's Signal watch on or off. Off is the default, and this is the only way an Account becomes watched: once a day, inside its Active hours, Curviate reads its notifications and turns them into Signals. Off stops it from the next plan on; the Signals already stored stay until they are 7 days old. An Account that needs reconnecting can be switched on and reads paused until it is reconnected. Owners and Managers. The switch itself makes no LinkedIn call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "account",
+          "type": "positional",
+          "description": "The Account (acc_...)."
+        },
+        {
+          "name": "state",
+          "type": "positional",
+          "description": "on or off."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate signal watch set acc_YOUR_ACCOUNT_ID on",
+        "curviate signal watch set acc_YOUR_ACCOUNT_ID off"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Whether this Account's daily visit reads its notifications into Signals, from its next plan on.",
+        "visible_to": "Your Team. On LinkedIn, the watch reads what the Account's own notifications show, like a person opening them.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same state again.",
+        "undo": "Run it again with the other value."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "only an Owner or a Manager switches the Signal watch.",
+        "ACCOUNT_NOT_FOUND": "the Account is not one you may operate, or not this Team's."
+      },
+      "seeAlso": [
+        "curviate signal watch",
+        "curviate signal list"
+      ]
     },
     {
       "path": [
@@ -5678,7 +5897,7 @@
         "signal",
         "rules"
       ],
-      "description": "Signal rules: what happens to a person when a Signal of a kind arrives on an Account (add them to a Lead list, send signal.matched to your webhooks).",
+      "description": "Signal rules: what happens to a person when a Signal of a kind arrives on an Account (add them to a Lead list, enroll them in a Campaign, send signal.matched to your webhooks).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -5763,7 +5982,7 @@
         "rules",
         "create"
       ],
-      "description": "Create a rule: for --kind on --accounts (default every Account), add the person to a Lead list (--add-to-list) and/or send signal.matched to your webhooks (--send-event). --unknown-people visit_profile reads the profile of a person Curviate does not know, once; the person may see the visit. The answer's summary is the rule as one sentence.",
+      "description": "Create a rule: for --kind on --accounts (default every Account), add the person to a Lead list (--add-to-list), enroll them in a Campaign through the Account that caught the Signal (--enroll) and/or send signal.matched to your webhooks (--send-event). --unknown-people visit_profile reads the profile of a person Curviate does not know, once; the person may see the visit. --act-on-last-7-days also acts, once, on the Team's Signals of the last 7 days. The answer's summary is the rule as one sentence.",
       "usageOnly": false,
       "args": [
         {
@@ -5792,6 +6011,11 @@
           "description": "Outcome: add the person to this Lead list (cl_...)."
         },
         {
+          "name": "enroll",
+          "type": "string",
+          "description": "Outcome: enroll the person in this Campaign (mot_...) through the Account that caught the Signal."
+        },
+        {
           "name": "send-event",
           "type": "boolean",
           "description": "Outcome: send signal.matched to your webhooks."
@@ -5810,6 +6034,11 @@
           "name": "off",
           "type": "boolean",
           "description": "Turn the rule off: it acts on no Signal."
+        },
+        {
+          "name": "act-on-last-7-days",
+          "type": "boolean",
+          "description": "Also act, once, on the Team's Signals of the last 7 days."
         }
       ],
       "globals": [
@@ -5832,7 +6061,7 @@
       "requires": [],
       "risk": "write",
       "rules": {
-        "changes": "A rule that acts on every matching Signal from now on: Leads join the list, events are sent.",
+        "changes": "A rule that acts on every matching Signal from now on: Leads join the list or the Campaign, events are sent.",
         "visible_to": "Your Team; with --unknown-people visit_profile, the people whose profiles are read.",
         "budget_rows": [],
         "retry": "A second call creates a second rule: list them first.",
@@ -5883,6 +6112,11 @@
           "description": "Outcome: add the person to this Lead list (cl_...)."
         },
         {
+          "name": "enroll",
+          "type": "string",
+          "description": "Outcome: enroll the person in this Campaign (mot_...) through the Account that caught the Signal."
+        },
+        {
           "name": "send-event",
           "type": "boolean",
           "description": "Outcome: send signal.matched to your webhooks."
@@ -5928,6 +6162,96 @@
         "budget_rows": [],
         "retry": "Safe to repeat: the same values again.",
         "undo": "Run it again with the previous values (`curviate signal rules get` prints them)."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "your role does not allow adding Leads to a Lead list, which the rule does.",
+        "ACCOUNT_NOT_SHARED": "--accounts names an Account you may not operate."
+      }
+    },
+    {
+      "path": [
+        "signal",
+        "rules",
+        "enable"
+      ],
+      "description": "Turn a rule on: it acts on every matching Signal from now on.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Rule id (sgr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate signal rules enable sgr_YOUR_RULE_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The rule acts again, from the next Signal on.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same state again.",
+        "undo": "`curviate signal rules disable <rule_id>`."
+      },
+      "errors": {
+        "INSUFFICIENT_ROLE": "your role does not allow adding Leads to a Lead list, which the rule does.",
+        "ACCOUNT_NOT_SHARED": "--accounts names an Account you may not operate."
+      }
+    },
+    {
+      "path": [
+        "signal",
+        "rules",
+        "disable"
+      ],
+      "description": "Turn a rule off: it acts on no Signal until it is enabled again. What it did stays.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Rule id (sgr_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate signal rules disable sgr_YOUR_RULE_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The rule stops acting, from the next Signal on.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe to repeat: the same state again.",
+        "undo": "`curviate signal rules enable <rule_id>`."
       },
       "errors": {
         "INSUFFICIENT_ROLE": "your role does not allow adding Leads to a Lead list, which the rule does.",
@@ -6065,7 +6389,7 @@
         "do-not-contact",
         "add"
       ],
-      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data). No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
+      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -6077,6 +6401,11 @@
           "name": "linkedin-url",
           "type": "string",
           "description": "The person's LinkedIn profile URL, in any spelling. Not with --lead."
+        },
+        {
+          "name": "company",
+          "type": "string",
+          "description": "A company instead of a person: its LinkedIn URL with the numeric id (linkedin.com/company/<id>/). Nobody who works there is contacted or imported."
         },
         {
           "name": "reason",
@@ -6104,8 +6433,8 @@
       ],
       "examples": [
         "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
-        "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe",
-        "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only"
+        "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only",
+        "curviate do-not-contact add --company https://www.linkedin.com/company/1234567/"
       ],
       "requires": [],
       "risk": "write",
@@ -7145,6 +7474,93 @@
     {
       "path": [
         "unibox",
+        "conversation"
+      ],
+      "description": "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels and email state. From what Curviate has stored: no LinkedIn call, no mailbox read. Its messages: `curviate unibox timeline`.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "conversationId",
+          "type": "positional",
+          "description": "Conversation id (cnv_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox conversation cnv_YOUR_CONVERSATION_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate unibox timeline",
+        "curviate unibox list"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "timeline"
+      ],
+      "description": "A conversation's timeline, newest first: its LinkedIn messages, its emails, and Campaign events (a bounce, an unsubscribe, the end of an Enrollment) in one list. A page holds --limit LinkedIn messages and every email and event since the oldest of them; --channel email serves every email at once. From what Curviate has stored: no LinkedIn call, no mailbox read.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "LinkedIn messages per page (1 to 100); every email and event since the oldest of them comes with them."
+        },
+        {
+          "name": "conversationId",
+          "type": "positional",
+          "description": "Conversation id (cnv_...)."
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "description": "Only linkedin or email."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "cursor",
+        "all",
+        "max-pages",
+        "page-delay",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox timeline cnv_YOUR_CONVERSATION_ID",
+        "curviate unibox timeline cnv_YOUR_CONVERSATION_ID --channel email --json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate unibox conversation",
+        "curviate unibox messages"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
         "reply"
       ],
       "description": "Send a message into the chat from its Account. The send marks the chat read.",
@@ -7983,6 +8399,52 @@
       "seeAlso": [
         "curviate analytics get",
         "curviate mailbox list"
+      ]
+    },
+    {
+      "path": [
+        "analytics",
+        "attention"
+      ],
+      "description": "Needs a fix: what to fix in your email sending now, one row per problem, what stops sending first: paused or disconnected Mailboxes, failing DMARC or DKIM, mail landing in spam, Accounts without a Mailbox, and advice. Each row names the call that leads to its fix; a row leaves once its problem ends. Read-only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "campaign",
+          "type": "string",
+          "description": "Only problems that touch this Campaign (mot_...)."
+        },
+        {
+          "name": "account-id",
+          "type": "string",
+          "description": "Only problems that touch this Account (acc_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate analytics attention",
+        "curviate analytics attention --campaign mot_YOUR_CAMPAIGN_ID --json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "A table of problem (a Notification type), what it is on, since when, and the fix command; --json (or piped) prints the API body (`values` carries the problem's codes and numbers)."
+      ],
+      "seeAlso": [
+        "curviate analytics email",
+        "curviate mailbox list",
+        "curviate notification list --channel email"
       ]
     },
     {
@@ -10194,7 +10656,7 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | campaign (campaign.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, campaign.custom_event; opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
+          "description": "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | campaign (campaign.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, campaign.custom_event; opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned) | signal (one signal.<kind> per Signal of a watched Account, and signal.matched when a rule with --send-event acts: signal.post_engaged, signal.post_reposted, signal.network_posted, signal.profile_viewed, signal.followed_you, signal.mentioned_you, signal.connection_added, signal.matched).",
           "required": true
         },
         {
@@ -10251,7 +10713,7 @@
       "examples": [
         "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
         "curviate webhook create --source campaign --request-url https://example.com/hooks/curviate --campaign-ids mot_YOUR_CAMPAIGN_ID",
-        "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status"
+        "curviate webhook create --source signal --events signal.matched --request-url https://example.com/hooks/curviate"
       ],
       "requires": [],
       "risk": "write",

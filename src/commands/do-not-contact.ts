@@ -22,6 +22,7 @@ type Flags = RootFlags & {
   id?: string;
   lead?: string;
   "linkedin-url"?: string;
+  company?: string;
   reason?: string;
   scope?: string;
   query?: string;
@@ -90,9 +91,10 @@ async function runGet(c: Curviate, f: Flags): Promise<void> {
 }
 
 async function runAdd(c: Curviate, f: Flags): Promise<void> {
-  if ((f.lead === undefined) === (f["linkedin-url"] === undefined)) usage("name the person with exactly one of --lead (con_...) or --linkedin-url.");
-  for (const [flag, v] of [["lead", f.lead], ["linkedin-url", f["linkedin-url"]]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
-  const body: Body = f.lead !== undefined ? { lead_id: f.lead } : { linkedin_url: f["linkedin-url"] };
+  const named = [f.lead, f["linkedin-url"], f.company].filter((v) => v !== undefined).length;
+  if (named !== 1) usage("name exactly one of --lead (con_...), --linkedin-url (a person) or --company (a company's LinkedIn URL).");
+  for (const [flag, v] of [["lead", f.lead], ["linkedin-url", f["linkedin-url"]], ["company", f.company]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
+  const body: Body = f.lead !== undefined ? { lead_id: f.lead } : f.company !== undefined ? { company_linkedin_url: f.company } : { linkedin_url: f["linkedin-url"] };
   const why = reason(f, false);
   if (why) body["reason"] = why;
   const what = scope(f);
@@ -261,7 +263,8 @@ const addCmd = defineCommand({
   meta: {
     name: "add",
     description:
-      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data). No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). " +
+      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. " +
+      "No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). " +
       "One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
     risk: "write",
     rules: {
@@ -275,14 +278,15 @@ const addCmd = defineCommand({
     seeAlso: ["curviate do-not-contact list", "curviate do-not-contact import"],
     examples: [
       "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
-      "curviate do-not-contact add --linkedin-url https://www.linkedin.com/in/jane-doe",
       "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only",
+      "curviate do-not-contact add --company https://www.linkedin.com/company/1234567/",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     lead: { type: "string", description: "The Lead (con_...). Not with --linkedin-url." },
     "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --lead." },
+    company: { type: "string", description: "A company instead of a person: its LinkedIn URL with the numeric id (linkedin.com/company/<id>/). Nobody who works there is contacted or imported." },
     reason: REASON_ARG,
     scope: SCOPE_ARG,
   },
