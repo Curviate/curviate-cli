@@ -16,6 +16,8 @@ import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from ".
 import { print, table } from "../lib/table.js";
 
 type UniboxFlags = RootFlags & {
+  conversationId?: string;
+  channel?: string;
   accountId?: string;
   chatId?: string;
   text?: string;
@@ -121,6 +123,43 @@ async function runMessages(c: Curviate, f: UniboxFlags): Promise<void> {
   try {
     await paged(f, q, (p) => c.account(accountId).messaging.listMessages(chatId, p as never) as Promise<unknown>, (page) =>
       print(table(["AT", "FROM", "ORIGIN", "TEXT"], page.items.map((m) => [m["timestamp"], m["is_sender"] ? "me" : ((m["sender"] as Row | null)?.["display_name"] ?? m["sender_id"]), m["origin"], m["text"]]))));
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const conversationId = (f: UniboxFlags, cmd: string): string => {
+  const id = String(f.conversationId ?? "");
+  return id.trim() !== "" ? id : usage(`the conversation id is missing: \`curviate unibox ${cmd} <conversation_id>\` (each chat of \`unibox list\` carries conversation_id).`);
+};
+
+/** `conversation <id>`: one person on one account across LinkedIn and email. */
+async function runConversation(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = conversationId(f, "conversation");
+  try {
+    renderSuccess(await c.unibox.getConversation(id), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+/** `timeline <id>`: the conversation's LinkedIn messages, emails and Campaign events, newest first. */
+async function runTimeline(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = conversationId(f, "timeline");
+  try {
+    const q: Row = {};
+    if (f.channel !== undefined) {
+      if (!["linkedin", "email"].includes(f.channel)) usage("--channel takes linkedin or email.");
+      q["channel"] = f.channel;
+    }
+    if (f.limit !== undefined) q["limit"] = intFlag("limit", f.limit, 1, 100);
+    await paged(f, q, (p) => c.unibox.listConversationMessages(id, p as never) as Promise<unknown>, (page) =>
+      print(table(["AT", "CHANNEL", "FROM", "TEXT"], page.items.map((m) => [
+        m["timestamp"],
+        m["channel"] ?? "event",
+        m["channel"] === null ? m["kind"] : m["is_sender"] ? "me" : ((m["sender"] as Row | null)?.["display_name"] ?? m["from"] ?? m["sender_id"]),
+        m["channel"] === null ? (m["campaign_name"] ?? "") : m["channel"] === "email" ? (m["subject"] ?? m["text"]) : m["text"],
+      ]))));
   } catch (err) {
     await fail(err, f);
   }
@@ -285,6 +324,39 @@ const getCmd = defineCommand({
   },
   args: { ...readOnly(WRITE_SINGLE_FLAGS), accountId: ACCOUNT, chatId: CHAT },
   run: online(runGet),
+});
+
+const conversationCmd = defineCommand({
+  meta: {
+    name: "conversation",
+    description:
+      "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels and email state. " +
+      "From what Curviate has stored: no LinkedIn call, no mailbox read. Its messages: `curviate unibox timeline`.",
+    risk: "read",
+    seeAlso: ["curviate unibox timeline", "curviate unibox list"],
+    examples: ["curviate unibox conversation cnv_YOUR_CONVERSATION_ID"],
+  },
+  args: { ...readOnly(WRITE_SINGLE_FLAGS), conversationId: { type: "positional" as const, description: "Conversation id (cnv_...)." } },
+  run: online(runConversation),
+});
+
+const timelineCmd = defineCommand({
+  meta: {
+    name: "timeline",
+    description:
+      "A conversation's timeline, newest first: its LinkedIn messages, its emails, and Campaign events (a bounce, an unsubscribe, the end of an Enrollment) in one list. " +
+      "A page holds --limit LinkedIn messages and every email and event since the oldest of them; --channel email serves every email at once. From what Curviate has stored: no LinkedIn call, no mailbox read.",
+    risk: "read",
+    seeAlso: ["curviate unibox conversation", "curviate unibox messages"],
+    examples: ["curviate unibox timeline cnv_YOUR_CONVERSATION_ID", "curviate unibox timeline cnv_YOUR_CONVERSATION_ID --channel email --json"],
+  },
+  args: {
+    ...readOnly(GLOBAL_FLAGS),
+    limit: { ...GLOBAL_FLAGS.limit, description: "LinkedIn messages per page (1 to 100); every email and event since the oldest of them comes with them." },
+    conversationId: { type: "positional" as const, description: "Conversation id (cnv_...)." },
+    channel: { type: "string" as const, description: "Only linkedin or email." },
+  },
+  run: online(runTimeline),
 });
 
 const unreadCmd = defineCommand({
@@ -492,6 +564,8 @@ export const uniboxCommand = defineCommand({
     get: getCmd,
     unread: unreadCmd,
     messages: messagesCmd,
+    conversation: conversationCmd,
+    timeline: timelineCmd,
     reply: replyCmd,
     mark: markCmd,
     tag: tagCmd,

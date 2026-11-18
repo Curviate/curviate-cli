@@ -133,7 +133,7 @@ export async function runWebhookCreate(
   out: OutputStreams,
 ): Promise<void> {
   if (!flags.source) {
-    out.stderr.write("error: --source is required (messaging | user | account_status | post | campaign).\n");
+    out.stderr.write("error: --source is required (messaging | user | account_status | post | campaign | signal).\n");
     process.exit(2);
   }
   if (!flags["request-url"]) {
@@ -464,7 +464,7 @@ const webhookCreateCommand = defineCommand({
     examples: [
       "curviate webhook create --source messaging --request-url https://example.com/hooks/curviate --account-ids acc_YOUR_ACCOUNT_ID",
       "curviate webhook create --source campaign --request-url https://example.com/hooks/curviate --campaign-ids mot_YOUR_CAMPAIGN_ID",
-      "curviate webhook create --source account_status --request-url https://example.com/hooks/curviate --name status",
+      "curviate webhook create --source signal --events signal.matched --request-url https://example.com/hooks/curviate",
     ],
   },
   args: {
@@ -475,7 +475,8 @@ const webhookCreateCommand = defineCommand({
       description:
         "Event source: messaging | user | account_status | post (scheduled-post results: post.published, post.publish_failed) | campaign " +
         "(campaign.status_changed, enrollment.started, enrollment.accepted, enrollment.replied, enrollment.skipped, enrollment.finished, step.failed, campaign.custom_event; " +
-        "opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned).",
+        "opt-in only, named in --events: step.executed, enrollment.seen, enrollment.reassigned) | signal (one signal.<kind> per Signal of a watched Account, " +
+        "and signal.matched when a rule with --send-event acts: signal.post_engaged, signal.post_reposted, signal.network_posted, signal.profile_viewed, signal.followed_you, signal.mentioned_you, signal.connection_added, signal.matched).",
       required: true,
     },
     "request-url": { type: "string", description: "HTTPS URL to receive webhook deliveries.", required: true },

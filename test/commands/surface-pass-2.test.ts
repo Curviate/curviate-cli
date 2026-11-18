@@ -55,3 +55,37 @@ describe("pass 2: the request each command sends", () => {
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });
 });
+
+describe("pass 3: the request each command sends", () => {
+  it.each([
+    [["signal", "watch", "list"], { call: "GET /v1/signals/watch", query: {}, body: undefined }],
+    [["signal", "watch", "set", "acc_1", "on"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: true } }],
+    [["signal", "watch", "set", "acc_1", "off"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: false } }],
+    [["signal", "actions", "--outcome", "skipped", "--rule-id", "sgr_1"], { call: "GET /v1/signals/actions", query: { outcome: "skipped", rule_id: "sgr_1" }, body: undefined }],
+    [["signal", "rules", "enable", "sgr_1"], { call: "PATCH /v1/signals/rules/sgr_1", query: {}, body: { enabled: true } }],
+    [["signal", "rules", "disable", "sgr_1"], { call: "PATCH /v1/signals/rules/sgr_1", query: {}, body: { enabled: false } }],
+    [["signal", "rules", "create", "--name", "Warm", "--kind", "post_engaged.comment", "--enroll", "mot_1", "--act-on-last-7-days"], { call: "POST /v1/signals/rules", query: {}, body: { name: "Warm", kinds: ["post_engaged.comment"], outcomes: [{ type: "enroll", campaign_id: "mot_1" }], act_on_last_7_days: true } }],
+    [["analytics", "attention", "--campaign", "mot_1"], { call: "GET /v1/analytics/email/attention", query: { campaign_id: "mot_1" }, body: undefined }],
+    [["unibox", "conversation", "cnv_1"], { call: "GET /v1/unibox/conversations/cnv_1", query: {}, body: undefined }],
+    [["unibox", "timeline", "cnv_1", "--channel", "email"], { call: "GET /v1/unibox/conversations/cnv_1/messages", query: { channel: "email" }, body: undefined }],
+    [["do-not-contact", "add", "--company", "https://www.linkedin.com/company/1234567/"], { call: "POST /v1/do-not-contact", query: {}, body: { company_linkedin_url: "https://www.linkedin.com/company/1234567/" } }],
+    [["campaign", "attachment", "get", "cat_1"], { call: "GET /v1/campaigns/attachments/cat_1", query: {}, body: undefined }],
+    [["webhook", "create", "--source", "signal", "--events", "signal.matched", "--request-url", "https://example.com/hooks"], { call: "POST /v1/webhooks", query: {}, body: { source: "signal", events: ["signal.matched"], request_url: "https://example.com/hooks", enabled: true } }],
+  ])("%j", async (args, expected) => {
+    const r = await wire(args, ok);
+    expect([r.status, lines(r.sent)]).toEqual([0, [expected]]);
+  });
+
+  it.each([
+    [["signal", "watch", "set", "acc_1", "maybe"]],
+    [["signal", "watch", "set", "acc_1"]], // no state
+    [["signal", "actions", "--outcome", "done"]],
+    [["signal", "rules", "update", "sgr_1", "--act-on-last-7-days"]], // create only
+    [["unibox", "timeline", "cnv_1", "--channel", "sms"]],
+    [["do-not-contact", "add", "--company", "https://www.linkedin.com/company/1/", "--lead", "con_1"]], // two subjects
+    [["campaign", "attachment", "upload"]], // no file
+  ])("%j exits 2 with no request", async (args) => {
+    const r = await wire(args);
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+  });
+});

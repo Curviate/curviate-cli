@@ -323,6 +323,36 @@ async function runVoiceClipUpload(c: Curviate, f: CampaignFlags): Promise<void> 
   }
 }
 
+/** `attachment upload <file>`: the file's bytes as the raw body (Content-Length set), one stored file back. */
+async function runAttachmentUpload(c: Curviate, f: CampaignFlags): Promise<void> {
+  const path = f.file ?? "";
+  if (path.trim() === "") usage("the file is missing. Pass its path: `curviate campaign attachment upload pricing.pdf`.");
+  const filename = basename(path);
+  let bytes: Buffer;
+  try {
+    bytes = await readAttachment(path);
+  } catch (err) {
+    if (err instanceof AttachError) usage(err.message);
+    throw err;
+  }
+  if (f.preview) {
+    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "campaigns.attachments.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
+  }
+  try {
+    renderSuccess(await c.campaigns.attachments.upload(bytes, { filename }), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runAttachmentGet(c: Curviate, f: CampaignFlags): Promise<void> {
+  try {
+    renderSuccess(await c.campaigns.attachments.get(f.id ?? ""), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 async function runVoiceClipGet(c: Curviate, f: CampaignFlags): Promise<void> {
   try {
     renderSuccess(await c.campaigns.voiceClips.get(f.id ?? ""), outputOpts(f), process);
@@ -761,6 +791,61 @@ const voiceClipCommand = defineCommand({
   },
 });
 
+const attachmentUploadCmd = defineCommand({
+  meta: {
+    name: "upload",
+    description:
+      "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. " +
+      "Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "Stores one file for your Team. No Campaign changes and nothing is sent to anyone.",
+      visible_to: "Your Team; the recipients of the emails whose step names it.",
+      budget_rows: [],
+      retry: "A retry stores a second file (it counts toward the 24-hour cap); a file no Sequence uses is deleted 30 days after its upload.",
+      undo: "Not needed: a file no Sequence uses is deleted after 30 days.",
+    },
+    output: ["The file: `id`, `filename`, `content_type`, `bytes`, `created_at`. No download link."],
+    errors: {
+      UNSUPPORTED_MEDIA_TYPE: "an executable, a script, an installer, a shortcut, a disk image or a macro-enabled Office file; the message names the type. Nothing is stored.",
+      PAYLOAD_TOO_LARGE: "the file is over 20 MiB.",
+      RATE_LIMIT_TENANT: "100 uploads in the last 24 hours; Retry-After is the wait.",
+      TIER_REQUIRED: "Campaign attachments need the Automate plan.",
+      ...ROLE_ERRORS,
+    },
+    seeAlso: ["curviate campaign attachment get", "curviate campaign lint", "curviate campaign check"],
+    examples: ["curviate campaign attachment upload pricing.pdf", "curviate campaign attachment upload deck.pdf --preview"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    file: { type: "positional", required: true, description: "The file's path." },
+  },
+  run: online(runAttachmentUpload),
+});
+
+const attachmentGetCmd = defineCommand({
+  meta: {
+    name: "get",
+    description: "One Campaign attachment: file name, type, size and upload time. No download link. Another Team's file is RESOURCE_NOT_FOUND, like an unknown id.",
+    risk: "read",
+    examples: ["curviate campaign attachment get cat_YOUR_ATTACHMENT_ID"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    id: { type: "positional", description: "Attachment id (cat_...)." },
+  },
+  run: online(runAttachmentGet),
+});
+
+const attachmentCommand = defineCommand({
+  meta: { name: "attachment", description: DESCRIPTIONS.campaignAttachment },
+  subCommands: { upload: attachmentUploadCmd, get: attachmentGetCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(attachmentCommand, ["curviate", "campaign", "attachment"]);
+  },
+});
+
 export const campaignCommand = defineCommand({
   meta: { name: "campaign", description: DESCRIPTIONS.campaign },
   subCommands: {
@@ -780,6 +865,7 @@ export const campaignCommand = defineCommand({
     lint: lintCmd,
     init: initCmd,
     "voice-clip": voiceClipCommand,
+    attachment: attachmentCommand,
   },
   async run() {
     const { showHelp } = await import("../lib/examples.js");

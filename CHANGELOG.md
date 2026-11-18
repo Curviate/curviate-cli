@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.58.0] - 2026-11-18
+
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `21f3739c4`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+
+### Email attachments
+
+- **`campaign attachment upload <file>`** stores one file for an email step's `attachment_ids` (up to 20 MiB, 100 uploads per Team per 24 hours; executables, scripts and macro-enabled Office files are refused, `UNSUPPORTED_MEDIA_TYPE`); **`campaign attachment get <id>`** reads it back. `--preview` prints the request without sending it.
+
+### Email: Needs a fix
+
+- **`analytics attention [--campaign <mot_...>] [--account-id <acc_...>]`**: what to fix in your email sending now, one row per problem with the command that leads to its fix.
+
+### Unibox conversations
+
+- **`unibox conversation <conversation_id>`**: one person on one account across LinkedIn and email. **`unibox timeline <conversation_id> [--channel linkedin|email]`**: its LinkedIn messages, emails and Campaign events in one list, newest first (`--all` pages on).
+
+### Signals
+
+- **`signal watch set <account_id> on|off`** switches one Account's Signal watch (Owners and Managers); **`signal watch list`** reads every Account's state (a bare `signal watch` still does).
+- **`signal actions [--lead-id] [--rule-id] [--outcome]`**: what rules did.
+- **`signal rules enable|disable <rule_id>`**; **`signal rules create --enroll <mot_...>`** (enroll the person through the Account that caught the Signal) and **`--act-on-last-7-days`**.
+- **`webhook create --source signal`**: the eight `signal` events.
+
+### Do-not-contact
+
+- **`do-not-contact add --company <linkedin company URL>`**: nobody who works there is contacted or imported.
+
+### Lead imports
+
+- `lead import --filter` help names the keys each LinkedIn source kind offers.
+
 ## [0.57.0] - 2026-11-18
 
 Requires `@curviate/sdk` 0.53.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `c8b370ae4`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged).
