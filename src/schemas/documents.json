@@ -1046,6 +1046,9 @@
               "nullable": true
             }
           },
+          "one_lead_per_company": {
+            "type": "boolean"
+          },
           "reply_scope": {
             "type": "string",
             "enum": [
@@ -1263,6 +1266,9 @@
               "minLength": 1,
               "nullable": true
             }
+          },
+          "one_lead_per_company": {
+            "type": "boolean"
           },
           "reply_scope": {
             "type": "string",
