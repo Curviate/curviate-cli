@@ -1,0 +1,180 @@
+# Publish @curviate/cli to npm with trusted publishing (GitHub OIDC, no token).
+#
+# Manual dispatch only, from main. Input: the version to publish. It must equal
+# package.json at the tag v<version>, and that tag must be on main. The
+# @curviate/sdk dependency must be an exact version that is already on npm.
+# Provenance is attached automatically by npm for a trusted publish.
+#
+# Two jobs, so third-party build code never runs where an OIDC token can be
+# minted:
+#   build   - gates, npm pack, tarball checks; uploads the tarball. No id-token.
+#   publish - verifies the tarball hash and publishes exactly those bytes.
+#             Installs nothing. The only job with id-token: write.
+#
+# Maintainer checks that cannot run in this public repo run locally before
+# dispatch (see the maintainers' publish runbook).
+
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (X.Y.Z, equal to package.json at tag vX.Y.Z on main)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+env:
+  VERSION: ${{ inputs.version }}
+  NPM_VERSION: 11.21.3
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Validate the version input
+        run: |
+          [[ "$VERSION" =~ ^0\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::version must be 0.X.Y (no prerelease; 1.0 is a deliberate decision, not a dispatch)"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Tag is on main and matches package.json
+        run: |
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "::error::tag v$VERSION is not on main"; exit 1; }
+          pkg_version="$(node -p 'require("./package.json").version')"
+          [ "$pkg_version" = "$VERSION" ] || {
+            echo "::error::package.json version $pkg_version != input $VERSION"; exit 1; }
+          echo "v$VERSION -> $(git rev-parse HEAD) (on main), package.json $pkg_version"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: SDK dependency is an exact version on npm
+        run: |
+          declared="$(node -p 'require("./package.json").dependencies["@curviate/sdk"]')"
+          [[ "$declared" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::@curviate/sdk is declared as '$declared', not an exact X.Y.Z version"; exit 1; }
+          on_npm="$(npm view "@curviate/sdk@$declared" version --registry https://registry.npmjs.org/ 2>/dev/null || true)"
+          [ "$on_npm" = "$declared" ] || {
+            echo "::error::@curviate/sdk@$declared is not on npm; publish the SDK first"; exit 1; }
+          echo "@curviate/sdk@$declared is on npm"
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11.1.2
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # npm test runs pretest: fixture pin and vendored descriptions.
+      - name: Tests
+        run: npm test
+
+      # npm pack runs prepack: source leak scan, copy check, SDK pin, fixture pin,
+      # build, dist leak scan.
+      - name: Pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack"
+          npm pack --pack-destination "$RUNNER_TEMP/pack"
+          ls "$RUNNER_TEMP/pack"
+
+      - name: Dist smoke
+        run: node scripts/verify-dist.mjs
+
+      - name: Tarball matches the files allowlist and carries no vendor name
+        run: |
+          tgz="$RUNNER_TEMP/pack/curviate-cli-$VERSION.tgz"
+          [ "$(ls "$RUNNER_TEMP/pack" | wc -l)" = 1 ] && [ -f "$tgz" ] || {
+            echo "::error::expected exactly $tgz"; exit 1; }
+          node - "$tgz" "@curviate/cli" <<'JS'
+          const { execFileSync } = require("node:child_process");
+          const { mkdtempSync, readFileSync } = require("node:fs");
+          const { join } = require("node:path");
+          const [tgz, name] = process.argv.slice(2);
+          const fail = (m) => { console.error("::error::" + m); process.exit(1); };
+          const entries = execFileSync("tar", ["-tzf", tgz], { encoding: "utf8" }).split("\n").filter(Boolean);
+          const files = entries.filter((e) => !e.endsWith("/"));
+          if (files.length === 0) fail("tarball is empty");
+          if (files.some((f) => !f.startsWith("package/"))) fail("entry outside package/");
+          const dir = mkdtempSync(join(process.env.RUNNER_TEMP, "unpacked-"));
+          execFileSync("tar", ["-xzf", tgz, "-C", dir]);
+          const pkg = JSON.parse(readFileSync(join(dir, "package/package.json"), "utf8"));
+          if (pkg.name !== name || pkg.version !== process.env.VERSION) fail(`packed ${pkg.name}@${pkg.version}`);
+          const allow = pkg.files.map((e) => e.replace(/\/$/, ""));
+          const rel = files.map((f) => f.slice("package/".length));
+          const ok = (f) => f === "package.json" || allow.some((a) => f === a || f.startsWith(a + "/"));
+          const stray = rel.filter((f) => !ok(f));
+          if (stray.length) fail("outside the files allowlist: " + stray.join(", "));
+          const missing = allow.filter((a) => !rel.some((f) => f === a || f.startsWith(a + "/")));
+          if (missing.length) fail("allowlist entries with no file: " + missing.join(", "));
+          // Assembled from parts so the word never appears in this repository.
+          const needle = ["uni", "pi", "le"].join("");
+          const hits = rel.filter((f) => readFileSync(join(dir, "package", f), "latin1").toLowerCase().includes(needle));
+          if (hits.length) fail("vendor name in: " + hits.join(", "));
+          console.log(`tarball OK: ${rel.length} files, all in the allowlist, vendor scan clean`);
+          JS
+          (cd "$RUNNER_TEMP/pack" && sha256sum "curviate-cli-$VERSION.tgz" | tee tarball.sha256)
+
+      - name: Version is not on npm yet
+        run: |
+          if npm view "@curviate/cli@$VERSION" version --registry https://registry.npmjs.org/ 2>/dev/null | grep -q .; then
+            echo "::error::@curviate/cli@$VERSION is already on npm"; exit 1; fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tarball
+          path: |
+            ${{ runner.temp }}/pack/curviate-cli-${{ inputs.version }}.tgz
+            ${{ runner.temp }}/pack/tarball.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: npm with trusted publishing support
+        run: npm install -g "npm@$NPM_VERSION" && npm --version
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: tarball
+          path: ${{ runner.temp }}/pack
+
+      - name: Publish the gated tarball
+        working-directory: ${{ runner.temp }}/pack
+        run: |
+          sha256sum -c tarball.sha256
+          npm publish "curviate-cli-$VERSION.tgz" --access public
+
