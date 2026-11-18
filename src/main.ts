@@ -46,6 +46,8 @@ export const main = defineCommand({
     campaign: lazy("campaign", () => import("./commands/motion.js").then((m) => m.campaignCommand)),
     enrollment: lazy("enrollment", () => import("./commands/enrollment.js").then((m) => m.enrollmentCommand)),
     lead: lazy("lead", () => import("./commands/contact.js").then((m) => m.contactCommand)),
+    company: lazy("companyRecord", () => import("./commands/company-record.js").then((m) => m.companyRecordCommand)),
+    signal: lazy("signal", () => import("./commands/signal.js").then((m) => m.signalCommand)),
     "do-not-contact": lazy("do-not-contact", () => import("./commands/do-not-contact.js").then((m) => m.doNotContactCommand)),
     mailbox: lazy("mailbox", () => import("./commands/mailbox.js").then((m) => m.mailboxCommand)),
     domain: lazy("domain", () => import("./commands/domain.js").then((m) => m.domainCommand)),

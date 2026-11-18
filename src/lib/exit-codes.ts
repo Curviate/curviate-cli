@@ -349,6 +349,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   RESOURCE_IN_USE: 2,
   LEAD_LIMIT_REACHED: 2,
   IMPORT_QUEUE_FULL: 6,
+  // Import control: the import's status forbids it, or a continue has nothing left; never succeeds as sent.
+  IMPORT_STATUS_CONFLICT: 2,
+  IMPORT_CANNOT_CONTINUE: 2,
 
   // Campaigns and Enrollments. Every refusal but one never succeeds as
   // sent (2): fix the document, merge the newer Sequence, or pick another
@@ -366,6 +369,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   KNOWN_CHAT: 2,
   LEAD_NOT_ENROLLABLE: 2,
   CHAT_NOT_ONE_TO_ONE: 2,
+  REPLY_NOT_LABELLABLE: 2,
   STEP_IN_FLIGHT: 7,
 
   // Voice clips: the file is empty, not audio, undecodable or outside 1 to 120 seconds; it never succeeds as sent.

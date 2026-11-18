@@ -1,6 +1,7 @@
 /**
  * `curviate notification`: Curviate's own Notifications (an account needing
- * reconnection, a paused Campaign, a finished import, a member leaving). Yours,
+ * reconnection, a paused Mailbox, a failing sending domain, a paused Campaign,
+ * a finished import, a member leaving). Yours,
  * per Team. Root-scoped (`curviate.notifications.*`).
  *
  * Not LinkedIn's notification cards: those are `curviate core notification`
@@ -23,6 +24,7 @@ type Flags = RootFlags & {
   _?: string[];
   unread?: boolean;
   archived?: boolean;
+  channel?: string;
   to?: string;
   limit?: string;
   cursor?: string;
@@ -56,6 +58,10 @@ async function runList(c: Curviate, f: Flags): Promise<void> {
   // --unread / --archived pick the stream; --no-unread keeps the read items of it (client side); --no-archived is what "all" already is.
   if (f.unread === true && f.archived === true) usage("--unread and --archived cannot be combined: an item is archived or unread, not both. Pass one.");
   const params: Record<string, unknown> = { filter: f.unread === true ? "unread" : f.archived === true ? "archived" : "all" };
+  if (f.channel !== undefined) {
+    if (!["email", "linkedin", "team"].includes(f.channel)) usage("--channel takes email, linkedin or team.");
+    params["channel"] = f.channel;
+  }
   if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
   const cursor = readCursorFlag(f, process);
   if (cursor) params["cursor"] = cursor;
@@ -136,15 +142,17 @@ const listCmd = defineCommand({
     name: "list",
     description:
       "List your Curviate Notifications, newest first, with the unread count. Curviate's own, per Team; LinkedIn's notification cards are `curviate core notification list`. " +
-      "--unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. Kept for a limited time.",
+      "--unread lists unread ones, --archived archived ones, neither all (archived kept apart); --no-unread keeps only read ones. --channel keeps one channel. " +
+      "Problems that stop sending arrive unread; advice arrives read. Kept for a limited time.",
     risk: "read",
     output: ["`items`, a `cursor` for the next page, and `unread_count`, the Team-wide unread badge, not a count of the items shown."],
-    examples: ["curviate notification list", "curviate notification list --unread", "curviate notification list --archived --limit 50"],
+    examples: ["curviate notification list", "curviate notification list --unread", "curviate notification list --channel email"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
     unread: { type: "boolean", description: "Only unread notifications (--no-unread: only read ones). Not with --archived." },
     archived: { type: "boolean", description: "Only archived notifications (--no-archived: not archived, which is also the default)." },
+    channel: { type: "string", description: "Only this channel: email (Mailbox, domain and email-step problems), linkedin (an Account's LinkedIn trouble) or team." },
   },
   run: online(runList),
 });

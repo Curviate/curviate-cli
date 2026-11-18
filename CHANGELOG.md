@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.57.0] - 2026-11-18
+
+Requires `@curviate/sdk` 0.53.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `c8b370ae4`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged).
+
+### Reply labels
+
+- **`unibox list --reply-label <label>`** keeps chats by their latest Reply label (repeatable; `none` adds unlabelled chats); the table shows a LABEL column.
+- **`unibox label <message_id>`** prints a reply's label and its history (source, confidence); **`--set <label>`** corrects it (Needs Automate). `REPLY_NOT_LABELLABLE` exits 2.
+- **`team reply-labels`** reads the Team's settings; **`--on|--off`**, **`--not-interested-dnc`** and **`--tag <label>=<tag_id>`** change them (Owners and Managers).
+
+### Lead imports from LinkedIn
+
+- **`lead import --source <kind>`** or **`--source-url <url>`** with **`--account`**: a people, Sales Navigator, Recruiter or company search (by URL, `--filter key=value` or `--filters-json`), a Sales Navigator lead list (`--list-id`), a post's engagers (`--post-id`) or a group's members (`--group-id`); `--titles`, `--max`, `--continue <imp_id>`, `--restart`. One create request; the server reads the source page by page.
+- **`lead imports pause|resume|stop <id>`**. `IMPORT_STATUS_CONFLICT` and `IMPORT_CANNOT_CONTINUE` exit 2. `lead imports get` help names `waiting` (`active_hours`, `budget`, `pushback`) and `estimate`.
+
+### Email
+
+- **`analytics email`**: sent, the reply, open, bounce and opt-out rates, today against the daily caps; `--campaigns`, `--accounts`, the window flags, `--include weeks`.
+- **`notification list --channel email|linkedin|team`**.
+- **`mailbox update --display-name <name>`** and **`--clear-display-name`**; **`mailbox connect --display-name`**. `mailbox discover` and `domain check` help follow the API (`source: none`, a check before the first Mailbox, `dkim_selector`).
+- **`doctor`** adds a `mailboxes` line (how many, how many can send; never fails the run) and **`tier`** says email sends once a Mailbox is connected.
+
+### Companies
+
+- **`company get <company_id>`** and **`company fields <company_id> --set key=value --unset key`**: your Team's company record and its own fields (`{{company.extra.<key>}}`). No LinkedIn call.
+- **`core company <id> --mode --max-age`**: the company read takes the retrieval mode.
+- `campaign lint` checks company variables offline (R16 names the nearest company fields), as the API does.
+
+### Signals
+
+- **`signal list|get|kinds|watch`**, **`signal settings --post-engaged on|off --profile-viewed on|off`**, **`signal rules list|get|create|update|delete`** (`--kind`, `--accounts` or `--all-accounts`, `--add-to-list`, `--send-event`, `--unknown-people`, `--on|--off`).
+
+### Billing
+
+- **`billing price move`**: moves a subscription on a previous price to the current price now. It charges money: it asks at a terminal, and anywhere else it needs `--yes` (without it: exit 2, nothing sent). Owners only.
+
 ## [0.56.0] - 2026-11-17
 
 Requires `@curviate/sdk` 0.52.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (server commit `8c675b5b8`); `src/schemas/documents.json` and `commands.json` regenerated.

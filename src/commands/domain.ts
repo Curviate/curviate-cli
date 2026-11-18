@@ -13,13 +13,13 @@ const checkCmd = defineCommand({
   meta: {
     name: "check",
     description:
-      "A sending domain's checks as last run (daily): mx, spf, dkim, dmarc and tracking, each pass, fail or unknown (a failed lookup, or a DKIM selector not known yet, is never a fail), with the tracking record to add and any blocklists. " +
-      "--now runs them now: DNS lookups only, nothing is sent and no Mailbox is contacted. A check warns and never stops sending. A domain none of your Team's Mailboxes is on is DOMAIN_NOT_FOUND.",
+      "A sending domain's checks as last run (daily): mx, spf, dkim, dmarc and tracking, each pass, fail or unknown (a failed lookup, or a DKIM selector not known yet, is never a fail), with the tracking record to add, any blocklists and the DKIM selector found. " +
+      "--now runs them now: DNS lookups only, nothing is sent and no Mailbox is contacted. It takes any domain your Team names, before its first Mailbox there too, so the records can be set up first. A check warns and never stops sending.",
     risk: "read",
     output: ["The domain with its checks. Without --now the answer is the last daily run; with --now, the run just made."],
-    errors: { DOMAIN_NOT_FOUND: "none of your Team's Mailboxes is on this domain (another Team's domain answers the same)." },
+    errors: { DOMAIN_NOT_FOUND: "without --now: your Team has no Mailbox on this domain and never checked it (another Team's domain answers the same); a public email provider's domain always." },
     seeAlso: ["curviate mailbox list"],
-    examples: ["curviate domain check acme.example", "curviate domain check acme.example --now"],
+    examples: ["curviate domain check acme.example --now", "curviate domain check acme.example"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),

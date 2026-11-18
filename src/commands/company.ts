@@ -77,9 +77,12 @@ import {
   reencodeInviteTokenItem,
 } from "../lib/slim.js";
 import type { Curviate, CurviateError } from "@curviate/sdk";
+import { RETRIEVAL_FLAGS, hasRetrievalFlags, parseRetrievalFlags } from "../lib/retrieval.js";
 
 type CompanyFlags = {
   id?: string;
+  mode?: string;
+  "max-age"?: string;
   account?: string;
   json?: boolean;
   fields?: string;
@@ -204,6 +207,11 @@ export async function runCompanyGet(
     process.exit(2);
   }
 
+  const retrieval = parseRetrievalFlags(flags);
+  if (!retrieval.ok) {
+    out.stderr.write(retrieval.error);
+    process.exit(2);
+  }
   const accountId = await requireAccount(client, flags, out);
   const rawId = flags.id ?? "";
   const resolvedId = resolveIdentifier(rawId);
@@ -211,7 +219,9 @@ export async function runCompanyGet(
   const outOpts = { ...resolveOutputOpts(flags), slim: slimCompany };
 
   try {
-    const result = await client.account(accountId).companies.get(resolvedId);
+    const result = hasRetrievalFlags(flags)
+      ? await client.account(accountId).companies.get(resolvedId, retrieval.query)
+      : await client.account(accountId).companies.get(resolvedId);
     readableObject(result);
     renderSuccess(result, outOpts, out);
   } catch (err: unknown) {
@@ -1332,6 +1342,7 @@ export const companyCommand = defineCommand({
     ...readOnly(READ_SINGLE_FLAGS),
     id: { type: "positional", description: "Company identifier (URL, slug, or native id)." },
     sections: { type: "string" as const, description: "Not supported on company commands; a usage error (exit 2) if supplied." },
+    ...RETRIEVAL_FLAGS,
   },
   subCommands: {
     employees: companyEmployeesCommand,

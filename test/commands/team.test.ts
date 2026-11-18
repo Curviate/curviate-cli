@@ -52,10 +52,10 @@ const DENIED = { code: "TEAM_ACCESS_DENIED", message: "x", user_fixable: true, r
 
 describe("doctor reports the key's scope and the Team, checked against GET /v1/teams", () => {
   it.each([
-    ["all-teams key, profile Team of theirs", ALL, { team: "tnt_b" }, 0, "all_teams", { team_id: "tnt_b", name: "Client B", source: "profile" }, ["GET /v1/accounts tnt_b", "GET /v1/teams -"], [true]],
+    ["all-teams key, profile Team of theirs", ALL, { team: "tnt_b" }, 0, "all_teams", { team_id: "tnt_b", name: "Client B", source: "profile" }, ["GET /v1/accounts tnt_b", "GET /v1/teams -", "GET /v1/mailboxes tnt_b"], [true]],
     ["all-teams key, no Team: refused before any call", ALL, {}, 2, "all_teams", null, [], [false]],
     ["all-teams key, a Team they left", ALL, { team: "tnt_gone" }, 3, "all_teams", { team_id: "tnt_gone", name: null, source: "profile" }, ["GET /v1/accounts tnt_gone", "GET /v1/teams -"], [false]],
-    ["Team key, no Team named: its own", "cvt_live_FAKEFIXTURE0000000000", {}, 0, "team", { team_id: "tnt_a", name: "Agency A", source: "key" }, ["GET /v1/accounts -", "GET /v1/teams -"], []],
+    ["Team key, no Team named: its own", "cvt_live_FAKEFIXTURE0000000000", {}, 0, "team", { team_id: "tnt_a", name: "Agency A", source: "key" }, ["GET /v1/accounts -", "GET /v1/teams -", "GET /v1/mailboxes tnt_a"], []],
   ] as const)("%s", async (_l, key, profile, exit, scope, team, sent, teamCheck) => {
     sink.reply = (h) =>
       h.url.startsWith("/v1/teams") ? { body: TEAMS }

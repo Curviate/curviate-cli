@@ -372,10 +372,52 @@ const eventsCommand = defineCommand({
   },
 });
 
+async function runEmail(c: Curviate, f: AnalyticsFlags): Promise<void> {
+  const q: Row = { ...windowParams(f), ...filterParams(f, ["campaigns", "accounts"]) };
+  if (f.include !== undefined) q["include"] = listFlag("include", f.include);
+  try {
+    const body = (await c.analytics.email(q as never)) as unknown as Row;
+    if (outputOpts(f).json) return renderSuccess(body, outputOpts(f), process);
+    const today = body["today"] as Row | undefined;
+    print(`sent ${String(body["sent"] ?? "-")} · reply ${rate(body["reply"], "replied", "first_emailed")} · open ${body["open"] == null ? "not tracked" : rate(body["open"], "opened", "tracked")} · bounce ${rate(body["bounce"], "bounced", "sent")} · opt-out ${rate(body["opt_out"], "opted_out", "first_emailed")}`);
+    if (today) print(`today: ${String(today["sent"])} sent of a ${String(today["cap"])} daily cap`);
+    if (body["tracking"] !== "set_up") print(`open tracking: ${String(body["tracking"])} (set it up on the Mailboxes for an open rate over every email)`);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const emailCmd = defineCommand({
+  meta: {
+    name: "email",
+    description:
+      "Email results of your Campaigns over a window: emails sent, and the reply, open, bounce and opt-out rates with their counts, today's sending against the Mailboxes' daily caps and the daily series. " +
+      "Read from what Curviate recorded per send: no email or inbox is read.",
+    risk: "read",
+    output: [
+      "reply: Leads first emailed in the window whose first reply, by email or on LinkedIn, came after that email, so far; an out-of-office reply is never a reply.",
+      "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
+      "bounce: bounced over sent. opt-out: Leads who opted out over Leads first emailed.",
+      "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
+    ],
+    seeAlso: ["curviate analytics get", "curviate mailbox list"],
+    examples: ["curviate analytics email --range 30d", "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    campaigns: { type: "string" as const, description: "Only these Campaigns, comma list (mot_...)." },
+    ...WINDOW_ARGS,
+    accounts: FILTER_ARGS.accounts,
+    include: { type: "string" as const, description: "Sections to add: weeks (the reply rate by week of first email)." },
+  },
+  run: online(runEmail),
+});
+
 export const analyticsCommand = defineCommand({
   meta: { name: "analytics", description: DESCRIPTIONS.analytics },
   subCommands: {
     get: getCmd,
+    email: emailCmd,
     events: eventsCommand,
     export: exportCmd,
   },
