@@ -2711,7 +2711,7 @@
         "enrollment",
         "list"
       ],
-      "description": "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
+      "description": "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out. waiting.kind says what it waits for: wait, event, queue, budget, account_unavailable, campaign_paused, halt, kill_switch, paused_by_user, no_overlap, and for email no_mailbox, mailbox_cap, email_unavailable, field_missing or out_of_office.",
       "usageOnly": false,
       "args": [
         {
@@ -3895,7 +3895,7 @@
         {
           "name": "filter",
           "type": "string",
-          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search and sales_nav_company_people: the Sales Navigator lead and account search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
+          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
         },
         {
           "name": "filters-json",
@@ -5515,13 +5515,14 @@
         "company",
         "fields"
       ],
-      "description": "Set or remove your Team's own fields for one company, merged by key: set once for every Lead who works there and read in a Sequence as {{company.extra.<key>}}. Keys left out stay. At most 100 keys and 32 KiB once merged.",
+      "description": "Set or remove your Team's own fields for one company, merged by key: set once for every Lead who works there and read in a Sequence as {{company.extra.<key>}}. Keys left out stay. At most 100 keys and 32 KiB once merged. --file sets many companies from a CSV (header company_id, then one column per key; an empty cell leaves that key): one request per company, in file order; it stops at the first refusal, and the companies before it are set.",
       "usageOnly": false,
       "args": [
         {
           "name": "id",
           "type": "positional",
-          "description": "LinkedIn's numeric company id, for example 1234567."
+          "description": "LinkedIn's numeric company id, for example 1234567. Not with --file.",
+          "required": false
         },
         {
           "name": "set",
@@ -5532,6 +5533,12 @@
           "name": "unset",
           "type": "string",
           "description": "A key to remove, repeatable or a comma list."
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "A CSV of many companies: a path, or - for stdin. Header company_id, then one column per key. Not with an id, --set or --unset."
         }
       ],
       "globals": [
@@ -5549,7 +5556,8 @@
       ],
       "examples": [
         "curviate company fields 1234567 --set tier=A --set owner=\"Ana Lopez\"",
-        "curviate company fields 1234567 --unset owner"
+        "curviate company fields 1234567 --unset owner",
+        "curviate company fields --file companies.csv"
       ],
       "requires": [],
       "risk": "write",
@@ -7683,7 +7691,7 @@
         "email",
         "send"
       ],
-      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again.",
+      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. --cc and --bcc (at most 20 addresses together) and --attach (files, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
       "usageOnly": false,
       "args": [
         {
@@ -7710,6 +7718,21 @@
           "name": "mailbox",
           "type": "string",
           "description": "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes."
+        },
+        {
+          "name": "cc",
+          "type": "string",
+          "description": "Cc addresses, repeatable or a comma list; every recipient sees them."
+        },
+        {
+          "name": "bcc",
+          "type": "string",
+          "description": "Bcc addresses, repeatable or a comma list; no other recipient sees them."
+        },
+        {
+          "name": "attach",
+          "type": "string",
+          "description": "A file to send, repeatable: at most 10, 20 MiB in all."
         }
       ],
       "globals": [
@@ -7740,7 +7763,10 @@
       },
       "errors": {
         "EMAIL_UNAVAILABLE": "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
-        "MAILBOX_STATE_CONFLICT": "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on."
+        "MAILBOX_STATE_CONFLICT": "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on.",
+        "DO_NOT_CONTACT": "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
+        "PLATFORM_ERROR": "the provider did not take the email: nothing was sent (exit 7 when a retry may work). With an unknown outcome it may have been sent: exit 1, do not send it again.",
+        "UNSUPPORTED_MEDIA_TYPE": "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent."
       },
       "seeAlso": [
         "curviate unibox conversation get",
@@ -9573,6 +9599,190 @@
         "curviate billing quote",
         "curviate tier"
       ]
+    },
+    {
+      "path": [
+        "billing",
+        "seats"
+      ],
+      "description": "Buy seats inside the spending cap, or remove one at the end of the period. Cancelling the subscription is the dashboard's.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "billing",
+        "seats",
+        "add"
+      ],
+      "description": "Buy seats now, inside your Team's spending cap: each seat costs the price of the step it falls in (`curviate billing quote`); a monthly plan prorates on the next invoice, a yearly plan charges today. This charges money: it asks first at a terminal; elsewhere pass --yes. An add past the spending cap is refused (SPENDING_CAP_REACHED) and buys nothing; from 80% of the cap the answer carries a SPENDING_CAP_NEAR notice. Only an Owner raises the cap, in the dashboard. Owners only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "qty",
+          "type": "positional",
+          "description": "How many seats to buy, 1 to 50."
+        },
+        {
+          "name": "yes",
+          "type": "boolean",
+          "description": "Confirm without a prompt (needed when no terminal can ask)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate billing seats add 2",
+        "curviate billing seats add 1 --yes --json"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The subscription's seat count, and the bill.",
+        "visible_to": "Your Team's Owners (the bill, the change log).",
+        "budget_rows": [],
+        "retry": "Never blind: every call buys the seats it asks for. After a timeout, read `curviate account seats` first.",
+        "undo": "`curviate billing seats remove <seat_id>`, at the end of the period."
+      },
+      "errors": {
+        "SPENDING_CAP_REACHED": "the add would pass your Team's spending cap; nothing was bought. An Owner raises the cap in Settings, Billing.",
+        "INSUFFICIENT_ROLE": "only an Owner buys seats."
+      },
+      "seeAlso": [
+        "curviate billing quote",
+        "curviate billing cap",
+        "curviate account seats"
+      ]
+    },
+    {
+      "path": [
+        "billing",
+        "seats",
+        "remove"
+      ],
+      "description": "Remove one seat at the end of the current period, never checked against the spending cap. Asks first at a terminal; elsewhere pass --yes. Your Team's last paid seat is refused (CANCEL_IN_DASHBOARD): removing it cancels the subscription, which an Owner does in the dashboard. Owners only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "seatId",
+          "type": "positional",
+          "description": "The seat (seat_...), from `curviate account seats`."
+        },
+        {
+          "name": "yes",
+          "type": "boolean",
+          "description": "Confirm without a prompt (needed when no terminal can ask)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate billing seats remove seat_YOUR_SEAT_ID"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The seat ends at the period end; the renewal bills one seat fewer.",
+        "visible_to": "Your Team's Owners; the Account on the seat disconnects when it ends.",
+        "budget_rows": [],
+        "retry": "Safe: a seat already scheduled answers with its date.",
+        "undo": "Keep the seat in the dashboard before the period ends."
+      },
+      "errors": {
+        "CANCEL_IN_DASHBOARD": "the last paid seat: an Owner cancels in the dashboard.",
+        "INSUFFICIENT_ROLE": "only an Owner removes seats."
+      },
+      "seeAlso": [
+        "curviate account seats",
+        "curviate billing changes"
+      ]
+    },
+    {
+      "path": [
+        "billing",
+        "period"
+      ],
+      "description": "Your billing period: switch monthly to yearly.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "billing",
+        "period",
+        "set"
+      ],
+      "description": "Switch a monthly subscription to yearly billing at its next renewal, for the same seats at the yearly price. Nothing is charged now; the renewal bills the full year. There is no switch back. Asks first at a terminal; elsewhere pass --yes. Owners only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "to",
+          "type": "positional",
+          "description": "annual (the one switch)."
+        },
+        {
+          "name": "yes",
+          "type": "boolean",
+          "description": "Confirm without a prompt (needed when no terminal can ask)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate billing period set annual"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The billing period, from the next renewal.",
+        "visible_to": "Your Team's Owners.",
+        "budget_rows": [],
+        "retry": "Safe: a second call while the switch is pending changes nothing.",
+        "undo": "None: there is no switch back to monthly."
+      },
+      "errors": {
+        "INVALID_REQUEST": "already billed yearly.",
+        "INSUFFICIENT_ROLE": "only an Owner switches the period."
+      }
     },
     {
       "path": [

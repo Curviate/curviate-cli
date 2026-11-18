@@ -14,9 +14,17 @@ import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readab
 import { intFlag } from "../lib/int-flag.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import { print, table } from "../lib/table.js";
+import { AttachError, readAttachment, toAttachmentPayload } from "../lib/attach.js";
+
+/** An email's files: at most 10, 20 MiB in all, refused here before anything is sent. */
+const EMAIL_MAX_FILES = 10;
+const EMAIL_MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 type UniboxFlags = RootFlags & {
   conversationId?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
+  attach?: string | string[];
   thread?: string;
   subject?: string;
   mailbox?: string;
@@ -159,10 +167,36 @@ async function runEmailSend(c: Curviate, f: UniboxFlags): Promise<void> {
   if ((f.thread === undefined) === (f.subject === undefined)) usage("pass --thread <thread_id> to reply in a thread, or --subject <subject> to start a new one (not both).");
   if (f.mailbox !== undefined && f.thread !== undefined) usage("--mailbox goes with a new thread (--subject): a reply goes from its thread's Mailbox.");
   const body: Row = { text: f.text, ...(f.thread !== undefined ? { thread_id: f.thread } : { subject: f.subject }), ...(f.mailbox !== undefined ? { mailbox_id: f.mailbox } : {}) };
-  if (f.preview) return preview("unibox.sendEmail", { conversation_id: id }, body);
+  const cc = f.cc === undefined ? [] : listFlag("cc", f.cc);
+  const bcc = f.bcc === undefined ? [] : listFlag("bcc", f.bcc);
+  if (cc.length + bcc.length > 20) usage("--cc and --bcc take at most 20 addresses together.");
+  if (cc.length) body["cc"] = cc;
+  if (bcc.length) body["bcc"] = bcc;
+  const paths = f.attach === undefined ? [] : ([] as string[]).concat(f.attach);
+  if (paths.length > EMAIL_MAX_FILES) usage(`--attach takes at most ${EMAIL_MAX_FILES} files.`);
+  const files: Array<{ path: string; buf: Buffer }> = [];
+  for (const p of paths) {
+    try {
+      files.push({ path: p, buf: await readAttachment(p) });
+    } catch (err) {
+      if (err instanceof AttachError) usage(err.message);
+      throw err;
+    }
+  }
+  const total = files.reduce((n, x) => n + x.buf.length, 0);
+  if (total > EMAIL_MAX_FILE_BYTES) usage(`--attach: the files total ${total} bytes, over 20 MiB; nothing was sent. A link usually lands better than a file.`);
+  if (files.length) body["attachments"] = files.map((x) => { const a = toAttachmentPayload(x.path, x.buf); return { filename: a.filename, content_type: a.content_type, content: a.content }; });
+  if (f.preview) return void print(JSON.stringify(buildPreviewOutput({ method: "unibox.sendEmail", args: { conversation_id: id }, body: { ...body, attachments: undefined }, attachments: files.map((x) => ({ name: x.path.split("/").pop()!, buffer: x.buf })) })));
   try {
-    renderSuccess(await c.unibox.sendEmail(id, body as never), outputOpts(f), process);
+    const sent = (await c.unibox.sendEmail(id, body as never)) as unknown as Row;
+    for (const w of (sent["warnings"] as Row[] | undefined) ?? []) {
+      process.stderr.write(`warning: ${String(w["code"])}: ${((w["addresses"] as string[] | undefined) ?? []).join(", ")} got nothing; everyone else did.\n`);
+    }
+    renderSuccess(sent, outputOpts(f), process);
   } catch (err) {
+    if ((err as { outcomeUnknown?: boolean }).outcomeUnknown === true) {
+      process.stderr.write(`The outcome is unknown: the email may have been sent, and it is kept in the conversation as sent. Do not send it again; read \`curviate unibox conversation timeline ${id} --channel email\`.\n`);
+    }
     await fail(err, f);
   }
 }
@@ -461,7 +495,9 @@ const emailSendCmd = defineCommand({
     description:
       "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). " +
       "It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. " +
-      "Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again.",
+      "--cc and --bcc (at most 20 addresses together) and --attach (files, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. " +
+      "A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. " +
+      "Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
     risk: "write",
     rules: {
       changes: "An email is sent to the Lead now; their open Enrollments on this Account end as on a reply.",
@@ -473,6 +509,9 @@ const emailSendCmd = defineCommand({
     errors: {
       EMAIL_UNAVAILABLE: "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
       MAILBOX_STATE_CONFLICT: "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on.",
+      DO_NOT_CONTACT: "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
+      PLATFORM_ERROR: "the provider did not take the email: nothing was sent (exit 7 when a retry may work). With an unknown outcome it may have been sent: exit 1, do not send it again.",
+      UNSUPPORTED_MEDIA_TYPE: "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent.",
     },
     seeAlso: ["curviate unibox conversation get", "curviate unibox conversation timeline"],
     examples: [
@@ -487,6 +526,9 @@ const emailSendCmd = defineCommand({
     thread: { type: "string" as const, description: "Reply in this thread (thread_id)." },
     subject: { type: "string" as const, description: "Start a new thread with this subject." },
     mailbox: { type: "string" as const, description: "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes." },
+    cc: { type: "string" as const, description: "Cc addresses, repeatable or a comma list; every recipient sees them." },
+    bcc: { type: "string" as const, description: "Bcc addresses, repeatable or a comma list; no other recipient sees them." },
+    attach: { type: "string" as const, description: "A file to send, repeatable: at most 10, 20 MiB in all." },
   },
   run: online(runEmailSend),
 });

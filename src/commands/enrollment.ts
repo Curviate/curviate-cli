@@ -285,7 +285,8 @@ const FILTER_ARGS = {
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out.",
+    description: "List Enrollments, newest first, filtered by Campaign, Lead, status, current Step, or how a Step ended. Each counts once per Lead, Campaign and Account. A pending Enrollment waiting in its Campaign's pool has no account_id (null) until an Account takes it; --accounts leaves such Enrollments out. " +
+      "waiting.kind says what it waits for: wait, event, queue, budget, account_unavailable, campaign_paused, halt, kill_switch, paused_by_user, no_overlap, and for email no_mailbox, mailbox_cap, email_unavailable, field_missing or out_of_office.",
     risk: "read",
     output: ["Each reason code comes with its sentence beside it (`skip_reason` and `skip_message`, `finish_reason` and `finish_message`)."],
     examples: [

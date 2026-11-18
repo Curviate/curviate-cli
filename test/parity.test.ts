@@ -348,6 +348,9 @@ const PARITY_MANIFEST: Record<string, string> = {
   "billing invoices":     "billing.invoices.list",
   "billing invoices pdf": "billing.invoices.pdf",
   "billing price move":   "billing.moveToCurrentPrice",
+  "billing seats add":    "accounts.addSeats",
+  "billing seats remove": "accounts.cancelSeat",
+  "billing period set":   "billing.switchPeriod",
 
   // company records (root; `company get` is the same SDK name as `core company`) and signals (10)
   "company fields":       "companies.update",
@@ -410,16 +413,13 @@ const PARITY_MANIFEST: Record<string, string> = {
  * doc comment. Each entry here must be a real, currently-uncovered SDK
  * method (checked below) — this is a documented backlog, not a loophole.
  */
-// Seat add/cancel/revert are REST + SDK only by product ruling: no CLI
-// command, ever. A deliberate gap rather than a backlog item.
+// Seat add and remove and the period switch have CLI commands since billing/008 and billing/009's API-first tables
+// (`billing seats add|remove`, `billing period set`), which superseded the older REST + SDK only ruling. Keeping a seat
+// whose removal is scheduled stays the dashboard's: no CLI command.
 const KNOWN_GAP_METHODS: readonly string[] = [
   // The deprecated SDK alias of `enrollments.events` (until 2027-01-19); `enrollment signal` sends to events.
   "enrollments.signal",
-  "accounts.addSeats",
-  "accounts.cancelSeat",
   "accounts.revertSeatCancellation",
-  // Moves the plan to yearly billing (money): the CLI command waits for its own billing ticket with qa.
-  "billing.switchPeriod",
 ];
 
 // ---------------------------------------------------------------------------

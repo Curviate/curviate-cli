@@ -721,7 +721,7 @@ curviate core inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | Unexpected error |
+| 1 | Unexpected error; also an email whose outcome is unknown (it may have been sent: never send it again) |
 | 2 | Usage / argument error |
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |

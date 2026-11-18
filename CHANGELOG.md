@@ -24,6 +24,19 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 - **`unibox email send <conversation_id> <text> (--thread <thread_id> | --subject <subject> [--mailbox <mbx_>])`**: one plain-text email to the Lead. One request; a retry after a timeout can send twice. `EMAIL_UNAVAILABLE` exits 2 and names the reason.
 - **`unibox referral search <message_id> [--name]`** and **`unibox referral confirm <message_id> (--provider-id | --linkedin-url)`** for a reply labelled Referral. `NOT_A_REFERRAL` exits 2.
 
+### Email from a conversation: Cc, Bcc, files
+
+- **`unibox email send --cc --bcc --attach <file>`**: at most 20 addresses in Cc and Bcc together; files at most 10, 20 MiB in all, refused before anything is sent. A `recipients_refused` warning (the Cc or Bcc addresses that got nothing) is printed on stderr.
+- An email whose outcome is unknown (the provider stopped answering after it had the whole email) exits **1, never 7**, and says not to send it again.
+
+### Billing (seats and the period)
+
+- **`billing seats add <qty>`** (inside the spending cap: `SPENDING_CAP_REACHED` exits 5; `SPENDING_CAP_NEAR` rides the answer), **`billing seats remove <seat_id>`** (at the period end; the last paid seat is `CANCEL_IN_DASHBOARD`, exit 5) and **`billing period set annual`**. Each asks at a terminal; elsewhere it needs `--yes`, or nothing is sent. Cancelling the subscription stays the dashboard's.
+
+### Companies
+
+- **`company fields --file <csv>`**: header `company_id`, then one column per field key; one request per company, in file order, stopping at the first refusal.
+
 ### Mailboxes and Campaigns
 
 - **`mailbox update --warm-up on --days 10|14|21|28`** and **`--warm-up off`**: Mailbox warm-up; `mailbox get` shows `warm_up` with its state and day.
