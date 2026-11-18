@@ -66,8 +66,18 @@ describe("pass 3: the request each command sends", () => {
     [["signal", "rules", "disable", "sgr_1"], { call: "PATCH /v1/signals/rules/sgr_1", query: {}, body: { enabled: false } }],
     [["signal", "rules", "create", "--name", "Warm", "--kind", "post_engaged.comment", "--enroll", "mot_1", "--act-on-last-7-days"], { call: "POST /v1/signals/rules", query: {}, body: { name: "Warm", kinds: ["post_engaged.comment"], outcomes: [{ type: "enroll", campaign_id: "mot_1" }], act_on_last_7_days: true } }],
     [["analytics", "attention", "--campaign", "mot_1"], { call: "GET /v1/analytics/email/attention", query: { campaign_id: "mot_1" }, body: undefined }],
-    [["unibox", "conversation", "cnv_1"], { call: "GET /v1/unibox/conversations/cnv_1", query: {}, body: undefined }],
-    [["unibox", "timeline", "cnv_1", "--channel", "email"], { call: "GET /v1/unibox/conversations/cnv_1/messages", query: { channel: "email" }, body: undefined }],
+    [["unibox", "conversation", "get", "cnv_1"], { call: "GET /v1/unibox/conversations/cnv_1", query: {}, body: undefined }],
+    [["unibox", "conversation", "timeline", "cnv_1", "--channel", "email"], { call: "GET /v1/unibox/conversations/cnv_1/messages", query: { channel: "email" }, body: undefined }],
+    [["unibox", "conversation", "mark", "cnv_1", "--unread"], { call: "PATCH /v1/unibox/conversations/cnv_1", query: {}, body: { read: false } }],
+    [["unibox", "email", "send", "cnv_1", "Thanks", "--thread", "thr_1"], { call: "POST /v1/unibox/conversations/cnv_1/emails", query: {}, body: { text: "Thanks", thread_id: "thr_1" } }],
+    [["unibox", "email", "send", "cnv_1", "Hello", "--subject", "Next steps", "--mailbox", "mbx_1"], { call: "POST /v1/unibox/conversations/cnv_1/emails", query: {}, body: { text: "Hello", subject: "Next steps", mailbox_id: "mbx_1" } }],
+    [["unibox", "referral", "search", "msg_1", "--name", "Jane Doe"], { call: "POST /v1/unibox/messages/msg_1/referral/search", query: {}, body: { name: "Jane Doe" } }],
+    [["unibox", "referral", "confirm", "msg_1", "--provider-id", "ACo1"], { call: "POST /v1/unibox/messages/msg_1/referral/confirm", query: {}, body: { provider_id: "ACo1" } }],
+    [["mailbox", "update", "mbx_1", "--warm-up", "on", "--days", "14"], { call: "PATCH /v1/mailboxes/mbx_1", query: {}, body: { warm_up: { enabled: true, days: 14 } } }],
+    [["campaign", "update", "mot_1", "--one-lead-per-company"], { call: "PATCH /v1/campaigns/mot_1", query: {}, body: { settings: { one_lead_per_company: true } } }],
+    [["campaign", "update", "mot_1", "--no-one-lead-per-company"], { call: "PATCH /v1/campaigns/mot_1", query: {}, body: { settings: { one_lead_per_company: false } } }],
+    [["mailbox", "update", "mbx_1", "--warm-up", "off"], { call: "PATCH /v1/mailboxes/mbx_1", query: {}, body: { warm_up: { enabled: false } } }],
+    [["analytics", "email", "--include", "mailboxes,domains", "--forecast"], { call: "GET /v1/analytics/email", query: { include: "mailboxes,domains,forecast" }, body: undefined }],
     [["do-not-contact", "add", "--company", "https://www.linkedin.com/company/1234567/"], { call: "POST /v1/do-not-contact", query: {}, body: { company_linkedin_url: "https://www.linkedin.com/company/1234567/" } }],
     [["campaign", "attachment", "get", "cat_1"], { call: "GET /v1/campaigns/attachments/cat_1", query: {}, body: undefined }],
     [["webhook", "create", "--source", "signal", "--events", "signal.matched", "--request-url", "https://example.com/hooks"], { call: "POST /v1/webhooks", query: {}, body: { source: "signal", events: ["signal.matched"], request_url: "https://example.com/hooks", enabled: true } }],
@@ -81,7 +91,14 @@ describe("pass 3: the request each command sends", () => {
     [["signal", "watch", "set", "acc_1"]], // no state
     [["signal", "actions", "--outcome", "done"]],
     [["signal", "rules", "update", "sgr_1", "--act-on-last-7-days"]], // create only
-    [["unibox", "timeline", "cnv_1", "--channel", "sms"]],
+    [["unibox", "conversation", "timeline", "cnv_1", "--channel", "sms"]],
+    [["unibox", "email", "send", "cnv_1", "Hi"]], // neither --thread nor --subject
+    [["unibox", "email", "send", "cnv_1", "Hi", "--thread", "thr_1", "--mailbox", "mbx_1"]],
+    [["unibox", "conversation", "mark", "cnv_1"]],
+    [["unibox", "referral", "confirm", "msg_1"]],
+    [["mailbox", "update", "mbx_1", "--warm-up", "on"]], // no --days
+    [["mailbox", "update", "mbx_1", "--warm-up", "on", "--days", "12"]],
+    [["analytics", "email", "--include", "seeds"]],
     [["do-not-contact", "add", "--company", "https://www.linkedin.com/company/1/", "--lead", "con_1"]], // two subjects
     [["campaign", "attachment", "upload"]], // no file
   ])("%j exits 2 with no request", async (args) => {

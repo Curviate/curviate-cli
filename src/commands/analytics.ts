@@ -48,6 +48,7 @@ export type AnalyticsFlags = RootFlags & {
   job?: boolean;
   accountId?: string;
   "account-id"?: string;
+  forecast?: boolean;
 };
 type Row = Record<string, unknown>;
 
@@ -375,7 +376,12 @@ const eventsCommand = defineCommand({
 
 async function runEmail(c: Curviate, f: AnalyticsFlags): Promise<void> {
   const q: Row = { ...windowParams(f), ...filterParams(f, ["campaigns", "accounts"]) };
-  if (f.include !== undefined) q["include"] = listFlag("include", f.include);
+  const include = f.include === undefined ? [] : listFlag("include", f.include);
+  const EMAIL_INCLUDES = ["weeks", "breakdowns", "mailboxes", "domains", "forecast"];
+  const bad = include.find((i) => !EMAIL_INCLUDES.includes(i));
+  if (bad !== undefined) usage(`--include takes ${EMAIL_INCLUDES.join(", ")} (got ${bad}).`);
+  if (f.forecast && !include.includes("forecast")) include.push("forecast");
+  if (include.length) q["include"] = include;
   try {
     const body = (await c.analytics.email(q as never)) as unknown as Row;
     if (outputOpts(f).json) return renderSuccess(body, outputOpts(f), process);
@@ -383,6 +389,18 @@ async function runEmail(c: Curviate, f: AnalyticsFlags): Promise<void> {
     print(`sent ${String(body["sent"] ?? "-")} · reply ${rate(body["reply"], "replied", "first_emailed")} · open ${body["open"] == null ? "not tracked" : rate(body["open"], "opened", "tracked")} · bounce ${rate(body["bounce"], "bounced", "sent")} · opt-out ${rate(body["opt_out"], "opted_out", "first_emailed")}`);
     if (today) print(`today: ${String(today["sent"])} sent of a ${String(today["cap"])} daily cap`);
     if (body["tracking"] !== "set_up") print(`open tracking: ${String(body["tracking"])} (set it up on the Mailboxes for an open rate over every email)`);
+    for (const m of (body["mailboxes"] as Row[] | undefined) ?? []) print(`mailbox ${String(m["address"])}: ${String(m["state"])}, sent ${String(m["sent"] ?? 0)}, cap ${String(m["cap_lowered_to"] ?? m["daily_cap"])}`);
+    for (const d of (body["domains"] as Row[] | undefined) ?? []) {
+      const checks = (d["checks"] as Row | undefined) ?? {};
+      print(`domain ${String(d["name"])}: ${Object.entries(checks).map(([k, v]) => `${k} ${String(v)}`).join(", ")}`);
+    }
+    const breakdowns = body["breakdowns"] as Record<string, Row[]> | undefined;
+    if (breakdowns) for (const [by, rows] of Object.entries(breakdowns)) print(`by ${by}: ${rows.length} row${rows.length === 1 ? "" : "s"} (--json for the figures)`);
+    const forecast = body["forecast"] as Row | undefined;
+    if (forecast) {
+      if (forecast["status"] === "computing") print("forecast: computing; read again in a few minutes");
+      else for (const day of (forecast["daily"] as Row[] | undefined) ?? []) print(`forecast ${String(day["date"])}: ${String(day["emails_sent"])} emails`);
+    }
   } catch (err) {
     await fail(err, f);
   }
@@ -440,14 +458,15 @@ const emailCmd = defineCommand({
       "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
     ],
     seeAlso: ["curviate analytics get", "curviate mailbox list"],
-    examples: ["curviate analytics email --range 30d", "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json"],
+    examples: ["curviate analytics email --range 30d", "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json", "curviate analytics email --include mailboxes,domains --forecast"],
   },
   args: {
     ...readOnly(READ_SINGLE_FLAGS),
     campaigns: { type: "string" as const, description: "Only these Campaigns, comma list (mot_...)." },
     ...WINDOW_ARGS,
     accounts: FILTER_ARGS.accounts,
-    include: { type: "string" as const, description: "Sections to add: weeks (the reply rate by week of first email)." },
+    include: { type: "string" as const, description: "Sections to add, comma list: weeks (the reply rate by week of first email), breakdowns (by Campaign, step, variant, receiving provider, thread setting, Mailbox and Account), mailboxes, domains (their checks), forecast." },
+    forecast: { type: "boolean" as const, description: "Add the emails your Campaigns are expected to send each day from today (include=forecast): a simulation of their email steps, each Mailbox counting its daily cap." },
   },
   run: online(runEmail),
 });

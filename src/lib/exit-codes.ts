@@ -370,6 +370,8 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   LEAD_NOT_ENROLLABLE: 2,
   CHAT_NOT_ONE_TO_ONE: 2,
   REPLY_NOT_LABELLABLE: 2,
+  NOT_A_REFERRAL: 2,
+  EMAIL_UNAVAILABLE: 2,
   STEP_IN_FLIGHT: 7,
 
   // Voice clips: the file is empty, not audio, undecodable or outside 1 to 120 seconds; it never succeeds as sent.

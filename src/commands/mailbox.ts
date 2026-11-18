@@ -35,6 +35,8 @@ type Flags = RootFlags & {
   "signature-file"?: string;
   "display-name"?: string;
   "clear-display-name"?: boolean;
+  "warm-up"?: string;
+  days?: string;
   address?: string;
   connection?: string;
   "password-stdin"?: boolean;
@@ -109,7 +111,15 @@ async function runUpdate(c: Curviate, f: Flags): Promise<void> {
   if (f["display-name"] !== undefined && f["clear-display-name"]) usage("--display-name and --clear-display-name cannot be combined.");
   if (f["display-name"] !== undefined) body["display_name"] = f["display-name"];
   if (f["clear-display-name"]) body["display_name"] = null;
-  if (Object.keys(body).length === 0) usage("pass at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name.");
+  if (f["warm-up"] !== undefined || f.days !== undefined) {
+    const on = f["warm-up"] === "on" ? true : f["warm-up"] === "off" ? false : f["warm-up"] === undefined ? usage("--days goes with --warm-up on.") : usage("--warm-up takes on or off.");
+    if (on && f.days === undefined) usage("--warm-up on needs --days: 10, 14, 21 or 28.");
+    if (!on && f.days !== undefined) usage("--days goes with --warm-up on.");
+    const days = f.days === undefined ? undefined : intFlag("days", f.days);
+    if (days !== undefined && ![10, 14, 21, 28].includes(days)) usage("--days takes 10, 14, 21 or 28.");
+    body["warm_up"] = on ? { enabled: true, days } : { enabled: false };
+  }
+  if (Object.keys(body).length === 0) usage("pass at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name, --warm-up.");
   if (f.preview) return preview("mailboxes.update", { id }, body);
   try {
     renderSuccess(readableObject(await c.mailboxes.update(id, body as never)), outputOpts(f), process);
@@ -136,7 +146,7 @@ const SERVER_FLAGS = ["imap-host", "imap-port", "imap-security", "smtp-host", "s
 /** What to tell the person; the words the MCP tools carry for a Mailbox request. */
 export const MAILBOX_REQUEST_INSTRUCTION =
   "Ask your user to open this link in the browser where they're signed in to Curviate. It expires in 15 minutes. " +
-  "Never ask them for their email password in chat; to submit an app password yourself, pipe it to --password-stdin.";
+  "Never ask them for their email password, in chat or anywhere else: a password never passes through you. They enter it on the link's page.";
 
 async function runDiscover(c: Curviate, f: Flags): Promise<void> {
   const address = String(f.address ?? "");
@@ -157,7 +167,7 @@ async function readPassword(f: Flags): Promise<string | undefined> {
     stdinRequested: true,
     isTTY: process.stdin.isTTY ?? false,
     required: true,
-    failMessage: "--password-stdin read an empty password. Pipe the password in (printf '%s' \"$APP_PASSWORD\" | curviate mailbox ... --password-stdin), or leave the flag out and give the person the link.",
+    failMessage: "--password-stdin read an empty password; nothing was sent. Leave the flag out: the command prints a Connect request link, and the person enters the password on its page.",
     out: process,
   });
 }
@@ -266,11 +276,12 @@ const updateCmd = defineCommand({
     description:
       "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) " +
       "its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) " +
-      "and its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for). Flags you leave out stay as they are. " +
+      "its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for) " +
+      "and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. " +
       "A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
     risk: "write",
     rules: {
-      changes: "The Mailbox's link, daily cap, signature or From name, from the next email on. Open threads stay on it.",
+      changes: "The Mailbox's link, daily cap, signature, From name or warm-up, from the next email on. Open threads stay on it.",
       visible_to: "Your Team; the signature reaches recipients where a step uses {{mailbox.signature}}.",
       budget_rows: [],
       retry: "Safe: the same flags leave the same Mailbox.",
@@ -282,9 +293,9 @@ const updateCmd = defineCommand({
     examples: [
       "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for acc_YOUR_ACCOUNT_ID",
       "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for shared --daily-cap 40",
-      "curviate mailbox update mbx_YOUR_MAILBOX_ID --display-name \"Ana from Acme\"",
+      "curviate mailbox update mbx_YOUR_MAILBOX_ID --warm-up on --days 14",
     ],
-    requires: ["at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name."],
+    requires: ["at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name, --warm-up."],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -294,6 +305,8 @@ const updateCmd = defineCommand({
     "signature-file": { type: "string", stdinArg: true, description: "A plain-text file with the sign-off: a path, or - to read it from stdin. Up to 2,000 characters." },
     "display-name": { type: "string", description: "The name recipients see in From, one line, up to 100 characters." },
     "clear-display-name": { type: "boolean", description: "Clear the From name: the Mailbox sends with the name of the Account it sends for." },
+    "warm-up": { type: "string", description: "on (Recommended) or off: Mailbox warm-up." },
+    days: { type: "string", description: "With --warm-up on: how many days warm-up runs before the Mailbox can be ready, 10, 14, 21 or 28." },
   },
   run: online(runUpdate),
 });
@@ -388,7 +401,7 @@ const connectCmd = defineCommand({
     description:
       "Connect a new Mailbox: creates a Connect request and prints its link for the person, who finishes in their Curviate dashboard. " +
       "--connection google_sign_in (a Google Workspace whose administrator trusts Curviate) and microsoft_sign_in print the sign-in link and, where the provider needs one, the administrator link. " +
-      "google_app_password and imap_smtp can also take the password from you: pipe it to --password-stdin, Curviate checks it before answering, and the Mailbox is connected in this one call. " +
+      "A password never passes through an agent: give the person the link. A person at their own terminal may instead connect google_app_password or imap_smtp in one call with --password-stdin (read from standard input, never echoed); Curviate checks it before answering. " +
       "imap_smtp needs the six server flags (the settings from `curviate mailbox discover`, as the person confirmed them). One API call.",
     risk: "write",
     rules: {

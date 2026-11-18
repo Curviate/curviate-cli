@@ -17,6 +17,12 @@ import { print, table } from "../lib/table.js";
 
 type UniboxFlags = RootFlags & {
   conversationId?: string;
+  thread?: string;
+  subject?: string;
+  mailbox?: string;
+  name?: string;
+  "provider-id"?: string;
+  "linkedin-url"?: string;
   channel?: string;
   accountId?: string;
   chatId?: string;
@@ -133,9 +139,65 @@ const conversationId = (f: UniboxFlags, cmd: string): string => {
   return id.trim() !== "" ? id : usage(`the conversation id is missing: \`curviate unibox ${cmd} <conversation_id>\` (each chat of \`unibox list\` carries conversation_id).`);
 };
 
+/** `conversation mark <id> --read|--unread`: the LinkedIn chat on LinkedIn and the email in Curviate. */
+async function runConversationMark(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = conversationId(f, "conversation mark");
+  if ((f.read === undefined) === (f.unread === undefined)) usage("pass exactly one of --read or --unread.");
+  const body = { read: f.read ?? !f.unread };
+  if (f.preview) return preview("unibox.markConversation", { conversation_id: id }, body);
+  try {
+    renderSuccess(await c.unibox.markConversation(id, body), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+/** `email send <id> <text>`: one plain-text email to the conversation's Lead. One request, never retried. */
+async function runEmailSend(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = conversationId(f, "email send");
+  if (!f.text || f.text.trim() === "") usage("the email text is required: `curviate unibox email send <conversation_id> \"<text>\" (--thread <thread_id> | --subject <subject>)`.");
+  if ((f.thread === undefined) === (f.subject === undefined)) usage("pass --thread <thread_id> to reply in a thread, or --subject <subject> to start a new one (not both).");
+  if (f.mailbox !== undefined && f.thread !== undefined) usage("--mailbox goes with a new thread (--subject): a reply goes from its thread's Mailbox.");
+  const body: Row = { text: f.text, ...(f.thread !== undefined ? { thread_id: f.thread } : { subject: f.subject }), ...(f.mailbox !== undefined ? { mailbox_id: f.mailbox } : {}) };
+  if (f.preview) return preview("unibox.sendEmail", { conversation_id: id }, body);
+  try {
+    renderSuccess(await c.unibox.sendEmail(id, body as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const messageId = (f: UniboxFlags, cmd: string): string => {
+  const id = String(f.messageId ?? "");
+  return id.trim() !== "" ? id : usage(`the message id is missing: \`curviate unibox referral ${cmd} <message_id>\` (the reply labelled referral).`);
+};
+
+async function runReferralSearch(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = messageId(f, "search");
+  const body: Row = f.name === undefined ? {} : { name: f.name };
+  if (f.preview) return preview("unibox.referralSearch", { message_id: id }, body);
+  try {
+    renderSuccess(await c.unibox.referralSearch(id, body as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runReferralConfirm(c: Curviate, f: UniboxFlags): Promise<void> {
+  const id = messageId(f, "confirm");
+  if ((f["provider-id"] === undefined) === (f["linkedin-url"] === undefined)) usage("pass exactly one of --provider-id (from `unibox referral search`) or --linkedin-url.");
+  const body: Row = f["provider-id"] !== undefined ? { provider_id: f["provider-id"] } : { linkedin_url: f["linkedin-url"] };
+  if (f.preview) return preview("unibox.referralConfirm", { message_id: id }, body);
+  try {
+    renderSuccess(await c.unibox.referralConfirm(id, body as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 /** `conversation <id>`: one person on one account across LinkedIn and email. */
 async function runConversation(c: Curviate, f: UniboxFlags): Promise<void> {
-  const id = conversationId(f, "conversation");
+  const id = conversationId(f, "conversation get");
   try {
     renderSuccess(await c.unibox.getConversation(id), outputOpts(f), process);
   } catch (err) {
@@ -145,7 +207,7 @@ async function runConversation(c: Curviate, f: UniboxFlags): Promise<void> {
 
 /** `timeline <id>`: the conversation's LinkedIn messages, emails and Campaign events, newest first. */
 async function runTimeline(c: Curviate, f: UniboxFlags): Promise<void> {
-  const id = conversationId(f, "timeline");
+  const id = conversationId(f, "conversation timeline");
   try {
     const q: Row = {};
     if (f.channel !== undefined) {
@@ -326,29 +388,29 @@ const getCmd = defineCommand({
   run: online(runGet),
 });
 
-const conversationCmd = defineCommand({
+const conversationGetCmd = defineCommand({
   meta: {
-    name: "conversation",
+    name: "get",
     description:
-      "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels and email state. " +
-      "From what Curviate has stored: no LinkedIn call, no mailbox read. Its messages: `curviate unibox timeline`.",
+      "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels, marks and email state " +
+      "(whether email is available, why not, and from which Mailboxes). From what Curviate has stored: no LinkedIn call, no mailbox read.",
     risk: "read",
-    seeAlso: ["curviate unibox timeline", "curviate unibox list"],
-    examples: ["curviate unibox conversation cnv_YOUR_CONVERSATION_ID"],
+    seeAlso: ["curviate unibox conversation timeline", "curviate unibox email send", "curviate unibox list"],
+    examples: ["curviate unibox conversation get cnv_YOUR_CONVERSATION_ID"],
   },
   args: { ...readOnly(WRITE_SINGLE_FLAGS), conversationId: { type: "positional" as const, description: "Conversation id (cnv_...)." } },
   run: online(runConversation),
 });
 
-const timelineCmd = defineCommand({
+const conversationTimelineCmd = defineCommand({
   meta: {
     name: "timeline",
     description:
       "A conversation's timeline, newest first: its LinkedIn messages, its emails, and Campaign events (a bounce, an unsubscribe, the end of an Enrollment) in one list. " +
       "A page holds --limit LinkedIn messages and every email and event since the oldest of them; --channel email serves every email at once. From what Curviate has stored: no LinkedIn call, no mailbox read.",
     risk: "read",
-    seeAlso: ["curviate unibox conversation", "curviate unibox messages"],
-    examples: ["curviate unibox timeline cnv_YOUR_CONVERSATION_ID", "curviate unibox timeline cnv_YOUR_CONVERSATION_ID --channel email --json"],
+    seeAlso: ["curviate unibox conversation get", "curviate unibox messages"],
+    examples: ["curviate unibox conversation timeline cnv_YOUR_CONVERSATION_ID", "curviate unibox conversation timeline cnv_YOUR_CONVERSATION_ID --channel email --json"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
@@ -357,6 +419,142 @@ const timelineCmd = defineCommand({
     channel: { type: "string" as const, description: "Only linkedin or email." },
   },
   run: online(runTimeline),
+});
+
+const conversationMarkCmd = defineCommand({
+  meta: {
+    name: "mark",
+    description:
+      "Mark a conversation read or unread: its LinkedIn chat on LinkedIn, as `unibox mark` does, and its email in Curviate (the Mailbox itself is never changed). " +
+      "Mark it unread to hand it to a person or another AI. An email from them makes it unread again.",
+    risk: "write",
+    rules: {
+      changes: "The conversation's read state: the LinkedIn chat's on LinkedIn, the email's in Curviate.",
+      visible_to: "Everyone who reads this Account's chats; on LinkedIn, the Account's own person.",
+      budget_rows: [],
+      retry: "Safe: the same state again.",
+      undo: "Run it again with the other flag.",
+    },
+    examples: ["curviate unibox conversation mark cnv_YOUR_CONVERSATION_ID --unread"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    conversationId: { type: "positional" as const, description: "Conversation id (cnv_...)." },
+    read: { type: "boolean" as const, description: "Mark it read." },
+    unread: { type: "boolean" as const, description: "Mark it unread." },
+  },
+  run: online(runConversationMark),
+});
+
+const conversationCmd = defineCommand({
+  meta: { name: "conversation", description: "One person on one Account across LinkedIn and email: read it (get), its timeline, mark it read or unread." },
+  subCommands: { get: conversationGetCmd, timeline: conversationTimelineCmd, mark: conversationMarkCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(conversationCmd, ["curviate", "unibox", "conversation"]);
+  },
+});
+
+const emailSendCmd = defineCommand({
+  meta: {
+    name: "send",
+    description:
+      "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). " +
+      "It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. " +
+      "Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again.",
+    risk: "write",
+    rules: {
+      changes: "An email is sent to the Lead now; their open Enrollments on this Account end as on a reply.",
+      visible_to: "The Lead (the recipient), and everyone who reads this conversation.",
+      budget_rows: [],
+      retry: "Never blind: a retry after a timeout can send the email twice. Read `curviate unibox conversation timeline <id> --channel email` first.",
+      undo: "None: an email cannot be unsent.",
+    },
+    errors: {
+      EMAIL_UNAVAILABLE: "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
+      MAILBOX_STATE_CONFLICT: "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on.",
+    },
+    seeAlso: ["curviate unibox conversation get", "curviate unibox conversation timeline"],
+    examples: [
+      "curviate unibox email send cnv_YOUR_CONVERSATION_ID \"Thanks, Thursday works.\" --thread thr_YOUR_THREAD_ID",
+      "curviate unibox email send cnv_YOUR_CONVERSATION_ID \"Following up on our call.\" --subject \"Next steps\" --preview",
+    ],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    conversationId: { type: "positional" as const, description: "Conversation id (cnv_...)." },
+    text: { type: "positional" as const, description: "The email's text, plain text, 1 to 10,000 characters." },
+    thread: { type: "string" as const, description: "Reply in this thread (thread_id)." },
+    subject: { type: "string" as const, description: "Start a new thread with this subject." },
+    mailbox: { type: "string" as const, description: "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes." },
+  },
+  run: online(runEmailSend),
+});
+
+const emailCmd = defineCommand({
+  meta: { name: "email", description: "Email from a conversation: send one plain-text email to its Lead." },
+  subCommands: { send: emailSendCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(emailCmd, ["curviate", "unibox", "email"]);
+  },
+});
+
+const MESSAGE = { type: "positional" as const, description: "The reply labelled referral (message id)." };
+
+const referralSearchCmd = defineCommand({
+  meta: {
+    name: "search",
+    description:
+      "For a reply labelled Referral: one LinkedIn people search, as the conversation's Account, for the referred person (the name Curviate suggests from the reply, or --name). " +
+      "At most 10 candidates, each counted against the Account's search limit. A reply labelled otherwise is NOT_A_REFERRAL and nothing is searched.",
+    risk: "write",
+    rules: {
+      changes: "Nothing stored but the name on the label; the search spends the Account's search limit.",
+      visible_to: "Your Team. LinkedIn sees one search by the Account.",
+      budget_rows: ["search"],
+      retry: "Each call is a new search and spends the limit again.",
+      undo: "Nothing to undo.",
+    },
+    errors: { NOT_A_REFERRAL: "the message's label is not referral; nothing was searched." },
+    seeAlso: ["curviate unibox referral confirm", "curviate unibox label"],
+    examples: ["curviate unibox referral search YOUR_MESSAGE_ID", "curviate unibox referral search YOUR_MESSAGE_ID --name \"Jane Doe\""],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, messageId: MESSAGE, name: { type: "string" as const, description: "The name to search for, instead of the one Curviate suggests." } },
+  run: online(runReferralSearch),
+});
+
+const referralConfirmCmd = defineCommand({
+  meta: {
+    name: "confirm",
+    description: "For a reply labelled Referral: save the person you picked as a Lead (--provider-id from `referral search`, or --linkedin-url), or get the Lead you already hold. It never enrolls them.",
+    risk: "write",
+    rules: {
+      changes: "A new Lead, or none when you already hold the person.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Safe: a person you already hold answers with that Lead.",
+      undo: "`curviate lead delete <lead_id>`.",
+    },
+    errors: { NOT_A_REFERRAL: "the message's label is not referral; nothing was saved.", LEAD_LIMIT_REACHED: "a new Lead would pass your Team's Lead limit." },
+    examples: ["curviate unibox referral confirm YOUR_MESSAGE_ID --provider-id ACoAAB1234567"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    messageId: MESSAGE,
+    "provider-id": { type: "string" as const, description: "A candidate's provider_id, from `unibox referral search`." },
+    "linkedin-url": { type: "string" as const, description: "Or the person's LinkedIn profile URL." },
+  },
+  run: online(runReferralConfirm),
+});
+
+const referralCmd = defineCommand({
+  meta: { name: "referral", description: "A reply labelled Referral: find the referred person on LinkedIn, then save them as a Lead." },
+  subCommands: { search: referralSearchCmd, confirm: referralConfirmCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(referralCmd, ["curviate", "unibox", "referral"]);
+  },
 });
 
 const unreadCmd = defineCommand({
@@ -565,7 +763,8 @@ export const uniboxCommand = defineCommand({
     unread: unreadCmd,
     messages: messagesCmd,
     conversation: conversationCmd,
-    timeline: timelineCmd,
+    email: emailCmd,
+    referral: referralCmd,
     reply: replyCmd,
     mark: markCmd,
     tag: tagCmd,
