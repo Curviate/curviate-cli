@@ -5641,7 +5641,7 @@
         "A table of Signal, kind, Account, person and when it happened; --json (or piped) prints the API page."
       ],
       "seeAlso": [
-        "curviate signal watch",
+        "curviate signal watch list",
         "curviate signal rules list"
       ]
     },
@@ -5768,7 +5768,7 @@
         "signal",
         "watch"
       ],
-      "description": "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call. `curviate signal watch set <account_id> on|off` switches one.",
+      "description": "Each Account's Signal watch: `list` reads every Account's state (bare `signal watch` does too), `set <account_id> on|off` switches one.",
       "usageOnly": true,
       "args": [],
       "globals": [
@@ -5783,12 +5783,38 @@
         "verbose",
         "beta"
       ],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "signal",
+        "watch",
+        "list"
+      ],
+      "description": "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call.",
+      "usageOnly": false,
+      "args": [],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
       "examples": [
-        "curviate signal watch",
-        "curviate signal watch set acc_YOUR_ACCOUNT_ID on"
+        "curviate signal watch list"
       ],
       "requires": [],
-      "risk": "read"
+      "risk": "read",
+      "seeAlso": [
+        "curviate signal watch set"
+      ]
     },
     {
       "path": [
@@ -5840,7 +5866,7 @@
         "ACCOUNT_NOT_FOUND": "the Account is not one you may operate, or not this Team's."
       },
       "seeAlso": [
-        "curviate signal watch",
+        "curviate signal watch list",
         "curviate signal list"
       ]
     },

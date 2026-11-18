@@ -24,7 +24,7 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 ### Signals
 
-- **`signal watch set <account_id> on|off`** switches one Account's Signal watch (Owners and Managers).
+- **`signal watch set <account_id> on|off`** switches one Account's Signal watch (Owners and Managers); **`signal watch list`** reads every Account's state (a bare `signal watch` still does).
 - **`signal actions [--lead-id] [--rule-id] [--outcome]`**: what rules did.
 - **`signal rules enable|disable <rule_id>`**; **`signal rules create --enroll <mot_...>`** (enroll the person through the Account that caught the Signal) and **`--act-on-last-7-days`**.
 - **`webhook create --source signal`**: the eight `signal` events.

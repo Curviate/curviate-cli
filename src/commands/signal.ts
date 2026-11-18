@@ -197,7 +197,7 @@ const listCmd = defineCommand({
       "Filter by --kind, --account-id, --match (lead, connection, followed, unknown, anonymous), --listed and --since. No LinkedIn call.",
     risk: "read",
     output: ["A table of Signal, kind, Account, person and when it happened; --json (or piped) prints the API page."],
-    seeAlso: ["curviate signal watch", "curviate signal rules list"],
+    seeAlso: ["curviate signal watch list", "curviate signal rules list"],
     examples: ["curviate signal list", "curviate signal list --kind profile_viewed --match lead", "curviate signal list --since 2026-11-17T00:00:00Z --all"],
   },
   args: {
@@ -260,7 +260,7 @@ const watchSetCmd = defineCommand({
       undo: "Run it again with the other value.",
     },
     errors: { INSUFFICIENT_ROLE: "only an Owner or a Manager switches the Signal watch.", ACCOUNT_NOT_FOUND: "the Account is not one you may operate, or not this Team's." },
-    seeAlso: ["curviate signal watch", "curviate signal list"],
+    seeAlso: ["curviate signal watch list", "curviate signal list"],
     examples: ["curviate signal watch set acc_YOUR_ACCOUNT_ID on", "curviate signal watch set acc_YOUR_ACCOUNT_ID off"],
   },
   args: {
@@ -279,18 +279,26 @@ const watchSetCmd = defineCommand({
   },
 });
 
+const watchListCmd = defineCommand({
+  meta: {
+    name: "list",
+    description: "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call.",
+    risk: "read",
+    seeAlso: ["curviate signal watch set"],
+    examples: ["curviate signal watch list"],
+  },
+  args: readOnly(READ_SINGLE_FLAGS),
+  run: online(runWatch),
+});
+
 const watchCmd = defineCommand({
   meta: {
     name: "watch",
-    description:
-      "For each Account you may operate: whether its Signal watch is on, its state (watching, paused with a reason, or off, the default), its last visit and today's visits and reads. No LinkedIn call. " +
-      "`curviate signal watch set <account_id> on|off` switches one.",
-    risk: "read",
-    examples: ["curviate signal watch", "curviate signal watch set acc_YOUR_ACCOUNT_ID on"],
+    description: "Each Account's Signal watch: `list` reads every Account's state (bare `signal watch` does too), `set <account_id> on|off` switches one.",
   },
   args: readOnly(READ_SINGLE_FLAGS),
-  subCommands: { set: watchSetCmd },
-  run: online(runWatch),
+  subCommands: { list: watchListCmd, set: watchSetCmd },
+  run: online(runWatch), // bare `signal watch` keeps listing, as before the switch existed
 });
 
 const settingsCmd = defineCommand({

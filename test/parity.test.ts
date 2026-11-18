@@ -350,7 +350,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "signal list":          "signals.list",
   "signal get":           "signals.get",
   "signal kinds":         "signals.kinds",
-  "signal watch":         "signals.watch",
+  "signal watch list":    "signals.watch",
   "signal watch set":     "signals.setWatch",
   "signal actions":       "signals.actions",
   "signal settings":      "signals.updateSettings",

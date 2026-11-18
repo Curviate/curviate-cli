@@ -58,6 +58,7 @@ describe("pass 2: the request each command sends", () => {
 
 describe("pass 3: the request each command sends", () => {
   it.each([
+    [["signal", "watch", "list"], { call: "GET /v1/signals/watch", query: {}, body: undefined }],
     [["signal", "watch", "set", "acc_1", "on"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: true } }],
     [["signal", "watch", "set", "acc_1", "off"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: false } }],
     [["signal", "actions", "--outcome", "skipped", "--rule-id", "sgr_1"], { call: "GET /v1/signals/actions", query: { outcome: "skipped", rule_id: "sgr_1" }, body: undefined }],
