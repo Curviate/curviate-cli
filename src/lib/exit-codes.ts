@@ -393,9 +393,12 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
  * `httpStatus` and keeps exit 1.
  */
 export function getExitCode(
-  error: ErrorCode | { code: ErrorCode; httpStatus?: number; retryLikelyToSucceed?: boolean },
+  error: ErrorCode | { code: ErrorCode; httpStatus?: number; retryLikelyToSucceed?: boolean; outcomeUnknown?: boolean },
 ): number {
   if (typeof error === "string") return EXIT_CODE_MAP[error] ?? 1;
+  // An outcome Curviate cannot know (the email may have been sent) is never transient: exit 1, never 7, so no
+  // retry loop sends it twice.
+  if (error.outcomeUnknown === true) return 1;
   if (error.code === "INTERNAL" && error.httpStatus === undefined && error.retryLikelyToSucceed === true) return 7;
   return EXIT_CODE_MAP[error.code] ?? 1;
 }

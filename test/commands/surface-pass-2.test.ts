@@ -143,3 +143,38 @@ describe("pass 5: company fields from a file", () => {
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });
 });
+
+describe("pass 5: an email from a conversation with Cc, Bcc and files", () => {
+  const emailArgs = ["unibox", "email", "send", "cnv_1", "Hi", "--thread", "thr_1"];
+
+  it("--cc, --bcc and --attach ride in the one request; a recipients_refused warning is printed", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "eml5-"));
+    const file = join(dir, "pricing.pdf");
+    writeFileSync(file, "%PDF-1.7");
+    const r = await wire([...emailArgs, "--cc", "a@x.test,b@x.test", "--bcc", "c@x.test", "--attach", file], () => ({ status: 201, body: { id: "m_1", warnings: [{ code: "recipients_refused", addresses: ["b@x.test"], message: "x" }] } }));
+    expect(r.status).toBe(0);
+    expect(lines(r.sent)).toEqual([{ call: "POST /v1/unibox/conversations/cnv_1/emails", query: {}, body: {
+      text: "Hi", thread_id: "thr_1", cc: ["a@x.test", "b@x.test"], bcc: ["c@x.test"],
+      attachments: [{ filename: "pricing.pdf", content_type: "application/pdf", content: Buffer.from("%PDF-1.7").toString("base64") }],
+    } }]);
+    expect(r.stderr).toContain("warning: recipients_refused: b@x.test got nothing");
+  });
+
+  it.each([
+    ["an unknown outcome: exit 1, never 7, and the one request only", { reason: "outcome_unknown" }, 1, "Do not send it again"],
+    ["a provider refusal with no unknown outcome: exit 7 (control)", {}, 7, ""],
+  ])("%s", async (_n, extra, exit, says) => {
+    const r = await wire(emailArgs, () => ({ status: 502, body: { code: "PLATFORM_ERROR", message: "provider", user_fixable: false, retry_likely_to_succeed: false, ...extra } }));
+    expect([r.status, r.sent.length]).toEqual([exit, 1]);
+    if (says) expect(r.stderr).toContain(says);
+    else expect(r.stderr).not.toContain("Do not send it again");
+  });
+
+  it("files over 20 MiB in all are refused before any request", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "eml5-"));
+    const big = join(dir, "big.bin");
+    writeFileSync(big, Buffer.alloc(20 * 1024 * 1024 + 1));
+    const r = await wire([...emailArgs, "--attach", big]);
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+  });
+});

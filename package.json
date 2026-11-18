@@ -47,7 +47,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@curviate/sdk": "github:Curviate/curviate-sdk#87af98f236961414f49fa160198c6eaeb6a74256",
+    "@curviate/sdk": "github:Curviate/curviate-sdk#174b99fafb624ab4db5f49c5d62dbf01aee8f0be",
     "citty": "^0.1.6",
     "open": "^10.1.0"
   },

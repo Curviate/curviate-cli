@@ -48925,14 +48925,14 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "Empty."
+                      "description": "The Cc sent, duplicates and the Lead's own address dropped."
                     },
                     "bcc": {
                       "type": "array",
                       "items": {
                         "type": "string"
                       },
-                      "description": "Empty."
+                      "description": "The Bcc sent (served only on your own email)."
                     },
                     "text": {
                       "type": "string",
@@ -48960,13 +48960,48 @@
                     "attachments": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "filename": {
+                            "type": "string"
+                          },
+                          "content_type": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "integer"
+                          }
+                        }
                       },
-                      "description": "Empty."
+                      "description": "The files sent: name, the type their bytes show, size in bytes. Curviate keeps no file."
                     },
                     "mailbox_id": {
                       "type": "string",
                       "description": "The Mailbox it went from."
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "enum": [
+                              "recipients_refused"
+                            ]
+                          },
+                          "addresses": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "description": "Present only when the receiving server refused some Cc or Bcc addresses while it took the Lead's: code recipients_refused, the addresses that got nothing. The email went to everyone else; cc and bcc list only who received it."
                     }
                   },
                   "required": [
@@ -48995,7 +49030,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: text is missing or over 10,000 characters; a to field (it always goes to the Lead); a new thread without subject; mailbox_id is not one of the conversation's Mailboxes, or names another Mailbox than a reply's thread (start a new thread to use another), or is missing while more than one can send; thread_id is not a thread of this conversation. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: text is missing or over 10,000 characters; a to field (it always goes to the Lead); a new thread without subject; mailbox_id is not one of the conversation's Mailboxes, or names another Mailbox than a reply's thread (start a new thread to use another), or is missing while more than one can send; thread_id is not a thread of this conversation; a Cc or Bcc that is not one email address (named with its index, cc[1]), or more than 20 addresses in Cc and Bcc together; an attachment that is not base64 or has no file name. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49103,7 +49138,7 @@
             }
           },
           "409": {
-            "description": "MAILBOX_STATE_CONFLICT: the Mailbox cannot send: it needs reconnecting, is paused, or has sent its daily limit. The message names the state and the ways on: a new thread from another Mailbox, or a LinkedIn reply. Nothing was sent.",
+            "description": "MAILBOX_STATE_CONFLICT: the Mailbox cannot send: it needs reconnecting, is paused, or has sent its daily limit. The message names the state and the ways on: a new thread from another Mailbox, or a LinkedIn reply. Nothing was sent. DO_NOT_CONTACT: a Cc or Bcc address is a Lead of yours on the Do-not-contact list or opted out of email (the message names it, cc[0]); nothing was sent.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49113,7 +49148,7 @@
             }
           },
           "413": {
-            "description": "Payload too large, the request body exceeds the size limit.",
+            "description": "PAYLOAD_TOO_LARGE: the attachments total more than 20 MiB decoded (the message names the total and the limit), or the request body is larger than this route reads. Nothing was sent.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49125,6 +49160,27 @@
                     "value": {
                       "code": "PAYLOAD_TOO_LARGE",
                       "message": "Request body is too large: it exceeds the 9437184-byte limit.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: an attachment is an executable, a script or a macro-enabled Office file, by its name, its type or its bytes. Nothing was sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "415 error",
+                    "value": {
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "message": "The request content type or attachment format is not accepted.",
                       "user_fixable": true,
                       "retry_likely_to_succeed": false
                     }
@@ -49176,7 +49232,7 @@
             }
           },
           "502": {
-            "description": "PLATFORM_ERROR: the Mailbox's provider did not take the email. Nothing was sent and the daily limit was given back.",
+            "description": "PLATFORM_ERROR: the Mailbox's provider did not take the email. Nothing was sent and the daily limit was given back; the Lead's own address refused stops the whole email, Cc and Bcc included. retry_likely_to_succeed is false when the provider refused this email itself (its content or files): sent again unchanged, it is refused again. reason outcome_unknown: the provider stopped answering after it had the whole email, so it may have been sent; it is kept in the conversation as sent with outcome_unknown true, the daily limit stays spent. Do not send it again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49234,6 +49290,52 @@
                     "minLength": 1,
                     "maxLength": 998,
                     "description": "The subject. Required for a new thread. A reply's subject is Re: and the thread's first subject unless you give one."
+                  },
+                  "cc": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 320
+                    },
+                    "description": "Cc: email addresses, seen by every recipient. At most 20 addresses in Cc and Bcc together; duplicates are dropped."
+                  },
+                  "bcc": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 320
+                    },
+                    "description": "Bcc: email addresses no other recipient sees. At most 20 addresses in Cc and Bcc together."
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255,
+                          "description": "The file's name, without a path."
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "maxLength": 255,
+                          "description": "The file's media type, as you know it; the type sent is the one its bytes show."
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "The file's bytes, base64."
+                        }
+                      },
+                      "required": [
+                        "filename",
+                        "content_type",
+                        "content"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Files, at most 10, up to 20 MiB in all (decoded). Executables, scripts and macro-enabled Office files are refused. Not kept by Curviate: the email keeps their name, type, size and hash."
                   }
                 },
                 "required": [
@@ -49255,6 +49357,26 @@
                     "subject": "Notes from our call",
                     "text": "Hi Ada,\n\nas promised, the notes from today.",
                     "mailbox_id": "mbx_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                  }
+                },
+                "cc_and_file": {
+                  "summary": "With Cc, Bcc and a file",
+                  "value": {
+                    "thread_id": "ems_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "text": "The proposal is attached.",
+                    "cc": [
+                      "ben@acme.test"
+                    ],
+                    "bcc": [
+                      "me@example.test"
+                    ],
+                    "attachments": [
+                      {
+                        "filename": "proposal.pdf",
+                        "content_type": "application/pdf",
+                        "content": "JVBERi0xLjQK"
+                      }
+                    ]
                   }
                 }
               }
