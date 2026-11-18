@@ -3895,7 +3895,7 @@
         {
           "name": "filter",
           "type": "string",
-          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search and sales_nav_company_people: the Sales Navigator lead and account search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
+          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
         },
         {
           "name": "filters-json",
