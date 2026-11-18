@@ -133,6 +133,23 @@ describe("mailbox discover, connect, reconnect: the password reaches the request
     expect(found(r.requests.map((h) => h.body))).toEqual([CANARY]);
   });
 
+  // A password never passes through an agent: no output an agent reads suggests piping one in; the link is the way.
+  // `--password-stdin` stays in `--help`, for a person at their own terminal (checked by the help case below).
+  it.each([
+    ["a pending link", ["mailbox", "connect", "anna@acme.example", "--connection", "google_sign_in"], "", 0],
+    ["a pending reconnect", ["mailbox", "reconnect", "mbx_1"], "", 0],
+    ["an empty --password-stdin", GMAIL, "\n", 2],
+    ["--password-stdin=VALUE", ["mailbox", "connect", "anna@gmail.com", "--connection", "google_app_password", "--password-stdin=x"], "", 2],
+  ] as const)("output text, %s: never suggests piping a password, points to the link", async (_n, args, stdin, exit) => {
+    sink.reply = { status: 201, body: REQ };
+    const r = await sink.run([...args], { stdin });
+    const out = `${r.stdout}${r.stderr}`;
+    expect(r.status, out).toBe(exit);
+    expect(out).not.toMatch(/pipe|printf|\|\s*curviate|--password-stdin\s*</i); // no suggestion to send a password in
+
+    expect(out).toMatch(/never passes through|link/i);
+  });
+
   it("human output: the Mailbox once connected, else the link and the administrator link", () => {
     expect(requestLines(DONE)).toEqual(["Mailbox: mbx_1", "Request: creq_1"]);
     expect(requestLines({ ...REQ, admin_consent_url: "https://docs.example/google-admin" })).toEqual([`Link: ${REQ.url}`, `Expires: ${REQ.expires_at}`, "Request: creq_1", "Administrator link: https://docs.example/google-admin"]);

@@ -772,7 +772,7 @@ export async function dispatch(root: AnyCommand, rawArgs: string[]): Promise<voi
   const inline = (end === -1 ? argsAfterBeta : argsAfterBeta.slice(0, end)).find((a) => /^--[a-z-]+-stdin=/.test(a));
   if (inline !== undefined) {
     const flag = inline.slice(0, inline.indexOf("="));
-    usageError(`${flag} takes no value: the secret is read from stdin.`, `pipe it in: printf '%s' "$SECRET" | curviate ... ${flag}`);
+    usageError(`${flag} takes no value: the secret is read from standard input, typed by the person at their own terminal.`, "nothing was sent; a secret never passes through an agent: use a Connect request link instead (curviate account connect-request create, or the command without the flag)");
   }
 
   // The resolved leaf, kept for the missing-argument hint below.

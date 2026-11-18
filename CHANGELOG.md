@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `21f3739c4`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `ba87aad99`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
 
 ### Email attachments
 
@@ -18,9 +18,18 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 - **`analytics attention [--campaign <mot_...>] [--account-id <acc_...>]`**: what to fix in your email sending now, one row per problem with the command that leads to its fix.
 
-### Unibox conversations
+### Unibox conversations and email
 
-- **`unibox conversation <conversation_id>`**: one person on one account across LinkedIn and email. **`unibox timeline <conversation_id> [--channel linkedin|email]`**: its LinkedIn messages, emails and Campaign events in one list, newest first (`--all` pages on).
+- **`unibox conversation get <conversation_id>`**: one person on one account across LinkedIn and email, with its marks and email state. **`unibox conversation timeline <conversation_id> [--channel linkedin|email]`**: its LinkedIn messages, emails and Campaign events in one list, newest first (`--all` pages on). **`unibox conversation mark <conversation_id> --read|--unread`**.
+- **`unibox email send <conversation_id> <text> (--thread <thread_id> | --subject <subject> [--mailbox <mbx_>])`**: one plain-text email to the Lead. One request; a retry after a timeout can send twice. `EMAIL_UNAVAILABLE` exits 2 and names the reason.
+- **`unibox referral search <message_id> [--name]`** and **`unibox referral confirm <message_id> (--provider-id | --linkedin-url)`** for a reply labelled Referral. `NOT_A_REFERRAL` exits 2.
+
+### Mailboxes and Campaigns
+
+- **`mailbox update --warm-up on --days 10|14|21|28`** and **`--warm-up off`**: Mailbox warm-up; `mailbox get` shows `warm_up` with its state and day.
+- **`campaign update --one-lead-per-company`** (and `--no-one-lead-per-company`), with or without `--file`.
+- **`analytics email --include breakdowns,mailboxes,domains`** and **`--forecast`**: one line per Mailbox and domain, the breakdown row counts, the forecast per day.
+- Mailbox connect output never suggests sending a password through an agent: it points to the Connect request link. `--password-stdin` stays for a person at their own terminal (`--help`).
 
 ### Signals
 

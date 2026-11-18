@@ -204,7 +204,10 @@ async function runCreate(c: Curviate, f: CampaignFlags): Promise<void> {
 }
 
 async function runUpdate(c: Curviate, f: CampaignFlags): Promise<void> {
-  const { body, text } = await readCampaignFile(f, "campaign update");
+  const olpc = (f as { "one-lead-per-company"?: boolean })["one-lead-per-company"];
+  if (f.file === undefined && olpc === undefined) usage("pass --file <campaign.json>, --one-lead-per-company or --no-one-lead-per-company.");
+  const { body, text } = f.file === undefined ? { body: {} as Body, text: "" } : await readCampaignFile(f, "campaign update");
+  if (olpc !== undefined) body["settings"] = { ...((body["settings"] as Body | undefined) ?? {}), one_lead_per_company: olpc };
   // The precondition is sent only when asked for, never read from the file.
   if ("if_sequence_revision" in body) {
     process.stderr.write("warning: dropped if_sequence_revision from the file: pass --if-revision <n> to send it.\n");
@@ -485,6 +488,7 @@ const updateCmd = defineCommand({
     description:
       "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
       "settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
+      "--one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. " +
       "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
     risk: "write",
     rules: {
@@ -504,13 +508,15 @@ const updateCmd = defineCommand({
     document: "campaign update",
     examples: [
       "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
+      "curviate campaign update mot_YOUR_CAMPAIGN_ID --one-lead-per-company",
       `curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n${CAMPAIGN_DOC}\nEOF`,
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: ID,
-    file: { type: "string", stdinArg: true, required: true, description: FILE_DESC },
+    file: { type: "string", stdinArg: true, description: FILE_DESC },
+    "one-lead-per-company": { type: "boolean", description: "Enroll at most one Lead per company (settings.one_lead_per_company); --no-one-lead-per-company turns it off." },
     "if-revision": { type: "string", description: "The sequence_revision you read (`curviate campaign get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins." },
   },
   run: online(runUpdate),

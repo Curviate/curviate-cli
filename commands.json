@@ -1876,7 +1876,7 @@
         "campaign",
         "update"
       ],
-      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
+      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). --one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
       "usageOnly": false,
       "args": [
         {
@@ -1888,8 +1888,12 @@
           "name": "file",
           "type": "string",
           "stdinArg": true,
-          "required": true,
           "description": "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is."
+        },
+        {
+          "name": "one-lead-per-company",
+          "type": "boolean",
+          "description": "Enroll at most one Lead per company (settings.one_lead_per_company); --no-one-lead-per-company turns it off."
         },
         {
           "name": "if-revision",
@@ -1912,6 +1916,7 @@
       ],
       "examples": [
         "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
+        "curviate campaign update mot_YOUR_CAMPAIGN_ID --one-lead-per-company",
         "curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
       ],
       "requires": [],
@@ -6803,7 +6808,7 @@
         "mailbox",
         "update"
       ],
-      "description": "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) and its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for). Flags you leave out stay as they are. A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
+      "description": "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for) and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
       "usageOnly": false,
       "args": [
         {
@@ -6836,6 +6841,16 @@
           "name": "clear-display-name",
           "type": "boolean",
           "description": "Clear the From name: the Mailbox sends with the name of the Account it sends for."
+        },
+        {
+          "name": "warm-up",
+          "type": "string",
+          "description": "on (Recommended) or off: Mailbox warm-up."
+        },
+        {
+          "name": "days",
+          "type": "string",
+          "description": "With --warm-up on: how many days warm-up runs before the Mailbox can be ready, 10, 14, 21 or 28."
         }
       ],
       "globals": [
@@ -6854,14 +6869,14 @@
       "examples": [
         "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for acc_YOUR_ACCOUNT_ID",
         "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for shared --daily-cap 40",
-        "curviate mailbox update mbx_YOUR_MAILBOX_ID --display-name \"Ana from Acme\""
+        "curviate mailbox update mbx_YOUR_MAILBOX_ID --warm-up on --days 14"
       ],
       "requires": [
-        "at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name."
+        "at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name, --warm-up."
       ],
       "risk": "write",
       "rules": {
-        "changes": "The Mailbox's link, daily cap, signature or From name, from the next email on. Open threads stay on it.",
+        "changes": "The Mailbox's link, daily cap, signature, From name or warm-up, from the next email on. Open threads stay on it.",
         "visible_to": "Your Team; the signature reaches recipients where a step uses {{mailbox.signature}}.",
         "budget_rows": [],
         "retry": "Safe: the same flags leave the same Mailbox.",
@@ -7063,7 +7078,7 @@
         "mailbox",
         "connect"
       ],
-      "description": "Connect a new Mailbox: creates a Connect request and prints its link for the person, who finishes in their Curviate dashboard. --connection google_sign_in (a Google Workspace whose administrator trusts Curviate) and microsoft_sign_in print the sign-in link and, where the provider needs one, the administrator link. google_app_password and imap_smtp can also take the password from you: pipe it to --password-stdin, Curviate checks it before answering, and the Mailbox is connected in this one call. imap_smtp needs the six server flags (the settings from `curviate mailbox discover`, as the person confirmed them). One API call.",
+      "description": "Connect a new Mailbox: creates a Connect request and prints its link for the person, who finishes in their Curviate dashboard. --connection google_sign_in (a Google Workspace whose administrator trusts Curviate) and microsoft_sign_in print the sign-in link and, where the provider needs one, the administrator link. A password never passes through an agent: give the person the link. A person at their own terminal may instead connect google_app_password or imap_smtp in one call with --password-stdin (read from standard input, never echoed); Curviate checks it before answering. imap_smtp needs the six server flags (the settings from `curviate mailbox discover`, as the person confirmed them). One API call.",
       "usageOnly": false,
       "args": [
         {
@@ -7502,7 +7517,20 @@
         "unibox",
         "conversation"
       ],
-      "description": "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels and email state. From what Curviate has stored: no LinkedIn call, no mailbox read. Its messages: `curviate unibox timeline`.",
+      "description": "One person on one Account across LinkedIn and email: read it (get), its timeline, mark it read or unread.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "unibox",
+        "conversation",
+        "get"
+      ],
+      "description": "One conversation: one person on one account across LinkedIn and email (each chat of `unibox list` carries its conversation_id), with its channels, marks and email state (whether email is available, why not, and from which Mailboxes). From what Curviate has stored: no LinkedIn call, no mailbox read.",
       "usageOnly": false,
       "args": [
         {
@@ -7524,18 +7552,20 @@
         "beta"
       ],
       "examples": [
-        "curviate unibox conversation cnv_YOUR_CONVERSATION_ID"
+        "curviate unibox conversation get cnv_YOUR_CONVERSATION_ID"
       ],
       "requires": [],
       "risk": "read",
       "seeAlso": [
-        "curviate unibox timeline",
+        "curviate unibox conversation timeline",
+        "curviate unibox email send",
         "curviate unibox list"
       ]
     },
     {
       "path": [
         "unibox",
+        "conversation",
         "timeline"
       ],
       "description": "A conversation's timeline, newest first: its LinkedIn messages, its emails, and Campaign events (a bounce, an unsubscribe, the end of an Enrollment) in one list. A page holds --limit LinkedIn messages and every email and event since the oldest of them; --channel email serves every email at once. From what Curviate has stored: no LinkedIn call, no mailbox read.",
@@ -7574,15 +7604,271 @@
         "beta"
       ],
       "examples": [
-        "curviate unibox timeline cnv_YOUR_CONVERSATION_ID",
-        "curviate unibox timeline cnv_YOUR_CONVERSATION_ID --channel email --json"
+        "curviate unibox conversation timeline cnv_YOUR_CONVERSATION_ID",
+        "curviate unibox conversation timeline cnv_YOUR_CONVERSATION_ID --channel email --json"
       ],
       "requires": [],
       "risk": "read",
       "seeAlso": [
-        "curviate unibox conversation",
+        "curviate unibox conversation get",
         "curviate unibox messages"
       ]
+    },
+    {
+      "path": [
+        "unibox",
+        "conversation",
+        "mark"
+      ],
+      "description": "Mark a conversation read or unread: its LinkedIn chat on LinkedIn, as `unibox mark` does, and its email in Curviate (the Mailbox itself is never changed). Mark it unread to hand it to a person or another AI. An email from them makes it unread again.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "conversationId",
+          "type": "positional",
+          "description": "Conversation id (cnv_...)."
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "description": "Mark it read."
+        },
+        {
+          "name": "unread",
+          "type": "boolean",
+          "description": "Mark it unread."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox conversation mark cnv_YOUR_CONVERSATION_ID --unread"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "The conversation's read state: the LinkedIn chat's on LinkedIn, the email's in Curviate.",
+        "visible_to": "Everyone who reads this Account's chats; on LinkedIn, the Account's own person.",
+        "budget_rows": [],
+        "retry": "Safe: the same state again.",
+        "undo": "Run it again with the other flag."
+      }
+    },
+    {
+      "path": [
+        "unibox",
+        "email"
+      ],
+      "description": "Email from a conversation: send one plain-text email to its Lead.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "unibox",
+        "email",
+        "send"
+      ],
+      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "conversationId",
+          "type": "positional",
+          "description": "Conversation id (cnv_...)."
+        },
+        {
+          "name": "text",
+          "type": "positional",
+          "description": "The email's text, plain text, 1 to 10,000 characters."
+        },
+        {
+          "name": "thread",
+          "type": "string",
+          "description": "Reply in this thread (thread_id)."
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "description": "Start a new thread with this subject."
+        },
+        {
+          "name": "mailbox",
+          "type": "string",
+          "description": "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox email send cnv_YOUR_CONVERSATION_ID \"Thanks, Thursday works.\" --thread thr_YOUR_THREAD_ID",
+        "curviate unibox email send cnv_YOUR_CONVERSATION_ID \"Following up on our call.\" --subject \"Next steps\" --preview"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "An email is sent to the Lead now; their open Enrollments on this Account end as on a reply.",
+        "visible_to": "The Lead (the recipient), and everyone who reads this conversation.",
+        "budget_rows": [],
+        "retry": "Never blind: a retry after a timeout can send the email twice. Read `curviate unibox conversation timeline <id> --channel email` first.",
+        "undo": "None: an email cannot be unsent."
+      },
+      "errors": {
+        "EMAIL_UNAVAILABLE": "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
+        "MAILBOX_STATE_CONFLICT": "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on."
+      },
+      "seeAlso": [
+        "curviate unibox conversation get",
+        "curviate unibox conversation timeline"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "referral"
+      ],
+      "description": "A reply labelled Referral: find the referred person on LinkedIn, then save them as a Lead.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "unibox",
+        "referral",
+        "search"
+      ],
+      "description": "For a reply labelled Referral: one LinkedIn people search, as the conversation's Account, for the referred person (the name Curviate suggests from the reply, or --name). At most 10 candidates, each counted against the Account's search limit. A reply labelled otherwise is NOT_A_REFERRAL and nothing is searched.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "messageId",
+          "type": "positional",
+          "description": "The reply labelled referral (message id)."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "The name to search for, instead of the one Curviate suggests."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox referral search YOUR_MESSAGE_ID",
+        "curviate unibox referral search YOUR_MESSAGE_ID --name \"Jane Doe\""
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "Nothing stored but the name on the label; the search spends the Account's search limit.",
+        "visible_to": "Your Team. LinkedIn sees one search by the Account.",
+        "budget_rows": [
+          "search"
+        ],
+        "retry": "Each call is a new search and spends the limit again.",
+        "undo": "Nothing to undo."
+      },
+      "errors": {
+        "NOT_A_REFERRAL": "the message's label is not referral; nothing was searched."
+      },
+      "seeAlso": [
+        "curviate unibox referral confirm",
+        "curviate unibox label"
+      ]
+    },
+    {
+      "path": [
+        "unibox",
+        "referral",
+        "confirm"
+      ],
+      "description": "For a reply labelled Referral: save the person you picked as a Lead (--provider-id from `referral search`, or --linkedin-url), or get the Lead you already hold. It never enrolls them.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "messageId",
+          "type": "positional",
+          "description": "The reply labelled referral (message id)."
+        },
+        {
+          "name": "provider-id",
+          "type": "string",
+          "description": "A candidate's provider_id, from `unibox referral search`."
+        },
+        {
+          "name": "linkedin-url",
+          "type": "string",
+          "description": "Or the person's LinkedIn profile URL."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate unibox referral confirm YOUR_MESSAGE_ID --provider-id ACoAAB1234567"
+      ],
+      "requires": [],
+      "risk": "write",
+      "rules": {
+        "changes": "A new Lead, or none when you already hold the person.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Safe: a person you already hold answers with that Lead.",
+        "undo": "`curviate lead delete <lead_id>`."
+      },
+      "errors": {
+        "NOT_A_REFERRAL": "the message's label is not referral; nothing was saved.",
+        "LEAD_LIMIT_REACHED": "a new Lead would pass your Team's Lead limit."
+      }
     },
     {
       "path": [
@@ -8395,7 +8681,12 @@
         {
           "name": "include",
           "type": "string",
-          "description": "Sections to add: weeks (the reply rate by week of first email)."
+          "description": "Sections to add, comma list: weeks (the reply rate by week of first email), breakdowns (by Campaign, step, variant, receiving provider, thread setting, Mailbox and Account), mailboxes, domains (their checks), forecast."
+        },
+        {
+          "name": "forecast",
+          "type": "boolean",
+          "description": "Add the emails your Campaigns are expected to send each day from today (include=forecast): a simulation of their email steps, each Mailbox counting its daily cap."
         }
       ],
       "globals": [
@@ -8412,7 +8703,8 @@
       ],
       "examples": [
         "curviate analytics email --range 30d",
-        "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json"
+        "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json",
+        "curviate analytics email --include mailboxes,domains --forecast"
       ],
       "requires": [],
       "risk": "read",
