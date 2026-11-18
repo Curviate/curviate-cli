@@ -16,7 +16,7 @@ import { downloadBinary } from "../lib/client.js";
 import { writeAtomic } from "../lib/write-atomic.js";
 import { fail, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 
-type Flags = RootFlags & { _?: string[]; number?: string; output?: string; limit?: string; cursor?: string; all?: boolean; "max-pages"?: string; "page-delay"?: string; seats?: string; period?: string; yes?: boolean };
+type Flags = RootFlags & { qty?: string; seatId?: string; to?: string; _?: string[]; number?: string; output?: string; limit?: string; cursor?: string; all?: boolean; "max-pages"?: string; "page-delay"?: string; seats?: string; period?: string; yes?: boolean };
 
 const online = (fn: (c: Curviate, f: Flags) => Promise<void>) => async ({ args }: { args: unknown }) => {
   const f = args as Flags;
@@ -233,9 +233,134 @@ const changesCmd = defineCommand({
   run: online(runChanges),
 });
 
+async function runSeatsAdd(f: Flags): Promise<void> {
+  const qty = intFlag("qty", f.qty ?? usage("how many seats? `curviate billing seats add <qty>`, 1 to 50."), 1, 50);
+  const body = { qty };
+  if (f.preview) return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "accounts.addSeats", args: {}, body })) + "\n");
+  const c = await rootClient(f);
+  if (!(await confirmMoney(f, `Buy ${qty} seat${qty === 1 ? "" : "s"} now? Each costs the price of its step (\`curviate billing quote\`); a yearly plan charges today.`))) return;
+  try {
+    renderSuccess(await c.accounts.addSeats(body), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runSeatsRemove(f: Flags): Promise<void> {
+  const seatId = (f.seatId ?? "").trim() || usage("which seat? `curviate billing seats remove <seat_id>` (`curviate account seats` lists them).");
+  if (f.preview) return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "accounts.cancelSeat", args: { seat_id: seatId }, body: {} })) + "\n");
+  const c = await rootClient(f);
+  if (!(await confirmMoney(f, `Remove seat ${seatId} at the end of the current period? Its Account disconnects then.`))) return;
+  try {
+    renderSuccess(await c.accounts.cancelSeat(seatId), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runPeriodSet(f: Flags): Promise<void> {
+  if (f.to !== "annual") usage("`curviate billing period set annual`: the one switch is monthly to yearly; there is no switch back.");
+  if (f.preview) return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "billing.switchPeriod", args: {}, body: { to: "annual" } })) + "\n");
+  const c = await rootClient(f);
+  if (!(await confirmMoney(f, "Switch to yearly billing at your next renewal? The renewal bills the whole year; there is no switch back to monthly."))) return;
+  try {
+    renderSuccess(await c.billing.switchPeriod(), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+const YES = { yes: { type: "boolean" as const, description: "Confirm without a prompt (needed when no terminal can ask)." } };
+
+const seatsAddCmd = defineCommand({
+  meta: {
+    name: "add",
+    description:
+      "Buy seats now, inside your Team's spending cap: each seat costs the price of the step it falls in (`curviate billing quote`); a monthly plan prorates on the next invoice, a yearly plan charges today. " +
+      "This charges money: it asks first at a terminal; elsewhere pass --yes. An add past the spending cap is refused (SPENDING_CAP_REACHED) and buys nothing; from 80% of the cap the answer carries a SPENDING_CAP_NEAR notice. Only an Owner raises the cap, in the dashboard. Owners only.",
+    risk: "write",
+    rules: {
+      changes: "The subscription's seat count, and the bill.",
+      visible_to: "Your Team's Owners (the bill, the change log).",
+      budget_rows: [],
+      retry: "Never blind: every call buys the seats it asks for. After a timeout, read `curviate account seats` first.",
+      undo: "`curviate billing seats remove <seat_id>`, at the end of the period.",
+    },
+    errors: {
+      SPENDING_CAP_REACHED: "the add would pass your Team's spending cap; nothing was bought. An Owner raises the cap in Settings, Billing.",
+      INSUFFICIENT_ROLE: "only an Owner buys seats.",
+    },
+    seeAlso: ["curviate billing quote", "curviate billing cap", "curviate account seats"],
+    examples: ["curviate billing seats add 2", "curviate billing seats add 1 --yes --json"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, qty: { type: "positional" as const, description: "How many seats to buy, 1 to 50." }, ...YES },
+  run: async ({ args }: { args: unknown }) => runSeatsAdd(args as Flags),
+});
+
+const seatsRemoveCmd = defineCommand({
+  meta: {
+    name: "remove",
+    description:
+      "Remove one seat at the end of the current period, never checked against the spending cap. Asks first at a terminal; elsewhere pass --yes. " +
+      "Your Team's last paid seat is refused (CANCEL_IN_DASHBOARD): removing it cancels the subscription, which an Owner does in the dashboard. Owners only.",
+    risk: "write",
+    rules: {
+      changes: "The seat ends at the period end; the renewal bills one seat fewer.",
+      visible_to: "Your Team's Owners; the Account on the seat disconnects when it ends.",
+      budget_rows: [],
+      retry: "Safe: a seat already scheduled answers with its date.",
+      undo: "Keep the seat in the dashboard before the period ends.",
+    },
+    errors: { CANCEL_IN_DASHBOARD: "the last paid seat: an Owner cancels in the dashboard.", INSUFFICIENT_ROLE: "only an Owner removes seats." },
+    seeAlso: ["curviate account seats", "curviate billing changes"],
+    examples: ["curviate billing seats remove seat_YOUR_SEAT_ID"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, seatId: { type: "positional" as const, description: "The seat (seat_...), from `curviate account seats`." }, ...YES },
+  run: async ({ args }: { args: unknown }) => runSeatsRemove(args as Flags),
+});
+
+const seatsCmd = defineCommand({
+  meta: { name: "seats", description: "Buy seats inside the spending cap, or remove one at the end of the period. Cancelling the subscription is the dashboard's." },
+  subCommands: { add: seatsAddCmd, remove: seatsRemoveCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(seatsCmd, ["curviate", "billing", "seats"]);
+  },
+});
+
+const periodSetCmd = defineCommand({
+  meta: {
+    name: "set",
+    description:
+      "Switch a monthly subscription to yearly billing at its next renewal, for the same seats at the yearly price. Nothing is charged now; the renewal bills the full year. There is no switch back. " +
+      "Asks first at a terminal; elsewhere pass --yes. Owners only.",
+    risk: "write",
+    rules: {
+      changes: "The billing period, from the next renewal.",
+      visible_to: "Your Team's Owners.",
+      budget_rows: [],
+      retry: "Safe: a second call while the switch is pending changes nothing.",
+      undo: "None: there is no switch back to monthly.",
+    },
+    errors: { INVALID_REQUEST: "already billed yearly.", INSUFFICIENT_ROLE: "only an Owner switches the period." },
+    examples: ["curviate billing period set annual"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, to: { type: "positional" as const, description: "annual (the one switch)." }, ...YES },
+  run: async ({ args }: { args: unknown }) => runPeriodSet(args as Flags),
+});
+
+const periodCmd = defineCommand({
+  meta: { name: "period", description: "Your billing period: switch monthly to yearly." },
+  subCommands: { set: periodSetCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(periodCmd, ["curviate", "billing", "period"]);
+  },
+});
+
 export const billingCommand = defineCommand({
   meta: { name: "billing", description: DESCRIPTIONS.billing },
-  subCommands: { quote: quoteCmd, cap: capCmd, changes: changesCmd, invoices: invoicesCmd, price: priceCmd },
+  subCommands: { quote: quoteCmd, cap: capCmd, changes: changesCmd, invoices: invoicesCmd, price: priceCmd, seats: seatsCmd, period: periodCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(billingCommand, ["curviate", "billing"]);

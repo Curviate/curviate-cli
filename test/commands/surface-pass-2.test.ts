@@ -3,6 +3,9 @@
  * the local refusals that send nothing (exit 2), and the money command's confirmation.
  */
 import { describe, it, expect } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { lines, wire } from "../helpers/wire.js";
 
 const ok = () => ({ body: { object: "x", id: "imp_1", items: [], cursor: null } });
@@ -58,6 +61,9 @@ describe("pass 2: the request each command sends", () => {
 
 describe("pass 3: the request each command sends", () => {
   it.each([
+    [["billing", "seats", "add", "2", "--yes"], { call: "POST /v1/billing/seats/add", query: {}, body: { qty: 2 } }],
+    [["billing", "seats", "remove", "seat_1", "--yes"], { call: "POST /v1/billing/seats/seat_1/cancel", query: {}, body: undefined }],
+    [["billing", "period", "set", "annual", "--yes"], { call: "POST /v1/billing/subscription/switch-period", query: {}, body: { to: "annual" } }],
     [["signal", "watch", "list"], { call: "GET /v1/signals/watch", query: {}, body: undefined }],
     [["signal", "watch", "set", "acc_1", "on"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: true } }],
     [["signal", "watch", "set", "acc_1", "off"], { call: "PATCH /v1/signals/watch/acc_1", query: {}, body: { signal_watch: false } }],
@@ -87,6 +93,10 @@ describe("pass 3: the request each command sends", () => {
   });
 
   it.each([
+    [["billing", "seats", "add", "2"]], // money, no terminal, no --yes: nothing sent
+    [["billing", "seats", "add", "51", "--yes"]],
+    [["billing", "seats", "remove", "seat_1"]],
+    [["billing", "period", "set", "monthly", "--yes"]],
     [["signal", "watch", "set", "acc_1", "maybe"]],
     [["signal", "watch", "set", "acc_1"]], // no state
     [["signal", "actions", "--outcome", "done"]],
@@ -103,6 +113,33 @@ describe("pass 3: the request each command sends", () => {
     [["campaign", "attachment", "upload"]], // no file
   ])("%j exits 2 with no request", async (args) => {
     const r = await wire(args);
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+  });
+});
+
+describe("pass 5: company fields from a file", () => {
+  it("a 3-row CSV makes 3 sequential PATCH requests, one per company, an empty cell leaving its key", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cfp13-"));
+    const file = join(dir, "companies.csv");
+    writeFileSync(file, 'company_id,tier,owner\n111,A,"Lopez, Ana"\n222,B,\n333,,Kim\n');
+    const r = await wire(["company", "fields", "--file", file], ok);
+    expect([r.status, lines(r.sent)]).toEqual([0, [
+      { call: "PATCH /v1/companies/111", query: {}, body: { extra: { tier: "A", owner: "Lopez, Ana" } } },
+      { call: "PATCH /v1/companies/222", query: {}, body: { extra: { tier: "B" } } },
+      { call: "PATCH /v1/companies/333", query: {}, body: { extra: { owner: "Kim" } } },
+    ]]);
+  });
+
+  it.each([
+    ["company_id,tier\n111,A\n111,B\n"], // a company twice
+    ["id,tier\n111,A\n"], // no company_id column
+    ["company_id,bad key\n111,A\n"],
+    ["company_id,tier\nacme,A\n"],
+  ])("a malformed file exits 2 with no request: %j", async (csv) => {
+    const dir = mkdtempSync(join(tmpdir(), "cfp13-"));
+    const file = join(dir, "c.csv");
+    writeFileSync(file, csv);
+    const r = await wire(["company", "fields", "--file", file]);
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });
 });

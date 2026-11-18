@@ -11,8 +11,70 @@ import { renderSuccess } from "../lib/output.js";
 import { buildPreviewOutput } from "../lib/preview.js";
 import { readableObject } from "../lib/paginate.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
+import { readFileFlag } from "../lib/document.js";
+import { csvRecords } from "./contact-import.js";
 
-type Flags = RootFlags & { id?: string; set?: string | string[]; unset?: string | string[] };
+type Flags = RootFlags & { id?: string; set?: string | string[]; unset?: string | string[]; file?: string };
+
+/** The most companies one file may set: one request each, sequential. */
+const FILE_MAX_COMPANIES = 1000;
+
+/** One CSV record's cells: commas outside quotes split, `""` inside quotes is a quote. */
+function csvCells(record: string): string[] {
+  const cells: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < record.length; i++) {
+    const ch = record[i]!;
+    if (ch === '"') {
+      if (quoted && record[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else quoted = !quoted;
+    } else if (ch === "," && !quoted) {
+      cells.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  cells.push(cur);
+  return cells.map((c) => c.trim());
+}
+
+/** A JSON value (a number, true, a list) is stored as JSON, anything else as text: the --set rule. */
+const cellValue = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+};
+
+/** `--file`: header `company_id,<key>,...`; each row one company, a non-empty cell sets its key, an empty one leaves it. */
+export function companyRows(text: string): Array<{ id: string; extra: Record<string, unknown> }> {
+  const [header, ...rows] = csvRecords(text);
+  const cols = csvCells(header ?? "");
+  if (cols[0] !== "company_id") usage("--file: the first column is company_id (LinkedIn's numeric company id), then one column per field key.");
+  const keys = cols.slice(1);
+  const badKey = keys.find((k) => !KEY.test(k));
+  if (!keys.length || badKey !== undefined) usage(`--file: each field column is a key of 1 to 64 letters, digits or _${badKey !== undefined ? ` (got ${JSON.stringify(badKey)})` : ""}.`);
+  if (new Set(keys).size !== keys.length) usage("--file: a key appears twice in the header.");
+  if (rows.length > FILE_MAX_COMPANIES) usage(`--file: at most ${FILE_MAX_COMPANIES} companies a file (one request each); split it.`);
+  const seen = new Set<string>();
+  return rows.map((r, n) => {
+    const cells = csvCells(r);
+    const id = cells[0] ?? "";
+    if (!/^\d+$/.test(id)) usage(`--file line ${n + 2}: company_id must be LinkedIn's numeric company id.`);
+    if (seen.has(id)) usage(`--file line ${n + 2}: company ${id} appears twice.`);
+    seen.add(id);
+    const extra: Record<string, unknown> = {};
+    keys.forEach((k, i) => {
+      const raw = cells[i + 1] ?? "";
+      if (raw !== "") extra[k] = cellValue(raw);
+    });
+    if (!Object.keys(extra).length) usage(`--file line ${n + 2}: no field to set for company ${id}.`);
+    return { id, extra };
+  });
+}
 
 const KEY = /^[A-Za-z0-9_]{1,64}$/;
 const companyId = (f: Flags) => {
@@ -80,7 +142,8 @@ const fieldsCmd = defineCommand({
     name: "fields",
     description:
       "Set or remove your Team's own fields for one company, merged by key: set once for every Lead who works there and read in a Sequence as {{company.extra.<key>}}. " +
-      "Keys left out stay. At most 100 keys and 32 KiB once merged.",
+      "Keys left out stay. At most 100 keys and 32 KiB once merged. --file sets many companies from a CSV (header company_id, then one column per key; an empty cell leaves that key): " +
+      "one request per company, in file order; it stops at the first refusal, and the companies before it are set.",
     risk: "write",
     rules: {
       changes: "The company's fields in your Team; every Campaign text using {{company.extra.<key>}} reads the new value from its next send.",
@@ -91,16 +154,34 @@ const fieldsCmd = defineCommand({
     },
     errors: { RESOURCE_NOT_FOUND: "no Lead of your Team works at this company and your Team never read it.", INVALID_REQUEST: "a key outside the pattern, or the fields would pass 100 keys or 32 KiB once merged." },
     seeAlso: ["curviate company get", "curviate campaign lint"],
-    examples: ["curviate company fields 1234567 --set tier=A --set owner=\"Ana Lopez\"", "curviate company fields 1234567 --unset owner"],
+    examples: ["curviate company fields 1234567 --set tier=A --set owner=\"Ana Lopez\"", "curviate company fields 1234567 --unset owner", "curviate company fields --file companies.csv"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    id: ID,
+    id: { ...ID, required: false, description: "LinkedIn's numeric company id, for example 1234567. Not with --file." },
     set: { type: "string" as const, description: "key=value, repeatable. A JSON value (a number, true, a list) is stored as JSON, anything else as text." },
     unset: { type: "string" as const, description: "A key to remove, repeatable or a comma list." },
+    file: { type: "string" as const, stdinArg: true, description: "A CSV of many companies: a path, or - for stdin. Header company_id, then one column per key. Not with an id, --set or --unset." },
   },
   run: async ({ args }: { args: unknown }) => {
     const f = args as Flags;
+    if (f.file !== undefined) {
+      if (f.id !== undefined || f.set !== undefined || f.unset !== undefined) usage("--file sets companies from the file: pass no company id, --set or --unset with it.");
+      const rows = companyRows(await readFileFlag("file", f.file, { others: f as Record<string, unknown> }));
+      if (!rows.length) usage("--file holds no company row.");
+      if (f.preview) return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "companies.update", args: { company_ids: rows.map((r) => r.id) }, body: { extra: rows[0]!.extra } })) + "\n");
+      const c = await rootClient(f);
+      const done: unknown[] = [];
+      for (const r of rows) {
+        try {
+          done.push(readableObject(await c.companies.update(r.id, { extra: r.extra })));
+        } catch (err) {
+          process.stderr.write(`Stopped at company ${r.id}; the ${done.length} before it are set.\n`);
+          return void (await fail(err, f));
+        }
+      }
+      return renderSuccess({ object: "list", items: done }, outputOpts(f), process);
+    }
     const id = companyId(f);
     const body = extraBody(f);
     if (f.preview) return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "companies.update", args: { company_id: id }, body })) + "\n");
