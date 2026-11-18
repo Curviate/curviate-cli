@@ -6,7 +6,7 @@
  */
 export const DESCRIPTIONS = {
   setup: "Connect this machine to your workspace: opens the dashboard, takes the code it shows you, and saves an API key.",
-  doctor: "Check that this machine can call the API: config, credential source, workspace, reachability and connected accounts.",
+  doctor: "Check that this machine can call the API: config, credential source, workspace, reachability, connected accounts and Mailboxes.",
   login: "Save an API key to a local profile. Run `curviate core profile me` to verify.",
   config: "Manage CLI profiles and settings.",
   account: "LinkedIn account connection management.",
@@ -30,7 +30,7 @@ export const DESCRIPTIONS = {
     "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin). " +
     "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
   domain: "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
-  billing: "Billing: the price of seats, the spending cap, the change log and your Team's invoices (listed and downloaded as PDFs). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
+  billing: "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
   contactImport: "Import Leads from a CSV, JSON or NDJSON file into a Lead list, splitting a large file into several imports.",
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
   contactLists: "Lead lists: named sets of Leads a Campaign enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Leads.",
@@ -44,7 +44,7 @@ export const DESCRIPTIONS = {
   analytics:
     "Campaign outcomes and the budget your Accounts used. Read-only; Campaign numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
   export: "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
-  tier: "Your Team's Tier now, what it bought, any trial or override, and the features it includes. Every role may read it.",
+  tier: "Your Team's Tier now, what it bought, any trial or override, and the features it includes. Email is part of the plan and sends once a Mailbox is connected: `curviate mailbox list`. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners and Managers manage (a Manager invites Members only); every role reads.",
@@ -57,6 +57,10 @@ export const DESCRIPTIONS = {
     "Nothing is queued, paced or retried for you, except a Draft scheduled with `--schedule-at`, which Curviate publishes at that time (`curviate core draft create`).",
   profile: "LinkedIn profile operations.",
   company: "Fetch a company profile by URL, slug, or numeric id, and its sub-resources.",
+  companyRecord: "Your Team's own record of a company, by LinkedIn's numeric company id: what Curviate stored and your company fields ({{company.extra.<key>}} in a Sequence). No LinkedIn call. The LinkedIn company page is `curviate core company`.",
+  signal:
+    "Signals: what people did around your Accounts in the last 7 days (reacted, commented, viewed a profile, followed, mentioned, reposted, posted, connected), each Account's Signal watch, " +
+    "and the rules that add those people to a Lead list or send `signal.matched` to your webhooks. Reads Curviate's own store: no LinkedIn call.",
   job: "Classic LinkedIn job-posting operations.",
   connect: "Send or manage connection invitations. Connection requests may take 10-30 seconds to appear in the recipient's received list (LinkedIn propagation delay).",
   search: "Search people, companies, posts, and jobs. Also runs a pasted search URL directly.",

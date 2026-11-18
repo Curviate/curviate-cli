@@ -22,12 +22,15 @@ describe("unibox: the request each command sends", () => {
     [["unibox", "refresh", "--accounts", "acc_a"], { call: "POST /v1/unibox/refresh", query: {}, body: { account_ids: ["acc_a"] } }],
     [["unibox", "accounts"], { call: "GET /v1/unibox/accounts", query: {}, body: undefined }],
     [["unibox", "consent", "acc_a", "--off"], { call: "PATCH /v1/unibox/accounts/acc_a", query: {}, body: { sync_full_inbox: false } }],
+    [["unibox", "list", "--reply-label", "interested", "--reply-label", "none"], { call: "GET /v1/unibox/chats", query: { reply_label: "interested,none" }, body: undefined }],
+    [["unibox", "label", "msg_1"], { call: "GET /v1/unibox/messages/msg_1/reply-label", query: {}, body: undefined }],
+    [["unibox", "label", "msg_1", "--set", "out_of_office"], { call: "PATCH /v1/unibox/messages/msg_1", query: {}, body: { reply_label: "out_of_office" } }],
   ])("%j", async (args, expected) => {
     const r = await wire(args, () => ({ body: { object: "x", items: [], cursor: null } }));
     expect([r.status, lines(r.sent)]).toEqual([0, [expected]]);
   });
 
-  it.each([[["unibox", "mark", "acc_a", "chat_1"]], [["unibox", "consent", "acc_a", "--on", "--off"]]])("%j exits 2 with no request: exactly one of the pair", async (args) => {
+  it.each([[["unibox", "mark", "acc_a", "chat_1"]], [["unibox", "consent", "acc_a", "--on", "--off"]], [["unibox", "label", "msg_1", "--set", "unsure"]]])("%j exits 2 with no request: exactly one of the pair, or a label a person cannot set", async (args) => {
     const r = await wire(args);
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });

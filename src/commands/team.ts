@@ -32,6 +32,10 @@ type TeamFlags = RootFlags & {
   status?: string;
   counts?: boolean;
   "billing-owner"?: string;
+  on?: boolean;
+  off?: boolean;
+  "not-interested-dnc"?: boolean;
+  tag?: string | string[];
   file?: string;
   to?: string;
   seat?: string;
@@ -456,6 +460,65 @@ const seatsCmd = defineCommand({
   },
 });
 
+const LABELS = ["interested", "not_now", "not_interested", "opt_out", "out_of_office", "referral", "other"];
+
+/** The `team reply-labels` changes, or null when no flag asks for one (a read). */
+function replyLabelsBody(f: TeamFlags): Rec | null {
+  if (f.on && f.off) usage("pass --on or --off, not both.");
+  const body: Rec = {};
+  if (f.on || f.off) body["enabled"] = Boolean(f.on);
+  if (f["not-interested-dnc"] !== undefined) body["not_interested_adds_to_do_not_contact"] = f["not-interested-dnc"];
+  if (f.tag !== undefined) {
+    const tags: Rec = {};
+    for (const pair of listFlag("tag", f.tag)) {
+      const eq = pair.indexOf("=");
+      const label = eq < 0 ? pair : pair.slice(0, eq);
+      if (eq < 0 || !LABELS.includes(label)) usage(`--tag takes <label>=<tag_id> (an empty tag id removes it); label is one of ${LABELS.join(", ")}.`);
+      const tagId = pair.slice(eq + 1).trim();
+      tags[label] = tagId === "" ? null : tagId;
+    }
+    body["tags"] = tags;
+  }
+  return Object.keys(body).length ? body : null;
+}
+
+const replyLabelsCmd = defineCommand({
+  meta: {
+    name: "reply-labels",
+    description:
+      "The Team's Reply label settings: whether Curviate labels each reply to your Campaigns, whether not_interested puts the person on the Do-not-contact list, and the Tag added per label. " +
+      "Without a flag it reads them (every role); with one it changes only what you pass (Owners and Managers). Turning labels on changes only what the next Campaign reply gets.",
+    risk: "write",
+    rules: {
+      changes: "With a flag: the Team's Reply label settings.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Safe to repeat: the same settings again.",
+      undo: "Run it again with the previous values (`curviate team reply-labels` prints them).",
+    },
+    errors: { INSUFFICIENT_ROLE: "only an Owner or a Manager changes the Reply label settings.", RESOURCE_NOT_FOUND: "a --tag names no Tag of this Team." },
+    seeAlso: ["curviate unibox label", "curviate unibox list"],
+    examples: ["curviate team reply-labels", "curviate team reply-labels --on --not-interested-dnc", "curviate team reply-labels --tag interested=tag_YOUR_TAG_ID --tag other="],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    on: { type: "boolean", description: "Turn Reply labels on." },
+    off: { type: "boolean", description: "Turn Reply labels off." },
+    "not-interested-dnc": { type: "boolean", description: "--not-interested-dnc: a reply labelled not_interested puts the person on the Do-not-contact list; --no-not-interested-dnc turns that off." },
+    tag: { type: "string", description: "<label>=<tag_id>: the Tag added when a reply gets that label; repeatable or a comma list. <label>= with no id removes it." },
+  },
+  run: async ({ args: raw }: { args: unknown }): Promise<void> => {
+    const f = raw as TeamFlags;
+    const body = replyLabelsBody(f);
+    return call(
+      "teams.updateReplyLabels",
+      () => ({}),
+      () => body ?? {},
+      (c) => (body === null ? c.teams.getReplyLabels() : c.teams.updateReplyLabels(body as never)),
+    )({ args: { ...f, preview: body === null ? false : f.preview } });
+  },
+});
+
 function lendBody(f: TeamFlags): Rec {
   return { team_id: nonEmpty("--to", f.to), ...(f.seat !== undefined ? { seat_id: nonEmpty("--seat", f.seat) } : {}) };
 }
@@ -468,6 +531,7 @@ export const teamCommand = defineCommand({
     switch: switchCmd,
     create: createCmd,
     update: updateCmd,
+    "reply-labels": replyLabelsCmd,
     members: membersCmd,
     role: roleCmd,
     remove: removeCmd,

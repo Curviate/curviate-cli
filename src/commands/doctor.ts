@@ -6,7 +6,8 @@
  * precedence tier (flag, environment, or profile), never the value; which
  * workspace it belongs to; the key's scope and the Team it acts in, checked
  * against `GET /v1/teams`; whether the API is reachable and the credential
- * valid; and the connected accounts with their id and status.
+ * valid; the connected accounts with their id and status; and the Team's
+ * Mailboxes (how many, how many can send), never failing the run.
  *
  * Exit `0` when every check passes, otherwise the first failing check's code.
  *
@@ -71,6 +72,8 @@ export interface DoctorIO {
   isOutputTTY: boolean;
   /** Lists the connected accounts with the resolved credential. */
   listAccounts: (apiKey: string, baseUrl: string, timeout: number) => Promise<unknown>;
+  /** The Team's Mailboxes (`GET /v1/mailboxes`): whether email can send. */
+  listMailboxes: (apiKey: string, baseUrl: string, timeout: number, team: string | undefined) => Promise<unknown>;
   /** The person's Teams (`GET /v1/teams`), asked without a Team so a stale one cannot refuse it. */
   listTeams: (apiKey: string, baseUrl: string, timeout: number) => Promise<unknown>;
   version: () => string;
@@ -105,6 +108,10 @@ async function defaultListAccounts(
   return createClient({ apiKey, baseUrl, timeout }).accounts.list();
 }
 
+async function defaultListMailboxes(apiKey: string, baseUrl: string, timeout: number, team: string | undefined): Promise<unknown> {
+  return createClient({ apiKey, baseUrl, timeout, ...(team ? { team } : {}) }).mailboxes.list({ limit: 100 });
+}
+
 async function defaultListTeams(apiKey: string, baseUrl: string, timeout: number): Promise<unknown> {
   return createClient({ apiKey, baseUrl, timeout, team: null }).teams.list({ limit: 100 });
 }
@@ -130,6 +137,7 @@ export function resolveDoctorIO(io: Partial<DoctorIO> = {}): DoctorIO {
     isOutputTTY: io.isOutputTTY ?? (process.stdout.isTTY ?? false),
     listAccounts: io.listAccounts ?? defaultListAccounts,
     listTeams: io.listTeams ?? defaultListTeams,
+    listMailboxes: io.listMailboxes ?? defaultListMailboxes,
     version: io.version ?? defaultVersion,
   };
 }
@@ -227,6 +235,7 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
         exit: 8,
       });
       team = await checkTeam(io, effective.apiKey as string, effective.baseUrl, effective.timeout, keyScope, team, checks);
+      checks.push(await checkMailboxes(io, effective.apiKey as string, effective.baseUrl, effective.timeout, team?.team_id));
     } catch (err: unknown) {
       const error = err as Partial<CurviateError> & { code?: string; message?: string };
       const code = typeof error.code === "string" ? error.code : undefined;
@@ -326,6 +335,20 @@ export async function runDoctor(args: DoctorArgs, io: DoctorIO): Promise<DoctorR
  * key's own (`is_current`) is reported. A failed read is a warning-free skip:
  * the account call above already proved reachability and the credential.
  */
+/** Informational, never failing: how many Mailboxes the Team has and how many can send, so email readiness shows here too. */
+async function checkMailboxes(io: DoctorIO, apiKey: string, baseUrl: string, timeout: number, team: string | undefined): Promise<Check> {
+  try {
+    const payload = await io.listMailboxes(apiKey, baseUrl, timeout, team);
+    const items = isPlainObject(payload) && Array.isArray(payload["items"]) ? (payload["items"] as unknown[]) : [];
+    const sending = items.filter((m) => isPlainObject(m) && (m["state"] === "connected" || m["state"] === "ramping")).length;
+    const detail = items.length === 0 ? "none: email steps cannot send (`curviate mailbox connect`)" : `${items.length} (${sending} can send)`;
+    return { name: "mailboxes", ok: true, detail, exit: 0 };
+  } catch (err) {
+    const code = (err as { code?: unknown }).code;
+    return { name: "mailboxes", ok: true, detail: `not read (${typeof code === "string" ? code : "error"})`, exit: 0 };
+  }
+}
+
 async function checkTeam(
   io: DoctorIO,
   apiKey: string,

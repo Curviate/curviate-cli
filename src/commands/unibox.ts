@@ -26,6 +26,9 @@ type UniboxFlags = RootFlags & {
   unread?: boolean;
   read?: boolean;
   "last-from"?: string;
+  "reply-label"?: string | string[];
+  messageId?: string;
+  set?: string;
   type?: string;
   query?: string;
   total?: boolean;
@@ -77,14 +80,16 @@ async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
   if (f["last-from"] !== undefined) q["last_message_from"] = f["last-from"];
   if (f.type !== undefined) q["type"] = f.type;
   if (f.query !== undefined) q["q"] = f.query;
+  if (f["reply-label"] !== undefined) q["reply_label"] = listFlag("reply-label", f["reply-label"]);
   if (f.total) q["include_total"] = true;
   if (f.limit !== undefined) q["limit"] = intFlag("limit", f.limit, 1, 100);
   try {
     await paged(f, q, (p) => c.unibox.list(p as never) as unknown as Promise<unknown>, (page) => {
       const unread = (i: Row) => (i["unread"] ? (i["marked_unread"] ? "marked" : "yes") : "");
       const campaign = (i: Row) => (i["campaign_context"] as Row | null)?.["campaign_name"];
-      print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "CAMPAIGN", "TAGS"],
-        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], campaign(i), (i["tags"] as string[] | undefined)?.join(", ")])));
+      const label = (i: Row) => (i["reply_label"] as Row | null | undefined)?.["label"];
+      print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "LABEL", "CAMPAIGN", "TAGS"],
+        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], label(i), campaign(i), (i["tags"] as string[] | undefined)?.join(", ")])));
       if (typeof page["total"] === "number") print(`total: ${page["total"]} chats match`);
     });
   } catch (err) {
@@ -178,6 +183,34 @@ async function runRefresh(c: Curviate, f: UniboxFlags): Promise<void> {
   }
 }
 
+const REPLY_LABELS = ["interested", "not_now", "not_interested", "opt_out", "out_of_office", "referral", "other"] as const;
+
+async function runLabel(c: Curviate, f: UniboxFlags): Promise<void> {
+  const messageId = String(f.messageId ?? "");
+  if (messageId.trim() === "") usage("the message id is required: `curviate unibox label <message_id>`, as `curviate unibox messages` prints it.");
+  if (f.set !== undefined) {
+    if (!(REPLY_LABELS as readonly string[]).includes(f.set)) usage(`--set takes one of ${REPLY_LABELS.join(", ")}.`);
+    const body = { reply_label: f.set as (typeof REPLY_LABELS)[number] };
+    if (f.preview) return preview("unibox.updateMessage", { message_id: messageId }, body);
+    try {
+      renderSuccess(await c.unibox.updateMessage(messageId, body), outputOpts(f), process);
+    } catch (err) {
+      await fail(err, f);
+    }
+    return;
+  }
+  try {
+    const res = (await c.unibox.getReplyLabel(messageId)) as unknown as { current: Row | null; history?: Row[] };
+    if (outputOpts(f).json) return renderSuccess(res, outputOpts(f), process);
+    const cur = res.current;
+    print(cur ? `${String(cur["label"])} (${String(cur["source"])}${cur["confidence"] == null ? "" : `, confidence ${String(cur["confidence"])}`})` : "no label");
+    const history = res.history ?? [];
+    if (history.length > 1) print(table(["AT", "LABEL", "SOURCE", "CONFIDENCE", "SET BY"], history.map((h) => [h["set_at"], h["label"], h["source"], h["confidence"], (h["set_by"] as Row | null)?.["name"]])));
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 async function runAccounts(c: Curviate, f: UniboxFlags): Promise<void> {
   try {
     const res = (await c.unibox.accounts.list()) as unknown as { items?: Row[] };
@@ -223,8 +256,8 @@ const listCmd = defineCommand({
       "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. " +
       "An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only.",
     risk: "read",
-    output: ["A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Campaign and tags; with --total the count of matching chats. --json (or piped) prints the API page."],
-    examples: ["curviate unibox list --unread", "curviate unibox list --person con_YOUR_LEAD_ID --campaign none --total"],
+    output: ["A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Reply label, Campaign and tags; with --total the count of matching chats. --json (or piped) prints the API page."],
+    examples: ["curviate unibox list --unread", "curviate unibox list --reply-label interested,unsure", "curviate unibox list --person con_YOUR_LEAD_ID --campaign none --total"],
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
@@ -235,6 +268,7 @@ const listCmd = defineCommand({
     tag: { type: "string" as const, description: "Only chats whose Lead has this tag; repeatable or a comma list." },
     unread: { type: "boolean" as const, description: "--unread for unread chats only, --no-unread for read ones; omit for both." },
     "last-from": { type: "string" as const, description: "Who wrote the last message: me or them." },
+    "reply-label": { type: "string" as const, description: "Only chats whose latest Reply label is one of these, repeatable or a comma list: interested, not_now, not_interested, opt_out, out_of_office, referral, other, unsure; `none` adds chats with no label." },
     type: { type: "string" as const, description: "classic, inmail, sales_navigator or recruiter." },
     query: { type: "string" as const, description: "Person name or message text contains this (3 characters or more)." },
     total: { type: "boolean" as const, description: "Also count every chat that matches the filters (`total`)." },
@@ -385,6 +419,33 @@ const refreshCmd = defineCommand({
   run: online(runRefresh),
 });
 
+const labelCmd = defineCommand({
+  meta: {
+    name: "label",
+    description:
+      "Read a reply's Reply label and its history (who set it, Curviate's confidence as a whole percent, or a rule), or with --set correct it. " +
+      "A correction acts as when Curviate sets the label: opt_out puts the person on your Do-not-contact list (not_interested too when your Team turned that on), out_of_office makes the Lead wait 7 days, and your Team's Tag for the label is added. " +
+      "No LinkedIn call. --set needs Automate.",
+    risk: "write",
+    rules: {
+      changes: "With --set: the message's Reply label, stored as a correction; the earlier label stays in the history.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Safe to repeat: the same label again.",
+      undo: "Set the label back with --set; a Do-not-contact entry it added stays: `curviate do-not-contact remove`.",
+    },
+    errors: { ...AUTOMATE, REPLY_NOT_LABELLABLE: "this message takes no Reply label: a direct conversation (no Campaign), your own message, or a warm-up message." },
+    seeAlso: ["curviate unibox messages", "curviate team reply-labels"],
+    examples: ["curviate unibox label YOUR_MESSAGE_ID", "curviate unibox label YOUR_MESSAGE_ID --set not_now"],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    messageId: { type: "positional" as const, description: "The message id, as `curviate unibox messages` prints it." },
+    set: { type: "string" as const, description: "Set or correct the label: interested, not_now, not_interested, opt_out, out_of_office, referral or other." },
+  },
+  run: online(runLabel),
+});
+
 const accountsCmd = defineCommand({
   meta: {
     name: "accounts",
@@ -435,6 +496,7 @@ export const uniboxCommand = defineCommand({
     mark: markCmd,
     tag: tagCmd,
     enroll: enrollCmd,
+    label: labelCmd,
     refresh: refreshCmd,
     accounts: accountsCmd,
     consent: consentCmd,

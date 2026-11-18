@@ -279,12 +279,15 @@ const PARITY_MANIFEST: Record<string, string> = {
   "unibox enroll":   "unibox.enroll",
   "unibox accounts": "unibox.accounts.list",
   "unibox consent":  "unibox.accounts.update",
+  "unibox label":    "unibox.getReplyLabel",
+  "unibox label --set": "unibox.updateMessage",
 
   // analytics (5) + exports (3) + account overview/metrics (2)
   "analytics get":               "analytics.campaigns.list",
   "analytics get --campaign":      "analytics.campaigns.get",
   "analytics get --view activity": "analytics.activity",
   "analytics events list":       "analytics.events.list",
+  "analytics email":             "analytics.email",
   "analytics export":            "analytics.export",
   "analytics export --job":      "exports.create",
   "export get":                  "exports.get",
@@ -315,6 +318,8 @@ const PARITY_MANIFEST: Record<string, string> = {
   "team create":         "teams.create",
   "team get":            "teams.getCurrent",
   "team update":         "teams.updateCurrent",
+  "team reply-labels":   "teams.getReplyLabels",
+  "team reply-labels --on|--off|--tag": "teams.updateReplyLabels",
   "team logo set":       "teams.setLogo",
   "team logo remove":    "teams.removeLogo",
   "team members":        "teams.listMembers",
@@ -333,6 +338,20 @@ const PARITY_MANIFEST: Record<string, string> = {
   "billing changes":      "billing.changes",
   "billing invoices":     "billing.invoices.list",
   "billing invoices pdf": "billing.invoices.pdf",
+  "billing price move":   "billing.moveToCurrentPrice",
+
+  // company records (root; `company get` is the same SDK name as `core company`) and signals (10)
+  "company fields":       "companies.update",
+  "signal list":          "signals.list",
+  "signal get":           "signals.get",
+  "signal kinds":         "signals.kinds",
+  "signal watch":         "signals.watch",
+  "signal settings":      "signals.updateSettings",
+  "signal rules list":    "signals.rules.list",
+  "signal rules create":  "signals.rules.create",
+  "signal rules get":     "signals.rules.get",
+  "signal rules update":  "signals.rules.update",
+  "signal rules delete":  "signals.rules.delete",
 
   // doNotContact (7)
   "do-not-contact list":   "doNotContact.list",
@@ -360,6 +379,9 @@ const PARITY_MANIFEST: Record<string, string> = {
   "lead imports list":       "leads.imports.list",
   "lead imports get":        "leads.imports.get",
   "lead imports get --outcome": "leads.imports.rows",
+  "lead imports pause":      "leads.imports.pause",
+  "lead imports resume":     "leads.imports.resume",
+  "lead imports stop":       "leads.imports.stop",
 
   // leadLists (5), tags (3)
   "lead lists list":    "leadLists.list",

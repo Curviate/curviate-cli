@@ -46,6 +46,17 @@ type ImportFlags = Omit<ContactFlags, "list" | "tag"> & {
   wait?: boolean;
   async?: boolean;
   outcome?: string;
+  source?: string;
+  "source-url"?: string;
+  filter?: string | string[];
+  "filters-json"?: string;
+  "list-id"?: string;
+  "post-id"?: string;
+  "group-id"?: string;
+  titles?: string | string[];
+  max?: string;
+  continue?: string;
+  restart?: boolean;
 };
 
 const FORMATS = ["csv", "json", "ndjson"];
@@ -234,7 +245,70 @@ async function recover(c: Curviate, body: Body, rows: number, seen: string[], st
   return found;
 }
 
+const SOURCE_KINDS = ["people_search", "company_people", "sales_nav_search", "sales_nav_lead_list", "recruiter_search", "post_engagers", "group_members"];
+
+/** The kind a pasted search URL names, or undefined. */
+function kindOfUrl(url: string): string | undefined {
+  if (/linkedin\.com\/sales\//i.test(url)) return "sales_nav_search";
+  if (/linkedin\.com\/talent\//i.test(url)) return "recruiter_search";
+  if (/\/search\/results\/people/i.test(url)) return "people_search";
+  if (/\/search\/results\/companies/i.test(url)) return "company_people";
+  return undefined;
+}
+
+/** `lead import --source`: one create request; the server reads the source page by page. */
+async function runSourceImport(c: Curviate, f: ImportFlags): Promise<void> {
+  if (f.file !== undefined) usage("--file and --source/--source-url cannot be combined: import a file, or a LinkedIn source.");
+  const url = f["source-url"];
+  const kind = f.source ?? (url !== undefined ? kindOfUrl(url) : undefined);
+  if (kind === undefined) usage("--source is required: the URL names no kind it knows. One of " + SOURCE_KINDS.join(", ") + ".");
+  if (f.account === undefined || f.account.trim() === "") usage("--account is required: the Account that reads the source (acc_...). Its limits and Active hours apply.");
+  if (f.continue !== undefined && f.restart) usage("--continue and --restart cannot be combined.");
+  const source: Body = { kind, account_id: f.account };
+  if (url !== undefined) source["url"] = url;
+  const pairs = listFlag("filter", f.filter);
+  if (pairs.length && f["filters-json"] !== undefined) usage("--filter and --filters-json cannot be combined.");
+  if (f["filters-json"] !== undefined) {
+    try {
+      source["filters"] = JSON.parse(f["filters-json"]);
+    } catch {
+      usage("--filters-json is not valid JSON: pass an object, for example '{\"keywords\":\"cto\"}'.");
+    }
+  } else if (pairs.length) {
+    const filters: Body = {};
+    for (const p of pairs) {
+      const eq = p.indexOf("=");
+      if (eq <= 0) usage("--filter takes key=value, for example --filter keywords=cto.");
+      const k = p.slice(0, eq), v = p.slice(eq + 1);
+      filters[k] = k in filters ? [filters[k], v].flat() : v;
+    }
+    source["filters"] = filters;
+  }
+  if (f["list-id"] !== undefined) source["list_id"] = f["list-id"];
+  if (f["post-id"] !== undefined) source["post_id"] = f["post-id"];
+  if (f["group-id"] !== undefined) source["group_id"] = f["group-id"];
+  const titles = listFlag("titles", f.titles);
+  if (titles.length) source["titles"] = titles;
+  if (f.max !== undefined) source["max"] = intFlag("max", f.max, 1);
+  const body: Body = { source };
+  if (f.continue !== undefined) body["continue_from"] = f.continue;
+  if (f.restart) body["restart"] = true;
+  if (f.list !== undefined) body["list_id"] = f.list;
+  if (f["list-name"] !== undefined) body["list_name"] = f["list-name"];
+  const tags = listFlag("tag", f.tag);
+  if (tags.length) body["tags"] = tags;
+  if (f.preview) return preview("leads.imports.create", {}, body);
+  try {
+    const imp = await c.leads.imports.create(body as never);
+    renderSuccess(readableObject(imp), outputOpts(f), process);
+    if (!outputOpts(f).json) process.stderr.write(`Follow it with \`curviate lead imports get ${String((imp as Body)["id"])}\`; pause, resume or stop it with \`curviate lead imports pause|resume|stop\`.\n`);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 async function runImport(c: Curviate, f: ImportFlags): Promise<void> {
+  if (f.source !== undefined || f["source-url"] !== undefined) return runSourceImport(c, f);
   const file = f.file;
   if (file === undefined || file.trim() === "") usage("--file is required: a CSV, JSON or NDJSON file, or - for stdin.");
   const dash = isStdinToken(file);
@@ -350,18 +424,20 @@ const importCmd = defineCommand({
       RATE_LIMIT_TENANT: `the Team has other Lead or Campaign writes running (429, nothing imported); the CLI waits Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends again, a longer wait stops the run. When an import holds the Team's write lock, the message and \`details.import_id\` name it: read it with \`curviate lead imports get\`.`,
       CLIENT_TIMEOUT: "no answer within --timeout; the CLI reads the Team's newest imports (again for up to 30 s while none shows) and reports the import this request made. None found: nothing was imported so far, but read `curviate lead imports list` before running it again.",
       NAME_TAKEN: "--list-name names a list that exists.",
+      IMPORT_STATUS_CONFLICT: "an import of this source is still queued, running or paused: resume or stop it, or pass --restart.",
+      IMPORT_CANNOT_CONTINUE: "--continue names an import that read LinkedIn's last results for its search: narrow the search or split it.",
     },
     output: ["With --json stdout is exactly one JSON document; progress and waits go to stderr. One report: `imports` (id and status each), `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field. With --async (or --no-wait): the imports' ids and statuses only, printed as soon as each is accepted; a queued one's progress is \`curviate lead imports get IMPORT_ID\` (stderr names it)."],
     seeAlso: ["curviate lead imports get", "curviate lead list"],
     examples: [
       "curviate lead import --file prospects.csv --list-name \"Q4 prospects\" --tag conference",
-      "curviate lead import --file leads-export.csv --apply-lists --async",
-      "curviate lead import --file - --format ndjson --list cl_YOUR_LIST_ID",
+      "curviate lead import --source-url \"https://www.linkedin.com/search/results/people/?keywords=cto\" --account acc_YOUR_ACCOUNT_ID --max 200 --list-name CTOs",
+      "curviate lead import --source company_people --filter keywords=fintech --titles CTO,VP Engineering --account acc_YOUR_ACCOUNT_ID",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    file: { type: "string", stdinArg: true, required: true, description: "The file: a path, or - to read it from stdin (then --format is required)." },
+    file: { type: "string", stdinArg: true, description: "The file: a path, or - to read it from stdin (then --format is required). Not with --source." },
     format: { type: "string", description: "csv | json | ndjson. Default: from the file extension (.csv, .json, .ndjson)." },
     list: { type: "string", description: "Add every imported Lead to this Lead list (cl_...)." },
     "list-name": { type: "string", description: "Add them to the list of this name (up to 100 characters), creating it. Not with --list." },
@@ -372,6 +448,17 @@ const importCmd = defineCommand({
     delimiter: { type: "string", description: "A CSV's separator: comma, semicolon or tab. Default: found by the server." },
     async: { type: "boolean", description: "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate lead imports get IMPORT_ID`. Stops only on a refused request." },
     "no-wait": { type: "boolean", description: "Same as --async." },
+    source: { type: "string", description: "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names." },
+    "source-url": { type: "string", description: "A pasted LinkedIn search URL (people, Sales Navigator, Recruiter or company search)." },
+    filter: { type: "string", description: "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys are the kind's search filters." },
+    "filters-json": { type: "string", description: "The built search as one JSON object. Not with --filter." },
+    "list-id": { type: "string", description: "The Sales Navigator lead list id (sales_nav_lead_list)." },
+    "post-id": { type: "string", description: "The post id or URL (post_engagers)." },
+    "group-id": { type: "string", description: "A LinkedIn group id the Account belongs to (group_members)." },
+    titles: { type: "string", description: "Job titles to keep, repeatable or a comma list (company_people: required)." },
+    max: { type: "string", description: "Stop after this many people (default and maximum: the kind's cap)." },
+    continue: { type: "string", description: "Continue this earlier import of the same source (imp_...) from where it stopped." },
+    restart: { type: "boolean", description: "Read the source from the beginning, even when an earlier import of it could continue." },
   },
   run: online(runImport),
 });
@@ -406,7 +493,7 @@ const importsGet = defineCommand({
   meta: {
     name: "get",
     description:
-      "One import: its status, counts, the columns it mapped or ignored, and its failure. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
+      "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now: active_hours, budget or pushback, with `until`) and `estimate`. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
       "Import records are kept for a limited time.",
     risk: "read",
     examples: ["curviate lead imports get imp_YOUR_IMPORT_ID", "curviate lead imports get imp_YOUR_IMPORT_ID --outcome skipped"],
@@ -437,10 +524,38 @@ const importsGet = defineCommand({
   }),
 });
 
+const control = (name: "pause" | "resume" | "stop", description: string, changes: string, undo: string, conflict: string) =>
+  defineCommand({
+    meta: {
+      name,
+      description,
+      risk: "write",
+      rules: { changes, visible_to: "Your Team.", budget_rows: [], retry: "A repeat answers IMPORT_STATUS_CONFLICT; nothing changes.", undo },
+      errors: { IMPORT_STATUS_CONFLICT: conflict, TIER_REQUIRED: "your plan does not include imports from LinkedIn (Automate)." },
+      seeAlso: ["curviate lead imports get"],
+      examples: [`curviate lead imports ${name} imp_YOUR_IMPORT_ID`],
+    },
+    args: { ...WRITE_SINGLE_FLAGS, id: ID },
+    run: online(async (c, f: ContactFlags) => {
+      const id = String(f.id ?? "");
+      if (id.trim() === "") usage("the import id is required (imp_...).");
+      if (f.preview) return preview(`leads.imports.${name}`, { id });
+      try {
+        renderSuccess(readableObject(await c.leads.imports[name](id)), outputOpts(f), process);
+      } catch (err) {
+        await fail(err, f);
+      }
+    }),
+  });
+
+const importsPause = control("pause", "Pause an import from a LinkedIn source: no page is read until it resumes; the Account is free for its next import meanwhile.", "The import stops reading pages until resumed.", "`curviate lead imports resume IMPORT_ID`.", "the import is not queued or running.");
+const importsResume = control("resume", "Resume a paused import: it reads on from where it stopped, after the Account's running import if there is one, at the same pace.", "The import reads pages again.", "`curviate lead imports pause IMPORT_ID`.", "the import is not paused.");
+const importsStop = control("stop", "Stop an import for good: the people found so far stay and the position is kept, so `curviate lead import --source ... --continue IMPORT_ID` reads on from there.", "The import ends; its Leads stay.", "None for this import; continue it with a new import and --continue.", "the import has finished.");
+
 export const contactImportCommand = importCmd;
 export const contactImportsCommand = defineCommand({
   meta: { name: "imports", description: "Your Team's import records." },
-  subCommands: { list: importsList, get: importsGet },
+  subCommands: { list: importsList, get: importsGet, pause: importsPause, resume: importsResume, stop: importsStop },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(contactImportsCommand, ["curviate", "lead", "imports"]);

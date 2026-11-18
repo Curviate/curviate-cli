@@ -28,6 +28,7 @@ export function humanTier(t: Tier): string {
     `trial          ${at(t.trial)}`,
     `override       ${at(t.override)}`,
     `features       ${t.features.length ? t.features.join(", ") : "none"}`,
+    `email          ${t.tier ? "included; it sends once a Mailbox is connected (`curviate mailbox list`, `curviate doctor`)" : "needs the plan"}`,
   ].join("\n") + "\n";
 }
 

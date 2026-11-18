@@ -33,6 +33,8 @@ type Flags = RootFlags & {
   "page-delay"?: string;
   "daily-cap"?: string;
   "signature-file"?: string;
+  "display-name"?: string;
+  "clear-display-name"?: boolean;
   address?: string;
   connection?: string;
   "password-stdin"?: boolean;
@@ -104,7 +106,10 @@ async function runUpdate(c: Curviate, f: Flags): Promise<void> {
   }
   if (f["daily-cap"] !== undefined) body["daily_cap"] = intFlag("daily-cap", f["daily-cap"]);
   if (f["signature-file"] !== undefined) body["signature"] = (await readFileFlag("signature-file", f["signature-file"], { maxBytes: SIGNATURE_MAX_BYTES, others: f as Record<string, unknown> })).trimEnd();
-  if (Object.keys(body).length === 0) usage("pass at least one of --sends-for, --daily-cap, --signature-file.");
+  if (f["display-name"] !== undefined && f["clear-display-name"]) usage("--display-name and --clear-display-name cannot be combined.");
+  if (f["display-name"] !== undefined) body["display_name"] = f["display-name"];
+  if (f["clear-display-name"]) body["display_name"] = null;
+  if (Object.keys(body).length === 0) usage("pass at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name.");
   if (f.preview) return preview("mailboxes.update", { id }, body);
   try {
     renderSuccess(readableObject(await c.mailboxes.update(id, body as never)), outputOpts(f), process);
@@ -192,6 +197,7 @@ async function runConnect(c: Curviate, f: Flags): Promise<void> {
   if (!CONNECTIONS.includes(connection)) usage(`--connection takes one of ${CONNECTIONS.join(", ")}.`);
   if (f["password-stdin"] && !PASSWORD_CONNECTIONS.includes(connection)) usage(`--password-stdin does not apply to ${connection}: the person signs in on the provider's page. It takes ${PASSWORD_CONNECTIONS.join(" or ")}.`);
   const mailbox: Body = { connection, address };
+  if (f["display-name"] !== undefined) mailbox["display_name"] = f["display-name"];
   if (connection === "imap_smtp") {
     const missing = SERVER_FLAGS.filter((k) => f[k] === undefined || f[k]!.trim() === "");
     if (missing.length > 0) usage(`--connection imap_smtp needs ${missing.map((k) => `--${k}`).join(", ")} (the settings from \`curviate mailbox discover\`, as the person confirmed them).`);
@@ -259,11 +265,12 @@ const updateCmd = defineCommand({
     name: "update",
     description:
       "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) " +
-      "and its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself). Flags you leave out stay as they are. " +
+      "its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) " +
+      "and its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for). Flags you leave out stay as they are. " +
       "A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
     risk: "write",
     rules: {
-      changes: "The Mailbox's link, daily cap or signature, from the next email on. Open threads stay on it.",
+      changes: "The Mailbox's link, daily cap, signature or From name, from the next email on. Open threads stay on it.",
       visible_to: "Your Team; the signature reaches recipients where a step uses {{mailbox.signature}}.",
       budget_rows: [],
       retry: "Safe: the same flags leave the same Mailbox.",
@@ -275,9 +282,9 @@ const updateCmd = defineCommand({
     examples: [
       "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for acc_YOUR_ACCOUNT_ID",
       "curviate mailbox update mbx_YOUR_MAILBOX_ID --sends-for shared --daily-cap 40",
-      "curviate mailbox update mbx_YOUR_MAILBOX_ID --signature-file signature.txt",
+      "curviate mailbox update mbx_YOUR_MAILBOX_ID --display-name \"Ana from Acme\"",
     ],
-    requires: ["at least one of --sends-for, --daily-cap, --signature-file."],
+    requires: ["at least one of --sends-for, --daily-cap, --signature-file, --display-name, --clear-display-name."],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
@@ -285,6 +292,8 @@ const updateCmd = defineCommand({
     "sends-for": { type: "string", description: "An Account id (acc_..., it then sends only for that Account) or shared (any Account of your Team may send from it)." },
     "daily-cap": { type: "string", description: "Emails a day across every Campaign and Account, 1 to 50. The API refuses a higher value (exit 2, the message names 50)." },
     "signature-file": { type: "string", stdinArg: true, description: "A plain-text file with the sign-off: a path, or - to read it from stdin. Up to 2,000 characters." },
+    "display-name": { type: "string", description: "The name recipients see in From, one line, up to 100 characters." },
+    "clear-display-name": { type: "boolean", description: "Clear the From name: the Mailbox sends with the name of the Account it sends for." },
   },
   run: online(runUpdate),
 });
@@ -364,7 +373,7 @@ const discoverCmd = defineCommand({
     name: "discover",
     description:
       "Find the IMAP and SMTP settings for an email address, to show the person and confirm before connecting. An address on Google or Microsoft answers with its connection. " +
-      "confirm_required marks settings that arrived unencrypted. Takes no password and the answer holds none.",
+      "confirm_required marks settings that arrived unencrypted or are a guess; a domain with nothing usable answers source none with no settings. Takes no password and the answer holds none.",
     risk: "read",
     seeAlso: ["curviate mailbox connect"],
     examples: ["curviate mailbox discover anna@acme.example"],
@@ -409,6 +418,7 @@ const connectCmd = defineCommand({
     address: ADDRESS,
     connection: { type: "string", description: `How the Mailbox connects: ${CONNECTIONS.join(" | ")}.` },
     "password-stdin": PASSWORD_STDIN,
+    "display-name": { type: "string", description: "The name recipients see in From (\"Name\" <address>), one line, up to 100 characters. Default: the name of the Account the Mailbox sends for, else the bare address." },
     "imap-host": { type: "string", description: "imap_smtp only: the IMAP host." },
     "imap-port": { type: "string", description: "imap_smtp only: the IMAP port (usually 993 with tls, 143 with starttls)." },
     "imap-security": { type: "string", description: "imap_smtp only: tls (TLS from the first byte) or starttls. Never cleartext." },
