@@ -120541,6 +120541,10 @@
                       ],
                       "format": "date-time"
                     },
+                    "charge_unknown": {
+                      "type": "boolean",
+                      "description": "True when the order ended while whether its charge was made could not be read (its charge was sent as the subscription ended). It is being checked; if it was made, it is given back in full. False otherwise."
+                    },
                     "created_at": {
                       "type": "string",
                       "format": "date-time"
@@ -120560,6 +120564,7 @@
                     "checked_at",
                     "expires_at",
                     "charged_at",
+                    "charge_unknown",
                     "created_at"
                   ]
                 },
@@ -120612,6 +120617,7 @@
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
+                      "charge_unknown": false,
                       "created_at": "2026-11-18T09:00:00.000Z"
                     }
                   }
@@ -121117,6 +121123,10 @@
                             ],
                             "format": "date-time"
                           },
+                          "charge_unknown": {
+                            "type": "boolean",
+                            "description": "True when the order ended while whether its charge was made could not be read (its charge was sent as the subscription ended). It is being checked; if it was made, it is given back in full. False otherwise."
+                          },
                           "created_at": {
                             "type": "string",
                             "format": "date-time"
@@ -121136,6 +121146,7 @@
                           "checked_at",
                           "expires_at",
                           "charged_at",
+                          "charge_unknown",
                           "created_at"
                         ]
                       }
@@ -121422,6 +121433,10 @@
                       ],
                       "format": "date-time"
                     },
+                    "charge_unknown": {
+                      "type": "boolean",
+                      "description": "True when the order ended while whether its charge was made could not be read (its charge was sent as the subscription ended). It is being checked; if it was made, it is given back in full. False otherwise."
+                    },
                     "created_at": {
                       "type": "string",
                       "format": "date-time"
@@ -121441,6 +121456,7 @@
                     "checked_at",
                     "expires_at",
                     "charged_at",
+                    "charge_unknown",
                     "created_at"
                   ]
                 },
@@ -121493,6 +121509,7 @@
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
+                      "charge_unknown": false,
                       "created_at": "2026-11-18T09:00:00.000Z"
                     }
                   }
@@ -121787,6 +121804,10 @@
                       ],
                       "format": "date-time"
                     },
+                    "charge_unknown": {
+                      "type": "boolean",
+                      "description": "True when the order ended while whether its charge was made could not be read (its charge was sent as the subscription ended). It is being checked; if it was made, it is given back in full. False otherwise."
+                    },
                     "created_at": {
                       "type": "string",
                       "format": "date-time"
@@ -121806,6 +121827,7 @@
                     "checked_at",
                     "expires_at",
                     "charged_at",
+                    "charge_unknown",
                     "created_at"
                   ]
                 }
@@ -122111,6 +122133,10 @@
                       ],
                       "format": "date-time"
                     },
+                    "charge_unknown": {
+                      "type": "boolean",
+                      "description": "True when the order ended while whether its charge was made could not be read (its charge was sent as the subscription ended). It is being checked; if it was made, it is given back in full. False otherwise."
+                    },
                     "created_at": {
                       "type": "string",
                       "format": "date-time"
@@ -122130,6 +122156,7 @@
                     "checked_at",
                     "expires_at",
                     "charged_at",
+                    "charge_unknown",
                     "created_at"
                   ]
                 },
@@ -122182,6 +122209,7 @@
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
+                      "charge_unknown": false,
                       "created_at": "2026-11-18T09:00:00.000Z"
                     }
                   }
