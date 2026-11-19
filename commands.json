@@ -7646,7 +7646,7 @@
         "purchase",
         "get"
       ],
-      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
+      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
       "usageOnly": false,
       "args": [
         {

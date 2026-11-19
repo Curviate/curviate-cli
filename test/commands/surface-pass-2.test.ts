@@ -269,6 +269,7 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
   it.each([
     [{ id: "mpu_1", state: "provisioning", reason: null }, "being set up", "Do not order again"],
     [{ id: "mpu_1", state: "cancelled", reason: "host_failed" }, "the charge was undone in full", "Nothing to retry"],
+    [{ id: "mpu_1", state: "cancelled", reason: "subscription_ended", charge_unknown: true }, "We are checking whether this order was charged.", "If it was, the charge is given back in full."],
   ])("%j", async (order, a, b) => {
     const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: order }));
     expect([r.status, r.sent.length]).toEqual([0, 1]);
@@ -276,7 +277,7 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
     expect(r.stderr).toContain(b);
   });
   it("an order waiting for its records carries no such note", async () => {
-    const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: { id: "mpu_1", state: "awaiting_dns", reason: null } }));
+    const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: { id: "mpu_1", state: "awaiting_dns", reason: null, charge_unknown: false } }));
     expect(r.stderr).not.toContain("charge");
   });
 });
