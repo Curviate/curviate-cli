@@ -9881,7 +9881,7 @@
       "path": [
         "billing"
       ],
-      "description": "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
+      "description": "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the plan are under `curviate account seats`, `curviate team` and `curviate tier`.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -10321,7 +10321,7 @@
       "path": [
         "tier"
       ],
-      "description": "Your Team's Tier now, what it bought, any trial or override, and the features it includes. Email is part of the plan and sends once a Mailbox is connected: `curviate mailbox list`. Every role may read it.",
+      "description": "Whether your Team holds the plan now (tier reads automate, or none), its subscription's price code, any trial or grant, and the features it has. Email is part of the plan and sends once a Mailbox is connected: `curviate mailbox list`. Every role may read it.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -10359,7 +10359,7 @@
         "team",
         "list"
       ],
-      "description": "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds each Team's Tier, trial, Accounts, active Campaigns and, where you are an Owner, seats.",
+      "description": "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds whether each Team holds the plan, its trial, Accounts, active Campaigns and, where you are an Owner, seats.",
       "usageOnly": false,
       "args": [
         {

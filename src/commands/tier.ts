@@ -1,5 +1,5 @@
 /**
- * `curviate tier`: the Team's Tier and what it includes now (`GET /v1/billing/tier`).
+ * `curviate tier`: whether the Team holds the plan and what it has now (`GET /v1/billing/tier`).
  * Every role may read it. JSON is the API's object; human mode is one line per field.
  */
 import { defineCommand } from "citty";

@@ -32,7 +32,7 @@ export const DESCRIPTIONS = {
     "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). " +
     "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate are priced for your Team by the server (quote, buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
   domain: "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
-  billing: "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
+  billing: "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the plan are under `curviate account seats`, `curviate team` and `curviate tier`.",
   contactImport: "Import Leads from a CSV, JSON or NDJSON file into a Lead list, splitting a large file into several imports.",
   contactImports: "Read your Team's import records: the counts, the failure, and the rows an import skipped and why.",
   contactLists: "Lead lists: named sets of Leads a Campaign enrolls from. List, read, create, combine lists into a new one, rename, delete, add and remove Leads.",
@@ -46,7 +46,7 @@ export const DESCRIPTIONS = {
   analytics:
     "Campaign outcomes and the budget your Accounts used. Read-only; Campaign numbers cover your Accounts and your team's shared Accounts, core activity the Accounts you may operate.",
   export: "Background export jobs started by `curviate analytics export --job`: read the status, download the file. Only the person who started one can.",
-  tier: "Your Team's Tier now, what it bought, any trial or override, and the features it includes. Email is part of the plan and sends once a Mailbox is connected: `curviate mailbox list`. Every role may read it.",
+  tier: "Whether your Team holds the plan now (tier reads automate, or none), its subscription's price code, any trial or grant, and the features it has. Email is part of the plan and sends once a Mailbox is connected: `curviate mailbox list`. Every role may read it.",
   team:
     "Teams: list yours and switch the one calls act in, read or rename it, manage members and invites, set its logo, create a Team, lend seats between your Teams. " +
     "Owners and Managers manage (a Manager invites Members only); every role reads.",
