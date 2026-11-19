@@ -14,7 +14,8 @@
  * files (message/post/recruiter/sales-nav).
  */
 
-import { readFile } from "node:fs/promises";
+import * as fs from "node:fs";
+import { readFile, stat } from "node:fs/promises";
 import { basename, extname } from "node:path";
 
 /** A usage-error that the run-loop maps to exit 2. */
@@ -105,4 +106,26 @@ export function toAttachmentPayload(filePath: string, buf: Buffer, sendMode?: "f
 /** Whether the API would read this file as audio, so send it as a voice note unless `send_mode` says `file`. */
 export function isAudioFile(filePath: string): boolean {
   return guessContentType(filePath).startsWith("audio/");
+}
+
+/**
+ * EML-38: a file to upload as one raw request, read from disk while it is sent (`fs.openAsBlob`, a file-backed Blob),
+ * never held whole in memory; its size checked against `maxBytes` before any request. The path is read here, on the
+ * user's machine: the server never fetches a path or a URL.
+ * ponytail: a Node without `openAsBlob` (before 18.19 / 19.8) reads the file whole; drop the fallback with Node 18.
+ */
+export async function openUpload(filePath: string, maxBytes: number): Promise<{ data: Blob | Buffer; size: number }> {
+  const filename = basename(filePath);
+  let size: number;
+  try {
+    const st = await stat(filePath);
+    if (!st.isFile()) throw new Error("not a file");
+    size = st.size;
+  } catch (err: unknown) {
+    throw new AttachError(`Cannot read attachment "${filename}": ${err instanceof Error ? err.message : "unknown error"}. Pass a valid file path.`);
+  }
+  if (size > maxBytes) throw new AttachError(`"${filename}" is ${size} bytes, over the ${maxBytes / (1024 * 1024)} MiB a file may be; nothing was sent. A link usually lands better than a file.`);
+  // No type of our own: the server reads the file's type from its name and bytes, as for a buffer.
+  const open = (fs as unknown as { openAsBlob?: (p: string) => Promise<Blob> }).openAsBlob;
+  return { data: open ? await open(filePath) : await readAttachment(filePath), size };
 }

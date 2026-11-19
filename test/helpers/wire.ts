@@ -7,7 +7,7 @@
 import { vi } from "vitest";
 import { runCli, type RunOpts, type RunResult } from "./run-inproc.js";
 
-export type Sent = { method: string; path: string; query: Record<string, string>; body: unknown; headers: Headers; /** A raw (non-JSON) body, as bytes. */ bytes?: number[] };
+export type Sent = { method: string; path: string; query: Record<string, string>; body: unknown; headers: Headers; /** A raw (non-JSON) body, as bytes. */ bytes?: number[]; /** A raw body sent as a (file-backed) Blob: its size, never read into the test. */ blob?: number };
 export type Answer = { status?: number; body?: unknown; type?: string };
 
 export const BASE = "https://wire.curviate.test";
@@ -22,6 +22,7 @@ export async function wire(args: string[], answer: (req: Sent, n: number) => Ans
     const raw = typeof init?.body === "string" ? init.body : undefined;
     const req: Sent = { method: (init?.method ?? "GET").toUpperCase(), path: url.pathname, query, body: raw === undefined ? undefined : JSON.parse(raw), headers: new Headers(init?.headers) };
     if (init?.body instanceof Uint8Array) req.bytes = [...init.body];
+    if (init?.body instanceof Blob) req.blob = init.body.size;
     sent.push(req);
     const a = answer(req, sent.length - 1);
     const body = a.body ?? { object: "list", items: [], cursor: null };

@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `9377cabb4`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `bda8d49f8`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
 
 ### Placement tests and warm-up states
 
@@ -29,6 +29,11 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 - **`mailbox purchase list [--state]`**, **`mailbox purchase get <mpu_...>`**, **`mailbox purchase check <mpu_...>`** and **`mailbox purchase cancel <mpu_...>`** read your Team's orders and the records to add, look the records up now (once a minute), and cancel an order still waiting for its records (nothing was charged). `MAILBOX_PURCHASE_STATE_CONFLICT` exits 8: while a charge is under way it says to read the order again later, never to retry.
 - **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Owners only; an order through an API key stays under the Team's cap on Mailboxes from Curviate, which only an Owner raises in the dashboard: past it the order is refused (`SPENDING_CAP_REACHED`, exit 5) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
+
+### Files and Mailbox orders
+
+- `campaign attachment upload <path>` streams the file from disk in one request (a file-backed Blob, never read whole), and refuses a file over 20 MiB before it leaves (exit 2). Its help names the Microsoft sign-in limit (about 2.2 MB in all).
+- `mailbox purchase get` and `check` say what `provisioning` means (charged, being set up; a failed setup is undone in full) and what `cancelled` with `host_failed` means (the charge was undone): neither is a cue to retry or to order again.
 
 ### Reply labels and Enrollments
 

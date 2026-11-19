@@ -24,7 +24,7 @@ import { intFlag } from "../lib/int-flag.js";
 import { isStdinToken } from "../lib/stdin.js";
 import { compilerLines } from "../lib/sequence-report.js";
 import { sendInChunks } from "../lib/chunks.js";
-import { AttachError, readAttachment } from "../lib/attach.js";
+import { AttachError, openUpload, readAttachment } from "../lib/attach.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import connectAndConverse from "../templates/connect-and-converse.json";
 import engageThenConnect from "../templates/engage-then-connect.json";
@@ -335,22 +335,25 @@ async function runVoiceClipUpload(c: Curviate, f: CampaignFlags): Promise<void> 
 }
 
 /** `attachment upload <file>`: the file's bytes as the raw body (Content-Length set), one stored file back. */
+/** The upload route's own limit (20 MiB); checked here so an oversized file never leaves the machine. */
+const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
+
 async function runAttachmentUpload(c: Curviate, f: CampaignFlags): Promise<void> {
   const path = f.file ?? "";
   if (path.trim() === "") usage("the file is missing. Pass its path: `curviate campaign attachment upload pricing.pdf`.");
   const filename = basename(path);
-  let bytes: Buffer;
+  let file: Awaited<ReturnType<typeof openUpload>>;
   try {
-    bytes = await readAttachment(path);
+    file = await openUpload(path, ATTACHMENT_MAX_BYTES);
   } catch (err) {
     if (err instanceof AttachError) usage(err.message);
     throw err;
   }
   if (f.preview) {
-    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "campaigns.attachments.upload", args: { filename }, body: {}, attachments: [{ name: filename, buffer: bytes }] })) + "\n");
+    return void process.stdout.write(JSON.stringify(buildPreviewOutput({ method: "campaigns.attachments.upload", args: { filename, bytes: file.size }, body: {} })) + "\n");
   }
   try {
-    renderSuccess(await c.campaigns.attachments.upload(bytes, { filename }), outputOpts(f), process);
+    renderSuccess(await c.campaigns.attachments.upload(file.data, { filename }), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -825,7 +828,8 @@ const attachmentUploadCmd = defineCommand({
     name: "upload",
     description:
       "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. " +
-      "Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate.",
+      "Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate. " +
+      "The CLI reads the path here, on your machine, and streams it in one request; a file over 20 MiB is refused before it leaves (exit 2). Curviate never fetches a path or a URL. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; a step's files above that are refused at send (attachment_refused).",
     risk: "write",
     rules: {
       changes: "Stores one file for your Team. No Campaign changes and nothing is sent to anyone.",
