@@ -390,7 +390,7 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app or allowance), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
+      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
     risk: "read",
     errors: NOT_FOUND,
     seeAlso: ["curviate mailbox list", "curviate mailbox update"],

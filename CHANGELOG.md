@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `e3aae783d`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `00abf89b6`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
 
 ### Placement tests and warm-up states
 
@@ -33,7 +33,7 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 ### Seats, reputation and sold Mailboxes
 
 - `account link` (a new account or a reconnect with `--account-id`) names the seat it occupies: "Account linked: acc_... (seat seat_...)"; `--json` carries `seat_id` and the deprecated `attached_seat_id`.
-- `mailbox get` describes `reputation` (0 to 100, or null while gathering, never 0) and the warm-up reason `paused_by_curviate`.
+- `mailbox get` describes `reputation` (0 to 100, or null while gathering, never 0) and the warm-up reasons `paused_by_curviate`, `address_check` and `address_unconfirmed`.
 - `mailbox remove` on a Mailbox from Curviate: Owners only, its charge stops at the period's end; `MAILBOX_STATE_CONFLICT` "still settling with billing" (exit 8) is never retried in a loop.
 
 ### Files and Mailbox orders
