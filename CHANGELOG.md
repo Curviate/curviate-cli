@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.62.0] - 2026-11-20
+
+Requires `@curviate/sdk` 0.57.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production's document, server commit `c17f1b853`); its hash is recomputed. No command, flag, exit code or output change: the SDK release is docs only (the plan, never a Tier).
+
 ## [0.61.0] - 2026-11-20
 
 Requires `@curviate/sdk` 0.56.0 (exact pin, unchanged; the vendored fixture is unchanged). `commands.json` regenerated. Text only: no command, flag or exit code changes.
