@@ -23,8 +23,8 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 ### Mailboxes from Curviate
 
-- **`mailbox purchase list [--state]`** and **`mailbox purchase get <mpu_...>`** read your Team's orders and the records to add.
-- **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Today a Team Owner orders in the dashboard: with an API key it is refused (exit 3) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
+- **`mailbox purchase list [--state]`**, **`mailbox purchase get <mpu_...>`** and **`mailbox purchase check <mpu_...>`** read your Team's orders and the records to add, and look the records up now (once a minute).
+- **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Owners only; an order through an API key stays under the Team's cap on Mailboxes from Curviate, which only an Owner raises in the dashboard: past it the order is refused (`SPENDING_CAP_REACHED`, exit 5) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
 
 ### Lead imports
 

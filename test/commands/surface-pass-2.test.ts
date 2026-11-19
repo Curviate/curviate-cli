@@ -193,6 +193,7 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     ] } }],
     [["mailbox", "purchase", "list", "--state", "awaiting_dns"], { call: "GET /v1/mailboxes/purchases", query: { state: "awaiting_dns" }, body: undefined }],
     [["mailbox", "purchase", "get", "mpu_1"], { call: "GET /v1/mailboxes/purchases/mpu_1", query: {}, body: undefined }],
+    [["mailbox", "purchase", "check", "mpu_1"], { call: "POST /v1/mailboxes/purchases/mpu_1/check", query: {}, body: undefined }],
     [["lead", "import", "--source-url", "https://www.linkedin.com/sales/search/company?query=x", "--titles", "CTO", "--account", "acc_a"], { call: "POST /v1/leads/imports", query: {}, body: { source: { kind: "sales_nav_company_people", account_id: "acc_a", url: "https://www.linkedin.com/sales/search/company?query=x", titles: ["CTO"] } } }],
     [["lead", "import", "--source", "sales_nav_account_list", "--list-id", "123", "--account", "acc_a"], { call: "POST /v1/leads/imports", query: {}, body: { source: { kind: "sales_nav_account_list", account_id: "acc_a", list_id: "123" } } }],
   ])("%j", async (args, expected) => {
@@ -212,12 +213,12 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
   });
 
   it.each([
-    ["an API key cannot order: the plain line, exit 3, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 401, "UNAUTHORIZED", 3, "cannot be ordered with an API key yet"],
+    ["past the Team's cap on Mailboxes from Curviate: the plain line, exit 5, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 403, "SPENDING_CAP_REACHED", 5, "past its cap on Mailboxes from Curviate"],
     ["orders paused: exit 1, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 409, "MAILBOX_SALES_PAUSED", 1, "cannot be ordered at the moment"],
     ["the monthly allowance is used: exit 5, one request, never retried", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 429, "PLACEMENT_TEST_ALLOWANCE_EXHAUSTED", 5, "placement tests"],
     ["tests cannot run now: exit 1, one request", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 503, "PLACEMENT_TESTS_UNAVAILABLE", 1, "cannot run"],
   ])("%s", async (_n, args, status, code, exit, says) => {
-    const message = code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "UNAUTHORIZED" ? "A dashboard session is required." : "This Team has used its 10 placement tests for this month.";
+    const message = code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "SPENDING_CAP_REACHED" ? "Past the cap." : "This Team has used its 10 placement tests for this month.";
     const r = await wire(args, () => ({ status, body: { code, message, user_fixable: true, retry_likely_to_succeed: false } }), { stdin: "b" });
     expect([r.status, r.sent.length]).toEqual([exit, 1]);
     expect(r.stderr).toContain(says);

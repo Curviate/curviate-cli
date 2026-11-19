@@ -642,7 +642,7 @@ printf '%s' "$APP_PASSWORD" | curviate mailbox connect anna@gmail.com --connecti
 printf '%s' "$APP_PASSWORD" | curviate mailbox reconnect mbx_... --password-stdin
 curviate mailbox test mbx_... --subject "Quick question" --body-file body.txt   # a placement test: where it lands, per provider
 curviate mailbox tests mbx_...                            # its tests and the Team's allowance
-curviate mailbox purchase list                            # orders of Mailboxes from Curviate (an Owner orders in the dashboard)
+curviate mailbox purchase list                            # orders of Mailboxes from Curviate; purchase check <id> looks the records up now
 curviate domain check acme.example --now                  # MX, SPF, DKIM, DMARC, tracking
 curviate account safety get --team                        # the Team's email defaults
 curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden
