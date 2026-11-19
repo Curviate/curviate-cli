@@ -752,6 +752,7 @@ const buyCmd = defineCommand({
       MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
       DOMAIN_IN_USE: "the domain already has Mailboxes from Curviate or an order; name another domain.",
       DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
+      INVALID_REQUEST: "among others, a subdomain (mail.acme.com): Mailboxes from Curviate go on a domain of your own, such as acme-mail.com.",
       MAILBOX_SALES_PAUSED: "orders cannot be placed at the moment.",
     },
     output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, verify, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."],
