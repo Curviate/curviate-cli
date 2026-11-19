@@ -6879,7 +6879,7 @@
         "mailbox",
         "get"
       ],
-      "description": "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it. Every role reads.",
+      "description": "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
       "usageOnly": false,
       "args": [
         {
@@ -7539,7 +7539,7 @@
         "mailbox",
         "purchase"
       ],
-      "description": "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now).",
+      "description": "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now), cancel (an order still waiting for its records).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -7667,6 +7667,56 @@
       },
       "seeAlso": [
         "curviate mailbox purchase get"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "purchase",
+        "cancel"
+      ],
+      "description": "Cancel an order of Mailboxes from Curviate still waiting for its records: nothing was charged, so nothing is refunded. An order being charged, being set up, active or cancelled is refused (exit 8) and stays as it is; while a charge is under way, read the order again in a few minutes. Owners only. One API call, never retried.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The order (mpu_...), from `curviate mailbox purchase list`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox purchase cancel mpu_YOUR_PURCHASE_ID"
+      ],
+      "requires": [],
+      "risk": "high",
+      "rules": {
+        "changes": "The order ends cancelled; its domain's records are no longer looked for. No Mailbox is created and nothing is charged.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Not needed: a second cancel answers MAILBOX_PURCHASE_STATE_CONFLICT (already cancelled).",
+        "undo": "Order again with `curviate mailbox buy`.",
+        "blast_radius": "One order."
+      },
+      "errors": {
+        "MAILBOX_PURCHASE_NOT_FOUND": "no order of your Team has this id (another Team's id answers the same).",
+        "MAILBOX_PURCHASE_STATE_CONFLICT": "the order is not waiting for its records (being charged, being set up, active or cancelled); the message names its state. Read it again later; never retry."
+      },
+      "seeAlso": [
+        "curviate mailbox purchase get",
+        "curviate mailbox purchase list"
       ]
     },
     {
@@ -8567,7 +8617,7 @@
         {
           "name": "set",
           "type": "string",
-          "description": "Set or correct the label: interested, not_now, not_interested, opt_out, out_of_office, referral or other."
+          "description": "Set or correct the label, each with its effect: interested (informs), not_now (informs), not_interested (puts the person on the Do-not-contact list when your Team turned that on), opt_out (puts the person on the Do-not-contact list), out_of_office (the Lead waits 7 days), referral (informs; the referred name rides on it, `unibox referral search` finds them), other (informs)."
         }
       ],
       "globals": [

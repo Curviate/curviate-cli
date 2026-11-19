@@ -228,3 +228,22 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     expect(r.stderr).toContain(says);
   });
 });
+
+describe("pass 8: Mailbox orders cancel, the same_company skip in human mode", () => {
+  it("mailbox purchase cancel sends one DELETE; a charge under way is exit 8 with the read-again line, never retried", async () => {
+    const ok = await wire(["mailbox", "purchase", "cancel", "mpu_1"], () => ({ body: { id: "mpu_1", state: "cancelled" } }));
+    expect([ok.status, lines(ok.sent)]).toEqual([0, [{ call: "DELETE /v1/mailboxes/purchases/mpu_1", query: {}, body: undefined }]]);
+    const charging = await wire(["mailbox", "purchase", "cancel", "mpu_1"], () => ({ status: 409, body: { code: "MAILBOX_PURCHASE_STATE_CONFLICT", message: "This order is being charged; it can no longer be cancelled. Read it again in a few minutes.", user_fixable: true, retry_likely_to_succeed: false } }));
+    expect([charging.status, charging.sent.length]).toEqual([8, 1]);
+    expect(charging.stderr).toContain("curviate mailbox purchase get mpu_1");
+    const empty = await wire(["mailbox", "purchase", "cancel", " "]);
+    expect([empty.status, empty.sent.length]).toEqual([2, 0]);
+  });
+
+  it("enrollment rows in human mode read same_company with the Lead kept", async () => {
+    const { humanReasons } = await import("../../src/commands/enrollment.js");
+    expect(humanReasons({ items: [{ skip_reason: "same_company", skip_message: "Another Lead at this company is in the Campaign.", skip_detail: "con_kept" }] })).toEqual({
+      items: [{ skip_reason: "same_company: Another Lead at this company is in the Campaign. (con_kept)" }],
+    });
+  });
+});

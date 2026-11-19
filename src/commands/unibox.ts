@@ -753,7 +753,12 @@ const labelCmd = defineCommand({
   args: {
     ...WRITE_SINGLE_FLAGS,
     messageId: { type: "positional" as const, description: "The message id, as `curviate unibox messages` prints it." },
-    set: { type: "string" as const, description: "Set or correct the label: interested, not_now, not_interested, opt_out, out_of_office, referral or other." },
+    set: {
+      type: "string" as const,
+      description:
+        "Set or correct the label, each with its effect: interested (informs), not_now (informs), not_interested (puts the person on the Do-not-contact list when your Team turned that on), " +
+        "opt_out (puts the person on the Do-not-contact list), out_of_office (the Lead waits 7 days), referral (informs; the referred name rides on it, `unibox referral search` finds them), other (informs).",
+    },
   },
   run: online(runLabel),
 });

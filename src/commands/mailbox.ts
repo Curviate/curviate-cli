@@ -373,7 +373,7 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it. Every role reads.",
+      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
     risk: "read",
     errors: NOT_FOUND,
     seeAlso: ["curviate mailbox list", "curviate mailbox update"],
@@ -723,9 +723,50 @@ const purchaseCheckCmd = defineCommand({
   run: online(runPurchaseCheck),
 });
 
+async function runPurchaseCancel(c: Curviate, f: Flags): Promise<void> {
+  const id = String(f.id ?? "");
+  if (id.trim() === "") usage("the order id is empty. Pass the mpu_... id from `curviate mailbox purchase list`.");
+  if (f.preview) return preview("mailboxes.purchases.cancel", { id });
+  try {
+    renderSuccess(readableObject(await c.mailboxes.purchases.cancel(id)), outputOpts(f), process);
+  } catch (err) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError && err.code === "MAILBOX_PURCHASE_STATE_CONFLICT") {
+      // A charge under way is neither a failure to retry nor a cancellation: the order is read again later.
+      process.stderr.write(`error [MAILBOX_PURCHASE_STATE_CONFLICT] ${err.message} Nothing was changed; do not retry. Read it with: curviate mailbox purchase get ${id}\n`);
+      process.exit(getExitCode(err));
+    }
+    await fail(err, f);
+  }
+}
+
+const purchaseCancelCmd = defineCommand({
+  meta: {
+    name: "cancel",
+    description: "Cancel an order of Mailboxes from Curviate still waiting for its records: nothing was charged, so nothing is refunded. An order being charged, being set up, active or cancelled is refused (exit 8) and stays as it is; while a charge is under way, read the order again in a few minutes. Owners only. One API call, never retried.",
+    risk: "high",
+    rules: {
+      changes: "The order ends cancelled; its domain's records are no longer looked for. No Mailbox is created and nothing is charged.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Not needed: a second cancel answers MAILBOX_PURCHASE_STATE_CONFLICT (already cancelled).",
+      undo: "Order again with `curviate mailbox buy`.",
+      blast_radius: "One order.",
+    },
+    errors: {
+      MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same).",
+      MAILBOX_PURCHASE_STATE_CONFLICT: "the order is not waiting for its records (being charged, being set up, active or cancelled); the message names its state. Read it again later; never retry.",
+    },
+    seeAlso: ["curviate mailbox purchase get", "curviate mailbox purchase list"],
+    examples: ["curviate mailbox purchase cancel mpu_YOUR_PURCHASE_ID"],
+  },
+  args: { ...WRITE_SINGLE_FLAGS, id: { type: "positional" as const, description: "The order (mpu_...), from `curviate mailbox purchase list`." } },
+  run: online(runPurchaseCancel),
+});
+
 const purchaseCmd = defineCommand({
-  meta: { name: "purchase", description: "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now)." },
-  subCommands: { list: purchaseListCmd, get: purchaseGetCmd, check: purchaseCheckCmd },
+  meta: { name: "purchase", description: "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now), cancel (an order still waiting for its records)." },
+  subCommands: { list: purchaseListCmd, get: purchaseGetCmd, check: purchaseCheckCmd, cancel: purchaseCancelCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(purchaseCmd, ["curviate", "mailbox", "purchase"]);

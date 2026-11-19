@@ -95,6 +95,11 @@ export function humanReasons(data: unknown): unknown {
       delete o[`${k}_message`];
     }
   }
+  // CFP-12: a skip's detail rides its sentence (same_company names the Lead kept), as the Campaign view shows it.
+  if (o["skip_detail"] != null && o["skip_reason"] != null) {
+    o["skip_reason"] = `${String(o["skip_reason"])} (${String(o["skip_detail"])})`;
+    delete o["skip_detail"];
+  }
   if ("reason_message" in o) {
     o["reason"] = paired(o["reason"], o["reason_message"]);
     delete o["reason_message"];
