@@ -711,7 +711,8 @@ function printConnected(
   ctx: { out: OutputStreams; outOpts: ReturnType<typeof resolveOutputOpts>; successVerb: "linked" | "reconnected" },
 ): void {
   const r = result as { account_id?: string; contract_selected?: boolean };
-  ctx.out.stderr.write(`Account ${ctx.successVerb}: ${r.account_id ?? ""}\n`);
+  const seat = (result as { seat_id?: string | null }).seat_id;
+  ctx.out.stderr.write(`Account ${ctx.successVerb}: ${r.account_id ?? ""}${seat ? ` (seat ${seat})` : ""}\n`);
   // Connected is not selected: a Recruiter contract named at connect is chosen afterwards, and may not have been.
   if (r.contract_selected === false) {
     ctx.out.stderr.write("note: the account is connected, but the Recruiter contract you named was not selected. Check the account in your dashboard.\n");

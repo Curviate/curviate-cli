@@ -62620,7 +62620,7 @@
                           },
                           "type": {
                             "type": "string",
-                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.campaign_work_paused, account.health_worsened, account.activity_level_fallback, campaign.auto_paused, campaign.no_sending_account, campaign.completed, leads.import_finished, export.finished, billing.spending_cap_reached, mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, account.no_mailbox, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close, team.invite_accepted, team.member_left. Advice arrives already read and never counts as unread: mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close."
+                            "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.campaign_work_paused, account.health_worsened, account.activity_level_fallback, campaign.auto_paused, campaign.no_sending_account, campaign.completed, leads.import_finished, export.finished, billing.spending_cap_reached, mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, domain.mx_failing, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, account.no_mailbox, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close, team.invite_accepted, team.member_left. Advice arrives already read and never counts as unread: mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close."
                           },
                           "channel": {
                             "type": "string",
@@ -63324,7 +63324,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.campaign_work_paused, account.health_worsened, account.activity_level_fallback, campaign.auto_paused, campaign.no_sending_account, campaign.completed, leads.import_finished, export.finished, billing.spending_cap_reached, mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, account.no_mailbox, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close, team.invite_accepted, team.member_left. Advice arrives already read and never counts as unread: mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close."
+                      "description": "What happened. An open list: new values may be added, so tolerate ones you do not know. Today: account.reconnect_needed, account.restricted, account.keep_connected_failed, account.campaign_work_paused, account.health_worsened, account.activity_level_fallback, campaign.auto_paused, campaign.no_sending_account, campaign.completed, leads.import_finished, export.finished, billing.spending_cap_reached, mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, domain.mx_failing, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, account.no_mailbox, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close, team.invite_accepted, team.member_left. Advice arrives already read and never counts as unread: mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close."
                     },
                     "channel": {
                       "type": "string",
@@ -95293,6 +95293,21 @@
                         "active"
                       ]
                     },
+                    "seat_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The seat this account occupies, unchanged by a reconnect (null for an admin seatless account)."
+                    },
+                    "attached_seat_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "deprecated": true,
+                      "description": "Deprecated, use seat_id (same value). Removed at the GA /v1 cutover."
+                    },
                     "external_id": {
                       "type": [
                         "string",
@@ -95367,6 +95382,8 @@
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
+                      "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "external_id": null,
                       "connection_location": {
                         "country": "DE",
@@ -95382,6 +95399,8 @@
                       "object": "account",
                       "account_id": "acc_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "status": "active",
+                      "seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "attached_seat_id": "seat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
                       "external_id": null,
                       "connection_location": {
                         "country": "DE",
@@ -122208,6 +122227,7 @@
                                   "null"
                                 ],
                                 "enum": [
+                                  "paused_by_curviate",
                                   "reconnect_needed",
                                   "trial",
                                   "app_password",
@@ -122271,6 +122291,15 @@
                               "other",
                               "read_at"
                             ]
+                          },
+                          "reputation": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 100,
+                            "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
                           }
                         },
                         "required": [
@@ -122293,7 +122322,8 @@
                           "connected_at",
                           "used_with",
                           "warm_up",
-                          "landing"
+                          "landing",
+                          "reputation"
                         ]
                       }
                     },
@@ -122360,7 +122390,8 @@
                             "microsoft": "gathering",
                             "other": "inbox",
                             "read_at": "2026-11-18T09:10:00.000Z"
-                          }
+                          },
+                          "reputation": 86
                         }
                       ],
                       "cursor": null
@@ -122766,6 +122797,7 @@
                             "null"
                           ],
                           "enum": [
+                            "paused_by_curviate",
                             "reconnect_needed",
                             "trial",
                             "app_password",
@@ -122829,6 +122861,15 @@
                         "other",
                         "read_at"
                       ]
+                    },
+                    "reputation": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
                     }
                   },
                   "required": [
@@ -122851,7 +122892,8 @@
                     "connected_at",
                     "used_with",
                     "warm_up",
-                    "landing"
+                    "landing",
+                    "reputation"
                   ]
                 },
                 "examples": {
@@ -122906,7 +122948,8 @@
                         "microsoft": "gathering",
                         "other": "inbox",
                         "read_at": "2026-11-18T09:10:00.000Z"
-                      }
+                      },
+                      "reputation": 86
                     }
                   }
                 }
@@ -123298,6 +123341,7 @@
                             "null"
                           ],
                           "enum": [
+                            "paused_by_curviate",
                             "reconnect_needed",
                             "trial",
                             "app_password",
@@ -123361,6 +123405,15 @@
                         "other",
                         "read_at"
                       ]
+                    },
+                    "reputation": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
                     }
                   },
                   "required": [
@@ -123383,7 +123436,8 @@
                     "connected_at",
                     "used_with",
                     "warm_up",
-                    "landing"
+                    "landing",
+                    "reputation"
                   ]
                 },
                 "examples": {
@@ -123438,7 +123492,8 @@
                         "microsoft": "gathering",
                         "other": "inbox",
                         "read_at": "2026-11-18T09:10:00.000Z"
-                      }
+                      },
+                      "reputation": 86
                     }
                   }
                 }
@@ -124175,6 +124230,7 @@
                             "null"
                           ],
                           "enum": [
+                            "paused_by_curviate",
                             "reconnect_needed",
                             "trial",
                             "app_password",
@@ -124238,6 +124294,15 @@
                         "other",
                         "read_at"
                       ]
+                    },
+                    "reputation": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
                     }
                   },
                   "required": [
@@ -124260,7 +124325,8 @@
                     "connected_at",
                     "used_with",
                     "warm_up",
-                    "landing"
+                    "landing",
+                    "reputation"
                   ]
                 },
                 "examples": {
@@ -124315,7 +124381,8 @@
                         "microsoft": "gathering",
                         "other": "inbox",
                         "read_at": "2026-11-18T09:10:00.000Z"
-                      }
+                      },
+                      "reputation": 86
                     }
                   }
                 }
@@ -124740,6 +124807,7 @@
                             "null"
                           ],
                           "enum": [
+                            "paused_by_curviate",
                             "reconnect_needed",
                             "trial",
                             "app_password",
@@ -124803,6 +124871,15 @@
                         "other",
                         "read_at"
                       ]
+                    },
+                    "reputation": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
                     }
                   },
                   "required": [
@@ -124825,7 +124902,8 @@
                     "connected_at",
                     "used_with",
                     "warm_up",
-                    "landing"
+                    "landing",
+                    "reputation"
                   ]
                 },
                 "examples": {
@@ -124880,7 +124958,8 @@
                         "microsoft": "gathering",
                         "other": "inbox",
                         "read_at": "2026-11-18T09:10:00.000Z"
-                      }
+                      },
+                      "reputation": 86
                     }
                   }
                 }
@@ -177707,6 +177786,53 @@
                               "maturing",
                               "maturing_share"
                             ]
+                          },
+                          "warm_up": {
+                            "type": "object",
+                            "description": "Its warm-up, as GET /v1/mailboxes/{id} serves it.",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean",
+                                "description": "Warm-up switched on."
+                              },
+                              "days": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "description": "The warm-up period chosen, in days; null while off."
+                              },
+                              "day": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "description": "Which day of that period it is; null while off."
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "off",
+                                  "warming",
+                                  "waiting"
+                                ],
+                                "description": "off, warming, or waiting to start (reason says why)."
+                              },
+                              "reason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "Why it waits; null otherwise."
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "days",
+                              "day",
+                              "state",
+                              "reason"
+                            ]
                           }
                         },
                         "required": [
@@ -177719,7 +177845,8 @@
                           "sent",
                           "bounces",
                           "bounce_rate_7d",
-                          "reply"
+                          "reply",
+                          "warm_up"
                         ]
                       }
                     },
@@ -177818,6 +177945,164 @@
                         ]
                       }
                     },
+                    "landing": {
+                      "type": "object",
+                      "description": "With include=landing: where mail lands, three readings kept apart, a verdict per receiving provider, never a count. Receivers do not report where a Lead's email landed, so there is no inbox rate for Campaign mail; these readings stand in for it.",
+                      "properties": {
+                        "warm_up": {
+                          "type": "object",
+                          "description": "Warm-up mail between Mailboxes, the last 7 days, over the Mailboxes in scope with warm-up on.",
+                          "properties": {
+                            "google": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "microsoft": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "other": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "read_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "description": "The hour the newest of these reads was made (UTC); null when none."
+                            }
+                          },
+                          "required": [
+                            "google",
+                            "microsoft",
+                            "other",
+                            "read_at"
+                          ]
+                        },
+                        "weekly_check": {
+                          "type": "object",
+                          "description": "The newest weekly check of a Campaign's email from a Mailbox in scope, the last 30 days.",
+                          "properties": {
+                            "google_workspace": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "microsoft_365": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "completed_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "description": "When that check finished (UTC); null when none."
+                            }
+                          },
+                          "required": [
+                            "google_workspace",
+                            "microsoft_365",
+                            "completed_at"
+                          ]
+                        },
+                        "tests": {
+                          "type": "object",
+                          "description": "The newest test you ran from a Mailbox in scope, the last 30 days.",
+                          "properties": {
+                            "google_workspace": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "microsoft_365": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "gmail": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "outlook_com": {
+                              "type": "string",
+                              "enum": [
+                                "inbox",
+                                "partly_spam",
+                                "spam",
+                                "gathering"
+                              ],
+                              "description": "inbox, partly_spam or spam; gathering while there is not enough to judge."
+                            },
+                            "completed_at": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "description": "When that test finished (UTC); null when none."
+                            }
+                          },
+                          "required": [
+                            "google_workspace",
+                            "microsoft_365",
+                            "gmail",
+                            "outlook_com",
+                            "completed_at"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "warm_up",
+                        "weekly_check",
+                        "tests"
+                      ]
+                    },
                     "forecast": {
                       "type": "object",
                       "description": "With include=forecast: the emails your Campaigns' email steps are expected to send, per day from today, over the accounts you can see. Each Mailbox counts its daily cap (the lowered cap where Curviate lowered it); a Mailbox shared by several accounts' Campaigns counts its cap once across them; a paused Mailbox, or one to reconnect, counts nothing. Sends only: replies are not forecast.",
@@ -177912,7 +178197,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: an unknown query parameter, a malformed or too long window (from:, to:, range:), an unknown zone (timezone:), more than 50 ids (campaign_id:, account_id:), or an include value other than weeks, breakdowns, mailboxes, domains or forecast (include:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: an unknown query parameter, a malformed or too long window (from:, to:, range:), an unknown zone (timezone:), more than 50 ids (campaign_id:, account_id:), or an include value other than weeks, landing, breakdowns, mailboxes, domains or forecast (include:). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -178118,7 +178403,7 @@
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "description": "The problem, a Notification type: mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, account.no_mailbox, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close. More may be added."
+                            "description": "The problem, a Notification type: mailbox.auto_paused, mailbox.provider_paused, mailbox.reconnect_needed, account.no_mailbox, domain.mx_failing, domain.dmarc_missing, domain.dkim_failing, provider.spam_high, mailbox.warm_up_off, campaign.variant_behind, campaign.emails_too_close. More may be added."
                           },
                           "subject": {
                             "type": "object",
