@@ -461,7 +461,7 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state: off, warming (day N; past its days it stays warming until ready), ready (the warm-up's bar is met; sending does not change) or waiting; day; reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
+      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state: off, warming (day N; past its days it stays warming until ready), ready (the warm-up's bar is met; sending does not change) or waiting; day; reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null: with reputation_reason warm_up_off there is no score because warm-up is off, else gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say; landing.reason warm_up_off: warm-up is off, nothing to read). Every role reads.",
     risk: "read",
     errors: NOT_FOUND,
     seeAlso: ["curviate mailbox list", "curviate mailbox update"],
@@ -734,7 +734,7 @@ const buyCmd = defineCommand({
   meta: {
     name: "buy",
     description:
-      "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, warm-up included. The price is your Team's, read from the server: `curviate mailbox quote <count>`, which a terminal prompt also shows; --expect-amount <amount> (the quote's `amount`) cancels the order at once when its `price` differs (exit 11). The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
+      "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, warm-up included. The price is your Team's, read from the server: `curviate mailbox quote <count>`, which a terminal prompt also shows; --expect-amount <amount> (the quote's `amount`) cancels the order at once when its `price` differs (exit 11). The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, verify, and tracking, which is optional) are found at your domain, each added exactly as shown; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
       "Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
     risk: "high",
     rules: {
@@ -754,7 +754,7 @@ const buyCmd = defineCommand({
       DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
       MAILBOX_SALES_PAUSED: "orders cannot be placed at the moment.",
     },
-    output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."],
+    output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, verify, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."],
     seeAlso: ["curviate mailbox purchase list", "curviate domain check"],
     examples: [
       "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:shared' --yes",
@@ -810,7 +810,7 @@ const purchaseListCmd = defineCommand({
 const purchaseGetCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
+    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
     risk: "read",
     errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
     seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],

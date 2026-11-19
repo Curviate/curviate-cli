@@ -120409,7 +120409,7 @@
                         "active",
                         "cancelled"
                       ],
-                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                      "description": "`awaiting_dns` until the five required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
                     },
                     "reason": {
                       "type": [
@@ -120447,7 +120447,7 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
                         "type": "object"
                       }
@@ -120985,7 +120985,7 @@
                               "active",
                               "cancelled"
                             ],
-                            "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                            "description": "`awaiting_dns` until the five required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
                           },
                           "reason": {
                             "type": [
@@ -121023,7 +121023,7 @@
                           },
                           "records": {
                             "type": "array",
-                            "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                            "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
                             "items": {
                               "type": "object"
                             }
@@ -121290,7 +121290,7 @@
                         "active",
                         "cancelled"
                       ],
-                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                      "description": "`awaiting_dns` until the five required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
                     },
                     "reason": {
                       "type": [
@@ -121328,7 +121328,7 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
                         "type": "object"
                       }
@@ -121655,7 +121655,7 @@
                         "active",
                         "cancelled"
                       ],
-                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                      "description": "`awaiting_dns` until the five required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
                     },
                     "reason": {
                       "type": [
@@ -121693,7 +121693,7 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
                         "type": "object"
                       }
@@ -121979,7 +121979,7 @@
                         "active",
                         "cancelled"
                       ],
-                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                      "description": "`awaiting_dns` until the five required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
                     },
                     "reason": {
                       "type": [
@@ -122017,7 +122017,7 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
                         "type": "object"
                       }
@@ -122908,13 +122908,25 @@
                                   "null"
                                 ],
                                 "format": "date-time"
+                              },
+                              "reason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "warm_up_off",
+                                  null
+                                ],
+                                "description": "Why nothing will be read: `warm_up_off` (turn warm-up on for this Mailbox). Null otherwise, including while a reading is still being gathered."
                               }
                             },
                             "required": [
                               "google",
                               "microsoft",
                               "other",
-                              "read_at"
+                              "read_at",
+                              "reason"
                             ]
                           },
                           "reputation": {
@@ -122925,6 +122937,17 @@
                             "minimum": 0,
                             "maximum": 100,
                             "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
+                          },
+                          "reputation_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "warm_up_off",
+                              null
+                            ],
+                            "description": "Why `reputation` is null and will stay so: `warm_up_off` (turn warm-up on for this Mailbox). Null while a score is served or still being gathered."
                           }
                         },
                         "required": [
@@ -122948,7 +122971,8 @@
                           "used_with",
                           "warm_up",
                           "landing",
-                          "reputation"
+                          "reputation",
+                          "reputation_reason"
                         ]
                       }
                     },
@@ -123014,9 +123038,11 @@
                             "google": "inbox",
                             "microsoft": "gathering",
                             "other": "inbox",
-                            "read_at": "2026-11-18T09:10:00.000Z"
+                            "read_at": "2026-11-18T09:10:00.000Z",
+                            "reason": null
                           },
-                          "reputation": 86
+                          "reputation": 86,
+                          "reputation_reason": null
                         }
                       ],
                       "cursor": null
@@ -123481,13 +123507,25 @@
                             "null"
                           ],
                           "format": "date-time"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "warm_up_off",
+                            null
+                          ],
+                          "description": "Why nothing will be read: `warm_up_off` (turn warm-up on for this Mailbox). Null otherwise, including while a reading is still being gathered."
                         }
                       },
                       "required": [
                         "google",
                         "microsoft",
                         "other",
-                        "read_at"
+                        "read_at",
+                        "reason"
                       ]
                     },
                     "reputation": {
@@ -123498,6 +123536,17 @@
                       "minimum": 0,
                       "maximum": 100,
                       "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
+                    },
+                    "reputation_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "warm_up_off",
+                        null
+                      ],
+                      "description": "Why `reputation` is null and will stay so: `warm_up_off` (turn warm-up on for this Mailbox). Null while a score is served or still being gathered."
                     }
                   },
                   "required": [
@@ -123521,7 +123570,8 @@
                     "used_with",
                     "warm_up",
                     "landing",
-                    "reputation"
+                    "reputation",
+                    "reputation_reason"
                   ]
                 },
                 "examples": {
@@ -123575,9 +123625,11 @@
                         "google": "inbox",
                         "microsoft": "gathering",
                         "other": "inbox",
-                        "read_at": "2026-11-18T09:10:00.000Z"
+                        "read_at": "2026-11-18T09:10:00.000Z",
+                        "reason": null
                       },
-                      "reputation": 86
+                      "reputation": 86,
+                      "reputation_reason": null
                     }
                   }
                 }
@@ -124028,13 +124080,25 @@
                             "null"
                           ],
                           "format": "date-time"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "warm_up_off",
+                            null
+                          ],
+                          "description": "Why nothing will be read: `warm_up_off` (turn warm-up on for this Mailbox). Null otherwise, including while a reading is still being gathered."
                         }
                       },
                       "required": [
                         "google",
                         "microsoft",
                         "other",
-                        "read_at"
+                        "read_at",
+                        "reason"
                       ]
                     },
                     "reputation": {
@@ -124045,6 +124109,17 @@
                       "minimum": 0,
                       "maximum": 100,
                       "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
+                    },
+                    "reputation_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "warm_up_off",
+                        null
+                      ],
+                      "description": "Why `reputation` is null and will stay so: `warm_up_off` (turn warm-up on for this Mailbox). Null while a score is served or still being gathered."
                     }
                   },
                   "required": [
@@ -124068,7 +124143,8 @@
                     "used_with",
                     "warm_up",
                     "landing",
-                    "reputation"
+                    "reputation",
+                    "reputation_reason"
                   ]
                 },
                 "examples": {
@@ -124122,9 +124198,11 @@
                         "google": "inbox",
                         "microsoft": "gathering",
                         "other": "inbox",
-                        "read_at": "2026-11-18T09:10:00.000Z"
+                        "read_at": "2026-11-18T09:10:00.000Z",
+                        "reason": null
                       },
-                      "reputation": 86
+                      "reputation": 86,
+                      "reputation_reason": null
                     }
                   }
                 }
@@ -124930,13 +125008,25 @@
                             "null"
                           ],
                           "format": "date-time"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "warm_up_off",
+                            null
+                          ],
+                          "description": "Why nothing will be read: `warm_up_off` (turn warm-up on for this Mailbox). Null otherwise, including while a reading is still being gathered."
                         }
                       },
                       "required": [
                         "google",
                         "microsoft",
                         "other",
-                        "read_at"
+                        "read_at",
+                        "reason"
                       ]
                     },
                     "reputation": {
@@ -124947,6 +125037,17 @@
                       "minimum": 0,
                       "maximum": 100,
                       "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
+                    },
+                    "reputation_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "warm_up_off",
+                        null
+                      ],
+                      "description": "Why `reputation` is null and will stay so: `warm_up_off` (turn warm-up on for this Mailbox). Null while a score is served or still being gathered."
                     }
                   },
                   "required": [
@@ -124970,7 +125071,8 @@
                     "used_with",
                     "warm_up",
                     "landing",
-                    "reputation"
+                    "reputation",
+                    "reputation_reason"
                   ]
                 },
                 "examples": {
@@ -125024,9 +125126,11 @@
                         "google": "inbox",
                         "microsoft": "gathering",
                         "other": "inbox",
-                        "read_at": "2026-11-18T09:10:00.000Z"
+                        "read_at": "2026-11-18T09:10:00.000Z",
+                        "reason": null
                       },
-                      "reputation": 86
+                      "reputation": 86,
+                      "reputation_reason": null
                     }
                   }
                 }
@@ -125510,13 +125614,25 @@
                             "null"
                           ],
                           "format": "date-time"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "warm_up_off",
+                            null
+                          ],
+                          "description": "Why nothing will be read: `warm_up_off` (turn warm-up on for this Mailbox). Null otherwise, including while a reading is still being gathered."
                         }
                       },
                       "required": [
                         "google",
                         "microsoft",
                         "other",
-                        "read_at"
+                        "read_at",
+                        "reason"
                       ]
                     },
                     "reputation": {
@@ -125527,6 +125643,17 @@
                       "minimum": 0,
                       "maximum": 100,
                       "description": "This Mailbox's reputation, 0 to 100: where its warm-up and test mail landed over the last 7 days, its domain setup, its bounces and how long it has been warming. Updated each night and when a placement test completes; null while there is not enough evidence yet."
+                    },
+                    "reputation_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "warm_up_off",
+                        null
+                      ],
+                      "description": "Why `reputation` is null and will stay so: `warm_up_off` (turn warm-up on for this Mailbox). Null while a score is served or still being gathered."
                     }
                   },
                   "required": [
@@ -125550,7 +125677,8 @@
                     "used_with",
                     "warm_up",
                     "landing",
-                    "reputation"
+                    "reputation",
+                    "reputation_reason"
                   ]
                 },
                 "examples": {
@@ -125604,9 +125732,11 @@
                         "google": "inbox",
                         "microsoft": "gathering",
                         "other": "inbox",
-                        "read_at": "2026-11-18T09:10:00.000Z"
+                        "read_at": "2026-11-18T09:10:00.000Z",
+                        "reason": null
                       },
-                      "reputation": 86
+                      "reputation": 86,
+                      "reputation_reason": null
                     }
                   }
                 }
@@ -131312,7 +131442,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -131697,7 +131827,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -133500,7 +133630,7 @@
                               },
                               "no_email": {
                                 "type": "integer",
-                                "description": "A LinkedIn source: people imported who opted out of email only."
+                                "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                               }
                             },
                             "required": [
@@ -134019,7 +134149,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -134529,7 +134659,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -135084,7 +135214,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -135639,7 +135769,7 @@
                         },
                         "no_email": {
                           "type": "integer",
-                          "description": "A LinkedIn source: people imported who opted out of email only."
+                          "description": "People imported who will get no email: a LinkedIn source counts those who opted out of email only; rows and CSV count rows whose email address (any spelling of it) opted out. They are imported; every email to them is refused."
                         }
                       },
                       "required": [
@@ -179175,7 +179305,7 @@
                           },
                           "sent": {
                             "type": "integer",
-                            "description": "Emails it sent in the window under the filters."
+                            "description": "Campaign emails it sent in the window under the filters."
                           },
                           "bounces": {
                             "type": "object",
@@ -179412,6 +179542,17 @@
                             ],
                             "description": "Its reputation, 0 to 100, as GET /v1/mailboxes/{id} serves it; null while there is too little to judge (never 0 for that)."
                           },
+                          "reputation_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "warm_up_off",
+                              null
+                            ],
+                            "description": "Why reputation is null and will stay so: warm_up_off. Null otherwise, as GET /v1/mailboxes/{id} serves it."
+                          },
                           "pause_reason": {
                             "type": [
                               "string",
@@ -179440,6 +179581,7 @@
                           "reply",
                           "warm_up",
                           "reputation",
+                          "reputation_reason",
                           "pause_reason",
                           "paused_until"
                         ]
@@ -179584,13 +179726,25 @@
                                 "null"
                               ],
                               "description": "The hour the newest of these reads was made (UTC); null when none."
+                            },
+                            "reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "warm_up_off",
+                                null
+                              ],
+                              "description": "Why nothing will be read: warm_up_off, no Mailbox in scope has warm-up on. Null otherwise, including while a reading is still being gathered."
                             }
                           },
                           "required": [
                             "google",
                             "microsoft",
                             "other",
-                            "read_at"
+                            "read_at",
+                            "reason"
                           ]
                         },
                         "weekly_check": {
@@ -179623,12 +179777,24 @@
                                 "null"
                               ],
                               "description": "When that check finished (UTC); null when none."
+                            },
+                            "reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "no_test_inboxes",
+                                null
+                              ],
+                              "description": "With no check on file: no_test_inboxes when weekly checks are not available. Null otherwise."
                             }
                           },
                           "required": [
                             "google_workspace",
                             "microsoft_365",
-                            "completed_at"
+                            "completed_at",
+                            "reason"
                           ]
                         },
                         "tests": {
@@ -179681,6 +179847,18 @@
                                 "null"
                               ],
                               "description": "When that test finished (UTC); null when none."
+                            },
+                            "reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "no_test_inboxes",
+                                "no_test_run",
+                                null
+                              ],
+                              "description": "With no test on file: no_test_inboxes when tests are not available, no_test_run when none was run yet. Null otherwise."
                             }
                           },
                           "required": [
@@ -179688,7 +179866,8 @@
                             "microsoft_365",
                             "gmail",
                             "outlook_com",
-                            "completed_at"
+                            "completed_at",
+                            "reason"
                           ]
                         }
                       },

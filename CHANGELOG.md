@@ -8,13 +8,14 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.59.0] - 2026-11-19
 
-Requires `@curviate/sdk` 0.55.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `e04cf6f7f`); `commands.json` regenerated.
+Requires `@curviate/sdk` 0.55.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `ed310e031`); `commands.json` regenerated.
 
 ### Mailboxes from Curviate: the price from the server
 
 - **`mailbox quote <count>`** reads what that many Mailboxes cost your Team now, for its billing period: the amount, when it is charged (a yearly Team pays the rest of its year the day the records are found), tax, and whether the Team can order now. The same in one sentence on stderr.
 - `mailbox buy` states no price of its own any more. At a terminal it shows the server's quote before asking; **`--expect-amount <amount>`** (the quote's `amount`) cancels the order at once when its `price` differs, exit 11. Every order prints its `price`.
 - `billing cap --help` documents `mailbox_cap` (`cap`, `is_default`, `count`, `room`); `mailbox remove` names no price.
+- `mailbox purchase get` and `mailbox buy` name the six records, `verify` included, each added exactly as shown.
 
 ### Unibox
 
@@ -24,7 +25,7 @@ Requires `@curviate/sdk` 0.55.0 (exact pin). The vendored OpenAPI fixture is re-
 ### Imports and warm-up
 
 - `lead import --filter` help is checked against the keys the served document types per kind.
-- `mailbox get` describes warm-up `ready`.
+- `mailbox get` describes warm-up `ready`, `landing.reason` and `reputation_reason` (`warm_up_off`); `analytics email` help names the landing reasons (`warm_up_off`, `no_test_inboxes`, `no_test_run`).
 
 ## [0.58.0] - 2026-11-18
 
