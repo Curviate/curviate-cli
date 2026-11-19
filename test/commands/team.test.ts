@@ -225,10 +225,10 @@ describe("the Tier", () => {
     ["do-not-contact add", "post", "/v1/do-not-contact"], ["do-not-contact update", "patch", "/v1/do-not-contact/{id}"],
     ["incoming create", "post", "/v1/incoming-events"], ["incoming rotate", "post", "/v1/incoming-events/{id}/rotate"], ["incoming capture", "post", "/v1/incoming-events/{id}/capture"],
     ["core draft create", "post", "/v1/drafts"], ["core draft update", "patch", "/v1/drafts/{id}"], ["core draft publish", "post", "/v1/drafts/{id}/publish"],
-  ])("%s (%s %s) says it needs Automate", (cmd, method, path) => {
+  ])("%s (%s %s) says it needs a subscription", (cmd, method, path) => {
     const api = JSON.parse(readFileSync(resolve(pkgRoot, "test/fixtures/openapi.json"), "utf8")) as { paths: Record<string, Record<string, Record<string, unknown>>> };
     expect(api.paths[path]?.[method]?.["x-curviate-tier"]).toBe("automate");
     const { commands } = JSON.parse(readFileSync(resolve(pkgRoot, "commands.json"), "utf8")) as { commands: Array<{ path: string[]; description: string }> };
-    expect(commands.find((c) => c.path.join(" ") === cmd)?.description).toContain("Needs Automate.");
+    expect(commands.find((c) => c.path.join(" ") === cmd)?.description).toContain("Needs a subscription.");
   });
 });

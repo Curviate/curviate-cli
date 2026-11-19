@@ -197,7 +197,7 @@ const resyncCmd = defineCommand({
     name: "resync",
     description:
       "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. " +
-      "Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
+      "Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs a subscription.",
     risk: "high",
     rules: {
       changes: "Opens a sync walk; Curviate reads the Account's Connections from LinkedIn over the next hours.",

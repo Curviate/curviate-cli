@@ -345,7 +345,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   PLACEMENT_TEST_ALLOWANCE_EXHAUSTED: 5,
   PLACEMENT_TESTS_UNAVAILABLE: 1,
   // Mailboxes from Curviate: a missing order is 4; a domain refused as named never succeeds as sent (2); an order
-  // already waiting on the domain is a state (8); a trial Team cannot order (11, billing); orders paused is "not
+  // already waiting on the domain is a state (8); a Team without a paid plan cannot order (11, billing); orders paused is "not
   // available" (1).
   MAILBOX_PURCHASE_NOT_FOUND: 4,
   DOMAIN_IN_USE: 2,

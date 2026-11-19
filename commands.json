@@ -931,7 +931,7 @@
         {
           "name": "save-connections-as-leads",
           "type": "boolean",
-          "description": "Save this account's Connections as Leads (Automate; on by default): each person becomes one Lead in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-leads stops it and keeps the Leads saved so far."
+          "description": "Save this account's Connections as Leads (needs a subscription; on by default): each person becomes one Lead in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-leads stops it and keeps the Leads saved so far."
         }
       ],
       "globals": [
@@ -1782,7 +1782,7 @@
       "path": [
         "campaign"
       ],
-      "description": "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`) and the files of an email step (`curviate campaign attachment`). Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
+      "description": "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`) and the files of an email step (`curviate campaign attachment`). Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need a subscription.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -1884,7 +1884,7 @@
         "campaign",
         "create"
       ],
-      "description": "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs Automate.",
+      "description": "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -1925,7 +1925,7 @@
         "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Campaigns need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need a subscription."
       },
       "seeAlso": [
         "curviate campaign lint",
@@ -1939,7 +1939,7 @@
         "campaign",
         "update"
       ],
-      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). --one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
+      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). --one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -2009,7 +2009,7 @@
         "campaign",
         "start"
       ],
-      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. With an email step it needs `curviate campaign check` at the current Sequence revision, and is refused while Leads have no email address unless --skip-missing-email. Needs Automate.",
+      "description": "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. With an email step it needs `curviate campaign check` at the current Sequence revision, and is refused while Leads have no email address unless --skip-missing-email. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -2055,7 +2055,7 @@
         "CAMPAIGN_STATUS_CONFLICT": "only a draft starts.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Campaigns need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need a subscription."
       },
       "seeAlso": [
         "curviate campaign check",
@@ -2117,7 +2117,7 @@
         "campaign",
         "resume"
       ],
-      "description": "Resume a paused Campaign. Runs the start checks again, the Lead check and --skip-missing-email included. Needs Automate.",
+      "description": "Resume a paused Campaign. Runs the start checks again, the Lead check and --skip-missing-email included. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -2162,7 +2162,7 @@
         "CAMPAIGN_STATUS_CONFLICT": "only a paused Campaign resumes.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
-        "TIER_REQUIRED": "Campaigns need the Automate plan."
+        "TIER_REQUIRED": "Campaigns need a subscription."
       },
       "seeAlso": [
         "curviate campaign get",
@@ -2410,7 +2410,7 @@
         "campaign",
         "add"
       ],
-      "description": "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate.",
+      "description": "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -2594,7 +2594,7 @@
         "campaign",
         "voice-clip"
       ],
-      "description": "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need the Automate plan.",
+      "description": "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need a subscription.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2607,7 +2607,7 @@
         "voice-clip",
         "upload"
       ],
-      "description": "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
+      "description": "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -2650,7 +2650,7 @@
         "VOICE_CLIP_INVALID": "the file is empty, is not audio, cannot be decoded, is under 1 second or is over 120 seconds; the message names the reason. A clip is never shortened.",
         "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
         "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
-        "TIER_REQUIRED": "Voice clips need the Automate plan.",
+        "TIER_REQUIRED": "Voice clips need a subscription.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
@@ -2698,7 +2698,7 @@
         "campaign",
         "attachment"
       ],
-      "description": "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need the Automate plan.",
+      "description": "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need a subscription.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -2711,7 +2711,7 @@
         "attachment",
         "upload"
       ],
-      "description": "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate. The CLI reads the path here, on your machine, and streams it in one request; a file over 20 MiB is refused before it leaves (exit 2). Curviate never fetches a path or a URL. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; a step's files above that are refused at send (attachment_refused).",
+      "description": "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs a subscription. The CLI reads the path here, on your machine, and streams it in one request; a file over 20 MiB is refused before it leaves (exit 2). Curviate never fetches a path or a URL. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; a step's files above that are refused at send (attachment_refused).",
       "usageOnly": false,
       "args": [
         {
@@ -2754,7 +2754,7 @@
         "UNSUPPORTED_MEDIA_TYPE": "an executable, a script, an installer, a shortcut, a disk image or a macro-enabled Office file; the message names the type. Nothing is stored.",
         "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
         "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
-        "TIER_REQUIRED": "Campaign attachments need the Automate plan.",
+        "TIER_REQUIRED": "Campaign attachments need a subscription.",
         "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
@@ -2984,7 +2984,7 @@
         "enrollment",
         "resume"
       ],
-      "description": "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs Automate.",
+      "description": "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3149,7 +3149,7 @@
         "enrollment",
         "event"
       ],
-      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs Automate.",
+      "description": "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3200,7 +3200,7 @@
         "enrollment",
         "signal"
       ],
-      "description": "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs Automate.",
+      "description": "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3251,7 +3251,7 @@
         "enrollment",
         "reassign"
       ],
-      "description": "Move an Enrollment to another sending Account of its Campaign; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
+      "description": "Move an Enrollment to another sending Account of its Campaign; it restarts there at the first Step of its version (one you paused stays paused). Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3597,7 +3597,7 @@
         "lead",
         "create"
       ],
-      "description": "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs Automate.",
+      "description": "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3701,7 +3701,7 @@
         "lead",
         "update"
       ],
-      "description": "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs Automate.",
+      "description": "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3925,7 +3925,7 @@
         "lead",
         "import"
       ],
-      "description": "Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs Automate.",
+      "description": "Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4206,7 +4206,7 @@
         "lead",
         "enrich"
       ],
-      "description": "Fill Leads from their LinkedIn profiles: from what Curviate already holds, and (modes auto, refill, live) by visiting the profile from an Account, which the person can see in their profile visitors. --mode cache_only never visits. Name Leads by id or one --list. Needs Automate.",
+      "description": "Fill Leads from their LinkedIn profiles: from what Curviate already holds, and (modes auto, refill, live) by visiting the profile from an Account, which the person can see in their profile visitors. --mode cache_only never visits. Name Leads by id or one --list. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4371,7 +4371,7 @@
         "lists",
         "create"
       ],
-      "description": "Create an empty Lead list. Fill it with `curviate lead lists add`, `curviate lead import --list`, or build it from other lists with `curviate lead lists combine`. Needs Automate.",
+      "description": "Create an empty Lead list. Fill it with `curviate lead lists add`, `curviate lead import --list`, or build it from other lists with `curviate lead lists combine`. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4420,7 +4420,7 @@
         "lists",
         "combine"
       ],
-      "description": "Create a new Lead list from other lists: the Leads in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). Any other filter flag narrows it too. The new list holds the Leads that match now; it does not follow later changes to the source lists. Needs Automate.",
+      "description": "Create a new Lead list from other lists: the Leads in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). Any other filter flag narrows it too. The new list holds the Leads that match now; it does not follow later changes to the source lists. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4545,7 +4545,7 @@
         "lists",
         "update"
       ],
-      "description": "Rename a Lead list or change its description (--description \"\" clears it). Needs Automate.",
+      "description": "Rename a Lead list or change its description (--description \"\" clears it). Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4648,7 +4648,7 @@
         "lists",
         "add"
       ],
-      "description": "Add Leads to a Lead list. Name the Leads by id, or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs Automate.",
+      "description": "Add Leads to a Lead list. Name the Leads by id, or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4785,7 +4785,7 @@
         "lists",
         "remove"
       ],
-      "description": "Remove Leads from a Lead list. Name the Leads by id, or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs Automate.",
+      "description": "Remove Leads from a Lead list. Name the Leads by id, or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4966,7 +4966,7 @@
         "tags",
         "update"
       ],
-      "description": "Rename a Tag on every Lead that carries it. A name another Tag has is refused. Needs Automate.",
+      "description": "Rename a Tag on every Lead that carries it. A name another Tag has is refused. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -5064,7 +5064,7 @@
         "tags",
         "add"
       ],
-      "description": "Put a Tag on Leads, named by id or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Put a Tag on Leads, named by id or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -5200,7 +5200,7 @@
         "tags",
         "remove"
       ],
-      "description": "Take a Tag off Leads, named by id or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs Automate.",
+      "description": "Take a Tag off Leads, named by id or with filter flags (the same as `curviate lead list`) to act on every match. Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -5460,7 +5460,7 @@
       },
       "errors": {
         "IMPORT_STATUS_CONFLICT": "the import is not queued or running.",
-        "TIER_REQUIRED": "your plan does not include imports from LinkedIn (Automate)."
+        "TIER_REQUIRED": "your Team needs a subscription for imports from LinkedIn."
       },
       "seeAlso": [
         "curviate lead imports get"
@@ -5508,7 +5508,7 @@
       },
       "errors": {
         "IMPORT_STATUS_CONFLICT": "the import is not paused.",
-        "TIER_REQUIRED": "your plan does not include imports from LinkedIn (Automate)."
+        "TIER_REQUIRED": "your Team needs a subscription for imports from LinkedIn."
       },
       "seeAlso": [
         "curviate lead imports get"
@@ -5556,7 +5556,7 @@
       },
       "errors": {
         "IMPORT_STATUS_CONFLICT": "the import has finished.",
-        "TIER_REQUIRED": "your plan does not include imports from LinkedIn (Automate)."
+        "TIER_REQUIRED": "your Team needs a subscription for imports from LinkedIn."
       },
       "seeAlso": [
         "curviate lead imports get"
@@ -6530,7 +6530,7 @@
         "do-not-contact",
         "add"
       ],
-      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
+      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). One person per call; for many, `do-not-contact import`. Any member may add. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -6587,7 +6587,7 @@
         "undo": "`curviate do-not-contact remove <id>` (Owners and Managers)."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Do-not-contact writes.",
         "RESOURCE_NOT_FOUND": "no Lead has this id."
       },
       "seeAlso": [
@@ -6600,7 +6600,7 @@
         "do-not-contact",
         "update"
       ],
-      "description": "Change the reason on an entry. Needs Automate.",
+      "description": "Change the reason on an entry. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -6641,7 +6641,7 @@
         "undo": "Update again with the old reason."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Do-not-contact writes.",
         "RESOURCE_NOT_FOUND": "no such entry."
       }
     },
@@ -6747,7 +6747,7 @@
         "do-not-contact",
         "import"
       ],
-      "description": "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. A file over 10,000 rows is sent in several requests. Any member may import. Needs Automate.",
+      "description": "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. A file over 10,000 rows is sent in several requests. Any member may import. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -6798,7 +6798,7 @@
         "One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."
       ],
       "errors": {
-        "TIER_REQUIRED": "your plan does not include Do-not-contact writes (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Do-not-contact writes.",
         "LEAD_LIMIT_REACHED": "the Team is at its Lead cap; rows that would add a Lead past it are skipped."
       },
       "seeAlso": [
@@ -7499,7 +7499,7 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial, sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
+        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
       ],
       "errors": {
         "INSUFFICIENT_ROLE": "only a Team Owner reads the price of Mailboxes from Curviate."
@@ -7573,7 +7573,7 @@
       "errors": {
         "SPENDING_CAP_REACHED": "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
         "INSUFFICIENT_ROLE": "only a Team Owner orders.",
-        "MAILBOX_PURCHASE_TRIAL": "a Team on a trial cannot order.",
+        "MAILBOX_PURCHASE_TRIAL": "a Team without a paid plan cannot order: on a trial, after a trial that ended without a purchase, never subscribed, or with a payment past due. Buy a seat or update the payment method, then order. Nothing was charged.",
         "MAILBOX_PURCHASE_PENDING": "this domain already has an order waiting for its records.",
         "DOMAIN_IN_USE": "the domain already has Mailboxes from Curviate or an order; name another domain.",
         "DOMAIN_IS_COMPANY_EMAIL": "the domain your company email runs on; use a separate domain.",
@@ -8544,7 +8544,7 @@
         "unibox",
         "tag"
       ],
-      "description": "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs Automate.",
+      "description": "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -8589,7 +8589,7 @@
         "undo": "Remove the tags or the Lead with `curviate lead`."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for the Unibox actions.",
         "CHAT_NOT_ONE_TO_ONE": "the chat is a group chat: there is no one person to save."
       }
     },
@@ -8598,7 +8598,7 @@
         "unibox",
         "enroll"
       ],
-      "description": "Save the other person of a one-to-one chat as a Lead and enroll them in a Campaign through this chat's Account (one of its sending Accounts). A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
+      "description": "Save the other person of a one-to-one chat as a Lead and enroll them in a Campaign through this chat's Account (one of its sending Accounts). A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -8645,7 +8645,7 @@
         "blast_radius": "One person, from one Account."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for the Unibox actions.",
         "CHAT_NOT_ONE_TO_ONE": "the chat is a group chat: there is no one person to save.",
         "ALREADY_ENROLLED_ON_ACCOUNT": "the person is already in this Campaign on this Account."
       },
@@ -8658,7 +8658,7 @@
         "unibox",
         "label"
       ],
-      "description": "Read a reply's Reply label and its history (who set it, Curviate's confidence as a whole percent, or a rule), or with --set correct it. A correction acts as when Curviate sets the label: opt_out puts the person on your Do-not-contact list (not_interested too when your Team turned that on), out_of_office makes the Lead wait 7 days, and your Team's Tag for the label is added. No LinkedIn call. --set needs Automate.",
+      "description": "Read a reply's Reply label and its history (who set it, Curviate's confidence as a whole percent, or a rule), or with --set correct it. A correction acts as when Curviate sets the label: opt_out puts the person on your Do-not-contact list (not_interested too when your Team turned that on), out_of_office makes the Lead wait 7 days, and your Team's Tag for the label is added. No LinkedIn call. --set needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -8699,7 +8699,7 @@
         "undo": "Set the label back with --set; a Do-not-contact entry it added stays: `curviate do-not-contact remove`."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for the Unibox actions.",
         "REPLY_NOT_LABELLABLE": "this message takes no Reply label: a direct conversation (no Campaign), your own message, or a warm-up message."
       },
       "seeAlso": [
@@ -8712,7 +8712,7 @@
         "unibox",
         "refresh"
       ],
-      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Campaign conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
+      "description": "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. An Account without Sync full inbox is re-read for its Campaign conversations only; one with neither answers not_synced. The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -8750,7 +8750,7 @@
         "undo": "Nothing to undo: a refresh only reads."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate)."
+        "TIER_REQUIRED": "your Team needs a subscription for the Unibox actions."
       }
     },
     {
@@ -8784,7 +8784,7 @@
         "unibox",
         "consent"
       ],
-      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); off hides the Account's non-Campaign chats at once and deletes them shortly after.",
+      "description": "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs a subscription); off hides the Account's non-Campaign chats at once and deletes them shortly after.",
       "usageOnly": false,
       "args": [
         {
@@ -8832,7 +8832,7 @@
         "blast_radius": "One Account's whole inbox."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include the Unibox actions (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for the Unibox actions.",
         "ACCOUNT_OWNER_ONLY": "only the person who connected the Account can change this."
       },
       "seeAlso": [
@@ -9006,7 +9006,7 @@
         "network",
         "resync"
       ],
-      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs Automate.",
+      "description": "Start a fresh walk of an Account's Connections now, or of every Account you may operate with --all. Once per Account per day; pages are read inside the Account's read window. Answers queued, cooldown, in_progress or paused per Account: answers, not errors. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -9268,7 +9268,8 @@
       "output": [
         "reply: Leads first emailed in the window whose first reply, by email or on LinkedIn, came after that email, so far; an out-of-office reply is never a reply.",
         "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
-        "bounce: bounced over sent. opt-out: Leads who opted out over Leads first emailed.",
+        "bounce: bounced over sent; a bounce rate needs 50 emails sent to mean anything (the dashboard shows none below that). opt-out: Leads who opted out over Leads first emailed.",
+        "A rate is still maturing while more than a third of its emails were sent in the last 7 days (`maturing`): it may still rise, so say so. `low_sample` is true under 30.",
         "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
         "landing: where mail lands, as verdicts, each with a reason when there is nothing to read: warm_up.reason warm_up_off (warm-up is off), weekly_check.reason no_test_inboxes (not available), tests.reason no_test_inboxes or no_test_run (none run yet); a Mailbox's reputation_reason warm_up_off (no score while warm-up is off). Show them as served."
       ],
@@ -11207,7 +11208,7 @@
         "incoming",
         "create"
       ],
-      "description": "Create an incoming event: a private URL, printed once, that any tool posts to. Treat the URL like a password. Needs Automate.",
+      "description": "Create an incoming event: a private URL, printed once, that any tool posts to. Treat the URL like a password. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -11480,7 +11481,7 @@
         "incoming",
         "rotate"
       ],
-      "description": "Replace the URL's secret: the new URL is printed once and the old one stops working at once. Needs Automate.",
+      "description": "Replace the URL's secret: the new URL is printed once and the old one stops working at once. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -11527,7 +11528,7 @@
         "incoming",
         "capture"
       ],
-      "description": "Capture the next post as the sample: its field paths (never its values' meaning) become the shape the match paths and Sequences are checked against. Needs Automate.",
+      "description": "Capture the next post as the sample: its field paths (never its values' meaning) become the shape the match paths and Sequences are checked against. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -19950,7 +19951,7 @@
         "draft",
         "create"
       ],
-      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs Automate.",
+      "description": "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -20003,7 +20004,7 @@
         "undo": "`curviate core draft delete <draft_id>`."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Drafts.",
         "DRAFT_LIMIT_REACHED": "the bucket already holds as many Drafts as it may.",
         "MEDIA_QUOTA_EXCEEDED": "the media quota is used.",
         "SCHEDULE_CONFLICT": "another Draft is scheduled too close to this time."
@@ -20015,7 +20016,7 @@
         "draft",
         "update"
       ],
-      "description": "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs Automate.",
+      "description": "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -20077,7 +20078,7 @@
         "undo": "Run it again with the previous values."
       },
       "errors": {
-        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Drafts.",
         "DRAFT_PUBLISHING": "the Draft is being published: read it again in a few seconds.",
         "MEDIA_QUOTA_EXCEEDED": "the media quota is used.",
         "SCHEDULE_CONFLICT": "another Draft is scheduled too close to this time."
@@ -20137,7 +20138,7 @@
         "draft",
         "publish"
       ],
-      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure keeps the content and cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared). If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs Automate.",
+      "description": "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure keeps the content and cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared). If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -20178,7 +20179,7 @@
         "LINKEDIN_AUTH_FAILED": "LinkedIn no longer accepts the Account's sign-in: reconnect it.",
         "ACCOUNT_RESTRICTED": "LinkedIn restricts the Account from this action.",
         "BUDGET_EXHAUSTED": "the Account's limit for this action is used up; nothing reached LinkedIn. `curviate account get <account_id>` shows when it resets; `curviate account safety update` changes the limit.",
-        "TIER_REQUIRED": "your plan does not include Drafts (Automate).",
+        "TIER_REQUIRED": "your Team needs a subscription for Drafts.",
         "DRAFT_NOT_PUBLISHABLE": "the Draft lacks what a post needs.",
         "DRAFT_PUBLISHING": "the Draft is already being published."
       }

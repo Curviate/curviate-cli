@@ -406,7 +406,7 @@ const online = (fn: (c: Curviate, f: UniboxFlags) => Promise<void>) => async ({ 
 const ACCOUNT = { type: "positional" as const, description: "The chat's Account (acc_...), as `curviate unibox list` prints it." };
 const CHAT = { type: "positional" as const, description: "The chat id, as `curviate unibox list` prints it." };
 const ACCOUNTS = { type: "string" as const, description: "Only these Accounts: a comma list of ids (acc_...). Never filled from your profile's default Account." };
-const AUTOMATE = { TIER_REQUIRED: "your plan does not include the Unibox actions (Automate)." };
+const NEEDS_SUBSCRIPTION = { TIER_REQUIRED: "your Team needs a subscription for the Unibox actions." };
 const ONE_TO_ONE = { CHAT_NOT_ONE_TO_ONE: "the chat is a group chat: there is no one person to save." };
 
 const listCmd = defineCommand({
@@ -696,7 +696,7 @@ const markCmd = defineCommand({
 const tagCmd = defineCommand({
   meta: {
     name: "tag",
-    description: "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs Automate.",
+    description: "Save the other person of a one-to-one chat as a Lead (or find the one you hold) and add tags, never removing any. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Creates or finds the Lead and adds the tags.",
@@ -705,7 +705,7 @@ const tagCmd = defineCommand({
       retry: "Safe to repeat: the same Lead, tags already there stay.",
       undo: "Remove the tags or the Lead with `curviate lead`.",
     },
-    errors: { ...AUTOMATE, ...ONE_TO_ONE },
+    errors: { ...NEEDS_SUBSCRIPTION, ...ONE_TO_ONE },
     examples: ["curviate unibox tag acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --tag warm"],
   },
   args: { ...WRITE_SINGLE_FLAGS, accountId: ACCOUNT, chatId: CHAT, tag: { type: "string" as const, description: "A tag to add; repeatable or a comma list. Omit to only save the Lead." } },
@@ -717,7 +717,7 @@ const enrollCmd = defineCommand({
     name: "enroll",
     description:
       "Save the other person of a one-to-one chat as a Lead and enroll them in a Campaign through this chat's Account (one of its sending Accounts). " +
-      "A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs Automate.",
+      "A direct add: the rule that skips people you already chat with does not apply; every other rule does. Needs a subscription.",
     risk: "high",
     rules: {
       changes: "Creates the Enrollment; the Campaign's Steps run for this person from this Account.",
@@ -727,7 +727,7 @@ const enrollCmd = defineCommand({
       undo: "`curviate enrollment stop <enrollment_id>`; what was sent stays sent.",
       blast_radius: "One person, from one Account.",
     },
-    errors: { ...AUTOMATE, ...ONE_TO_ONE, ALREADY_ENROLLED_ON_ACCOUNT: "the person is already in this Campaign on this Account." },
+    errors: { ...NEEDS_SUBSCRIPTION, ...ONE_TO_ONE, ALREADY_ENROLLED_ON_ACCOUNT: "the person is already in this Campaign on this Account." },
     seeAlso: ["curviate enrollment get"],
     examples: ["curviate unibox enroll acc_YOUR_ACCOUNT_ID YOUR_CHAT_ID --campaign mot_YOUR_CAMPAIGN_ID"],
   },
@@ -742,7 +742,7 @@ const refreshCmd = defineCommand({
       "Queue a re-read of the newest chats of each Account the inbox poll covers, or of --accounts; it runs within minutes. " +
       "Once per Account in a short cooldown: a repeat answers cooldown with next_allowed_at. " +
       "An Account without Sync full inbox is re-read for its Campaign conversations only; one with neither answers not_synced. " +
-      "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs Automate.",
+      "The poll keeps the Account's active hours: on a Team whose active days are Monday to Friday nothing is polled at the weekend, and a refresh then answers paused until the next active day. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Queues one read of each Account's newest chats.",
@@ -751,7 +751,7 @@ const refreshCmd = defineCommand({
       retry: "A repeat inside the cooldown answers cooldown; nothing new is queued.",
       undo: "Nothing to undo: a refresh only reads.",
     },
-    errors: AUTOMATE,
+    errors: NEEDS_SUBSCRIPTION,
     examples: ["curviate unibox refresh", "curviate unibox refresh --accounts acc_YOUR_ACCOUNT_ID"],
   },
   args: { ...WRITE_SINGLE_FLAGS, accounts: ACCOUNTS },
@@ -764,7 +764,7 @@ const labelCmd = defineCommand({
     description:
       "Read a reply's Reply label and its history (who set it, Curviate's confidence as a whole percent, or a rule), or with --set correct it. " +
       "A correction acts as when Curviate sets the label: opt_out puts the person on your Do-not-contact list (not_interested too when your Team turned that on), out_of_office makes the Lead wait 7 days, and your Team's Tag for the label is added. " +
-      "No LinkedIn call. --set needs Automate.",
+      "No LinkedIn call. --set needs a subscription.",
     risk: "write",
     rules: {
       changes: "With --set: the message's Reply label, stored as a correction; the earlier label stays in the history.",
@@ -773,7 +773,7 @@ const labelCmd = defineCommand({
       retry: "Safe to repeat: the same label again.",
       undo: "Set the label back with --set; a Do-not-contact entry it added stays: `curviate do-not-contact remove`.",
     },
-    errors: { ...AUTOMATE, REPLY_NOT_LABELLABLE: "this message takes no Reply label: a direct conversation (no Campaign), your own message, or a warm-up message." },
+    errors: { ...NEEDS_SUBSCRIPTION, REPLY_NOT_LABELLABLE: "this message takes no Reply label: a direct conversation (no Campaign), your own message, or a warm-up message." },
     seeAlso: ["curviate unibox messages", "curviate team reply-labels"],
     examples: ["curviate unibox label YOUR_MESSAGE_ID", "curviate unibox label YOUR_MESSAGE_ID --set not_now"],
   },
@@ -805,7 +805,7 @@ const consentCmd = defineCommand({
   meta: {
     name: "consent",
     description:
-      "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs Automate); " +
+      "Turn Sync full inbox on or off for one Account. Only the person who connected the Account can. On starts a paced listing that takes hours (needs a subscription); " +
       "off hides the Account's non-Campaign chats at once and deletes them shortly after.",
     risk: "high",
     rules: {
@@ -816,7 +816,7 @@ const consentCmd = defineCommand({
       undo: "Run it with the other flag; chats removed by off are listed again by a new sync.",
       blast_radius: "One Account's whole inbox.",
     },
-    errors: { ...AUTOMATE, ACCOUNT_OWNER_ONLY: "only the person who connected the Account can change this." },
+    errors: { ...NEEDS_SUBSCRIPTION, ACCOUNT_OWNER_ONLY: "only the person who connected the Account can change this." },
     seeAlso: ["curviate unibox refresh", "curviate unibox list"],
     examples: ["curviate unibox consent acc_YOUR_ACCOUNT_ID --on"],
   },

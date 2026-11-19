@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.60.0] - 2026-11-19
+
+Requires `@curviate/sdk` 0.56.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production's document, server commit `a8207d2c5`); `commands.json` regenerated. Text only: no command, flag or exit code changes.
+
+- `analytics email --help` says what an agent must pass on: a rate is still maturing while more than a third of its emails were sent in the last 7 days, and a bounce rate needs 50 emails sent to mean anything.
+- **"Needs Automate" is gone**: the one plan includes every feature, so `lead import`, `lead imports pause|resume|stop`, `lead lists`, `draft`, `campaign`, `enrollment`, `unibox`, `do-not-contact` and the rest say "Needs a subscription", and a `TIER_REQUIRED` hint reads "your Team needs a subscription for ..." (as the API's operation descriptions do). The previous prices keep their names in `billing move`.
+- `MAILBOX_PURCHASE_TRIAL` (`mailbox buy`) and the quote's "It cannot be ordered now" line say what the server does: a Team without a paid plan cannot order Mailboxes from Curviate, whether on a trial, after a trial that ended without a purchase, never subscribed, or with a payment past due; nothing was charged.
+
 ## [0.59.0] - 2026-11-19
 
 Requires `@curviate/sdk` 0.55.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `ed310e031`); `commands.json` regenerated.

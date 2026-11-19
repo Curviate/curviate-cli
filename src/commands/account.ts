@@ -119,7 +119,7 @@ type AccountFlags = {
   // update body fields
   metadata?: string;     // JSON object string -> flat string->string metadata map
   "clear-proxy"?: boolean; // update: send proxy:null to clear the custom proxy
-  "save-connections-as-leads"?: boolean; // update: save the account's Connections as Leads (Automate)
+  "save-connections-as-leads"?: boolean; // update: save the account's Connections as Leads (needs a subscription)
   // connect-link / reconnect-link body fields
   "expires-in-seconds"?: string;
   "redirect-url"?: string;
@@ -2055,7 +2055,7 @@ const accountUpdateCommand = defineCommand({
     "proxy-port": { type: "string", description: "Proxy port." },
     "proxy-username": { type: "string", description: "Proxy auth username." },
     "proxy-password": { type: "string", description: `Proxy auth password. ${OPTIONAL_SECRET_WARNING("CURVIATE_PROXY_PASSWORD")}` },
-    "save-connections-as-leads": { type: "boolean", description: "Save this account's Connections as Leads (Automate; on by default): each person becomes one Lead in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-leads stops it and keeps the Leads saved so far." },
+    "save-connections-as-leads": { type: "boolean", description: "Save this account's Connections as Leads (needs a subscription; on by default): each person becomes one Lead in your team, do-not-contact people skipped. Turning it on also saves the Connections already synced; --no-save-connections-as-leads stops it and keeps the Leads saved so far." },
   },
   async run({ args }) {
     const flags = args as AccountFlags;

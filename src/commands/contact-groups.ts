@@ -108,7 +108,7 @@ const listsGet = defineCommand({
 const listsCreate = defineCommand({
   meta: {
     name: "create",
-    description: "Create an empty Lead list. Fill it with `curviate lead lists add`, `curviate lead import --list`, or build it from other lists with `curviate lead lists combine`. Needs Automate.",
+    description: "Create an empty Lead list. Fill it with `curviate lead lists add`, `curviate lead import --list`, or build it from other lists with `curviate lead lists combine`. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "A new, empty Lead list.",
@@ -142,7 +142,7 @@ const listsCombine = defineCommand({
     name: "combine",
     description:
       "Create a new Lead list from other lists: the Leads in any of them (--list a --list b), in all of them (--list-match all), minus those in some others (--not-list). " +
-      "Any other filter flag narrows it too. The new list holds the Leads that match now; it does not follow later changes to the source lists. Needs Automate.",
+      "Any other filter flag narrows it too. The new list holds the Leads that match now; it does not follow later changes to the source lists. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "A new Lead list holding every Lead the filter matches at this moment. The source lists are unchanged.",
@@ -180,7 +180,7 @@ const listsCombine = defineCommand({
 const listsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Lead list or change its description (--description \"\" clears it). Needs Automate.",
+    description: "Rename a Lead list or change its description (--description \"\" clears it). Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The list's name or description.",
@@ -248,7 +248,7 @@ const membership = (verb: "add" | "remove") =>
       name: verb,
       description:
         `${verb === "add" ? "Add Leads to" : "Remove Leads from"} a Lead list. Name the Leads by id, or with filter flags (the same as \`curviate lead list\`) to act on every match. ` +
-        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs Automate.",
+        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. The list being changed is the positional id; to filter by another list use --from-list (`lead list` calls it --list). Needs a subscription.",
       risk: "high",
       rules: {
         changes: verb === "add" ? "The Leads join the list." : "The Leads leave the list; they are not deleted.",
@@ -307,7 +307,7 @@ const tagsList = defineCommand({
 const tagsUpdate = defineCommand({
   meta: {
     name: "update",
-    description: "Rename a Tag on every Lead that carries it. A name another Tag has is refused. Needs Automate.",
+    description: "Rename a Tag on every Lead that carries it. A name another Tag has is refused. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The Tag's name, on all its Leads.",
@@ -366,7 +366,7 @@ const tagging = (verb: "add" | "remove") =>
       name: verb,
       description:
         `${verb === "add" ? "Put a Tag on" : "Take a Tag off"} Leads, named by id or with filter flags (the same as \`curviate lead list\`) to act on every match. ` +
-        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs Automate.",
+        "Count a filter first: `curviate lead list <same filters> --total --limit 1`. Needs a subscription.",
       risk: "high",
       rules: {
         changes: verb === "add" ? "The Tag is put on the Leads (created if new)." : "The Tag is taken off the Leads.",

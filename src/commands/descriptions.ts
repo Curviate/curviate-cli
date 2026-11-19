@@ -13,11 +13,11 @@ export const DESCRIPTIONS = {
   campaign:
     "Campaigns: one Sequence run for the Leads of your Team's Lead lists, from its sending Accounts, paced on a schedule. " +
     "Create and edit drafts, preview, start, pause, resume, archive, add or remove Leads; lint a Sequence and write a template offline; upload the audio of a voice note step (`curviate campaign voice-clip`) and the files of an email step (`curviate campaign attachment`). " +
-    "Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need the Automate plan.",
+    "Your Team's data: every role reads; writes need send access to each sending Account, and Campaigns need a subscription.",
   campaignAttachment:
-    "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need the Automate plan.",
+    "Campaign attachments: the files an email step sends. Upload one file (up to 20 MiB), then put its id in the step's `attachment_ids`; read one back. Nothing is sent until a Campaign that uses it is started. Uploads need a subscription.",
   campaignVoiceClip:
-    "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need the Automate plan.",
+    "Voice clips: the audio a `voice.send` step plays. Upload one audio file (1 to 120 seconds, up to 20 MiB), then put its id in a Sequence as `clip_id`; read one back. Nothing reaches LinkedIn until a Campaign that uses it is started. Uploads need a subscription.",
   enrollment:
     "Enrollments: one Lead in one Campaign on one Account. List and read them; pause, resume, retry a failed Step, stop, send a custom event, reassign, or act on many at once. " +
     "Your Team's data: every role reads; writes need operate on the Enrollment's Account.",

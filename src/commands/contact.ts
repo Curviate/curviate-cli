@@ -302,7 +302,7 @@ const writeRules = (changes: string, undo: string, retry = "Safe: the same call 
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs Automate.",
+    description: "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs a subscription.",
     risk: "write",
     rules: writeRules("Creates the Lead, or updates it and reports `outcome: updated` or `unchanged`.", "`curviate lead delete <id>`; an update is undone by updating again."),
     errors: { LEAD_LIMIT_REACHED: "the Team is at its Lead, Tag or list-membership cap." },
@@ -322,7 +322,7 @@ const createCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs Automate.",
+    description: "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs a subscription.",
     risk: "write",
     rules: writeRules("The named fields change.", "Update again with the old values."),
     errors: { RESOURCE_NOT_FOUND: "no Lead has this id." },
@@ -371,7 +371,7 @@ const enrichCmd = defineCommand({
     name: "enrich",
     description:
       "Fill Leads from their LinkedIn profiles: from what Curviate already holds, and (modes auto, refill, live) by visiting the profile from an Account, " +
-      "which the person can see in their profile visitors. --mode cache_only never visits. Name Leads by id or one --list. Needs Automate.",
+      "which the person can see in their profile visitors. --mode cache_only never visits. Name Leads by id or one --list. Needs a subscription.",
     risk: "high",
     rules: {
       changes: "Lead fields are filled; a visit is queued per Lead that needs one.",

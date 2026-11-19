@@ -220,7 +220,7 @@ export function priceLine(p: ServedPrice): string {
   const waits = p.charge_waits_for === "payment" ? " The charge waits until your Team's open payment is settled."
     : p.charge_waits_for === "subscription" ? " The charge waits until your Team has a subscription." : "";
   const closed = p.orderable === false
-    ? ` It cannot be ordered now: ${p.not_orderable_reason === "trial" ? "a Team on a trial cannot order" : p.not_orderable_reason === "sales_paused" ? "orders cannot be placed at the moment" : "orders are closed"}.`
+    ? ` It cannot be ordered now: ${p.not_orderable_reason === "trial" ? "available once your Team pays (a Team on a trial, without a paid plan, or with a payment past due)" : p.not_orderable_reason === "sales_paused" ? "orders cannot be placed at the moment" : "orders are closed"}.`
     : "";
   return head + when + waits + closed;
 }
@@ -748,7 +748,7 @@ const buyCmd = defineCommand({
     errors: {
       SPENDING_CAP_REACHED: "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
       INSUFFICIENT_ROLE: "only a Team Owner orders.",
-      MAILBOX_PURCHASE_TRIAL: "a Team on a trial cannot order.",
+      MAILBOX_PURCHASE_TRIAL: "a Team without a paid plan cannot order: on a trial, after a trial that ended without a purchase, never subscribed, or with a payment past due. Buy a seat or update the payment method, then order. Nothing was charged.",
       MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
       DOMAIN_IN_USE: "the domain already has Mailboxes from Curviate or an order; name another domain.",
       DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
@@ -782,7 +782,7 @@ const quoteCmd = defineCommand({
     risk: "read",
     errors: { INSUFFICIENT_ROLE: "only a Team Owner reads the price of Mailboxes from Curviate." },
     output: [
-      "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial, sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr.",
+      "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr.",
     ],
     seeAlso: ["curviate mailbox buy", "curviate billing cap"],
     examples: ["curviate mailbox quote 3", "curviate mailbox quote 3 --json"],

@@ -480,7 +480,7 @@ const draftCreateCommand = defineCommand({
     name: "create",
     description:
       "Store a Draft. Every part is optional. With --schedule-at (and an account and text) Curviate publishes it at that time. " +
-      "Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs Automate.",
+      "Each account, and the no-account bucket, has a Draft limit and a media quota (DRAFT_LIMIT_REACHED, MEDIA_QUOTA_EXCEEDED). A retry creates a second Draft. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Stores a Draft; with --schedule-at, an account and text, Curviate publishes it at that time.",
@@ -489,7 +489,7 @@ const draftCreateCommand = defineCommand({
       retry: "Not safe: each call creates another Draft.",
       undo: "`curviate core draft delete <draft_id>`.",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_LIMIT_REACHED: "the bucket already holds as many Drafts as it may.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
+    errors: { TIER_REQUIRED: "your Team needs a subscription for Drafts.", DRAFT_LIMIT_REACHED: "the bucket already holds as many Drafts as it may.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
     examples: [
       "curviate core draft create \"Three things we learned shipping our first agent integration.\"",
       "curviate core draft create \"Launch day.\" --account acc_YOUR_ACCOUNT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -513,7 +513,7 @@ const draftUpdateCommand = defineCommand({
     name: "update",
     description:
       "Change a Draft: only the parts you pass change. --attach appends files; --schedule-at schedules or reschedules, --unschedule cancels. " +
-      "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs Automate.",
+      "Any update to a failed Draft clears its failure. A Draft being published answers DRAFT_PUBLISHING: read it again in a few seconds. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Changes the parts of the Draft you pass; --schedule-at schedules or reschedules it, --unschedule cancels.",
@@ -522,7 +522,7 @@ const draftUpdateCommand = defineCommand({
       retry: "Safe for the text and schedule: the same values written again leave the Draft the same. --attach appends the files again.",
       undo: "Run it again with the previous values.",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_PUBLISHING: "the Draft is being published: read it again in a few seconds.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
+    errors: { TIER_REQUIRED: "your Team needs a subscription for Drafts.", DRAFT_PUBLISHING: "the Draft is being published: read it again in a few seconds.", MEDIA_QUOTA_EXCEEDED: "the media quota is used.", SCHEDULE_CONFLICT: "another Draft is scheduled too close to this time." },
     examples: [
       "curviate core draft update drf_YOUR_DRAFT_ID --text \"New wording.\"",
       "curviate core draft update drf_YOUR_DRAFT_ID --schedule-at 2026-10-12T09:00:00+02:00",
@@ -574,7 +574,7 @@ const draftPublishCommand = defineCommand({
     name: "publish",
     description:
       "Publish a Draft now, under the same rules and safety limits as `curviate core post create`. Success deletes the Draft and prints the post id; a known failure keeps the content and cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared). " +
-      "If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs Automate.",
+      "If the error says the outcome is unknown, the Draft fails `outcome_unknown` and the post may be live: check the account's posts before retrying. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Publishes the Draft as a post now and deletes the Draft.",
@@ -583,7 +583,7 @@ const draftPublishCommand = defineCommand({
       retry: "A known failure keeps the content, cancels any pending scheduled publish or retry (a time still ahead stays scheduled, one already passed is cleared) and is safe to retry. If the error says the outcome is unknown, read `curviate core post user-posts me` first.",
       undo: "`curviate core post delete <post_id>`.",
     },
-    errors: { ...AS_ACCOUNT, ...BUDGET, TIER_REQUIRED: "your plan does not include Drafts (Automate).", DRAFT_NOT_PUBLISHABLE: "the Draft lacks what a post needs.", DRAFT_PUBLISHING: "the Draft is already being published." },
+    errors: { ...AS_ACCOUNT, ...BUDGET, TIER_REQUIRED: "your Team needs a subscription for Drafts.", DRAFT_NOT_PUBLISHABLE: "the Draft lacks what a post needs.", DRAFT_PUBLISHING: "the Draft is already being published." },
     examples: ["curviate core draft publish drf_YOUR_DRAFT_ID"],
   },
   args: {

@@ -469,7 +469,7 @@ const CAMPAIGN_DOC = `{
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs Automate.",
+    description: "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Creates a draft Campaign. No Lead is enrolled and nothing reaches LinkedIn until it is started.",
@@ -478,7 +478,7 @@ const createCmd = defineCommand({
       retry: "A retry creates a second draft: list with `curviate campaign list --status draft` first.",
       undo: "`curviate campaign delete <campaign_id>` deletes a draft.",
     },
-    errors: { ...SEQUENCE_ERRORS, ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
+    errors: { ...SEQUENCE_ERRORS, ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need a subscription." },
     seeAlso: ["curviate campaign lint", "curviate campaign init", "curviate campaign preview"],
     document: "campaign create",
     examples: [
@@ -500,7 +500,7 @@ const updateCmd = defineCommand({
       "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
       "settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
       "--one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. " +
-      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs Automate.",
+      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Changes the Campaign. A running Campaign picks the change up at each Enrollment's next Step.",
@@ -554,7 +554,7 @@ const lifecycleCmd = (name: "start" | "pause" | "resume" | "archive" | "delete",
 const startCmd = lifecycleCmd("start", {
   description:
     "Start a draft: scheduled when its start time is ahead, else active. Freezes Sequence version 1. A Campaign missing what it needs is refused with every gap listed. " +
-    "With an email step it needs `curviate campaign check` at the current Sequence revision, and is refused while Leads have no email address unless --skip-missing-email. Needs Automate.",
+    "With an email step it needs `curviate campaign check` at the current Sequence revision, and is refused while Leads have no email address unless --skip-missing-email. Needs a subscription.",
   risk: "high",
   rules: {
     changes: "The Campaign starts enrolling its Leads and running its Steps from its sending Accounts, paced on its schedule.",
@@ -568,7 +568,7 @@ const startCmd = lifecycleCmd("start", {
     CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address); each is listed.",
     CAMPAIGN_STATUS_CONFLICT: "only a draft starts.",
     ...ROLE_ERRORS,
-    TIER_REQUIRED: "Campaigns need the Automate plan.",
+    TIER_REQUIRED: "Campaigns need a subscription.",
   },
   seeAlso: ["curviate campaign check", "curviate campaign preview", "curviate campaign pause"],
 });
@@ -588,7 +588,7 @@ const pauseCmd = lifecycleCmd("pause", {
 });
 
 const resumeCmd = lifecycleCmd("resume", {
-  description: "Resume a paused Campaign. Runs the start checks again, the Lead check and --skip-missing-email included. Needs Automate.",
+  description: "Resume a paused Campaign. Runs the start checks again, the Lead check and --skip-missing-email included. Needs a subscription.",
   risk: "high",
   rules: {
     changes: "The Campaign's Steps run again from its sending Accounts.",
@@ -598,7 +598,7 @@ const resumeCmd = lifecycleCmd("resume", {
     undo: "`curviate campaign pause <campaign_id>`; what was sent stays sent.",
     blast_radius: "Every open Enrollment of the Campaign.",
   },
-  errors: { CAMPAIGN_NOT_STARTABLE: "a gap stops it; each is listed.", CAMPAIGN_STATUS_CONFLICT: "only a paused Campaign resumes.", ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need the Automate plan." },
+  errors: { CAMPAIGN_NOT_STARTABLE: "a gap stops it; each is listed.", CAMPAIGN_STATUS_CONFLICT: "only a paused Campaign resumes.", ...ROLE_ERRORS, TIER_REQUIRED: "Campaigns need a subscription." },
   seeAlso: SEE_LIFECYCLE,
 });
 
@@ -694,7 +694,7 @@ const membershipCmd = (kind: "add" | "remove") =>
     meta: {
       name: kind,
       description: kind === "add"
-        ? "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate."
+        ? "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs a subscription."
         : "Take Leads out of the Campaign: their open Enrollments end (removed). Sent in requests of up to 1000 ids, in order.",
       risk: "high",
       rules: kind === "add"
@@ -773,7 +773,7 @@ const voiceClipUploadCmd = defineCommand({
     name: "upload",
     description:
       "Upload one audio file (MP3, WAV, M4A, WebM or Ogg) and print the clip: its `id` (vc_...) is the `clip_id` of a `voice.send` step. 1 to 120 seconds, up to 20 MiB, 100 uploads per Team per 24 hours. " +
-      "The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs Automate.",
+      "The file is converted once and the original is discarded. Nothing reaches LinkedIn. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Stores one converted clip for your Team. No Campaign changes and nothing is sent to anyone.",
@@ -787,7 +787,7 @@ const voiceClipUploadCmd = defineCommand({
       VOICE_CLIP_INVALID: "the file is empty, is not audio, cannot be decoded, is under 1 second or is over 120 seconds; the message names the reason. A clip is never shortened.",
       PAYLOAD_TOO_LARGE: "the file is over 20 MiB.",
       RATE_LIMIT_TENANT: "100 uploads in the last 24 hours; Retry-After is the wait.",
-      TIER_REQUIRED: "Voice clips need the Automate plan.",
+      TIER_REQUIRED: "Voice clips need a subscription.",
       ...ROLE_ERRORS,
     },
     seeAlso: ["curviate campaign voice-clip get", "curviate campaign lint", "curviate campaign create"],
@@ -828,7 +828,7 @@ const attachmentUploadCmd = defineCommand({
     name: "upload",
     description:
       "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. " +
-      "Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate. " +
+      "Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs a subscription. " +
       "The CLI reads the path here, on your machine, and streams it in one request; a file over 20 MiB is refused before it leaves (exit 2). Curviate never fetches a path or a URL. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; a step's files above that are refused at send (attachment_refused).",
     risk: "write",
     rules: {
@@ -843,7 +843,7 @@ const attachmentUploadCmd = defineCommand({
       UNSUPPORTED_MEDIA_TYPE: "an executable, a script, an installer, a shortcut, a disk image or a macro-enabled Office file; the message names the type. Nothing is stored.",
       PAYLOAD_TOO_LARGE: "the file is over 20 MiB.",
       RATE_LIMIT_TENANT: "100 uploads in the last 24 hours; Retry-After is the wait.",
-      TIER_REQUIRED: "Campaign attachments need the Automate plan.",
+      TIER_REQUIRED: "Campaign attachments need a subscription.",
       ...ROLE_ERRORS,
     },
     seeAlso: ["curviate campaign attachment get", "curviate campaign lint", "curviate campaign check"],
