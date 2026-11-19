@@ -340,6 +340,19 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   MAILBOX_LIMIT_REACHED: 2,
   MAILBOX_APP_PASSWORD_REQUIRED: 2,
   MAILBOX_ADMIN_APPROVAL_REQUIRED: 5,
+  // Placement tests: the monthly allowance comes with paid seats (5, a seat or the new month lifts it, never a
+  // wait of minutes, so not 6); tests that cannot run at all today are "not available" (1, as PLATFORM_NOT_IMPLEMENTED).
+  PLACEMENT_TEST_ALLOWANCE_EXHAUSTED: 5,
+  PLACEMENT_TESTS_UNAVAILABLE: 1,
+  // Mailboxes from Curviate: a missing order is 4; a domain refused as named never succeeds as sent (2); an order
+  // already waiting on the domain is a state (8); a trial Team cannot order (11, billing); orders paused is "not
+  // available" (1).
+  MAILBOX_PURCHASE_NOT_FOUND: 4,
+  DOMAIN_IN_USE: 2,
+  DOMAIN_IS_COMPANY_EMAIL: 2,
+  MAILBOX_PURCHASE_PENDING: 8,
+  MAILBOX_PURCHASE_TRIAL: 11,
+  MAILBOX_SALES_PAUSED: 1,
   // Seat calls: only an Owner raises the spending cap or cancels in the dashboard (5, someone else acts first).
   SPENDING_CAP_REACHED: 5,
   CANCEL_IN_DASHBOARD: 5,

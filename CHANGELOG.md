@@ -8,7 +8,23 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production document, server commit `ba87aad99`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `4c1e6ef64`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+
+### Placement tests and warm-up states
+
+- **`mailbox test <mbx_...> --subject <s> --body-file <path|->`** runs a placement test: your exact email to 12 test inboxes at four providers, results within an hour. **`mailbox tests <mbx_...> [plt_...]`** reads the tests, a verdict per provider and the Team's allowance (10 per paid seat a month).
+- `PLACEMENT_TEST_ALLOWANCE_EXHAUSTED` exits **5** (a paid seat or the new month lifts it; never retried); `PLACEMENT_TESTS_UNAVAILABLE` exits 1.
+- **`campaign placement <mot_...>`**: the Campaign's weekly placement checks.
+- `mailbox get` shows `warm_up.state` `waiting` with its `reason` (`reconnect_needed`, `trial`, `app_password`, `warm_up_app`, `allowance`).
+
+### Mailboxes from Curviate
+
+- **`mailbox purchase list [--state]`** and **`mailbox purchase get <mpu_...>`** read your Team's orders and the records to add.
+- **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Today a Team Owner orders in the dashboard: with an API key it is refused (exit 3) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
+
+### Lead imports
+
+- `lead import --source` offers `sales_nav_account_list` (`--list-id`, `--titles` optional) and `sales_nav_company_people` (a Sales Navigator account search URL or `--filter`, plus `--titles`); a pasted account search URL picks `sales_nav_company_people`.
 
 ### Email attachments
 
@@ -26,7 +42,7 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 ### Email from a conversation: Cc, Bcc, files
 
-- **`unibox email send --cc --bcc --attach <file>`**: at most 20 addresses in Cc and Bcc together; files at most 10, 20 MiB in all, refused before anything is sent. A `recipients_refused` warning (the Cc or Bcc addresses that got nothing) is printed on stderr.
+- **`unibox email send --cc --bcc --attach <file>`**: at most 20 addresses in Cc and Bcc together; files at most 10, 20 MiB in all, refused before anything is sent. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; more is refused, nothing sent. A `recipients_refused` warning (the Cc or Bcc addresses that got nothing) is printed on stderr.
 - An email whose outcome is unknown (the provider stopped answering after it had the whole email) exits **1, never 7**, and says not to send it again.
 
 ### Billing (seats and the period)

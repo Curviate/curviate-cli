@@ -245,10 +245,11 @@ async function recover(c: Curviate, body: Body, rows: number, seen: string[], st
   return found;
 }
 
-const SOURCE_KINDS = ["people_search", "company_people", "sales_nav_search", "sales_nav_lead_list", "recruiter_search", "post_engagers", "group_members"];
+const SOURCE_KINDS = ["people_search", "company_people", "sales_nav_search", "sales_nav_lead_list", "sales_nav_account_list", "sales_nav_company_people", "recruiter_search", "post_engagers", "group_members"];
 
 /** The kind a pasted search URL names, or undefined. */
 function kindOfUrl(url: string): string | undefined {
+  if (/linkedin\.com\/sales\/search\/compan/i.test(url)) return "sales_nav_company_people";
   if (/linkedin\.com\/sales\//i.test(url)) return "sales_nav_search";
   if (/linkedin\.com\/talent\//i.test(url)) return "recruiter_search";
   if (/\/search\/results\/people/i.test(url)) return "people_search";
@@ -448,8 +449,8 @@ const importCmd = defineCommand({
     delimiter: { type: "string", description: "A CSV's separator: comma, semicolon or tab. Default: found by the server." },
     async: { type: "boolean", description: "Print the imports' ids as soon as each is accepted and exit 0, without waiting for them to finish; follow one with `curviate lead imports get IMPORT_ID`. Stops only on a refused request." },
     "no-wait": { type: "boolean", description: "Same as --async." },
-    source: { type: "string", description: "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names." },
-    "source-url": { type: "string", description: "A pasted LinkedIn search URL (people, Sales Navigator, Recruiter or company search)." },
+    source: { type: "string", description: "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), sales_nav_account_list (--list-id, --titles optional), sales_nav_company_people (a Sales Navigator account search --source-url or --filter, plus --titles), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names." },
+    "source-url": { type: "string", description: "A pasted LinkedIn search URL (people, Sales Navigator lead or account, Recruiter or company search)." },
     filter: {
       type: "string",
       description:
@@ -457,14 +458,15 @@ const importCmd = defineCommand({
         "people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); " +
         "company_people (the company step): keywords, industry, location, headcount, has_job_postings; " +
         "recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; " +
-        "sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). " +
+        "sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`); " +
+        "sales_nav_company_people (the account step): the Sales Navigator account search filters. " +
         "Any other key is refused naming it (connections_of and followers_of are not offered on people_search).",
     },
     "filters-json": { type: "string", description: "The built search as one JSON object. Not with --filter." },
-    "list-id": { type: "string", description: "The Sales Navigator lead list id (sales_nav_lead_list)." },
+    "list-id": { type: "string", description: "The Sales Navigator lead list id (sales_nav_lead_list) or account list id (sales_nav_account_list)." },
     "post-id": { type: "string", description: "The post id or URL (post_engagers)." },
     "group-id": { type: "string", description: "A LinkedIn group id the Account belongs to (group_members)." },
-    titles: { type: "string", description: "Job titles to keep, repeatable or a comma list (company_people: required)." },
+    titles: { type: "string", description: "Job titles to keep, repeatable or a comma list (company_people and sales_nav_company_people: required; sales_nav_account_list: optional). Only people with one of them are imported, never a whole company." },
     max: { type: "string", description: "Stop after this many people (default and maximum: the kind's cap)." },
     continue: { type: "string", description: "Continue this earlier import of the same source (imp_...) from where it stopped." },
     restart: { type: "boolean", description: "Read the source from the beginning, even when an earlier import of it could continue." },

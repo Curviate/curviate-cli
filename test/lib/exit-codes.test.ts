@@ -307,6 +307,7 @@ describe("lib/exit-codes — every documented exit code is still reachable", () 
       "LINKEDIN_FEATURE_NOT_SUBSCRIBED",
       "MAILBOX_ADMIN_APPROVAL_REQUIRED",
       "NO_ACTIVE_SEAT",
+      "PLACEMENT_TEST_ALLOWANCE_EXHAUSTED",
       "SPENDING_CAP_REACHED",
       "TIER_REQUIRED",
     ]);

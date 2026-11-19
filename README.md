@@ -356,6 +356,7 @@ curviate campaign lint --file campaign.json                                     
 curviate campaign create --file campaign.json --json
 curviate campaign preview mot_1 --limit 3 --json                              # rendered messages and the budget projection; spends nothing (--all: every Lead)
 curviate campaign check mot_1 --json                                           # with an email step: the Lead check start needs
+curviate campaign placement mot_1                                              # the weekly placement checks of its email steps
 curviate campaign start mot_1 --json                                           # --skip-missing-email: start without the Leads lacking an address
 ```
 
@@ -639,6 +640,9 @@ curviate mailbox discover anna@acme.example               # IMAP and SMTP settin
 curviate mailbox connect anna@acme.example --connection google_sign_in   # prints the sign-in link
 printf '%s' "$APP_PASSWORD" | curviate mailbox connect anna@gmail.com --connection google_app_password --password-stdin
 printf '%s' "$APP_PASSWORD" | curviate mailbox reconnect mbx_... --password-stdin
+curviate mailbox test mbx_... --subject "Quick question" --body-file body.txt   # a placement test: where it lands, per provider
+curviate mailbox tests mbx_...                            # its tests and the Team's allowance
+curviate mailbox purchase list                            # orders of Mailboxes from Curviate (an Owner orders in the dashboard)
 curviate domain check acme.example --now                  # MX, SPF, DKIM, DMARC, tracking
 curviate account safety get --team                        # the Team's email defaults
 curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden
@@ -725,7 +729,7 @@ curviate core inbox get 2-AbCdEf== --account acc_1 --mode cache_only --json
 | 2 | Usage / argument error |
 | 3 | Authentication or authorization failure |
 | 4 | Resource not found |
-| 5 | Someone must act first: no active seat, the LinkedIn account lacks the subscription, beta consent is missing, the plan is below the Tier the action needs, or a teammate with the right role (or the Account's own person) must do it |
+| 5 | Someone must act first: no active seat, the LinkedIn account lacks the subscription, beta consent is missing, the plan is below the Tier the action needs, the month's placement tests are used (a paid seat adds 10), or a teammate with the right role (or the Account's own person) must do it |
 | 6 | Rate limited |
 | 7 | Transient platform error (retry likely to succeed) |
 | 8 | Account or connection state blocks the request |

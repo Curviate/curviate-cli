@@ -101,9 +101,9 @@ async function runPdf(c: Curviate, f: Flags): Promise<void> {
 }
 
 /** Money: a person says yes at a terminal; anything else must pass --yes, or nothing is sent. */
-async function confirmMoney(f: Flags, question: string): Promise<boolean> {
+export async function confirmMoney(f: { yes?: boolean }, question: string, priceHint = "Read the price first with `curviate billing quote`."): Promise<boolean> {
   if (f.yes) return true;
-  if (!process.stdin.isTTY) usage("this charges money: pass --yes to confirm (no terminal to ask at). Read the price first with `curviate billing quote`.");
+  if (!process.stdin.isTTY) usage(`this charges money: pass --yes to confirm (no terminal to ask at). ${priceHint}`);
   process.stderr.write(`${question} [y/N] `);
   const answer = await new Promise<string>((resolve) => {
     process.stdin.setEncoding("utf8");

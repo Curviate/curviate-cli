@@ -2306,6 +2306,45 @@
     {
       "path": [
         "campaign",
+        "placement"
+      ],
+      "description": "The Campaign's weekly placement checks, newest first, at most 26: each calendar week its first email step, and each email step whose text changed that week, goes from one of its Mailboxes to test inboxes and is read like a placement test (`curviate mailbox test`). Each check: week (its Monday), mailbox_id, step_id, status (running, complete, waiting, skipped), reason (no_mailbox, cap, seeds) and the google_workspace and microsoft_365 verdicts (inbox, partly_spam, spam) once complete. Every role reads. One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "Campaign id (mot_...)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate campaign placement mot_YOUR_CAMPAIGN_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "The checks: items[] (week, mailbox_id, step_id, status, reason, google_workspace, microsoft_365)."
+      ],
+      "seeAlso": [
+        "curviate mailbox test",
+        "curviate analytics email"
+      ]
+    },
+    {
+      "path": [
+        "campaign",
         "add"
       ],
       "description": "Enroll Leads directly, on an Account of the Campaign (--account) or one Curviate assigns. Every exclusion and filter applies; each Lead's outcome says what happened. Sent in requests of up to 1000 ids, in order. Needs Automate.",
@@ -3885,17 +3924,17 @@
         {
           "name": "source",
           "type": "string",
-          "description": "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names."
+          "description": "Import from LinkedIn instead of a file: people_search, sales_nav_search, recruiter_search (a pasted --source-url or --filter), company_people (a company search plus --titles), sales_nav_lead_list (--list-id), sales_nav_account_list (--list-id, --titles optional), sales_nav_company_people (a Sales Navigator account search --source-url or --filter, plus --titles), post_engagers (--post-id) or group_members (--group-id). Default with --source-url: the kind the URL names."
         },
         {
           "name": "source-url",
           "type": "string",
-          "description": "A pasted LinkedIn search URL (people, Sales Navigator, Recruiter or company search)."
+          "description": "A pasted LinkedIn search URL (people, Sales Navigator lead or account, Recruiter or company search)."
         },
         {
           "name": "filter",
           "type": "string",
-          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`). Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
+          "description": "A built search instead of a URL: key=value, repeatable (a key given twice becomes a list). The keys each kind offers: people_search: keywords, advanced_keywords (job title as text, use --filters-json), location, current_company, past_company, school, industry, service, network_distance (location and network_distance exclude each other); company_people (the company step): keywords, industry, location, headcount, has_job_postings; recruiter_search: keywords, job_function, workplace_type (ON_SITE, HYBRID, REMOTE), group; sales_nav_search: the Sales Navigator lead search filters (job titles are lookup ids from `curviate core sales-nav search parameters`); sales_nav_company_people (the account step): the Sales Navigator account search filters. Any other key is refused naming it (connections_of and followers_of are not offered on people_search)."
         },
         {
           "name": "filters-json",
@@ -3905,7 +3944,7 @@
         {
           "name": "list-id",
           "type": "string",
-          "description": "The Sales Navigator lead list id (sales_nav_lead_list)."
+          "description": "The Sales Navigator lead list id (sales_nav_lead_list) or account list id (sales_nav_account_list)."
         },
         {
           "name": "post-id",
@@ -3920,7 +3959,7 @@
         {
           "name": "titles",
           "type": "string",
-          "description": "Job titles to keep, repeatable or a comma list (company_people: required)."
+          "description": "Job titles to keep, repeatable or a comma list (company_people and sales_nav_company_people: required; sales_nav_account_list: optional). Only people with one of them are imported, never a whole company."
         },
         {
           "name": "max",
@@ -6708,7 +6747,7 @@
       "path": [
         "mailbox"
       ],
-      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. A Mailbox takes no seat and is never billed.",
+      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate cost $5 a month each (buy, purchase; a Team Owner orders them in the dashboard today).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -7242,6 +7281,293 @@
     },
     {
       "path": [
+        "mailbox",
+        "test"
+      ],
+      "description": "Run a placement test: your exact subject and body go from this Mailbox to 12 test inboxes, 3 at each of Google Workspace, Microsoft 365, Gmail and Outlook.com, and each copy's landing is read; results within an hour (`curviate mailbox tests <id> <test_id>`). The 12 copies count against the Mailbox's daily cap, so it needs room for 12 today. Each test draws one from the Team's allowance: 10 per paid seat a month, pooled across the Team (a trial has none). Owners and Managers test any Mailbox; a Member only the ones they connected. One API call, never retried.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The Mailbox (mbx_...), from `curviate mailbox list`."
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "description": "The subject exactly as your Campaign sends it: one line, up to 998 characters."
+        },
+        {
+          "name": "body-file",
+          "type": "string",
+          "stdinArg": true,
+          "description": "A plain-text file with the body exactly as your Campaign sends it: a path, or - to read it from stdin. Up to 10,000 characters."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox test mbx_YOUR_MAILBOX_ID --subject \"Quick question\" --body-file body.txt"
+      ],
+      "requires": [
+        "--subject and --body-file."
+      ],
+      "risk": "write",
+      "rules": {
+        "changes": "12 emails leave the Mailbox today, under its daily cap; the Team's allowance goes down by one.",
+        "visible_to": "Your Team; the copies go to test inboxes only.",
+        "budget_rows": [],
+        "retry": "Not safe: a second run is a second test, 12 more emails and one more from the allowance. Read `mailbox tests` first.",
+        "undo": "None: the copies are sent.",
+        "blast_radius": "One Mailbox's daily cap and one test of the Team's month."
+      },
+      "output": [
+        "The test: id, status (running), verdicts per provider (null while running), allowance { used, total, resets_at }."
+      ],
+      "errors": {
+        "MAILBOX_NOT_FOUND": "no Mailbox of your Team has this id (another Team's id answers the same).",
+        "PLACEMENT_TEST_ALLOWANCE_EXHAUSTED": "this month's tests are used, or the Team has no paid seat yet; the message says when it resets. Nothing was sent. Waiting minutes does not help: a paid seat or the new month does.",
+        "PLACEMENT_TESTS_UNAVAILABLE": "placement tests cannot run right now. Nothing was sent, nothing drawn.",
+        "MAILBOX_STATE_CONFLICT": "the Mailbox cannot send now (paused, reconnect needed). Nothing was sent.",
+        "INVALID_REQUEST": "the Mailbox has no room for 12 more emails today, or the subject or body is empty, too long or malformed. Nothing was sent."
+      },
+      "seeAlso": [
+        "curviate mailbox tests",
+        "curviate campaign placement"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "tests"
+      ],
+      "description": "This Mailbox's placement tests, newest first, with the Team's allowance { used, total, resets_at }; with a test id, that one test. A test is running or complete, with a verdict per provider: inbox (all 3 copies in the inbox), partly_spam or spam (none in the inbox). Every role reads. One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The Mailbox (mbx_...), from `curviate mailbox list`."
+        },
+        {
+          "name": "testId",
+          "type": "positional",
+          "required": false,
+          "description": "One test (plt_...), from the list."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Tests per page (1 to 100)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta",
+        "cursor"
+      ],
+      "examples": [
+        "curviate mailbox tests mbx_YOUR_MAILBOX_ID",
+        "curviate mailbox tests mbx_YOUR_MAILBOX_ID plt_YOUR_TEST_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "items[] (id, status, created_at, completed_at, verdicts), cursor, allowance; or one test."
+      ],
+      "errors": {
+        "MAILBOX_NOT_FOUND": "no Mailbox of your Team has this id (another Team's id answers the same)."
+      },
+      "seeAlso": [
+        "curviate mailbox test"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "buy"
+      ],
+      "description": "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. Today a Team Owner places orders in the dashboard: with an API key this command is refused (exit 3, UNAUTHORIZED) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "domain",
+          "type": "string",
+          "description": "The domain the Mailboxes send from, one your Team owns and not the one your company email runs on."
+        },
+        {
+          "name": "mailbox",
+          "type": "string",
+          "description": "One Mailbox, repeatable up to 50: local:Name, the part before the @ and the name recipients see; add :acc_... (the Account it sends for) or :shared at the end."
+        },
+        {
+          "name": "yes",
+          "type": "boolean",
+          "description": "Confirm the order without a prompt (needed when no terminal can ask)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "preview",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:shared' --yes",
+        "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:acc_YOUR_ACCOUNT_ID' --mailbox 'max:Max Weber' --yes"
+      ],
+      "requires": [
+        "--domain and at least one --mailbox."
+      ],
+      "risk": "high",
+      "rules": {
+        "changes": "An order in awaiting_dns; once its records are found, the Mailboxes are created and $5 a month each is charged.",
+        "visible_to": "Your Team.",
+        "budget_rows": [],
+        "retry": "Never retried. A second order for the same domain while one waits is refused (MAILBOX_PURCHASE_PENDING).",
+        "undo": "An order still waiting for its records lapses after 14 days, uncharged.",
+        "blast_radius": "One domain's mail: the MX record it asks for routes the domain's mail to the new Mailboxes."
+      },
+      "output": [
+        "The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), amount_monthly, expires_at."
+      ],
+      "errors": {
+        "UNAUTHORIZED": "an API key cannot order yet: a Team Owner orders in the dashboard. Nothing was ordered.",
+        "INSUFFICIENT_ROLE": "only a Team Owner orders.",
+        "MAILBOX_PURCHASE_TRIAL": "a Team on a trial cannot order.",
+        "MAILBOX_PURCHASE_PENDING": "this domain already has an order waiting for its records.",
+        "DOMAIN_IN_USE": "the domain already has Mailboxes from Curviate or an order; name another domain.",
+        "DOMAIN_IS_COMPANY_EMAIL": "the domain your company email runs on; use a separate domain.",
+        "MAILBOX_SALES_PAUSED": "orders cannot be placed at the moment."
+      },
+      "seeAlso": [
+        "curviate mailbox purchase list",
+        "curviate domain check"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "purchase"
+      ],
+      "description": "Read your Team's orders of Mailboxes from Curviate: list, get.",
+      "usageOnly": true,
+      "args": [],
+      "globals": [],
+      "examples": [],
+      "requires": []
+    },
+    {
+      "path": [
+        "mailbox",
+        "purchase",
+        "list"
+      ],
+      "description": "Your Team's orders of Mailboxes from Curviate, newest first: state (awaiting_dns, provisioning, active, cancelled), the records to add and which are found. Every role reads. One API call per page.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "state",
+          "type": "string",
+          "description": "Only orders in this state: awaiting_dns | provisioning | active | cancelled."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Orders per page (1 to 100)."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta",
+        "cursor"
+      ],
+      "examples": [
+        "curviate mailbox purchase list",
+        "curviate mailbox purchase list --state awaiting_dns"
+      ],
+      "requires": [],
+      "risk": "read",
+      "seeAlso": [
+        "curviate mailbox purchase get"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "purchase",
+        "get"
+      ],
+      "description": "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. Every role reads. One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The order (mpu_...), from `curviate mailbox purchase list`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox purchase get mpu_YOUR_PURCHASE_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "errors": {
+        "MAILBOX_PURCHASE_NOT_FOUND": "no order of your Team has this id (another Team's id answers the same)."
+      },
+      "seeAlso": [
+        "curviate mailbox purchase list",
+        "curviate mailbox list"
+      ]
+    },
+    {
+      "path": [
         "domain"
       ],
       "description": "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
@@ -7732,7 +8058,7 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "A file to send, repeatable: at most 10, 20 MiB in all."
+          "description": "A file to send, repeatable: at most 10, 20 MiB in all. From a Microsoft sign-in Mailbox, about 2.2 MB in all go today; more is refused with PLATFORM_ERROR and nothing is sent: send a link or a smaller file."
         }
       ],
       "globals": [

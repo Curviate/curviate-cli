@@ -528,7 +528,7 @@ const emailSendCmd = defineCommand({
     mailbox: { type: "string" as const, description: "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes." },
     cc: { type: "string" as const, description: "Cc addresses, repeatable or a comma list; every recipient sees them." },
     bcc: { type: "string" as const, description: "Bcc addresses, repeatable or a comma list; no other recipient sees them." },
-    attach: { type: "string" as const, description: "A file to send, repeatable: at most 10, 20 MiB in all." },
+    attach: { type: "string" as const, description: "A file to send, repeatable: at most 10, 20 MiB in all. From a Microsoft sign-in Mailbox, about 2.2 MB in all go today; more is refused with PLATFORM_ERROR and nothing is sent: send a link or a smaller file." },
   },
   run: online(runEmailSend),
 });

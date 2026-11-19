@@ -273,6 +273,14 @@ async function runPreview(c: Curviate, f: CampaignFlags): Promise<void> {
   }
 }
 
+async function runPlacement(c: Curviate, f: CampaignFlags): Promise<void> {
+  try {
+    renderSuccess(await c.campaigns.placementChecks(f.id ?? ""), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 async function runCheck(c: Curviate, f: CampaignFlags): Promise<void> {
   if (f.preview) return preview("campaigns.check", { id: f.id });
   try {
@@ -663,6 +671,21 @@ const checkCmd = defineCommand({
   run: online(runCheck),
 });
 
+const placementCmd = defineCommand({
+  meta: {
+    name: "placement",
+    description:
+      "The Campaign's weekly placement checks, newest first, at most 26: each calendar week its first email step, and each email step whose text changed that week, goes from one of its Mailboxes to test inboxes and is read like a placement test (`curviate mailbox test`). " +
+      "Each check: week (its Monday), mailbox_id, step_id, status (running, complete, waiting, skipped), reason (no_mailbox, cap, seeds) and the google_workspace and microsoft_365 verdicts (inbox, partly_spam, spam) once complete. Every role reads. One API call.",
+    risk: "read",
+    output: ["The checks: items[] (week, mailbox_id, step_id, status, reason, google_workspace, microsoft_365)."],
+    seeAlso: ["curviate mailbox test", "curviate analytics email"],
+    examples: ["curviate campaign placement mot_YOUR_CAMPAIGN_ID"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS), id: ID },
+  run: online(runPlacement),
+});
+
 const membershipCmd = (kind: "add" | "remove") =>
   defineCommand({
     meta: {
@@ -866,6 +889,7 @@ export const campaignCommand = defineCommand({
     delete: deleteCmd,
     preview: previewCmd,
     check: checkCmd,
+    placement: placementCmd,
     add: membershipCmd("add"),
     remove: membershipCmd("remove"),
     lint: lintCmd,
