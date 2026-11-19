@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.60.0] - 2026-11-19
 
-Requires `@curviate/sdk` 0.56.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (the document at server commit `745221b70`, production's `a8207d2c5` plus `charge_unknown`); `commands.json` regenerated. Text only: no command, flag or exit code changes.
+Requires `@curviate/sdk` 0.56.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production's document, server commit `b1332f4c2`); `commands.json` regenerated. Text only: no command, flag or exit code changes.
 
 - `mailbox purchase get|check` says, when the order carries `charge_unknown: true`, what the server says: "We are checking whether this order was charged. If it was, the charge is given back in full." (and `get --help` names the field); the field shows in `--json` as served.
 - `analytics email --help` says what an agent must pass on: a rate is still maturing while more than a third of its emails were sent in the last 7 days, and a bounce rate needs 50 emails sent to mean anything.
