@@ -390,7 +390,7 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
+      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app or allowance), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
     risk: "read",
     errors: NOT_FOUND,
     seeAlso: ["curviate mailbox list", "curviate mailbox update"],
@@ -486,17 +486,20 @@ const resumeCmd = defineCommand({
 const removeCmd = defineCommand({
   meta: {
     name: "remove",
-    description: "Remove a Mailbox and delete its stored credentials in one step. Changes no seat count and makes no billing call. Connect it again to use the address afterwards.",
+    description:
+      "Remove a Mailbox and delete its stored credentials in one step. Changes no seat count. Connect it again to use the address afterwards. " +
+      "A Mailbox from Curviate is an Owner's to remove: it is deleted with its mail, and its $5 a month stops at the end of the billing period. " +
+      "MAILBOX_STATE_CONFLICT (exit 8) \"Too many Mailbox changes are still settling with billing\" changed nothing: try again later, never in a loop.",
     risk: "high",
     rules: {
-      changes: "The Mailbox and its credentials are deleted; emails due from it are not sent.",
+      changes: "The Mailbox and its credentials are deleted; emails due from it are not sent. A Mailbox from Curviate is deleted with its mail; its charge ends at the period's end.",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Safe: a second call answers MAILBOX_NOT_FOUND.",
       undo: "None: connect the address again.",
       blast_radius: "One Mailbox and every Campaign that sends from it.",
     },
-    errors: NOT_FOUND,
+    errors: { ...NOT_FOUND, INSUFFICIENT_ROLE: "a Member removes only a Mailbox they connected; a Mailbox from Curviate is an Owner's.", MAILBOX_STATE_CONFLICT: "changes are still settling with billing; nothing was changed. Try again later, never in a loop." },
     seeAlso: ["curviate mailbox list", "curviate mailbox pause"],
     examples: ["curviate mailbox remove mbx_YOUR_MAILBOX_ID"],
   },

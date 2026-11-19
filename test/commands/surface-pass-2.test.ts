@@ -280,3 +280,10 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
     expect(r.stderr).not.toContain("charge");
   });
 });
+
+describe("pass 10: settling is answered once; a connect names its seat", () => {
+  it("mailbox remove on a 409 still settling exits 8 after one request", async () => {
+    const r = await wire(["mailbox", "remove", "mbx_1"], () => ({ status: 409, body: { code: "MAILBOX_STATE_CONFLICT", message: "Too many Mailbox changes are still settling with billing. Nothing was changed; try again later.", user_fixable: true, retry_likely_to_succeed: false } }));
+    expect([r.status, r.sent.length]).toEqual([8, 1]);
+  });
+});
