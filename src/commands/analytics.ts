@@ -220,10 +220,30 @@ const JOB_ENTITIES = ["campaign_activity", "account_activity", "account_metrics"
 async function runExport(c: Curviate, f: AnalyticsFlags): Promise<void> {
   if (f.json) usage("export commands take no --json: pass --format json.");
   const tables = f.table === undefined ? [] : listFlag("table", f.table);
+  // `email`: the per-day email table (entity email_daily), one table of its own, streamed or as a job.
+  if (tables.includes("email")) {
+    if (tables.length > 1) usage("--table email is one table of its own: pass it alone.");
+    if (f.origin !== undefined) usage("--table email takes no --origin: it counts Campaign email only.");
+    const format = f.format ?? "csv";
+    const filters = { ...windowParams(f), ...filterParams(f, ["campaigns", "accounts"]) };
+    try {
+      if (f.job) {
+        const exp = (await c.exports.create({ entity: "email_daily", format, filters } as never)) as unknown as Row;
+        renderSuccess(exp, outputOpts(f), process);
+        process.stderr.write(`Export ${exp["id"]} is ${exp["status"]}. Read it with \`curviate export get ${exp["id"]}\`, then \`curviate export download ${exp["id"]} -o <file>\` once ready.\n`);
+        return;
+      }
+      const bytes = await downloadBinary(() => c.analytics.export({ ...filters, format, entity: "email_daily" } as never));
+      await writeExport(f.output, new Uint8Array(bytes as ArrayBuffer));
+    } catch (err) {
+      await fail(err, f);
+    }
+    return;
+  }
   const entity = tables.length === 1 && JOB_ENTITIES.includes(tables[0]!) ? tables[0]! : "analytics";
   if (entity !== "analytics" && !f.job) usage(`--table ${entity} is built by a background job: add --job.`);
   const unknown = tables.find((t) => !ANALYTICS_TABLES.includes(t) && t !== entity);
-  if (unknown !== undefined) usage(`--table takes ${ANALYTICS_TABLES.join(", ")}, or one of ${JOB_ENTITIES.join(", ")} with --job.`);
+  if (unknown !== undefined) usage(`--table takes ${ANALYTICS_TABLES.join(", ")} or email, or one of ${JOB_ENTITIES.join(", ")} with --job.`);
   const format = f.format ?? "csv";
   const filters = { ...windowParams(f), ...filterParams(f, ["campaigns", "accounts", "origin"]) };
   try {
@@ -353,7 +373,7 @@ const exportCmd = defineCommand({
     team: GLOBAL_FLAGS.team,
     "base-url": GLOBAL_FLAGS["base-url"],
     timeout: GLOBAL_FLAGS.timeout,
-    table: { type: "string" as const, description: "Comma list of daily, accounts, campaigns, enrollments (default all four); or, with --job, one of campaign_activity, account_activity, account_metrics." },
+    table: { type: "string" as const, description: "Comma list of daily, accounts, campaigns, enrollments (default all four); or email alone: your Campaign email's daily counts per Mailbox, Account, Campaign, step, variant and receiving provider (at most 366 days); or, with --job, one of campaign_activity, account_activity, account_metrics." },
     format: { type: "string" as const, description: "csv (default), json or ndjson (ndjson takes one table)." },
     output: { type: "string" as const, alias: "o", description: "File to write (mode 0600), or - for stdout (default)." },
     job: { type: "boolean" as const, description: "Build it in the background and print the export record instead of streaming it." },

@@ -120283,7 +120283,7 @@
             }
           },
           "401": {
-            "description": "A dashboard session is required.",
+            "description": "Missing or invalid API key.",
             "content": {
               "application/json": {
                 "schema": {
@@ -120304,7 +120304,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE (not an Owner) or MAILBOX_PURCHASE_TRIAL (a Team on a trial).",
+            "description": "INSUFFICIENT_ROLE (not an Owner), MAILBOX_PURCHASE_TRIAL (a Team on a trial) or SPENDING_CAP_REACHED (an agent's order past the cap on Mailboxes from Curviate; carries cap_mailboxes and room_mailboxes).",
             "content": {
               "application/json": {
                 "schema": {
@@ -120419,7 +120419,7 @@
             }
           }
         },
-        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, at $5 a month each, warm-up included. The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only, in the dashboard. A Team on a trial cannot order; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
+        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, at $5 a month each, warm-up included. The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only. An order through an API key counts under the team's cap on Mailboxes from Curviate: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused 403 SPENDING_CAP_REACHED and nothing is ordered. A Team on a trial cannot order; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -121079,6 +121079,301 @@
         "x-order": 22
       }
     },
+    "/v1/mailboxes/purchases/{id}/check": {
+      "post": {
+        "operationId": "postV1MailboxesPurchasesIdCheck",
+        "tags": [
+          "Mailboxes"
+        ],
+        "summary": "Check a Mailbox purchase's records now",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Purchase id (mpu_...)."
+          },
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order after the check.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "An order of Mailboxes from Curviate on one domain. Nothing is charged until the records are found.",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Purchase id (mpu_...), opaque."
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "domain_id": {
+                      "type": "string",
+                      "description": "The domain object's id (dom_...)."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_dns",
+                        "provisioning",
+                        "active",
+                        "cancelled"
+                      ],
+                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Why a cancelled order ended; null otherwise."
+                    },
+                    "mailboxes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "type": "string"
+                          },
+                          "display_name": {
+                            "type": "string"
+                          },
+                          "sends_for": {
+                            "type": [
+                              "object",
+                              "null"
+                            ]
+                          },
+                          "mailbox_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Set once the Mailbox exists (`active`)."
+                          }
+                        }
+                      }
+                    },
+                    "records": {
+                      "type": "array",
+                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "advice": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "amount_monthly": {
+                      "type": "integer",
+                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                    },
+                    "checked_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "An order still waiting for its records then is cancelled; nothing is charged."
+                    },
+                    "charged_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "domain",
+                    "domain_id",
+                    "state",
+                    "reason",
+                    "mailboxes",
+                    "records",
+                    "advice",
+                    "amount_monthly",
+                    "checked_at",
+                    "expires_at",
+                    "charged_at",
+                    "created_at"
+                  ]
+                },
+                "examples": {
+                  "order": {
+                    "summary": "An order waiting for its records",
+                    "value": {
+                      "id": "mpu_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "domain": "acme-mail.com",
+                      "domain_id": "dom_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                      "state": "awaiting_dns",
+                      "reason": null,
+                      "mailboxes": [
+                        {
+                          "address": "anna@acme-mail.com",
+                          "display_name": "Anna Berg",
+                          "sends_for": {
+                            "kind": "shared"
+                          },
+                          "mailbox_id": null
+                        }
+                      ],
+                      "records": [
+                        {
+                          "check": "dmarc",
+                          "required": true,
+                          "entries": [
+                            {
+                              "name": "_dmarc.acme-mail.com",
+                              "type": "TXT",
+                              "value": "v=DMARC1; p=none"
+                            }
+                          ],
+                          "found": false
+                        }
+                      ],
+                      "advice": null,
+                      "amount_monthly": 500,
+                      "checked_at": null,
+                      "expires_at": "2026-12-02T09:00:00.000Z",
+                      "charged_at": null,
+                      "created_at": "2026-11-18T09:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MAILBOX_PURCHASE_NOT_FOUND: no purchase with this id in this team (another team's id answers the same).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "PLATFORM_RATE_LIMIT: this order was checked less than a minute ago. Retry after the hint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Looks up the order's records at once and answers the order with each row's `found`. Curviate also checks every 15 minutes for 2 hours after the order, then hourly. Once a minute per order; an order no longer waiting for its records is answered as it is.",
+        "x-order": 23
+      }
+    },
     "/v1/mailboxes/discover": {
       "get": {
         "operationId": "getV1MailboxesDiscover",
@@ -121659,7 +121954,7 @@
                                   "allowance",
                                   null
                                 ],
-                                "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (the warm-up app is not consented yet), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
+                                "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (a Microsoft Mailbox: connect the Curviate Warm-up app for it again), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
                               }
                             },
                             "required": [
@@ -122164,7 +122459,7 @@
                             "allowance",
                             null
                           ],
-                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (the warm-up app is not consented yet), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
+                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (a Microsoft Mailbox: connect the Curviate Warm-up app for it again), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
                         }
                       },
                       "required": [
@@ -122643,7 +122938,7 @@
                             "allowance",
                             null
                           ],
-                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (the warm-up app is not consented yet), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
+                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (a Microsoft Mailbox: connect the Curviate Warm-up app for it again), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
                         }
                       },
                       "required": [
@@ -123467,7 +123762,7 @@
                             "allowance",
                             null
                           ],
-                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (the warm-up app is not consented yet), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
+                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (a Microsoft Mailbox: connect the Curviate Warm-up app for it again), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
                         }
                       },
                       "required": [
@@ -123979,7 +124274,7 @@
                             "allowance",
                             null
                           ],
-                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (the warm-up app is not consented yet), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
+                          "description": "Why warm-up is waiting, null otherwise: `reconnect_needed` (reconnect the Mailbox), `trial` (warm-up starts at day 1 once the Team pays), `app_password` (add an app password), `warm_up_app` (a Microsoft Mailbox: connect the Curviate Warm-up app for it again), `allowance` (the Team's count of new warm-up runs for the last 30 days, 100 per paid seat, is used up: it starts once the count allows or a seat is added)."
                         }
                       },
                       "required": [
@@ -177620,14 +177915,27 @@
             "description": "campaign, unibox (the Unibox), api (any API key or MCP grant), direct (unibox and api). Default: all. Repeat the key, comma-separate or mix; empties ignored."
           },
           {
-            "name": "table",
+            "name": "entity",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "daily,accounts,campaigns,enrollments"
+              "enum": [
+                "analytics",
+                "email_daily"
+              ],
+              "default": "analytics"
             },
-            "description": "daily, accounts, campaigns, enrollments. Several: one ZIP. Repeat the key, comma-separate or mix; empties ignored. Default: all."
+            "description": "analytics: the Analytics tables (table). email_daily: your Campaign email's daily counts per Mailbox, account, Campaign, step, variant and receiving provider (no table; at most 366 days). Default: analytics."
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "entity analytics: daily, accounts, campaigns, enrollments. Several: one ZIP. Repeat the key, comma-separate or mix; empties ignored. Default: all."
           },
           {
             "name": "format",
@@ -178209,9 +178517,10 @@
                       "analytics",
                       "campaign_activity",
                       "account_activity",
-                      "account_metrics"
+                      "account_metrics",
+                      "email_daily"
                     ],
-                    "description": "What to export. analytics: the Analytics tables. campaign_activity: the Campaigns' activity records (sends, acceptances, replies, skips and failures). account_activity: the same plus direct actions (API, CLI, MCP, Unibox). account_metrics: each Account's own daily numbers. The activity and metrics files hold at most 366 days."
+                    "description": "What to export. analytics: the Analytics tables. campaign_activity: the Campaigns' activity records (sends, acceptances, replies, skips and failures). account_activity: the same plus direct actions (API, CLI, MCP, Unibox). account_metrics: each Account's own daily numbers. email_daily: your Campaign email's daily counts per Mailbox, account, Campaign, step, variant and receiving provider. The activity, metrics and email files hold at most 366 days."
                   },
                   "tables": {
                     "type": "array",
@@ -181770,6 +182079,32 @@
                         "usd"
                       ],
                       "description": "Three-letter ISO currency code, lowercase."
+                    },
+                    "mailbox_cap": {
+                      "type": "object",
+                      "description": "The most Mailboxes from Curviate an agent may bring the team to: those it holds plus those in its orders not yet created. 100 until an Owner sets one. Present only while Mailboxes from Curviate can be ordered.",
+                      "properties": {
+                        "cap": {
+                          "type": "integer"
+                        },
+                        "is_default": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "description": "Mailboxes from Curviate held plus those in orders waiting for their records or being set up."
+                        },
+                        "room": {
+                          "type": "integer",
+                          "description": "The cap minus the count, never below 0."
+                        }
+                      },
+                      "required": [
+                        "cap",
+                        "is_default",
+                        "count",
+                        "room"
+                      ]
                     }
                   },
                   "required": [
@@ -181792,7 +182127,13 @@
                       "seats": 9,
                       "room_seats": 16,
                       "monthly_amount": 39000,
-                      "currency": "usd"
+                      "currency": "usd",
+                      "mailbox_cap": {
+                        "cap": 100,
+                        "is_default": true,
+                        "count": 6,
+                        "room": 94
+                      }
                     }
                   }
                 }
@@ -182018,9 +182359,10 @@
                               "seat_add",
                               "seat_remove",
                               "cap_change",
+                              "mailbox_cap_change",
                               "mailbox_purchase"
                             ],
-                            "description": "seat_add; seat_remove; cap_change (an Owner set the spending cap); mailbox_purchase. Accept values you do not know."
+                            "description": "seat_add; seat_remove; cap_change (an Owner set the spending cap); mailbox_cap_change (an Owner set the cap on Mailboxes from Curviate agents may hold); mailbox_purchase. Accept values you do not know."
                           },
                           "quantity": {
                             "type": [

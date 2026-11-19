@@ -182,9 +182,9 @@ export function parseMailboxSpec(raw: string): Body {
   return { local_part: raw.slice(0, at), display_name: name, ...(sendsFor ? { sends_for: sendsFor } : {}) };
 }
 
-/** An API key cannot order today (the server's 401): said plainly, never retried, nothing ordered. */
-export const BUY_REFUSED_TO_KEYS =
-  "Mailboxes from Curviate cannot be ordered with an API key yet: a Team Owner orders them in the dashboard. Nothing was ordered.";
+/** Past the Team's cap on Mailboxes from Curviate: said plainly, never retried, nothing ordered. */
+export const BUY_PAST_CAP =
+  "This order would take your Team past its cap on Mailboxes from Curviate. Nothing was ordered. Only a Team Owner raises the cap, in the dashboard.";
 
 async function runBuy(c: Curviate, f: Flags): Promise<void> {
   const domain = f.domain ?? "";
@@ -201,8 +201,8 @@ async function runBuy(c: Curviate, f: Flags): Promise<void> {
     renderSuccess(readableObject(await c.mailboxes.purchases.create(body as never)), outputOpts(f), process);
   } catch (err) {
     const { CurviateError } = await import("@curviate/sdk");
-    if (err instanceof CurviateError && err.code === "UNAUTHORIZED") {
-      process.stderr.write(`error [UNAUTHORIZED] ${BUY_REFUSED_TO_KEYS}\n`);
+    if (err instanceof CurviateError && err.code === "SPENDING_CAP_REACHED") {
+      process.stderr.write(`error [SPENDING_CAP_REACHED] ${BUY_PAST_CAP}\n`);
       process.exit(getExitCode(err));
     }
     await fail(err, f);
@@ -220,6 +220,14 @@ async function runPurchaseList(c: Curviate, f: Flags): Promise<void> {
   if (cursor) params["cursor"] = cursor;
   try {
     renderSuccess(await c.mailboxes.purchases.list(params as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runPurchaseCheck(c: Curviate, f: Flags): Promise<void> {
+  try {
+    renderSuccess(readableObject(await c.mailboxes.purchases.check(String(f.id ?? ""))), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -382,7 +390,7 @@ const updateCmd = defineCommand({
       "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) " +
       "its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) " +
       "its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for) " +
-      "and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. " +
+      "and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history, included in the plan; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. " +
       "A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
     risk: "write",
     rules: {
@@ -636,7 +644,7 @@ const buyCmd = defineCommand({
     name: "buy",
     description:
       "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
-      "Today a Team Owner places orders in the dashboard: with an API key this command is refused (exit 3, UNAUTHORIZED) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
+      "Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
     risk: "high",
     rules: {
       changes: "An order in awaiting_dns; once its records are found, the Mailboxes are created and $5 a month each is charged.",
@@ -647,7 +655,7 @@ const buyCmd = defineCommand({
       blast_radius: "One domain's mail: the MX record it asks for routes the domain's mail to the new Mailboxes.",
     },
     errors: {
-      UNAUTHORIZED: "an API key cannot order yet: a Team Owner orders in the dashboard. Nothing was ordered.",
+      SPENDING_CAP_REACHED: "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
       INSUFFICIENT_ROLE: "only a Team Owner orders.",
       MAILBOX_PURCHASE_TRIAL: "a Team on a trial cannot order.",
       MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
@@ -702,9 +710,22 @@ const purchaseGetCmd = defineCommand({
   run: online(runPurchaseGet),
 });
 
+const purchaseCheckCmd = defineCommand({
+  meta: {
+    name: "check",
+    description: "Look up an order's records now instead of waiting for Curviate's own checks (every 15 minutes for 2 hours after the order, then hourly); answers the order with each row's found. Once a minute per order: sooner is refused (exit 6) with the time to wait. Owners only. One API call.",
+    risk: "read",
+    errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same).", PLATFORM_RATE_LIMIT: "this order was checked less than a minute ago." },
+    seeAlso: ["curviate mailbox purchase get"],
+    examples: ["curviate mailbox purchase check mpu_YOUR_PURCHASE_ID"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS), id: { type: "positional" as const, description: "The order (mpu_...), from `curviate mailbox purchase list`." } },
+  run: online(runPurchaseCheck),
+});
+
 const purchaseCmd = defineCommand({
-  meta: { name: "purchase", description: "Read your Team's orders of Mailboxes from Curviate: list, get." },
-  subCommands: { list: purchaseListCmd, get: purchaseGetCmd },
+  meta: { name: "purchase", description: "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now)." },
+  subCommands: { list: purchaseListCmd, get: purchaseGetCmd, check: purchaseCheckCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(purchaseCmd, ["curviate", "mailbox", "purchase"]);

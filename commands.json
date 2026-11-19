@@ -6810,7 +6810,7 @@
       "path": [
         "mailbox"
       ],
-      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate cost $5 a month each (buy, purchase; a Team Owner orders them in the dashboard today).",
+      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate cost $5 a month each (buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6918,7 +6918,7 @@
         "mailbox",
         "update"
       ],
-      "description": "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for) and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
+      "description": "Change one Mailbox: who it sends for (--sends-for an Account id, or shared), its daily cap (--daily-cap, 1 to 50, one cap across every Campaign and Account, a hard maximum for every caller) its signature (--signature-file, plain text, up to 2,000 characters, available as {{mailbox.signature}}; nothing adds it to an email by itself) its From name (--display-name, one line, up to 100 characters; --clear-display-name sends with the name of the Account it sends for) and Mailbox warm-up (--warm-up on --days 10|14|21|28: short everyday emails exchanged with other Teams' Mailboxes, filed in their own folder, so the Mailbox builds a sending history, included in the plan; --warm-up off stops it; `mailbox get` shows warm_up with its state and day). Flags you leave out stay as they are. A Mailbox linked to no Account sends nothing. Owners and Managers change any Mailbox; a Member only the ones they connected.",
       "usageOnly": false,
       "args": [
         {
@@ -7469,7 +7469,7 @@
         "mailbox",
         "buy"
       ],
-      "description": "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. Today a Team Owner places orders in the dashboard: with an API key this command is refused (exit 3, UNAUTHORIZED) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
+      "description": "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
       "usageOnly": false,
       "args": [
         {
@@ -7521,7 +7521,7 @@
         "The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), amount_monthly, expires_at."
       ],
       "errors": {
-        "UNAUTHORIZED": "an API key cannot order yet: a Team Owner orders in the dashboard. Nothing was ordered.",
+        "SPENDING_CAP_REACHED": "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
         "INSUFFICIENT_ROLE": "only a Team Owner orders.",
         "MAILBOX_PURCHASE_TRIAL": "a Team on a trial cannot order.",
         "MAILBOX_PURCHASE_PENDING": "this domain already has an order waiting for its records.",
@@ -7539,7 +7539,7 @@
         "mailbox",
         "purchase"
       ],
-      "description": "Read your Team's orders of Mailboxes from Curviate: list, get.",
+      "description": "Your Team's orders of Mailboxes from Curviate: list, get, check (look the records up now).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -7627,6 +7627,46 @@
       "seeAlso": [
         "curviate mailbox purchase list",
         "curviate mailbox list"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
+        "purchase",
+        "check"
+      ],
+      "description": "Look up an order's records now instead of waiting for Curviate's own checks (every 15 minutes for 2 hours after the order, then hourly); answers the order with each row's found. Once a minute per order: sooner is refused (exit 6) with the time to wait. Owners only. One API call.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "id",
+          "type": "positional",
+          "description": "The order (mpu_...), from `curviate mailbox purchase list`."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox purchase check mpu_YOUR_PURCHASE_ID"
+      ],
+      "requires": [],
+      "risk": "read",
+      "errors": {
+        "MAILBOX_PURCHASE_NOT_FOUND": "no order of your Team has this id (another Team's id answers the same).",
+        "PLATFORM_RATE_LIMIT": "this order was checked less than a minute ago."
+      },
+      "seeAlso": [
+        "curviate mailbox purchase get"
       ]
     },
     {
@@ -9267,7 +9307,7 @@
         {
           "name": "table",
           "type": "string",
-          "description": "Comma list of daily, accounts, campaigns, enrollments (default all four); or, with --job, one of campaign_activity, account_activity, account_metrics."
+          "description": "Comma list of daily, accounts, campaigns, enrollments (default all four); or email alone: your Campaign email's daily counts per Mailbox, Account, Campaign, step, variant and receiving provider (at most 366 days); or, with --job, one of campaign_activity, account_activity, account_metrics."
         },
         {
           "name": "format",

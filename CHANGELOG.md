@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `4c1e6ef64`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `42ad2358a`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
 
 ### Placement tests and warm-up states
 
@@ -21,10 +21,14 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 
 - **`account safety events <acc_...> [--budget-row] [--since] [--until]`**: the actions Curviate refused at a safety limit or pause, newest first.
 
+### Email export
+
+- **`analytics export --table email`** (alone, streamed or with `--job`): your Campaign email's daily counts per Mailbox, Account, Campaign, step, variant and receiving provider; no `--origin`.
+
 ### Mailboxes from Curviate
 
-- **`mailbox purchase list [--state]`** and **`mailbox purchase get <mpu_...>`** read your Team's orders and the records to add.
-- **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Today a Team Owner orders in the dashboard: with an API key it is refused (exit 3) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
+- **`mailbox purchase list [--state]`**, **`mailbox purchase get <mpu_...>`** and **`mailbox purchase check <mpu_...>`** read your Team's orders and the records to add, and look the records up now (once a minute).
+- **`mailbox buy --domain <d> --mailbox local:Name[:acc_...|shared] ...`** places an order, after a confirmation (`--yes` without a terminal). Owners only; an order through an API key stays under the Team's cap on Mailboxes from Curviate, which only an Owner raises in the dashboard: past it the order is refused (`SPENDING_CAP_REACHED`, exit 5) with a plain line, never retried, and nothing is ordered. Exit codes: `MAILBOX_PURCHASE_NOT_FOUND` 4, `DOMAIN_IN_USE` and `DOMAIN_IS_COMPANY_EMAIL` 2, `MAILBOX_PURCHASE_PENDING` 8, `MAILBOX_PURCHASE_TRIAL` 11, `MAILBOX_SALES_PAUSED` 1.
 
 ### Lead imports
 

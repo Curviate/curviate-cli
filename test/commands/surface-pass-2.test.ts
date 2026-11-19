@@ -184,6 +184,8 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     [["mailbox", "test", "mbx_1", "--subject", "Quick question", "--body-file", "-"], { call: "POST /v1/mailboxes/mbx_1/placement-tests", query: {}, body: { subject: "Quick question", body: "Hi Anna" } }],
     [["mailbox", "tests", "mbx_1", "--limit", "5"], { call: "GET /v1/mailboxes/mbx_1/placement-tests", query: { limit: "5" }, body: undefined }],
     [["mailbox", "tests", "mbx_1", "plt_1"], { call: "GET /v1/mailboxes/mbx_1/placement-tests/plt_1", query: {}, body: undefined }],
+    [["analytics", "export", "--table", "email", "--range", "30d", "-o", join(tmpdir(), "p7-email.csv")], { call: "GET /v1/analytics/export", query: { range: "30d", format: "csv", entity: "email_daily" }, body: undefined }],
+    [["analytics", "export", "--table", "email", "--job", "--range", "30d"], { call: "POST /v1/exports", query: {}, body: { entity: "email_daily", format: "csv", filters: { range: "30d" } } }],
     [["account", "safety", "events", "acc_1", "--budget-row", "profile_views", "--limit", "5"], { call: "GET /v1/acc_1/safety-events", query: { budget_row: "profile_views", limit: "5" }, body: undefined }],
     [["campaign", "placement", "mot_1"], { call: "GET /v1/campaigns/mot_1/placement-checks", query: {}, body: undefined }],
     [["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna Weber:shared", "--mailbox", "max:Max: the second:acc_1", "--mailbox", "eva:Eva", "--yes"], { call: "POST /v1/mailboxes/purchases", query: {}, body: { domain: "acme-mail.example", mailboxes: [
@@ -193,6 +195,7 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     ] } }],
     [["mailbox", "purchase", "list", "--state", "awaiting_dns"], { call: "GET /v1/mailboxes/purchases", query: { state: "awaiting_dns" }, body: undefined }],
     [["mailbox", "purchase", "get", "mpu_1"], { call: "GET /v1/mailboxes/purchases/mpu_1", query: {}, body: undefined }],
+    [["mailbox", "purchase", "check", "mpu_1"], { call: "POST /v1/mailboxes/purchases/mpu_1/check", query: {}, body: undefined }],
     [["lead", "import", "--source-url", "https://www.linkedin.com/sales/search/company?query=x", "--titles", "CTO", "--account", "acc_a"], { call: "POST /v1/leads/imports", query: {}, body: { source: { kind: "sales_nav_company_people", account_id: "acc_a", url: "https://www.linkedin.com/sales/search/company?query=x", titles: ["CTO"] } } }],
     [["lead", "import", "--source", "sales_nav_account_list", "--list-id", "123", "--account", "acc_a"], { call: "POST /v1/leads/imports", query: {}, body: { source: { kind: "sales_nav_account_list", account_id: "acc_a", list_id: "123" } } }],
   ])("%j", async (args, expected) => {
@@ -206,18 +209,20 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     [["mailbox", "buy", "--domain", "acme-mail.example", "--yes"]], // no Mailbox
     [["mailbox", "test", "mbx_1", "--body-file", "-"]], // no subject
     [["mailbox", "purchase", "list", "--state", "paid"]],
+    [["analytics", "export", "--table", "email,daily", "--job"]],
+    [["analytics", "export", "--table", "email", "--origin", "api", "--job"]],
   ])("%j exits 2 with no request", async (args) => {
     const r = await wire(args, ok, { stdin: "x" });
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });
 
   it.each([
-    ["an API key cannot order: the plain line, exit 3, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 401, "UNAUTHORIZED", 3, "cannot be ordered with an API key yet"],
+    ["past the Team's cap on Mailboxes from Curviate: the plain line, exit 5, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 403, "SPENDING_CAP_REACHED", 5, "past its cap on Mailboxes from Curviate"],
     ["orders paused: exit 1, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 409, "MAILBOX_SALES_PAUSED", 1, "cannot be ordered at the moment"],
     ["the monthly allowance is used: exit 5, one request, never retried", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 429, "PLACEMENT_TEST_ALLOWANCE_EXHAUSTED", 5, "placement tests"],
     ["tests cannot run now: exit 1, one request", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 503, "PLACEMENT_TESTS_UNAVAILABLE", 1, "cannot run"],
   ])("%s", async (_n, args, status, code, exit, says) => {
-    const message = code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "UNAUTHORIZED" ? "A dashboard session is required." : "This Team has used its 10 placement tests for this month.";
+    const message = code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "SPENDING_CAP_REACHED" ? "Past the cap." : "This Team has used its 10 placement tests for this month.";
     const r = await wire(args, () => ({ status, body: { code, message, user_fixable: true, retry_likely_to_succeed: false } }), { stdin: "b" });
     expect([r.status, r.sent.length]).toEqual([exit, 1]);
     expect(r.stderr).toContain(says);
