@@ -210,10 +210,11 @@ const capCmd = defineCommand({
   meta: {
     name: "cap",
     description:
-      "The spending cap: the most seats an agent may bring your Team to (100 until an Owner sets one), the seats now, the room left and what the cap's seats cost a month. " +
-      "Read only: an Owner changes it in the dashboard. Adding a seat past it is refused with SPENDING_CAP_REACHED. Owners only.",
+      "The spending cap: the most seats an agent may bring your Team to (`is_default` until an Owner sets one), the seats now, the room left and what the cap's seats cost a month. " +
+      "While Mailboxes from Curviate can be ordered it also carries `mailbox_cap`, the most of them an agent may bring your Team to: `cap`, `is_default`, `count` (held plus those in orders not yet created) and `room` (the cap minus the count). An order through an API key of more than `room` is refused with SPENDING_CAP_REACHED; no `mailbox_cap` means orders are closed now. " +
+      "Read only: an Owner changes either cap in the dashboard. Adding a seat past it is refused with SPENDING_CAP_REACHED. Owners only.",
     risk: "read",
-    output: ["`cap_seats`, `is_default`, `seats`, `room_seats`, `monthly_amount` (cents), `currency`."],
+    output: ["`cap_seats`, `is_default`, `seats`, `room_seats`, `monthly_amount` (cents), `currency`; `mailbox_cap` { `cap`, `is_default`, `count`, `room` } while Mailboxes from Curviate can be ordered."],
     examples: ["curviate billing cap"],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS) },

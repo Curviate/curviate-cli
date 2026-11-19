@@ -30,7 +30,7 @@ export const DESCRIPTIONS = {
     "Any member adds and imports; removing and exporting are for Owners and Managers.",
   mailbox:
     "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). " +
-    "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate cost $5 a month each (buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
+    "Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate are priced for your Team by the server (quote, buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
   domain: "Domains: the DNS health of a sending domain (MX, SPF, DKIM, DMARC, tracking). `curviate domain check`, with --now to run the checks now.",
   billing: "Billing: the price of seats, the spending cap, the change log, your Team's invoices (listed and downloaded as PDFs), and moving a previous price to the current one (`price move`, charges money). Owners only. Seats and the Tier are under `curviate account seats`, `curviate team` and `curviate tier`.",
   contactImport: "Import Leads from a CSV, JSON or NDJSON file into a Lead list, splitting a large file into several imports.",

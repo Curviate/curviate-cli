@@ -58,6 +58,26 @@ describe("unibox: human output", () => {
     expect(r.stdout).toMatch(/c4\s+Group chat/);
   });
 
+  it("list prints channels, marks and the way on per conversation: an email-only one never gets reply", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    const row = (conversation_id: string, chat_id: string | null, channels: string[], marks = {}) => ({ object: "unibox_chat", account_id: "acc_a", conversation_id, chat_id, channels, counterpart: { name: "Ana" }, group: null, marks: { do_not_contact: null, no_email: null, ...marks } });
+    const r = await wire(["unibox", "list"], () => ({
+      body: { object: "unibox_chat_list", cursor: null, items: [
+        row("cnv_both", "c1", ["linkedin", "email"]),
+        row("cnv_mail", null, ["email"]),
+        row("cnv_li", "c3", ["linkedin"]),
+        row("cnv_dnc", "c4", ["linkedin", "email"], { do_not_contact: { reason: "asked_to_stop" } }),
+      ] },
+    }));
+    const line = (id: string) => r.stdout.split("\n").find((l) => l.includes(id)) ?? "";
+    expect(line("cnv_both")).toMatch(/linkedin\+email.*reply, email/);
+    expect(line("cnv_mail")).toMatch(/\bemail\b/);
+    expect(line("cnv_mail")).not.toMatch(/reply/);
+    expect(line("cnv_li")).toMatch(/reply/);
+    expect(line("cnv_li")).not.toMatch(/reply, email/);
+    expect(line("cnv_dnc")).toMatch(/do_not_contact\s+reply\s/);
+  });
+
   it("messages show each message's origin; no vendor name anywhere in the table", async () => {
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     const r = await wire(["unibox", "messages", "acc_a", "chat_1"], () => ({

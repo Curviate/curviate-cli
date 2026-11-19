@@ -48973,7 +48973,7 @@
                           }
                         }
                       },
-                      "description": "The files sent: name, the type their bytes show, size in bytes. Curviate keeps no file."
+                      "description": "The files sent: name, the type their bytes show, size in bytes. The email keeps no file; one sent by attachment_ids stays an upload of your team until its retention ends."
                     },
                     "mailbox_id": {
                       "type": "string",
@@ -49030,7 +49030,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: text is missing or over 10,000 characters; a to field (it always goes to the Lead); a new thread without subject; mailbox_id is not one of the conversation's Mailboxes, or names another Mailbox than a reply's thread (start a new thread to use another), or is missing while more than one can send; thread_id is not a thread of this conversation; a Cc or Bcc that is not one email address (named with its index, cc[1]), or more than 20 addresses in Cc and Bcc together; an attachment that is not base64 or has no file name. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: text is missing or over 10,000 characters; a to field (it always goes to the Lead); a new thread without subject; mailbox_id is not one of the conversation's Mailboxes, or names another Mailbox than a reply's thread (start a new thread to use another), or is missing while more than one can send; thread_id is not a thread of this conversation; a Cc or Bcc that is not one email address (named with its index, cc[1]), or more than 20 addresses in Cc and Bcc together; an attachment that is not base64 or has no file name; an attachment_ids entry that is not a cat_ id, the same id twice, or more than 10 files in all. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49117,7 +49117,7 @@
             }
           },
           "404": {
-            "description": "RESOURCE_NOT_FOUND: no such conversation in your Unibox, the same answer for an id that does not exist, another team's, and one you cannot see. MAILBOX_NOT_FOUND: mailbox_id is not a Mailbox of your team.",
+            "description": "RESOURCE_NOT_FOUND: no such conversation in your Unibox, the same answer for an id that does not exist, another team's, and one you cannot see; or an attachment_ids file that is not your team's upload (unknown, another team's, or deleted), named with its index. MAILBOX_NOT_FOUND: mailbox_id is not a Mailbox of your team. Nothing was sent.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49232,7 +49232,7 @@
             }
           },
           "502": {
-            "description": "PLATFORM_ERROR: the Mailbox's provider did not take the email. Nothing was sent and the daily limit was given back; the Lead's own address refused stops the whole email, Cc and Bcc included. retry_likely_to_succeed is false when the provider refused this email itself (its content or files): sent again unchanged, it is refused again. reason outcome_unknown: the provider stopped answering after it had the whole email, so it may have been sent; it is kept in the conversation as sent with outcome_unknown true, the daily limit stays spent. Do not send it again.",
+            "description": "PLATFORM_ERROR: the Mailbox's provider did not take the email. Nothing was sent and the daily limit was given back; the Lead's own address refused stops the whole email, Cc and Bcc included. retry_likely_to_succeed is false when the provider refused this email itself (its content or files): sent again unchanged, it is refused again. reason attachment_refused: the files were refused, as a Campaign step's are: from a Microsoft sign-in Mailbox, files of more than about 2.2 MB in all are refused before anything is sent (the daily limit untouched); or the provider refused them. Send a link or smaller files. reason outcome_unknown: the provider stopped answering after it had the whole email, so it may have been sent; it is kept in the conversation as sent with outcome_unknown true, the daily limit stays spent. Do not send it again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49335,7 +49335,14 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "Files, at most 10, up to 20 MiB in all (decoded). Executables, scripts and macro-enabled Office files are refused. Not kept by Curviate: the email keeps their name, type, size and hash."
+                    "description": "Files inline, base64: at most 10 with attachment_ids, 20 MiB in all (decoded). Executables, scripts and macro-enabled Office files are refused. Not kept by Curviate: the email keeps their name, type, size and hash. This route reads at most 9 MiB of JSON, so inline files reach about 6.7 MiB; send larger ones by attachment_ids."
+                  },
+                  "attachment_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Files uploaded first with POST /v1/campaigns/attachments (or in the dashboard), by id: at most 10 files and 20 MiB in all, with attachments. A file of another team, or one deleted (30 days after its upload unless a Sequence uses it), is not found and nothing is sent."
                   }
                 },
                 "required": [
@@ -49370,9 +49377,19 @@
                     "bcc": [
                       "me@example.test"
                     ],
+                    "attachment_ids": [
+                      "cat_01J8Z3K9P0Q1R2S3T4V5W6X7Y8"
+                    ]
+                  }
+                },
+                "inline_file": {
+                  "summary": "With a small file inline",
+                  "value": {
+                    "thread_id": "ems_01J8Z3K9P0Q1R2S3T4V5W6X7Y8",
+                    "text": "The agenda is attached.",
                     "attachments": [
                       {
-                        "filename": "proposal.pdf",
+                        "filename": "agenda.pdf",
                         "content_type": "application/pdf",
                         "content": "JVBERi0xLjQK"
                       }
@@ -120064,6 +120081,273 @@
         "x-order": 5
       }
     },
+    "/v1/mailboxes/purchases/quote": {
+      "get": {
+        "operationId": "getV1MailboxesPurchasesQuote",
+        "tags": [
+          "Mailboxes"
+        ],
+        "summary": "Price an order of Mailboxes from Curviate",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          },
+          {
+            "name": "mailboxes",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "description": "How many Mailboxes, 1 to 50."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The quote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "A price for an order of Mailboxes from Curviate for your Team, before ordering. Nothing is written or charged.",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "mailbox_quote"
+                      ]
+                    },
+                    "mailboxes": {
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "billing_period": {
+                      "type": "string",
+                      "enum": [
+                        "monthly",
+                        "annual"
+                      ],
+                      "description": "Your Team's billing period: the period one Mailbox is billed for."
+                    },
+                    "unit_amount": {
+                      "type": "integer",
+                      "description": "One Mailbox for one billing period."
+                    },
+                    "amount": {
+                      "type": "integer",
+                      "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                    },
+                    "amount_monthly": {
+                      "type": "integer",
+                      "description": "The monthly equivalent (the order's amount_monthly)."
+                    },
+                    "charged": {
+                      "type": "string",
+                      "enum": [
+                        "with_next_invoice",
+                        "when_records_found",
+                        "never"
+                      ],
+                      "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                    },
+                    "prorated": {
+                      "type": "boolean",
+                      "description": "The first charge covers only the rest of the current billing period."
+                    },
+                    "plus_tax": {
+                      "type": "boolean",
+                      "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                    },
+                    "orderable": {
+                      "type": "boolean",
+                      "description": "Whether your Team can place this order now."
+                    },
+                    "not_orderable_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "trial",
+                        "sales_paused",
+                        null
+                      ],
+                      "description": "trial: available once your Team pays; sales_paused: Mailboxes from Curviate cannot be ordered at the moment."
+                    },
+                    "charge_waits_for": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "payment",
+                        "subscription",
+                        null
+                      ],
+                      "description": "payment: your subscription is past due, the charge waits until it is paid; subscription: no subscription to charge, the order waits uncharged."
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "mailboxes",
+                    "currency",
+                    "billing_period",
+                    "unit_amount",
+                    "amount",
+                    "amount_monthly",
+                    "charged",
+                    "prorated",
+                    "plus_tax",
+                    "orderable",
+                    "not_orderable_reason",
+                    "charge_waits_for"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_REQUEST: mailboxes is not a whole number from 1 to 50. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "400 error",
+                    "value": {
+                      "code": "INVALID_REQUEST",
+                      "message": "A parameter failed validation.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  },
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "401 error",
+                    "value": {
+                      "code": "UNAUTHORIZED",
+                      "message": "Missing or invalid API key.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "INSUFFICIENT_ROLE: not an Owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "403 error",
+                    "value": {
+                      "code": "NO_ACTIVE_SEAT",
+                      "message": "The targeted account is not on an active seat.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "What an order of `mailboxes` Mailboxes would cost your Team, read now from the price the charge uses: your billing period, the amount per Mailbox and for the order, when it is charged (monthly: with your next invoice; yearly: invoiced and paid the day the records are found), and that tax is added where it applies. Show this to your user before ordering; the order's `price` carries the same object. Nothing is written or charged. Owners only. It answers while sales are paused (`orderable` false).",
+        "x-order": 19
+      }
+    },
     "/v1/mailboxes/purchases": {
       "post": {
         "operationId": "postV1MailboxesPurchases",
@@ -120176,7 +120460,67 @@
                     },
                     "amount_monthly": {
                       "type": "integer",
-                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                      "description": "The order's monthly equivalent, minor units: the monthly price of one Mailbox times the Mailboxes. Not what a yearly Team is charged: read `price`."
+                    },
+                    "price": {
+                      "type": "object",
+                      "description": "What the order costs your Team, read now from the same price the charge uses. Amounts are minor units, before tax.",
+                      "properties": {
+                        "mailboxes": {
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "billing_period": {
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "annual"
+                          ],
+                          "description": "Your Team's billing period: the period one Mailbox is billed for."
+                        },
+                        "unit_amount": {
+                          "type": "integer",
+                          "description": "One Mailbox for one billing period."
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                        },
+                        "amount_monthly": {
+                          "type": "integer",
+                          "description": "The monthly equivalent (the order's amount_monthly)."
+                        },
+                        "charged": {
+                          "type": "string",
+                          "enum": [
+                            "with_next_invoice",
+                            "when_records_found",
+                            "never"
+                          ],
+                          "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                        },
+                        "prorated": {
+                          "type": "boolean",
+                          "description": "The first charge covers only the rest of the current billing period."
+                        },
+                        "plus_tax": {
+                          "type": "boolean",
+                          "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                        }
+                      },
+                      "required": [
+                        "mailboxes",
+                        "currency",
+                        "billing_period",
+                        "unit_amount",
+                        "amount",
+                        "amount_monthly",
+                        "charged",
+                        "prorated",
+                        "plus_tax"
+                      ]
                     },
                     "checked_at": {
                       "type": [
@@ -120212,6 +120556,7 @@
                     "records",
                     "advice",
                     "amount_monthly",
+                    "price",
                     "checked_at",
                     "expires_at",
                     "charged_at",
@@ -120253,6 +120598,17 @@
                       ],
                       "advice": null,
                       "amount_monthly": 500,
+                      "price": {
+                        "mailboxes": 1,
+                        "currency": "usd",
+                        "billing_period": "monthly",
+                        "unit_amount": 500,
+                        "amount": 500,
+                        "amount_monthly": 500,
+                        "charged": "with_next_invoice",
+                        "prorated": true,
+                        "plus_tax": true
+                      },
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
@@ -120438,7 +120794,7 @@
             }
           }
         },
-        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, at $5 a month each, warm-up included. The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only. An order through an API key counts under the team's cap on Mailboxes from Curviate: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused 403 SPENDING_CAP_REACHED and nothing is ordered. A Team on a trial cannot order; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
+        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, warm-up included, at the price `GET /v1/mailboxes/purchases/quote` gives your Team (the answer's `price` is the same object). The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only. An order through an API key counts under the team's cap on Mailboxes from Curviate: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused 403 SPENDING_CAP_REACHED and nothing is ordered. A Team on a trial cannot order; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -120680,7 +121036,67 @@
                           },
                           "amount_monthly": {
                             "type": "integer",
-                            "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                            "description": "The order's monthly equivalent, minor units: the monthly price of one Mailbox times the Mailboxes. Not what a yearly Team is charged: read `price`."
+                          },
+                          "price": {
+                            "type": "object",
+                            "description": "What the order costs your Team, read now from the same price the charge uses. Amounts are minor units, before tax.",
+                            "properties": {
+                              "mailboxes": {
+                                "type": "integer"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "billing_period": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "annual"
+                                ],
+                                "description": "Your Team's billing period: the period one Mailbox is billed for."
+                              },
+                              "unit_amount": {
+                                "type": "integer",
+                                "description": "One Mailbox for one billing period."
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                              },
+                              "amount_monthly": {
+                                "type": "integer",
+                                "description": "The monthly equivalent (the order's amount_monthly)."
+                              },
+                              "charged": {
+                                "type": "string",
+                                "enum": [
+                                  "with_next_invoice",
+                                  "when_records_found",
+                                  "never"
+                                ],
+                                "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                              },
+                              "prorated": {
+                                "type": "boolean",
+                                "description": "The first charge covers only the rest of the current billing period."
+                              },
+                              "plus_tax": {
+                                "type": "boolean",
+                                "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                              }
+                            },
+                            "required": [
+                              "mailboxes",
+                              "currency",
+                              "billing_period",
+                              "unit_amount",
+                              "amount",
+                              "amount_monthly",
+                              "charged",
+                              "prorated",
+                              "plus_tax"
+                            ]
                           },
                           "checked_at": {
                             "type": [
@@ -120716,6 +121132,7 @@
                           "records",
                           "advice",
                           "amount_monthly",
+                          "price",
                           "checked_at",
                           "expires_at",
                           "charged_at",
@@ -120924,7 +121341,67 @@
                     },
                     "amount_monthly": {
                       "type": "integer",
-                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                      "description": "The order's monthly equivalent, minor units: the monthly price of one Mailbox times the Mailboxes. Not what a yearly Team is charged: read `price`."
+                    },
+                    "price": {
+                      "type": "object",
+                      "description": "What the order costs your Team, read now from the same price the charge uses. Amounts are minor units, before tax.",
+                      "properties": {
+                        "mailboxes": {
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "billing_period": {
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "annual"
+                          ],
+                          "description": "Your Team's billing period: the period one Mailbox is billed for."
+                        },
+                        "unit_amount": {
+                          "type": "integer",
+                          "description": "One Mailbox for one billing period."
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                        },
+                        "amount_monthly": {
+                          "type": "integer",
+                          "description": "The monthly equivalent (the order's amount_monthly)."
+                        },
+                        "charged": {
+                          "type": "string",
+                          "enum": [
+                            "with_next_invoice",
+                            "when_records_found",
+                            "never"
+                          ],
+                          "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                        },
+                        "prorated": {
+                          "type": "boolean",
+                          "description": "The first charge covers only the rest of the current billing period."
+                        },
+                        "plus_tax": {
+                          "type": "boolean",
+                          "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                        }
+                      },
+                      "required": [
+                        "mailboxes",
+                        "currency",
+                        "billing_period",
+                        "unit_amount",
+                        "amount",
+                        "amount_monthly",
+                        "charged",
+                        "prorated",
+                        "plus_tax"
+                      ]
                     },
                     "checked_at": {
                       "type": [
@@ -120960,6 +121437,7 @@
                     "records",
                     "advice",
                     "amount_monthly",
+                    "price",
                     "checked_at",
                     "expires_at",
                     "charged_at",
@@ -121001,6 +121479,17 @@
                       ],
                       "advice": null,
                       "amount_monthly": 500,
+                      "price": {
+                        "mailboxes": 1,
+                        "currency": "usd",
+                        "billing_period": "monthly",
+                        "unit_amount": 500,
+                        "amount": 500,
+                        "amount_monthly": 500,
+                        "charged": "with_next_invoice",
+                        "prorated": true,
+                        "plus_tax": true
+                      },
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
@@ -121217,7 +121706,67 @@
                     },
                     "amount_monthly": {
                       "type": "integer",
-                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                      "description": "The order's monthly equivalent, minor units: the monthly price of one Mailbox times the Mailboxes. Not what a yearly Team is charged: read `price`."
+                    },
+                    "price": {
+                      "type": "object",
+                      "description": "What the order costs your Team, read now from the same price the charge uses. Amounts are minor units, before tax.",
+                      "properties": {
+                        "mailboxes": {
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "billing_period": {
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "annual"
+                          ],
+                          "description": "Your Team's billing period: the period one Mailbox is billed for."
+                        },
+                        "unit_amount": {
+                          "type": "integer",
+                          "description": "One Mailbox for one billing period."
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                        },
+                        "amount_monthly": {
+                          "type": "integer",
+                          "description": "The monthly equivalent (the order's amount_monthly)."
+                        },
+                        "charged": {
+                          "type": "string",
+                          "enum": [
+                            "with_next_invoice",
+                            "when_records_found",
+                            "never"
+                          ],
+                          "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                        },
+                        "prorated": {
+                          "type": "boolean",
+                          "description": "The first charge covers only the rest of the current billing period."
+                        },
+                        "plus_tax": {
+                          "type": "boolean",
+                          "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                        }
+                      },
+                      "required": [
+                        "mailboxes",
+                        "currency",
+                        "billing_period",
+                        "unit_amount",
+                        "amount",
+                        "amount_monthly",
+                        "charged",
+                        "prorated",
+                        "plus_tax"
+                      ]
                     },
                     "checked_at": {
                       "type": [
@@ -121253,6 +121802,7 @@
                     "records",
                     "advice",
                     "amount_monthly",
+                    "price",
                     "checked_at",
                     "expires_at",
                     "charged_at",
@@ -121480,7 +122030,67 @@
                     },
                     "amount_monthly": {
                       "type": "integer",
-                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                      "description": "The order's monthly equivalent, minor units: the monthly price of one Mailbox times the Mailboxes. Not what a yearly Team is charged: read `price`."
+                    },
+                    "price": {
+                      "type": "object",
+                      "description": "What the order costs your Team, read now from the same price the charge uses. Amounts are minor units, before tax.",
+                      "properties": {
+                        "mailboxes": {
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "billing_period": {
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "annual"
+                          ],
+                          "description": "Your Team's billing period: the period one Mailbox is billed for."
+                        },
+                        "unit_amount": {
+                          "type": "integer",
+                          "description": "One Mailbox for one billing period."
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "description": "unit_amount times mailboxes: one full billing period of the order. The first charge is this prorated to the end of the current period."
+                        },
+                        "amount_monthly": {
+                          "type": "integer",
+                          "description": "The monthly equivalent (the order's amount_monthly)."
+                        },
+                        "charged": {
+                          "type": "string",
+                          "enum": [
+                            "with_next_invoice",
+                            "when_records_found",
+                            "never"
+                          ],
+                          "description": "monthly: added to the next invoice; annual: invoiced and paid the day the records are found; never: nothing is charged for this Team."
+                        },
+                        "prorated": {
+                          "type": "boolean",
+                          "description": "The first charge covers only the rest of the current billing period."
+                        },
+                        "plus_tax": {
+                          "type": "boolean",
+                          "description": "Tax is added at charge time where it applies; no tax figure is given here."
+                        }
+                      },
+                      "required": [
+                        "mailboxes",
+                        "currency",
+                        "billing_period",
+                        "unit_amount",
+                        "amount",
+                        "amount_monthly",
+                        "charged",
+                        "prorated",
+                        "plus_tax"
+                      ]
                     },
                     "checked_at": {
                       "type": [
@@ -121516,6 +122126,7 @@
                     "records",
                     "advice",
                     "amount_monthly",
+                    "price",
                     "checked_at",
                     "expires_at",
                     "charged_at",
@@ -121557,6 +122168,17 @@
                       ],
                       "advice": null,
                       "amount_monthly": 500,
+                      "price": {
+                        "mailboxes": 1,
+                        "currency": "usd",
+                        "billing_period": "monthly",
+                        "unit_amount": 500,
+                        "amount": 500,
+                        "amount_monthly": 500,
+                        "charged": "with_next_invoice",
+                        "prorated": true,
+                        "plus_tax": true
+                      },
                       "checked_at": null,
                       "expires_at": "2026-12-02T09:00:00.000Z",
                       "charged_at": null,
@@ -122217,9 +122839,10 @@
                                 "enum": [
                                   "off",
                                   "warming",
-                                  "waiting"
+                                  "waiting",
+                                  "ready"
                                 ],
-                                "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance."
+                                "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance. `ready`: the days picked have passed and its warm-up mail lands well enough; warm-up goes on as before and sending does not change. Past its days and not ready yet, it stays `warming`."
                               },
                               "reason": {
                                 "type": [
@@ -122789,9 +123412,10 @@
                           "enum": [
                             "off",
                             "warming",
-                            "waiting"
+                            "waiting",
+                            "ready"
                           ],
-                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance."
+                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance. `ready`: the days picked have passed and its warm-up mail lands well enough; warm-up goes on as before and sending does not change. Past its days and not ready yet, it stays `warming`."
                         },
                         "reason": {
                           "type": [
@@ -123335,9 +123959,10 @@
                           "enum": [
                             "off",
                             "warming",
-                            "waiting"
+                            "waiting",
+                            "ready"
                           ],
-                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance."
+                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance. `ready`: the days picked have passed and its warm-up mail lands well enough; warm-up goes on as before and sending does not change. Past its days and not ready yet, it stays `warming`."
                         },
                         "reason": {
                           "type": [
@@ -123879,7 +124504,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE: a Member removing a Mailbox they did not connect.",
+            "description": "INSUFFICIENT_ROLE: a Member removing a Mailbox they did not connect, or anyone but an Owner removing a Mailbox from Curviate.",
             "content": {
               "application/json": {
                 "schema": {
@@ -123920,6 +124545,16 @@
               }
             }
           },
+          "409": {
+            "description": "MAILBOX_STATE_CONFLICT: a Mailbox from Curviate still being created, or too many Mailbox changes still settling with billing (nothing changed; try again later).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limited, slow down and retry after the hinted delay.",
             "content": {
@@ -123953,7 +124588,7 @@
             }
           }
         },
-        "description": "Removes the Mailbox and deletes its stored credentials in one step. It changes no seat count and makes no Stripe call.",
+        "description": "Removes the Mailbox and deletes its stored credentials in one step. A Mailbox your Team connected itself changes no seat count and nothing in billing. Only an Owner removes a Mailbox from Curviate. A Mailbox from Curviate is deleted at once, with all its mail. Its billing ends at the end of the current billing period, with no credit for the time left. Its emails stay in your Campaigns and the Unibox. Once the last Mailbox on its domain is gone, remove Curviate's records from that domain's DNS. The subscription's Mailbox count is lowered once, also when the removal is retried.",
         "x-order": 6
       }
     },
@@ -124226,9 +124861,10 @@
                           "enum": [
                             "off",
                             "warming",
-                            "waiting"
+                            "waiting",
+                            "ready"
                           ],
-                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance."
+                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance. `ready`: the days picked have passed and its warm-up mail lands well enough; warm-up goes on as before and sending does not change. Past its days and not ready yet, it stays `warming`."
                         },
                         "reason": {
                           "type": [
@@ -124805,9 +125441,10 @@
                           "enum": [
                             "off",
                             "warming",
-                            "waiting"
+                            "waiting",
+                            "ready"
                           ],
-                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance."
+                          "description": "`off`; `warming` (day N of the days picked); `waiting`: warm-up is on but cannot run now: no warm-up mail goes from or to it, and its day does not advance. `ready`: the days picked have passed and its warm-up mail lands well enough; warm-up goes on as before and sending does not change. Past its days and not ready yet, it stays `warming`."
                         },
                         "reason": {
                           "type": [
@@ -131701,9 +132338,933 @@
                         "description": "A pasted LinkedIn search URL (people_search: linkedin.com/search/results/people/...)."
                       },
                       "filters": {
-                        "type": "object",
-                        "additionalProperties": {},
-                        "description": "A built search instead of a URL: the filters the kind offers. Send url or filters, not both."
+                        "oneOf": [
+                          {
+                            "title": "people_search",
+                            "type": "object",
+                            "properties": {
+                              "keywords": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Full-text keyword search across all profile fields."
+                              },
+                              "advanced_keywords": {
+                                "type": "object",
+                                "properties": {
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "location": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque location IDs from GET .../search/parameters?type=LOCATION."
+                              },
+                              "current_company": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque current company IDs from GET .../search/parameters?type=COMPANY."
+                              },
+                              "past_company": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque past company IDs from GET .../search/parameters?type=COMPANY."
+                              },
+                              "school": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque school IDs from GET .../search/parameters?type=SCHOOL."
+                              },
+                              "industry": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque industry IDs from GET .../search/parameters?type=INDUSTRY."
+                              },
+                              "service": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque service IDs from GET .../search/parameters?type=SERVICE."
+                              },
+                              "network_distance": {
+                                "type": "array",
+                                "items": {
+                                  "type": "number",
+                                  "enum": [
+                                    1,
+                                    2,
+                                    3
+                                  ]
+                                },
+                                "description": "Filter by network distance: 1 = 1st degree, 2 = 2nd degree, 3 = 3rd degree."
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "company_people",
+                            "type": "object",
+                            "properties": {
+                              "keywords": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Full-text keyword search across company profiles."
+                              },
+                              "industry": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque industry IDs from GET .../search/parameters?type=INDUSTRY."
+                              },
+                              "location": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Opaque location IDs from GET .../search/parameters?type=LOCATION."
+                              },
+                              "headcount": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "integer",
+                                      "description": "Lower bound of a company-size bucket. Valid values: 1, 11, 51, 201, 501, 1001, 5001, 10001."
+                                    },
+                                    "max": {
+                                      "type": "integer",
+                                      "description": "Upper bound of a company-size bucket. Valid values: 1, 10, 50, 200, 500, 1000, 5000, 10000."
+                                    }
+                                  },
+                                  "required": [
+                                    "min",
+                                    "max"
+                                  ]
+                                },
+                                "description": "Filter by company size buckets. Each entry is a { min, max } object (e.g. { min: 51, max: 200 })."
+                              },
+                              "has_job_postings": {
+                                "type": "boolean",
+                                "description": "Filter to companies with active job postings."
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "sales_nav_search",
+                            "type": "object",
+                            "properties": {
+                              "keywords": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Free-text keyword filter."
+                              },
+                              "current_company": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "Current-employer COMPANY parameter IDs to include or exclude."
+                              },
+                              "past_company": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "Past-employer COMPANY parameter IDs to include or exclude."
+                              },
+                              "company_location": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "LOCATION parameter IDs for the current company's HQ to include or exclude."
+                              },
+                              "account_list": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "ACCOUNT_LIST parameter IDs to include or exclude."
+                              },
+                              "function": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "JOB_FUNCTION parameter IDs to include or exclude."
+                              },
+                              "current_job_title": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "past_job_title": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "persona": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "PERSONA parameter IDs to filter by."
+                              },
+                              "location": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "LOCATION parameter IDs to include or exclude."
+                              },
+                              "postal_code": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "radius": {
+                                    "type": "number",
+                                    "enum": [
+                                      1,
+                                      5,
+                                      10,
+                                      25,
+                                      35,
+                                      50,
+                                      75,
+                                      100
+                                    ],
+                                    "description": "Search radius in miles around the postal code location: 1, 5, 10, 25, 35, 50, 75, or 100."
+                                  }
+                                },
+                                "description": "POSTAL_CODE parameter IDs to include or exclude, plus an optional radius in miles."
+                              },
+                              "industry": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "INDUSTRY parameter IDs to include or exclude."
+                              },
+                              "group": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "GROUP parameter IDs to include or exclude."
+                              },
+                              "school": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "SCHOOL parameter IDs to include or exclude."
+                              },
+                              "profile_language": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "PROFILE_LANGUAGE parameter IDs to filter by."
+                              },
+                              "lead_list": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "LEAD_LIST parameter IDs to include or exclude."
+                              },
+                              "seniority": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "OWNER/PARTNER",
+                                        "CXO",
+                                        "VICE_PRESIDENT",
+                                        "DIRECTOR",
+                                        "EXPERIENCED_MANAGER",
+                                        "ENTRY_LEVEL_MANAGER",
+                                        "STRATEGIC",
+                                        "SENIOR",
+                                        "ENTRY_LEVEL",
+                                        "IN_TRAINING"
+                                      ]
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "OWNER/PARTNER",
+                                        "CXO",
+                                        "VICE_PRESIDENT",
+                                        "DIRECTOR",
+                                        "EXPERIENCED_MANAGER",
+                                        "ENTRY_LEVEL_MANAGER",
+                                        "STRATEGIC",
+                                        "SENIOR",
+                                        "ENTRY_LEVEL",
+                                        "IN_TRAINING"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "description": "Seniority levels to include or exclude."
+                              },
+                              "company_headcount": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "years_in_company": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "years_in_position": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "years_of_experience": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "company_type": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "PUBLIC_COMPANY",
+                                    "PRIVATELY_HELD",
+                                    "NON_PROFIT",
+                                    "EDUCATIONAL_INSTITUTION",
+                                    "PARTNERSHIP",
+                                    "SELF_EMPLOYED",
+                                    "SELF_OWNED",
+                                    "GOVERNMENT_AGENCY"
+                                  ]
+                                },
+                                "description": "Company type filter."
+                              },
+                              "network_distance": {
+                                "type": "array",
+                                "items": {
+                                  "oneOf": [
+                                    {
+                                      "type": "number",
+                                      "const": 1
+                                    },
+                                    {
+                                      "type": "number",
+                                      "const": 2
+                                    },
+                                    {
+                                      "type": "number",
+                                      "const": 3
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "GROUP"
+                                    }
+                                  ]
+                                },
+                                "description": "Connection distance: 1 (1st), 2 (2nd), 3 (3rd+), 'GROUP' (group members)."
+                              },
+                              "connections_of": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "RELATION parameter IDs used to filter to connections of these members."
+                              },
+                              "first_name": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "First names to filter by."
+                              },
+                              "last_name": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "Last names to filter by."
+                              },
+                              "recent_interaction": {
+                                "type": "object",
+                                "properties": {
+                                  "viewed_profile": {
+                                    "type": "boolean"
+                                  },
+                                  "messaged": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "description": "Filter by recent interaction with the operator account."
+                              },
+                              "saved_resources": {
+                                "type": "object",
+                                "properties": {
+                                  "saved_leads": {
+                                    "type": "boolean"
+                                  },
+                                  "saved_accounts": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "description": "Include results from the operator's saved leads/accounts."
+                              },
+                              "following_your_company": {
+                                "type": "boolean",
+                                "description": "Filter to members following your company."
+                              },
+                              "viewed_your_profile_recently": {
+                                "type": "boolean",
+                                "description": "Filter to members who viewed your profile recently."
+                              },
+                              "past_colleague": {
+                                "type": "boolean",
+                                "description": "Filter to past colleagues."
+                              },
+                              "shared_experiences": {
+                                "type": "boolean",
+                                "description": "Filter to members with shared experiences."
+                              },
+                              "changed_jobs": {
+                                "type": "boolean",
+                                "description": "Filter to members who recently changed jobs."
+                              },
+                              "posted_on_linkedin": {
+                                "type": "boolean",
+                                "description": "Filter to members who recently posted on LinkedIn."
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "sales_nav_company_people",
+                            "type": "object",
+                            "properties": {
+                              "keywords": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Free-text keyword filter."
+                              },
+                              "annual_revenue": {
+                                "type": "object",
+                                "properties": {
+                                  "min": {
+                                    "type": "number",
+                                    "description": "Minimum annual revenue (millions)."
+                                  },
+                                  "max": {
+                                    "type": "number",
+                                    "description": "Maximum annual revenue (millions)."
+                                  },
+                                  "currency": {
+                                    "type": "string",
+                                    "minLength": 3,
+                                    "maxLength": 3,
+                                    "description": "ISO 4217 three-character currency code (e.g. 'USD')."
+                                  }
+                                },
+                                "required": [
+                                  "currency"
+                                ],
+                                "description": "Annual revenue range."
+                              },
+                              "headcount": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "followers": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "min",
+                                    "max"
+                                  ]
+                                },
+                                "description": "Follower count ranges."
+                              },
+                              "fortune": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "min": {
+                                      "type": "number"
+                                    },
+                                    "max": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "min",
+                                    "max"
+                                  ]
+                                },
+                                "description": "Fortune ranking ranges."
+                              },
+                              "headcount_growth": {
+                                "type": "object",
+                                "properties": {
+                                  "min": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "min",
+                                  "max"
+                                ],
+                                "description": "Headcount growth percentage range."
+                              },
+                              "department_headcount": {
+                                "type": "object",
+                                "properties": {
+                                  "department": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "A single JOB_FUNCTION parameter ID (required, singular)."
+                                  },
+                                  "min": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "department",
+                                  "min",
+                                  "max"
+                                ],
+                                "description": "Filter by department headcount. department, min, and max are all required when this filter is present."
+                              },
+                              "department_headcount_growth": {
+                                "type": "object",
+                                "properties": {
+                                  "department": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "A single JOB_FUNCTION parameter ID (required, singular)."
+                                  },
+                                  "min": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "department",
+                                  "min",
+                                  "max"
+                                ],
+                                "description": "Filter by department headcount growth. department, min, and max are all required when this filter is present."
+                              },
+                              "location": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "LOCATION parameter IDs to include or exclude."
+                              },
+                              "postal_code": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "POSTAL_CODE parameter IDs to include or exclude (no radius for companies)."
+                              },
+                              "industry": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "INDUSTRY parameter IDs to include or exclude."
+                              },
+                              "account_list": {
+                                "type": "object",
+                                "properties": {
+                                  "include": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "exclude": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  }
+                                },
+                                "description": "ACCOUNT_LIST parameter IDs to include or exclude."
+                              },
+                              "spotlights": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "HIRING_ON_LINKEDIN",
+                                    "RECENT_LEADERSHIP_CHANGE",
+                                    "RECENT_FUNDING_EVENTS",
+                                    "FIRST_DEGREE_CONNECTIONS"
+                                  ]
+                                },
+                                "description": "Company activity spotlights to filter by."
+                              },
+                              "saved_accounts": {
+                                "type": "boolean",
+                                "description": "Filter to the operator's saved accounts."
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "title": "recruiter_search",
+                            "type": "object",
+                            "properties": {
+                              "keywords": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Free-text keyword search. Trimmed before use; never persisted."
+                              },
+                              "job_function": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "Resolved JOB_FUNCTION parameter ids."
+                              },
+                              "workplace_type": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ON_SITE",
+                                    "HYBRID",
+                                    "REMOTE"
+                                  ]
+                                }
+                              },
+                              "group": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": "Resolved GROUP parameter ids."
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "A built search instead of a URL: the filters the kind offers, one shape per kind (people_search, company_people, sales_nav_search, sales_nav_company_people, recruiter_search); a key the kind does not offer is a 400 naming it. Send url or filters, not both."
                       },
                       "list_id": {
                         "type": "string",
@@ -145869,7 +147430,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Uploads one file as the raw request body and returns an id for an email step's attachment_ids. Content-Length is required; the filename query names the file as the recipient sees it. Up to 20 MiB, 100 uploads per team per 24 hours. The media type is read from the file's bytes; executables, scripts and macro-enabled Office files are refused. A retry stores a second file. A file no Sequence uses is deleted 30 days after its upload. A link usually lands better than a file. Needs a subscription.",
+        "description": "Uploads one file as the raw request body and returns an id for an email step's attachment_ids, or a Unibox email's (POST /v1/unibox/conversations/{conversation_id}/emails). Content-Length is required; the filename query names the file as the recipient sees it. Up to 20 MiB, 100 uploads per team per 24 hours. The media type is read from the file's bytes; executables, scripts and macro-enabled Office files are refused. A retry stores a second file. A file no Sequence uses is deleted 30 days after its upload, a Unibox email's too. A link usually lands better than a file. Needs a subscription.",
         "requestBody": {
           "required": true,
           "content": {
@@ -177843,6 +179404,27 @@
                               "state",
                               "reason"
                             ]
+                          },
+                          "reputation": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "Its reputation, 0 to 100, as GET /v1/mailboxes/{id} serves it; null while there is too little to judge (never 0 for that)."
+                          },
+                          "pause_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Why it is paused, as GET /v1/mailboxes/{id} serves it; null when it is not."
+                          },
+                          "paused_until": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "When a provider's pause ends (UTC), as GET /v1/mailboxes/{id} serves it; null otherwise."
                           }
                         },
                         "required": [
@@ -177856,7 +179438,10 @@
                           "bounces",
                           "bounce_rate_7d",
                           "reply",
-                          "warm_up"
+                          "warm_up",
+                          "reputation",
+                          "pause_reason",
+                          "paused_until"
                         ]
                       }
                     },
@@ -177936,7 +179521,7 @@
                               "dns",
                               "dns_and_mail"
                             ],
-                            "description": "Where the checks come from: dns, from DNS lookups."
+                            "description": "dns: DNS lookups only. dns_and_mail: DNS, and warm-up or test mail of the domain was read (warm-up in the last 7 days, a test or weekly check in the last 30)."
                           },
                           "blocklists": {
                             "type": "array",

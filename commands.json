@@ -6810,7 +6810,7 @@
       "path": [
         "mailbox"
       ],
-      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate cost $5 a month each (buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
+      "description": "Mailboxes: your Team's own email Mailboxes, the addresses Campaigns send from. List, read, set who a Mailbox sends for, its daily cap and signature, pause, resume, remove, find the settings for an address (discover), connect and reconnect (a password goes in only through --password-stdin), run a placement test (test, tests). Every role reads; Owners and Managers change any Mailbox, a Member the ones they connected. Your own Mailbox takes no seat and is never billed; Mailboxes from Curviate are priced for your Team by the server (quote, buy, purchase; Owners only, and an order through an API key stays under the Team's cap on them).",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -6879,7 +6879,7 @@
         "mailbox",
         "get"
       ],
-      "description": "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
+      "description": "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state: off, warming (day N; past its days it stays warming until ready), ready (the warm-up's bar is met; sending does not change) or waiting; day; reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
       "usageOnly": false,
       "args": [
         {
@@ -7105,7 +7105,7 @@
         "mailbox",
         "remove"
       ],
-      "description": "Remove a Mailbox and delete its stored credentials in one step. Changes no seat count. Connect it again to use the address afterwards. A Mailbox from Curviate is an Owner's to remove: it is deleted with its mail, and its $5 a month stops at the end of the billing period. MAILBOX_STATE_CONFLICT (exit 8) \"Too many Mailbox changes are still settling with billing\" changed nothing: try again later, never in a loop.",
+      "description": "Remove a Mailbox and delete its stored credentials in one step. Changes no seat count. Connect it again to use the address afterwards. A Mailbox from Curviate is an Owner's to remove: it is deleted with its mail, and its charge stops at the end of the billing period. MAILBOX_STATE_CONFLICT (exit 8) \"Too many Mailbox changes are still settling with billing\" changed nothing: the person may try again later; never resend it on your own.",
       "usageOnly": false,
       "args": [
         {
@@ -7469,9 +7469,52 @@
     {
       "path": [
         "mailbox",
+        "quote"
+      ],
+      "description": "What a number of Mailboxes from Curviate cost your Team, read now from the price the charge uses: the amount for your Team's billing period (a yearly Team pays the rest of its year the day the records are found), when it is charged, and whether your Team can order now. Show this to the person before `curviate mailbox buy`, never a price of your own. Charges nothing. Owners only.",
+      "usageOnly": false,
+      "args": [
+        {
+          "name": "count",
+          "type": "positional",
+          "description": "How many Mailboxes, 1 to 50."
+        }
+      ],
+      "globals": [
+        "api-key",
+        "profile",
+        "account",
+        "team",
+        "base-url",
+        "timeout",
+        "json",
+        "fields",
+        "verbose",
+        "beta"
+      ],
+      "examples": [
+        "curviate mailbox quote 3",
+        "curviate mailbox quote 3 --json"
+      ],
+      "requires": [],
+      "risk": "read",
+      "output": [
+        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial, sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
+      ],
+      "errors": {
+        "INSUFFICIENT_ROLE": "only a Team Owner reads the price of Mailboxes from Curviate."
+      },
+      "seeAlso": [
+        "curviate mailbox buy",
+        "curviate billing cap"
+      ]
+    },
+    {
+      "path": [
+        "mailbox",
         "buy"
       ],
-      "description": "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
+      "description": "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, warm-up included. The price is your Team's, read from the server: `curviate mailbox quote <count>`, which a terminal prompt also shows; --expect-amount <amount> (the quote's `amount`) cancels the order at once when its `price` differs (exit 11). The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
       "usageOnly": false,
       "args": [
         {
@@ -7488,6 +7531,11 @@
           "name": "yes",
           "type": "boolean",
           "description": "Confirm the order without a prompt (needed when no terminal can ask)."
+        },
+        {
+          "name": "expect-amount",
+          "type": "string",
+          "description": "The quote's `amount` the person agreed to (minor units): an order whose `price.amount` differs is cancelled at once, exit 11."
         }
       ],
       "globals": [
@@ -7512,7 +7560,7 @@
       ],
       "risk": "high",
       "rules": {
-        "changes": "An order in awaiting_dns; once its records are found, the Mailboxes are created and $5 a month each is charged.",
+        "changes": "An order in awaiting_dns; once its records are found, the Mailboxes are created and charged as its `price` says (a yearly Team pays the rest of its year that day).",
         "visible_to": "Your Team.",
         "budget_rows": [],
         "retry": "Never retried. A second order for the same domain while one waits is refused (MAILBOX_PURCHASE_PENDING).",
@@ -7520,7 +7568,7 @@
         "blast_radius": "One domain's mail: the MX record it asks for routes the domain's mail to the new Mailboxes."
       },
       "output": [
-        "The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), amount_monthly, expires_at."
+        "The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."
       ],
       "errors": {
         "SPENDING_CAP_REACHED": "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
@@ -8172,7 +8220,7 @@
         "email",
         "send"
       ],
-      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. --cc and --bcc (at most 20 addresses together) and --attach (files, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
+      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. --cc and --bcc (at most 20 addresses together) and --attach (files read from paths on this machine, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. Up to 6 MiB in all the files go inside the one request; above that each is first uploaded as a file of your Team (`campaign attachment upload`, counted against its daily uploads, kept 30 days) and the email names them by id. Bcc addresses are never shown to the other recipients; do not repeat them where others read. A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
       "usageOnly": false,
       "args": [
         {
@@ -8213,7 +8261,7 @@
         {
           "name": "attach",
           "type": "string",
-          "description": "A file to send, repeatable: at most 10, 20 MiB in all. From a Microsoft sign-in Mailbox, about 2.2 MB in all go today; more is refused with PLATFORM_ERROR and nothing is sent: send a link or a smaller file."
+          "description": "A file on this machine to send, repeatable: at most 10, 20 MiB in all (never a URL). From a Microsoft sign-in Mailbox, about 2.2 MB in all go; more is refused with PLATFORM_ERROR (reason attachment_refused) and nothing is sent: send a link or a smaller file."
         }
       ],
       "globals": [
@@ -8246,7 +8294,8 @@
         "EMAIL_UNAVAILABLE": "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
         "MAILBOX_STATE_CONFLICT": "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on.",
         "DO_NOT_CONTACT": "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
-        "PLATFORM_ERROR": "the provider did not take the email: nothing was sent (exit 7 when a retry may work). With an unknown outcome it may have been sent: exit 1, do not send it again.",
+        "PLATFORM_ERROR": "the provider did not take the email: nothing was sent (exit 7 when a retry may work). reason attachment_refused: the files were refused (from a Microsoft sign-in Mailbox, more than about 2.2 MB in all, refused before anything is sent): send a link or smaller files. With an unknown outcome it may have been sent: exit 1, do not send it again.",
+        "RESOURCE_NOT_FOUND": "no such conversation, or an uploaded file is gone; nothing was sent.",
         "UNSUPPORTED_MEDIA_TYPE": "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent."
       },
       "seeAlso": [
@@ -9883,7 +9932,7 @@
         "billing",
         "cap"
       ],
-      "description": "The spending cap: the most seats an agent may bring your Team to (100 until an Owner sets one), the seats now, the room left and what the cap's seats cost a month. Read only: an Owner changes it in the dashboard. Adding a seat past it is refused with SPENDING_CAP_REACHED. Owners only.",
+      "description": "The spending cap: the most seats an agent may bring your Team to (`is_default` until an Owner sets one), the seats now, the room left and what the cap's seats cost a month. While Mailboxes from Curviate can be ordered it also carries `mailbox_cap`, the most of them an agent may bring your Team to: `cap`, `is_default`, `count` (held plus those in orders not yet created) and `room` (the cap minus the count). An order through an API key of more than `room` is refused with SPENDING_CAP_REACHED; no `mailbox_cap` means orders are closed now. Read only: an Owner changes either cap in the dashboard. Adding a seat past it is refused with SPENDING_CAP_REACHED. Owners only.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -9904,7 +9953,7 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "`cap_seats`, `is_default`, `seats`, `room_seats`, `monthly_amount` (cents), `currency`."
+        "`cap_seats`, `is_default`, `seats`, `room_seats`, `monthly_amount` (cents), `currency`; `mailbox_cap` { `cap`, `is_default`, `count`, `room` } while Mailboxes from Curviate can be ordered."
       ]
     },
     {
