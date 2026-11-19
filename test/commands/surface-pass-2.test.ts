@@ -247,3 +247,36 @@ describe("pass 8: Mailbox orders cancel, the same_company skip in human mode", (
     });
   });
 });
+
+describe("pass 9: a Campaign file is streamed from disk in one request; an oversized one never leaves", () => {
+  it("upload sends the file as a file-backed Blob (not a buffer), one request; over 20 MiB is exit 2 with no request", async () => {
+    const { truncateSync } = await import("node:fs");
+    const dir = mkdtempSync(join(tmpdir(), "eml38-"));
+    const pdf = join(dir, "pricing.pdf");
+    writeFileSync(pdf, "%PDF-1.7 kit");
+    const r = await wire(["campaign", "attachment", "upload", pdf], () => ({ status: 201, body: { id: "cat_1", filename: "pricing.pdf" } }));
+    expect([r.status, r.sent.length, r.sent[0]?.method, r.sent[0]?.path, r.sent[0]?.blob, r.sent[0]?.bytes]).toEqual([0, 1, "POST", "/v1/campaigns/attachments", 12, undefined]);
+    expect(r.stdout).toContain("cat_1");
+    const big = join(dir, "big.bin");
+    writeFileSync(big, "");
+    truncateSync(big, 20 * 1024 * 1024 + 1); // sparse: nothing is written to disk
+    const over = await wire(["campaign", "attachment", "upload", big]);
+    expect([over.status, over.sent.length]).toEqual([2, 0]);
+  });
+});
+
+describe("pass 9: an order being set up or reversed reads as such, never as a cue to retry", () => {
+  it.each([
+    [{ id: "mpu_1", state: "provisioning", reason: null }, "being set up", "Do not order again"],
+    [{ id: "mpu_1", state: "cancelled", reason: "host_failed" }, "the charge was undone in full", "Nothing to retry"],
+  ])("%j", async (order, a, b) => {
+    const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: order }));
+    expect([r.status, r.sent.length]).toEqual([0, 1]);
+    expect(r.stderr).toContain(a);
+    expect(r.stderr).toContain(b);
+  });
+  it("an order waiting for its records carries no such note", async () => {
+    const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: { id: "mpu_1", state: "awaiting_dns", reason: null } }));
+    expect(r.stderr).not.toContain("charge");
+  });
+});

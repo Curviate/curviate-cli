@@ -209,6 +209,23 @@ async function runBuy(c: Curviate, f: Flags): Promise<void> {
   }
 }
 
+/**
+ * SLD-10/11: what an order's state means for the person or agent reading it. A failed setup is reversed by Curviate
+ * (the order reads `provisioning` meanwhile, then `cancelled` with reason `host_failed`, refunded in full): never a
+ * retry, never a new order on our say.
+ */
+export function purchaseNote(order: { state?: unknown; reason?: unknown; id?: unknown }): string | null {
+  if (order.state === "provisioning") return `The Mailboxes are being set up. If that fails, the charge is undone in full and the order ends cancelled (host_failed). Read it again later: curviate mailbox purchase get ${String(order.id ?? "<id>")}. Do not order again meanwhile.`;
+  if (order.state === "cancelled" && order.reason === "host_failed") return "Setting up these Mailboxes failed, so the charge was undone in full. Nothing to retry.";
+  return null;
+}
+
+const printPurchase = (order: Record<string, unknown>, f: Flags) => {
+  renderSuccess(readableObject(order as never), outputOpts(f), process);
+  const note = purchaseNote(order);
+  if (note) process.stderr.write(note + "\n");
+};
+
 async function runPurchaseList(c: Curviate, f: Flags): Promise<void> {
   const params: Body = {};
   if (f.state !== undefined) {
@@ -227,7 +244,7 @@ async function runPurchaseList(c: Curviate, f: Flags): Promise<void> {
 
 async function runPurchaseCheck(c: Curviate, f: Flags): Promise<void> {
   try {
-    renderSuccess(readableObject(await c.mailboxes.purchases.check(String(f.id ?? ""))), outputOpts(f), process);
+    printPurchase((await c.mailboxes.purchases.check(String(f.id ?? ""))) as Record<string, unknown>, f);
   } catch (err) {
     await fail(err, f);
   }
@@ -235,7 +252,7 @@ async function runPurchaseCheck(c: Curviate, f: Flags): Promise<void> {
 
 async function runPurchaseGet(c: Curviate, f: Flags): Promise<void> {
   try {
-    renderSuccess(readableObject(await c.mailboxes.purchases.get(String(f.id ?? ""))), outputOpts(f), process);
+    printPurchase((await c.mailboxes.purchases.get(String(f.id ?? ""))) as Record<string, unknown>, f);
   } catch (err) {
     await fail(err, f);
   }
@@ -700,7 +717,7 @@ const purchaseListCmd = defineCommand({
 const purchaseGetCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. Every role reads. One API call.",
+    description: "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
     risk: "read",
     errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
     seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],

@@ -2711,7 +2711,7 @@
         "attachment",
         "upload"
       ],
-      "description": "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate.",
+      "description": "Upload one file and print it: its `id` (cat_...) goes in an email step's `attachment_ids` (at most 10 a step, 20 MiB in total). Up to 20 MiB, 100 uploads per Team per 24 hours. Curviate reads the type from the file's bytes; executables, scripts, installers and macro-enabled Office files are refused. A link usually lands better than a file. Nothing is sent. Needs Automate. The CLI reads the path here, on your machine, and streams it in one request; a file over 20 MiB is refused before it leaves (exit 2). Curviate never fetches a path or a URL. From a Microsoft sign-in Mailbox, files of about 2.2 MB in all go today; a step's files above that are refused at send (attachment_refused).",
       "usageOnly": false,
       "args": [
         {
@@ -7595,7 +7595,7 @@
         "purchase",
         "get"
       ],
-      "description": "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. Every role reads. One API call.",
+      "description": "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
       "usageOnly": false,
       "args": [
         {
