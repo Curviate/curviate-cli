@@ -108434,7 +108434,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST. The row name or source class is not one of the accepted values, `warm_up.enabled` is not a boolean, or a number is not a number (a negative ceiling). A value is never rejected for being unsafe: any limit may be set to any value, and a high one is reported rather than refused. A time zone is not a setting: any value but null in `timezone` or a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null is accepted and ignored, so a document read before this change can be sent back once its zones are null. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-02-01 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST. The row name or source class is not one of the accepted values, `warm_up.enabled` is not a boolean, or a number is not a number (a negative ceiling). A value is never rejected for being unsafe: any limit may be set to any value and is stored as set, a high one reported rather than refused; what runs is held at the row's hard maximum. A time zone is not a setting: any value but null in `timezone` or a row's `activity_window_timezone` is refused with \"The time zone follows where this account connects from. Change it with PATCH /v1/accounts/{account_id} and `country`, or your own `proxy`.\" Null is accepted and ignored, so a document read before this change can be sent back once its zones are null. `posture` and `tenant_default_posture` were removed: limits are always enforced; to send more, raise the limit. Until 2027-02-01 (the last accepted day) the value \"enforce\" or null is still accepted, stores nothing and earns a POSTURE_REMOVED entry in `notices` plus a `Deprecation: true` header; \"warn\" on any day, or any value after that day, is refused with a message naming the key. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -108538,7 +108538,7 @@
             }
           }
         },
-        "description": "Updates this account's safety policy. Send only the fields you're changing; null clears an override back to the tenant or Curviate default. Any value is accepted, none are clamped. Limits are always enforced: to send more, raise the limit. Fields and precedence: /reference/safety.",
+        "description": "Updates this account's safety policy. Send only the fields you're changing; null clears an override back to the tenant or Curviate default. Any value is stored as set; what runs is held at the row's hard maximum (`hard_maximum`). Limits are always enforced: to send more, raise the limit. Fields and precedence: /reference/safety.",
         "requestBody": {
           "required": true,
           "content": {
@@ -121077,6 +121077,267 @@
         },
         "description": "One order of this team, every role: the records to add and which are found. Another team's id answers as an unknown one.",
         "x-order": 22
+      },
+      "delete": {
+        "operationId": "deleteV1MailboxesPurchasesId",
+        "tags": [
+          "Mailboxes"
+        ],
+        "summary": "Cancel a Mailbox purchase",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Purchase id (mpu_...)."
+          },
+          {
+            "name": "X-Curviate-Team",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The team id to act in (GET /v1/teams lists yours). Required with an All-Teams key, except on account routes. A team key accepts only its own team."
+          },
+          {
+            "name": "Curviate-Client",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "sdk/2.0.0"
+            },
+            "description": "Informational: which Curviate client sent the call (`sdk/<version>`, `cli/<version>`). It only feeds the dashboard's Integrations status lines and changes nothing about the request. The SDK and CLI send it for you."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order, cancelled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "An order of Mailboxes from Curviate on one domain. Nothing is charged until the records are found.",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Purchase id (mpu_...), opaque."
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "domain_id": {
+                      "type": "string",
+                      "description": "The domain object's id (dom_...)."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_dns",
+                        "provisioning",
+                        "active",
+                        "cancelled"
+                      ],
+                      "description": "`awaiting_dns` until the four required records are found, then `provisioning`, then `active`; `cancelled` with a `reason`."
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Why a cancelled order ended; null otherwise."
+                    },
+                    "mailboxes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "type": "string"
+                          },
+                          "display_name": {
+                            "type": "string"
+                          },
+                          "sends_for": {
+                            "type": [
+                              "object",
+                              "null"
+                            ]
+                          },
+                          "mailbox_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Set once the Mailbox exists (`active`)."
+                          }
+                        }
+                      }
+                    },
+                    "records": {
+                      "type": "array",
+                      "description": "Five rows in order: mx, spf, dkim, dmarc, tracking. Add each entry at your domain's DNS host; `tracking` is not required.",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "advice": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "amount_monthly": {
+                      "type": "integer",
+                      "description": "The order's price a month, USD minor units ($5 a Mailbox)."
+                    },
+                    "checked_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "An order still waiting for its records then is cancelled; nothing is charged."
+                    },
+                    "charged_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "domain",
+                    "domain_id",
+                    "state",
+                    "reason",
+                    "mailboxes",
+                    "records",
+                    "advice",
+                    "amount_monthly",
+                    "checked_at",
+                    "expires_at",
+                    "charged_at",
+                    "created_at"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "teamRequired": {
+                    "summary": "TEAM_REQUIRED",
+                    "value": {
+                      "code": "TEAM_REQUIRED",
+                      "message": "Name the Team with the X-Curviate-Team header. GET /v1/teams lists yours.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MAILBOX_PURCHASE_NOT_FOUND: no purchase with this id in this team (another team's id answers the same).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "404 error",
+                    "value": {
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "The referenced resource does not exist for this tenant.",
+                      "user_fixable": true,
+                      "retry_likely_to_succeed": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MAILBOX_PURCHASE_STATE_CONFLICT: the order is not waiting for its records (being charged, being set up, active or cancelled); the message names its state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited, slow down and retry after the hinted delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "error": {
+                    "summary": "429 error",
+                    "value": {
+                      "code": "RATE_LIMIT_ACCOUNT",
+                      "message": "The per-account request rate limit was exceeded; retry after the delay in retry_hint. Per-team breaches carry RATE_LIMIT_TENANT; ingress-wide breaches (pre-auth, no per-client key) and upstream saturation both carry PLATFORM_RATE_LIMIT. A 429 on a budgeted action can also be BUDGET_EXHAUSTED, which is Curviate's own account-safety ceiling rather than a request-rate limit: it never reached LinkedIn, spent nothing, and carries row, reset_at and hint.",
+                      "user_fixable": false,
+                      "retry_likely_to_succeed": true
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimit-Policy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            }
+          }
+        },
+        "description": "Cancels an order still waiting for its records. Nothing was charged, so nothing is refunded. An order being charged, being set up or active cannot be cancelled.",
+        "x-order": 24
       }
     },
     "/v1/mailboxes/purchases/{id}/check": {
@@ -121964,6 +122225,52 @@
                               "state",
                               "reason"
                             ]
+                          },
+                          "landing": {
+                            "type": "object",
+                            "description": "Where this Mailbox's warm-up mail lands, per receiving provider, over the last 7 days: `inbox`, `partly_spam`, `spam`, or `gathering` while there is not enough to say. `read_at` is the last reading counted. Its own warm-up only; a verdict, never a count.",
+                            "properties": {
+                              "google": {
+                                "type": "string",
+                                "enum": [
+                                  "inbox",
+                                  "partly_spam",
+                                  "spam",
+                                  "gathering"
+                                ]
+                              },
+                              "microsoft": {
+                                "type": "string",
+                                "enum": [
+                                  "inbox",
+                                  "partly_spam",
+                                  "spam",
+                                  "gathering"
+                                ]
+                              },
+                              "other": {
+                                "type": "string",
+                                "enum": [
+                                  "inbox",
+                                  "partly_spam",
+                                  "spam",
+                                  "gathering"
+                                ]
+                              },
+                              "read_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "google",
+                              "microsoft",
+                              "other",
+                              "read_at"
+                            ]
                           }
                         },
                         "required": [
@@ -121985,7 +122292,8 @@
                           "connected_by_user_id",
                           "connected_at",
                           "used_with",
-                          "warm_up"
+                          "warm_up",
+                          "landing"
                         ]
                       }
                     },
@@ -122046,6 +122354,12 @@
                             "day": 3,
                             "state": "warming",
                             "reason": null
+                          },
+                          "landing": {
+                            "google": "inbox",
+                            "microsoft": "gathering",
+                            "other": "inbox",
+                            "read_at": "2026-11-18T09:10:00.000Z"
                           }
                         }
                       ],
@@ -122469,6 +122783,52 @@
                         "state",
                         "reason"
                       ]
+                    },
+                    "landing": {
+                      "type": "object",
+                      "description": "Where this Mailbox's warm-up mail lands, per receiving provider, over the last 7 days: `inbox`, `partly_spam`, `spam`, or `gathering` while there is not enough to say. `read_at` is the last reading counted. Its own warm-up only; a verdict, never a count.",
+                      "properties": {
+                        "google": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "microsoft": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "other": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "read_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "microsoft",
+                        "other",
+                        "read_at"
+                      ]
                     }
                   },
                   "required": [
@@ -122490,7 +122850,8 @@
                     "connected_by_user_id",
                     "connected_at",
                     "used_with",
-                    "warm_up"
+                    "warm_up",
+                    "landing"
                   ]
                 },
                 "examples": {
@@ -122539,6 +122900,12 @@
                         "day": 3,
                         "state": "warming",
                         "reason": null
+                      },
+                      "landing": {
+                        "google": "inbox",
+                        "microsoft": "gathering",
+                        "other": "inbox",
+                        "read_at": "2026-11-18T09:10:00.000Z"
                       }
                     }
                   }
@@ -122948,6 +123315,52 @@
                         "state",
                         "reason"
                       ]
+                    },
+                    "landing": {
+                      "type": "object",
+                      "description": "Where this Mailbox's warm-up mail lands, per receiving provider, over the last 7 days: `inbox`, `partly_spam`, `spam`, or `gathering` while there is not enough to say. `read_at` is the last reading counted. Its own warm-up only; a verdict, never a count.",
+                      "properties": {
+                        "google": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "microsoft": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "other": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "read_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "microsoft",
+                        "other",
+                        "read_at"
+                      ]
                     }
                   },
                   "required": [
@@ -122969,7 +123382,8 @@
                     "connected_by_user_id",
                     "connected_at",
                     "used_with",
-                    "warm_up"
+                    "warm_up",
+                    "landing"
                   ]
                 },
                 "examples": {
@@ -123018,6 +123432,12 @@
                         "day": 3,
                         "state": "warming",
                         "reason": null
+                      },
+                      "landing": {
+                        "google": "inbox",
+                        "microsoft": "gathering",
+                        "other": "inbox",
+                        "read_at": "2026-11-18T09:10:00.000Z"
                       }
                     }
                   }
@@ -123772,6 +124192,52 @@
                         "state",
                         "reason"
                       ]
+                    },
+                    "landing": {
+                      "type": "object",
+                      "description": "Where this Mailbox's warm-up mail lands, per receiving provider, over the last 7 days: `inbox`, `partly_spam`, `spam`, or `gathering` while there is not enough to say. `read_at` is the last reading counted. Its own warm-up only; a verdict, never a count.",
+                      "properties": {
+                        "google": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "microsoft": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "other": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "read_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "microsoft",
+                        "other",
+                        "read_at"
+                      ]
                     }
                   },
                   "required": [
@@ -123793,7 +124259,8 @@
                     "connected_by_user_id",
                     "connected_at",
                     "used_with",
-                    "warm_up"
+                    "warm_up",
+                    "landing"
                   ]
                 },
                 "examples": {
@@ -123842,6 +124309,12 @@
                         "day": 3,
                         "state": "warming",
                         "reason": null
+                      },
+                      "landing": {
+                        "google": "inbox",
+                        "microsoft": "gathering",
+                        "other": "inbox",
+                        "read_at": "2026-11-18T09:10:00.000Z"
                       }
                     }
                   }
@@ -124284,6 +124757,52 @@
                         "state",
                         "reason"
                       ]
+                    },
+                    "landing": {
+                      "type": "object",
+                      "description": "Where this Mailbox's warm-up mail lands, per receiving provider, over the last 7 days: `inbox`, `partly_spam`, `spam`, or `gathering` while there is not enough to say. `read_at` is the last reading counted. Its own warm-up only; a verdict, never a count.",
+                      "properties": {
+                        "google": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "microsoft": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "other": {
+                          "type": "string",
+                          "enum": [
+                            "inbox",
+                            "partly_spam",
+                            "spam",
+                            "gathering"
+                          ]
+                        },
+                        "read_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "microsoft",
+                        "other",
+                        "read_at"
+                      ]
                     }
                   },
                   "required": [
@@ -124305,7 +124824,8 @@
                     "connected_by_user_id",
                     "connected_at",
                     "used_with",
-                    "warm_up"
+                    "warm_up",
+                    "landing"
                   ]
                 },
                 "examples": {
@@ -124354,6 +124874,12 @@
                         "day": 3,
                         "state": "warming",
                         "reason": null
+                      },
+                      "landing": {
+                        "google": "inbox",
+                        "microsoft": "gathering",
+                        "other": "inbox",
+                        "read_at": "2026-11-18T09:10:00.000Z"
                       }
                     }
                   }

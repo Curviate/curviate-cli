@@ -351,6 +351,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   DOMAIN_IN_USE: 2,
   DOMAIN_IS_COMPANY_EMAIL: 2,
   MAILBOX_PURCHASE_PENDING: 8,
+  MAILBOX_PURCHASE_STATE_CONFLICT: 8,
   MAILBOX_PURCHASE_TRIAL: 11,
   MAILBOX_SALES_PAUSED: 1,
   // Seat calls: only an Owner raises the spending cap or cancels in the dashboard (5, someone else acts first).
