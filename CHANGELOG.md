@@ -17,6 +17,10 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 - **`campaign placement <mot_...>`**: the Campaign's weekly placement checks.
 - `mailbox get` shows `warm_up.state` `waiting` with its `reason` (`reconnect_needed`, `trial`, `app_password`, `warm_up_app`, `allowance`).
 
+### Limit hits
+
+- **`account safety events <acc_...> [--budget-row] [--since] [--until]`**: the actions Curviate refused at a safety limit or pause, newest first.
+
 ### Mailboxes from Curviate
 
 - **`mailbox purchase list [--state]`** and **`mailbox purchase get <mpu_...>`** read your Team's orders and the records to add.

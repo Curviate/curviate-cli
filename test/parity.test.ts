@@ -27,6 +27,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "account disconnect": "accounts.disconnect",
   "account warm-up on|off": "accounts.updateSafetyPolicy",
   "account safety get":    "accounts.getSafetyPolicy",
+  "account safety events": "accounts.listSafetyEvents",
   "account safety get --team":    "accounts.getTeamSafetyPolicy",
   "account safety update --team": "accounts.updateTeamSafetyPolicy",
 

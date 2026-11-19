@@ -98,6 +98,42 @@ async function updateTeam(f: Flags): Promise<void> {
   }
 }
 
+const eventsCmd = defineCommand({
+  meta: {
+    name: "events",
+    description: "One Account's limit hits, newest first: each entry is an action Curviate refused at a safety limit or pause (blocked true), or a pause lifted early. Filter by --budget-row, --since and --until. A read: no LinkedIn call, one API call per page.",
+    risk: "read",
+    seeAlso: ["curviate account safety get", "curviate account safety update"],
+    examples: ["curviate account safety events acc_YOUR_ACCOUNT_ID", "curviate account safety events acc_YOUR_ACCOUNT_ID --budget-row profile_views --since 2026-11-01T00:00:00Z"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    accountId: ACCOUNT_REQUIRED,
+    "budget-row": { type: "string", description: "Only hits on this budget row, for example profile_views." },
+    since: { type: "string", description: "Only hits at or after this time (ISO 8601)." },
+    until: { type: "string", description: "Only hits before this time (ISO 8601)." },
+    limit: { type: "string", description: "Hits per page (1 to 100)." },
+    cursor: { type: "string", description: "The cursor from the previous page." },
+  },
+  async run({ args }) {
+    const f = args as Flags & { "budget-row"?: string; since?: string; until?: string; limit?: string; cursor?: string };
+    const params: Record<string, unknown> = {};
+    for (const [flag, key] of [["budget-row", "budget_row"], ["since", "since"], ["until", "until"], ["cursor", "cursor"]] as const) {
+      const v = f[flag];
+      if (v === undefined) continue;
+      if (v.trim() === "") usage(`--${flag} was given an empty value.`);
+      params[key] = v;
+    }
+    if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
+    const c = await rootClient(f);
+    try {
+      renderSuccess(await c.accounts.listSafetyEvents(String(f.accountId ?? ""), params as never), outputOpts(f), process);
+    } catch (err) {
+      await fail(err, f);
+    }
+  },
+});
+
 const updateCmd = defineCommand({
   meta: {
     name: "update",
@@ -159,8 +195,8 @@ const updateCmd = defineCommand({
 });
 
 export const accountSafetyCommand = defineCommand({
-  meta: { name: "safety", description: "Read or change one Account's safety policy (limits per budget row, Active hours, the Activity level), or with --team your Team's email defaults." },
-  subCommands: { get: getCmd, update: updateCmd },
+  meta: { name: "safety", description: "Read or change one Account's safety policy (limits per budget row, Active hours, the Activity level), read its limit hits (events), or with --team your Team's email defaults." },
+  subCommands: { get: getCmd, update: updateCmd, events: eventsCmd },
   async run() {
     process.stderr.write("Usage: curviate account safety get|update <account> | --team\n");
   },
