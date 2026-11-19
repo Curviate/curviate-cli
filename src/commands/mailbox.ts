@@ -2,7 +2,8 @@
  * `curviate mailbox`: your Team's own email Mailboxes. Root-scoped
  * (`curviate.mailboxes.*`): list, read, change (Sends for, daily cap,
  * signature), pause, resume, remove, find settings for an address, connect and
- * reconnect. Each command makes one API call.
+ * reconnect, placement tests, and Mailboxes from Curviate (`mailbox buy`, `mailbox purchase`). Each
+ * command makes one API call.
  *
  * A password reaches the request body and nowhere else: `--password-stdin` only
  * (never a value flag, which `ps` and shell history would keep), read once,
@@ -20,6 +21,7 @@ import { fail, outputOpts, rootClient, usage, type RootFlags } from "../lib/root
 import { readFileFlag } from "../lib/document.js";
 import { resolveSecret } from "../lib/credential-resolve.js";
 import { getExitCode } from "../lib/exit-codes.js";
+import { confirmMoney } from "./billing.js";
 
 type Flags = RootFlags & {
   id?: string;
@@ -46,8 +48,18 @@ type Flags = RootFlags & {
   "smtp-host"?: string;
   "smtp-port"?: string;
   "smtp-security"?: string;
+  subject?: string;
+  "body-file"?: string;
+  testId?: string;
+  mailbox?: string | string[];
+  yes?: boolean;
 };
 type Body = Record<string, unknown>;
+
+/** The placement test body's own limit is the API's (10,000 characters); this only stops a wrong file early. */
+const TEST_BODY_MAX_BYTES = 64 * 1024;
+const PURCHASE_STATES = ["awaiting_dns", "provisioning", "active", "cancelled"];
+const MAILBOX_PRICE_CENTS = 500;
 
 const STATES = ["connected", "ramping", "paused", "paused_by_bounces", "paused_by_provider", "reconnect_needed"];
 /** The API's cap and signature limits are its own: the CLI sends what it is given and prints the API's 400. */
@@ -123,6 +135,99 @@ async function runUpdate(c: Curviate, f: Flags): Promise<void> {
   if (f.preview) return preview("mailboxes.update", { id }, body);
   try {
     renderSuccess(readableObject(await c.mailboxes.update(id, body as never)), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runTest(c: Curviate, f: Flags): Promise<void> {
+  const id = String(f.id ?? "");
+  if (f.subject === undefined || f.subject.trim() === "") usage("--subject is required: the subject exactly as your Campaign sends it.");
+  if (f["body-file"] === undefined) usage("--body-file is required: a plain-text file with the body exactly as your Campaign sends it, or - for stdin.");
+  const body = { subject: f.subject, body: (await readFileFlag("body-file", f["body-file"], { maxBytes: TEST_BODY_MAX_BYTES, others: f as Record<string, unknown> })).trimEnd() };
+  if (f.preview) return preview("mailboxes.placementTests.run", { id }, body);
+  try {
+    renderSuccess(readableObject(await c.mailboxes.placementTests.run(id, body)), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runTests(c: Curviate, f: Flags): Promise<void> {
+  const id = String(f.id ?? "");
+  try {
+    if (f.testId !== undefined) return renderSuccess(readableObject(await c.mailboxes.placementTests.get(id, f.testId)), outputOpts(f), process);
+    const params: Body = {};
+    if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
+    const cursor = readCursorFlag(f, process);
+    if (cursor) params["cursor"] = cursor;
+    renderSuccess(readablePage(await c.mailboxes.placementTests.list(id, params as never)), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+/** `local:Name` or `local:Name:acc_...|shared`; the last part counts as Sends for only when it is one. */
+export function parseMailboxSpec(raw: string): Body {
+  const at = raw.indexOf(":");
+  if (at <= 0 || raw.slice(at + 1).trim() === "") usage(`--mailbox ${JSON.stringify(raw)}: write it as local:"Name", optionally :acc_... or :shared at the end.`);
+  let name = raw.slice(at + 1);
+  let sendsFor: Body | undefined;
+  const last = name.lastIndexOf(":");
+  const tail = last >= 0 ? name.slice(last + 1) : "";
+  if (tail === "shared" || /^acc_\S+$/.test(tail)) {
+    sendsFor = tail === "shared" ? { kind: "shared" } : { kind: "account", account_id: tail };
+    name = name.slice(0, last);
+  }
+  return { local_part: raw.slice(0, at), display_name: name, ...(sendsFor ? { sends_for: sendsFor } : {}) };
+}
+
+/** An API key cannot order today (the server's 401): said plainly, never retried, nothing ordered. */
+export const BUY_REFUSED_TO_KEYS =
+  "Mailboxes from Curviate cannot be ordered with an API key yet: a Team Owner orders them in the dashboard. Nothing was ordered.";
+
+async function runBuy(c: Curviate, f: Flags): Promise<void> {
+  const domain = f.domain ?? "";
+  if (domain.trim() === "") usage("--domain is required: the domain the Mailboxes send from, one your Team owns.");
+  const specs = f.mailbox === undefined ? [] : ([] as string[]).concat(f.mailbox);
+  if (specs.length === 0) usage('pass at least one --mailbox local:"Name", up to 50.');
+  if (specs.length > 50) usage("at most 50 --mailbox in one order.");
+  const body = { domain, mailboxes: specs.map(parseMailboxSpec) };
+  if (f.preview) return preview("mailboxes.purchases.create", {}, body);
+  const n = specs.length;
+  const monthly = `$${((n * MAILBOX_PRICE_CENTS) / 100).toFixed(2)}`;
+  if (!(await confirmMoney(f, `Order ${n} Mailbox${n === 1 ? "" : "es"} on ${domain} at ${monthly} a month? Nothing is charged until the records are found at your domain.`, "Each Mailbox costs $5 a month."))) return;
+  try {
+    renderSuccess(readableObject(await c.mailboxes.purchases.create(body as never)), outputOpts(f), process);
+  } catch (err) {
+    const { CurviateError } = await import("@curviate/sdk");
+    if (err instanceof CurviateError && err.code === "UNAUTHORIZED") {
+      process.stderr.write(`error [UNAUTHORIZED] ${BUY_REFUSED_TO_KEYS}\n`);
+      process.exit(getExitCode(err));
+    }
+    await fail(err, f);
+  }
+}
+
+async function runPurchaseList(c: Curviate, f: Flags): Promise<void> {
+  const params: Body = {};
+  if (f.state !== undefined) {
+    if (!PURCHASE_STATES.includes(f.state)) usage(`--state takes one of ${PURCHASE_STATES.join(", ")}.`);
+    params["state"] = f.state;
+  }
+  if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
+  const cursor = readCursorFlag(f, process);
+  if (cursor) params["cursor"] = cursor;
+  try {
+    renderSuccess(await c.mailboxes.purchases.list(params as never), outputOpts(f), process);
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
+async function runPurchaseGet(c: Curviate, f: Flags): Promise<void> {
+  try {
+    renderSuccess(readableObject(await c.mailboxes.purchases.get(String(f.id ?? ""))), outputOpts(f), process);
   } catch (err) {
     await fail(err, f);
   }
@@ -465,9 +570,150 @@ const reconnectCmd = defineCommand({
   run: online(runReconnect),
 });
 
+const testCmd = defineCommand({
+  meta: {
+    name: "test",
+    description:
+      "Run a placement test: your exact subject and body go from this Mailbox to 12 test inboxes, 3 at each of Google Workspace, Microsoft 365, Gmail and Outlook.com, and each copy's landing is read; results within an hour (`curviate mailbox tests <id> <test_id>`). " +
+      "The 12 copies count against the Mailbox's daily cap, so it needs room for 12 today. Each test draws one from the Team's allowance: 10 per paid seat a month, pooled across the Team (a trial has none). " +
+      "Owners and Managers test any Mailbox; a Member only the ones they connected. One API call, never retried.",
+    risk: "write",
+    rules: {
+      changes: "12 emails leave the Mailbox today, under its daily cap; the Team's allowance goes down by one.",
+      visible_to: "Your Team; the copies go to test inboxes only.",
+      budget_rows: [],
+      retry: "Not safe: a second run is a second test, 12 more emails and one more from the allowance. Read `mailbox tests` first.",
+      undo: "None: the copies are sent.",
+      blast_radius: "One Mailbox's daily cap and one test of the Team's month.",
+    },
+    errors: {
+      ...NOT_FOUND,
+      PLACEMENT_TEST_ALLOWANCE_EXHAUSTED: "this month's tests are used, or the Team has no paid seat yet; the message says when it resets. Nothing was sent. Waiting minutes does not help: a paid seat or the new month does.",
+      PLACEMENT_TESTS_UNAVAILABLE: "placement tests cannot run right now. Nothing was sent, nothing drawn.",
+      MAILBOX_STATE_CONFLICT: "the Mailbox cannot send now (paused, reconnect needed). Nothing was sent.",
+      INVALID_REQUEST: "the Mailbox has no room for 12 more emails today, or the subject or body is empty, too long or malformed. Nothing was sent.",
+    },
+    output: ["The test: id, status (running), verdicts per provider (null while running), allowance { used, total, resets_at }."],
+    seeAlso: ["curviate mailbox tests", "curviate campaign placement"],
+    examples: [
+      "curviate mailbox test mbx_YOUR_MAILBOX_ID --subject \"Quick question\" --body-file body.txt",
+
+    ],
+    requires: ["--subject and --body-file."],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    id: ID,
+    subject: { type: "string", description: "The subject exactly as your Campaign sends it: one line, up to 998 characters." },
+    "body-file": { type: "string", stdinArg: true, description: "A plain-text file with the body exactly as your Campaign sends it: a path, or - to read it from stdin. Up to 10,000 characters." },
+  },
+  run: online(runTest),
+});
+
+const testsCmd = defineCommand({
+  meta: {
+    name: "tests",
+    description:
+      "This Mailbox's placement tests, newest first, with the Team's allowance { used, total, resets_at }; with a test id, that one test. A test is running or complete, with a verdict per provider: inbox (all 3 copies in the inbox), partly_spam or spam (none in the inbox). Every role reads. One API call.",
+    risk: "read",
+    errors: NOT_FOUND,
+    output: ["items[] (id, status, created_at, completed_at, verdicts), cursor, allowance; or one test."],
+    seeAlso: ["curviate mailbox test"],
+    examples: ["curviate mailbox tests mbx_YOUR_MAILBOX_ID", "curviate mailbox tests mbx_YOUR_MAILBOX_ID plt_YOUR_TEST_ID"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    id: ID,
+    testId: { type: "positional" as const, required: false, description: "One test (plt_...), from the list." },
+    limit: { type: "string", description: "Tests per page (1 to 100)." },
+    cursor: GLOBAL_FLAGS.cursor,
+  },
+  run: online(runTests),
+});
+
+const buyCmd = defineCommand({
+  meta: {
+    name: "buy",
+    description:
+      "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
+      "Today a Team Owner places orders in the dashboard: with an API key this command is refused (exit 3, UNAUTHORIZED) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
+    risk: "high",
+    rules: {
+      changes: "An order in awaiting_dns; once its records are found, the Mailboxes are created and $5 a month each is charged.",
+      visible_to: "Your Team.",
+      budget_rows: [],
+      retry: "Never retried. A second order for the same domain while one waits is refused (MAILBOX_PURCHASE_PENDING).",
+      undo: "An order still waiting for its records lapses after 14 days, uncharged.",
+      blast_radius: "One domain's mail: the MX record it asks for routes the domain's mail to the new Mailboxes.",
+    },
+    errors: {
+      UNAUTHORIZED: "an API key cannot order yet: a Team Owner orders in the dashboard. Nothing was ordered.",
+      INSUFFICIENT_ROLE: "only a Team Owner orders.",
+      MAILBOX_PURCHASE_TRIAL: "a Team on a trial cannot order.",
+      MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
+      DOMAIN_IN_USE: "the domain already has Mailboxes from Curviate or an order; name another domain.",
+      DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
+      MAILBOX_SALES_PAUSED: "orders cannot be placed at the moment.",
+    },
+    output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), amount_monthly, expires_at."],
+    seeAlso: ["curviate mailbox purchase list", "curviate domain check"],
+    examples: [
+      "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:shared' --yes",
+      "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:acc_YOUR_ACCOUNT_ID' --mailbox 'max:Max Weber' --yes",
+    ],
+    requires: ["--domain and at least one --mailbox."],
+  },
+  args: {
+    ...WRITE_SINGLE_FLAGS,
+    domain: { type: "string", description: "The domain the Mailboxes send from, one your Team owns and not the one your company email runs on." },
+    mailbox: { type: "string", description: 'One Mailbox, repeatable up to 50: local:Name, the part before the @ and the name recipients see; add :acc_... (the Account it sends for) or :shared at the end.' },
+    yes: { type: "boolean", description: "Confirm the order without a prompt (needed when no terminal can ask)." },
+  },
+  run: online(runBuy),
+});
+
+const purchaseListCmd = defineCommand({
+  meta: {
+    name: "list",
+    description: "Your Team's orders of Mailboxes from Curviate, newest first: state (awaiting_dns, provisioning, active, cancelled), the records to add and which are found. Every role reads. One API call per page.",
+    risk: "read",
+    seeAlso: ["curviate mailbox purchase get"],
+    examples: ["curviate mailbox purchase list", "curviate mailbox purchase list --state awaiting_dns"],
+  },
+  args: {
+    ...readOnly(READ_SINGLE_FLAGS),
+    state: { type: "string", description: `Only orders in this state: ${PURCHASE_STATES.join(" | ")}.` },
+    limit: { type: "string", description: "Orders per page (1 to 100)." },
+    cursor: GLOBAL_FLAGS.cursor,
+  },
+  run: online(runPurchaseList),
+});
+
+const purchaseGetCmd = defineCommand({
+  meta: {
+    name: "get",
+    description: "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. Every role reads. One API call.",
+    risk: "read",
+    errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
+    seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],
+    examples: ["curviate mailbox purchase get mpu_YOUR_PURCHASE_ID"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS), id: { type: "positional" as const, description: "The order (mpu_...), from `curviate mailbox purchase list`." } },
+  run: online(runPurchaseGet),
+});
+
+const purchaseCmd = defineCommand({
+  meta: { name: "purchase", description: "Read your Team's orders of Mailboxes from Curviate: list, get." },
+  subCommands: { list: purchaseListCmd, get: purchaseGetCmd },
+  async run() {
+    const { showHelp } = await import("../lib/examples.js");
+    await showHelp(purchaseCmd, ["curviate", "mailbox", "purchase"]);
+  },
+});
+
 export const mailboxCommand = defineCommand({
   meta: { name: "mailbox", description: DESCRIPTIONS["mailbox"] },
-  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd, discover: discoverCmd, connect: connectCmd, reconnect: reconnectCmd },
+  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd, discover: discoverCmd, connect: connectCmd, reconnect: reconnectCmd, test: testCmd, tests: testsCmd, buy: buyCmd, purchase: purchaseCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(mailboxCommand, ["curviate", "mailbox"]);
