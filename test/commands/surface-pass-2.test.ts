@@ -184,6 +184,7 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     [["mailbox", "test", "mbx_1", "--subject", "Quick question", "--body-file", "-"], { call: "POST /v1/mailboxes/mbx_1/placement-tests", query: {}, body: { subject: "Quick question", body: "Hi Anna" } }],
     [["mailbox", "tests", "mbx_1", "--limit", "5"], { call: "GET /v1/mailboxes/mbx_1/placement-tests", query: { limit: "5" }, body: undefined }],
     [["mailbox", "tests", "mbx_1", "plt_1"], { call: "GET /v1/mailboxes/mbx_1/placement-tests/plt_1", query: {}, body: undefined }],
+    [["account", "safety", "events", "acc_1", "--budget-row", "profile_views", "--limit", "5"], { call: "GET /v1/acc_1/safety-events", query: { budget_row: "profile_views", limit: "5" }, body: undefined }],
     [["campaign", "placement", "mot_1"], { call: "GET /v1/campaigns/mot_1/placement-checks", query: {}, body: undefined }],
     [["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna Weber:shared", "--mailbox", "max:Max: the second:acc_1", "--mailbox", "eva:Eva", "--yes"], { call: "POST /v1/mailboxes/purchases", query: {}, body: { domain: "acme-mail.example", mailboxes: [
       { local_part: "anna", display_name: "Anna Weber", sends_for: { kind: "shared" } },
