@@ -199,13 +199,14 @@ describe("the Tier", () => {
   });
 
   it.each([
-    ["an Owner gets the upgrade link", { upgrade_url: "https://app.curviate.com/settings/billing" }, "Upgrade: https://app.curviate.com/settings/billing"],
-    ["anyone else is sent to an Owner", {}, "Ask an Owner"],
-  ])("TIER_REQUIRED exits 5 naming the feature, the Tier and the remedy: %s", async (_l, extra, remedy) => {
-    sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Campaigns are part of Automate.", user_fixable: true, retry_likely_to_succeed: false, feature: "campaigns", required_tier: "automate", current_tier: "build", ...extra } };
+    ["an Owner gets the subscribe link", { upgrade_url: "https://app.curviate.com/settings/billing" }, "Subscribe: https://app.curviate.com/settings/billing"],
+    ["anyone else is sent to an Owner", {}, "Ask an Owner of your Team to subscribe"],
+  ])("TIER_REQUIRED exits 5 naming the feature and the remedy, never a plan code: %s", async (_l, extra, remedy) => {
+    sink.reply = { status: 403, body: { code: "TIER_REQUIRED", message: "Campaigns need a subscription.", user_fixable: true, retry_likely_to_succeed: false, feature: "campaigns", required_tier: "automate", current_tier: "build", ...extra } };
     const r = await asHuman(() => sink.run(["campaign", "start", "mot_1"]));
     expect(r.status).toBe(5);
-    expect(r.stderr).toContain("campaigns is part of automate; this Team has build.");
+    expect(r.stderr).toContain("Needs: a subscription for campaigns.");
+    expect(r.stderr).not.toMatch(/\b(automate|build|Tier)\b/i);
     expect(r.stderr).toContain(remedy);
     expect(r.stderr.toLowerCase()).not.toContain(["uni", "pile"].join(""));
   });

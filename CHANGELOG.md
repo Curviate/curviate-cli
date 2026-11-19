@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.61.0] - 2026-11-20
+
+Requires `@curviate/sdk` 0.56.0 (exact pin, unchanged; the vendored fixture is unchanged). `commands.json` regenerated. Text only: no command, flag or exit code changes.
+
+- A `TIER_REQUIRED` refusal (exit 5) says `Needs: a subscription for <feature>.` and, for an Owner, `Subscribe: <link>`; anyone else reads "Ask an Owner of your Team to subscribe". It no longer prints the wire codes as product names ("campaigns is part of automate; this Team has build"); `--json` still carries `requiredTier` and `currentTier` as served.
+- `tier --help`, `billing --help` and `team list --help` say the plan, never a Tier. The command `curviate tier` keeps its name.
+
 ## [0.60.0] - 2026-11-19
 
 Requires `@curviate/sdk` 0.56.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production's document, server commit `b1332f4c2`); `commands.json` regenerated. Text only: no command, flag or exit code changes.

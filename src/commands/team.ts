@@ -146,7 +146,7 @@ const PAGE_FLAGS = readOnly(GLOBAL_FLAGS);
 const listCmd = defineCommand({
   meta: {
     name: "list",
-    description: "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds each Team's Tier, trial, Accounts, active Campaigns and, where you are an Owner, seats.",
+    description: "The Teams you are a member of, with your role; is_current marks the Team this call acts in. --counts adds whether each Team holds the plan, its trial, Accounts, active Campaigns and, where you are an Owner, seats.",
     risk: "read",
     examples: ["curviate team list", "curviate team list --counts --json"],
   },
