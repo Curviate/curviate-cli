@@ -265,7 +265,7 @@ const addCmd = defineCommand({
     description:
       "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. " +
       "No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). " +
-      "One person per call; for many, `do-not-contact import`. Any member may add. Needs Automate.",
+      "One person per call; for many, `do-not-contact import`. Any member may add. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The person joins the list; Campaigns skip them and writes toward them are refused.",
@@ -274,7 +274,7 @@ const addCmd = defineCommand({
       retry: "Safe: a person already on the list answers with their existing entry.",
       undo: "`curviate do-not-contact remove <id>` (Owners and Managers).",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", RESOURCE_NOT_FOUND: "no Lead has this id." },
+    errors: { TIER_REQUIRED: "your Team needs a subscription for Do-not-contact writes.", RESOURCE_NOT_FOUND: "no Lead has this id." },
     seeAlso: ["curviate do-not-contact list", "curviate do-not-contact import"],
     examples: [
       "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
@@ -296,7 +296,7 @@ const addCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change the reason on an entry. Needs Automate.",
+    description: "Change the reason on an entry. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The entry's reason.",
@@ -305,7 +305,7 @@ const updateCmd = defineCommand({
       retry: "Safe: the same call leaves the same reason.",
       undo: "Update again with the old reason.",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", RESOURCE_NOT_FOUND: "no such entry." },
+    errors: { TIER_REQUIRED: "your Team needs a subscription for Do-not-contact writes.", RESOURCE_NOT_FOUND: "no such entry." },
     examples: ["curviate do-not-contact update dnc_YOUR_ENTRY_ID --reason existing_customer"],
   },
   args: { ...WRITE_SINGLE_FLAGS, id: ID, reason: { ...REASON_ARG, required: true } },
@@ -364,7 +364,7 @@ const importCmd = defineCommand({
     description:
       "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: " +
       "someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. " +
-      "A file over 10,000 rows is sent in several requests. Any member may import. Needs Automate.",
+      "A file over 10,000 rows is sent in several requests. Any member may import. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The people join the list; Campaigns skip them and writes toward them are refused. Nothing is sent to LinkedIn or to the people.",
@@ -373,7 +373,7 @@ const importCmd = defineCommand({
       retry: "Safe to repeat: a person already listed is reported unchanged. A run stopped part way: run it again.",
       undo: "`curviate do-not-contact remove <id>` per person (Owners and Managers).",
     },
-    errors: { TIER_REQUIRED: "your plan does not include Do-not-contact writes (Automate).", LEAD_LIMIT_REACHED: "the Team is at its Lead cap; rows that would add a Lead past it are skipped." },
+    errors: { TIER_REQUIRED: "your Team needs a subscription for Do-not-contact writes.", LEAD_LIMIT_REACHED: "the Team is at its Lead cap; rows that would add a Lead past it are skipped." },
     output: ["One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."],
     seeAlso: ["curviate do-not-contact export", "curviate do-not-contact list"],
     examples: ["curviate do-not-contact import --file do-not-contact.csv", "curviate do-not-contact import --file - --format ndjson"],

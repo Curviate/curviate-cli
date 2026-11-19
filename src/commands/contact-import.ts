@@ -410,7 +410,7 @@ const importCmd = defineCommand({
       `Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
       "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. " +
       "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. " +
-      `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs Automate.`,
+      `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs a subscription.`,
     risk: "write",
     rules: {
       changes: "Leads are created or updated, joined to --list (and, with --apply-lists, to the lists their `lists` column names) and tagged with --tag. Nothing is sent to LinkedIn or to the people.",
@@ -542,7 +542,7 @@ const control = (name: "pause" | "resume" | "stop", description: string, changes
       description,
       risk: "write",
       rules: { changes, visible_to: "Your Team.", budget_rows: [], retry: "A repeat answers IMPORT_STATUS_CONFLICT; nothing changes.", undo },
-      errors: { IMPORT_STATUS_CONFLICT: conflict, TIER_REQUIRED: "your plan does not include imports from LinkedIn (Automate)." },
+      errors: { IMPORT_STATUS_CONFLICT: conflict, TIER_REQUIRED: "your Team needs a subscription for imports from LinkedIn." },
       seeAlso: ["curviate lead imports get"],
       examples: [`curviate lead imports ${name} imp_YOUR_IMPORT_ID`],
     },

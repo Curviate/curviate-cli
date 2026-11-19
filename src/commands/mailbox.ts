@@ -220,7 +220,7 @@ export function priceLine(p: ServedPrice): string {
   const waits = p.charge_waits_for === "payment" ? " The charge waits until your Team's open payment is settled."
     : p.charge_waits_for === "subscription" ? " The charge waits until your Team has a subscription." : "";
   const closed = p.orderable === false
-    ? ` It cannot be ordered now: ${p.not_orderable_reason === "trial" ? "a Team on a trial cannot order" : p.not_orderable_reason === "sales_paused" ? "orders cannot be placed at the moment" : "orders are closed"}.`
+    ? ` It cannot be ordered now: ${p.not_orderable_reason === "trial" ? "available once your Team pays (a Team on a trial, without a paid plan, or with a payment past due)" : p.not_orderable_reason === "sales_paused" ? "orders cannot be placed at the moment" : "orders are closed"}.`
     : "";
   return head + when + waits + closed;
 }
@@ -285,7 +285,8 @@ async function runBuy(c: Curviate, f: Flags): Promise<void> {
  * (the order reads `provisioning` meanwhile, then `cancelled` with reason `host_failed`, refunded in full): never a
  * retry, never a new order on our say.
  */
-export function purchaseNote(order: { state?: unknown; reason?: unknown; id?: unknown }): string | null {
+export function purchaseNote(order: { state?: unknown; reason?: unknown; id?: unknown; charge_unknown?: unknown }): string | null {
+  if (order.charge_unknown === true) return "We are checking whether this order was charged. If it was, the charge is given back in full.";
   if (order.state === "provisioning") return `The Mailboxes are being set up. If that fails, the charge is undone in full and the order ends cancelled (host_failed). Read it again later: curviate mailbox purchase get ${String(order.id ?? "<id>")}. Do not order again meanwhile.`;
   if (order.state === "cancelled" && order.reason === "host_failed") return "Setting up these Mailboxes failed, so the charge was undone in full. Nothing to retry.";
   return null;
@@ -748,7 +749,7 @@ const buyCmd = defineCommand({
     errors: {
       SPENDING_CAP_REACHED: "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
       INSUFFICIENT_ROLE: "only a Team Owner orders.",
-      MAILBOX_PURCHASE_TRIAL: "a Team on a trial cannot order.",
+      MAILBOX_PURCHASE_TRIAL: "a Team without a paid plan cannot order: on a trial, after a trial that ended without a purchase, never subscribed, or with a payment past due. Buy a seat or update the payment method, then order. Nothing was charged.",
       MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
       DOMAIN_IN_USE: "the domain already has Mailboxes from Curviate or an order; name another domain.",
       DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
@@ -782,7 +783,7 @@ const quoteCmd = defineCommand({
     risk: "read",
     errors: { INSUFFICIENT_ROLE: "only a Team Owner reads the price of Mailboxes from Curviate." },
     output: [
-      "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial, sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr.",
+      "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr.",
     ],
     seeAlso: ["curviate mailbox buy", "curviate billing cap"],
     examples: ["curviate mailbox quote 3", "curviate mailbox quote 3 --json"],
@@ -811,7 +812,7 @@ const purchaseListCmd = defineCommand({
 const purchaseGetCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
+    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
     risk: "read",
     errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
     seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],

@@ -344,7 +344,7 @@ const resumeCmd = defineCommand({
     description:
       "Without --at: lift your own pause; the Enrollment continues where it was. With --at: jump to that Step of its Sequence version. " +
       "The jump is not guarded: it re-enters the Step even when that Step already sent, so a message can go out again. " +
-      "To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs Automate.",
+      "To retry a failed Step use `curviate enrollment retry <enrollment_id>`, which acts only on a failure. Needs a subscription.",
     risk: "high",
     rules: {
       changes: "The Enrollment runs again from its Account; with --at, from the named Step.",
@@ -442,7 +442,7 @@ const eventMeta = (name: "event" | "signal", description: string, example: strin
 const eventCmd = defineCommand({
   meta: eventMeta(
     "event",
-    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs Automate.",
+    "Send a custom event to an active or paused Enrollment whose Sequence waits for it, for example once your agent wrote the researched text to the Lead's custom fields. Input only: fires no webhook. Needs a subscription.",
     "curviate enrollment event enr_YOUR_ENROLLMENT_ID research_ready",
   ),
   args: EVENT_ARGS,
@@ -452,7 +452,7 @@ const eventCmd = defineCommand({
 const signalCmd = defineCommand({
   meta: eventMeta(
     "signal",
-    "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs Automate.",
+    "Deprecated alias of `curviate enrollment event`, accepted until 2027-01-19. Sends the same event. Needs a subscription.",
     "curviate enrollment signal enr_YOUR_ENROLLMENT_ID research_ready",
   ),
   args: EVENT_ARGS,
@@ -467,7 +467,7 @@ const reassignCmd = defineCommand({
     name: "reassign",
     description:
       "Move an Enrollment to another sending Account of its Campaign; it restarts there at the first Step of its version (one you paused stays paused). " +
-      "Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs Automate.",
+      "Refused, nothing changed, when its Account already engaged the person, the target already holds them, or the target has a chat with them. Needs a subscription.",
     risk: "high",
     rules: {
       changes: "The Enrollment restarts on the target Account; Steps already skipped are named in warnings.",

@@ -699,7 +699,7 @@ export function slimAccountGet(data: unknown): Record<string, unknown> {
     account_states: d["account_states"] ?? [],
     // Curviate's inference of how LinkedIn sees the account: {state, factor, reasons, until}; absent on an Account you can see but not operate
     ...(d["health"] !== undefined ? { health: d["health"] } : {}),
-    // absent without Automate: shown only when the API sends them
+    // absent without a subscription: shown only when the API sends them
     ...(d["save_connections_as_leads"] !== undefined ? { save_connections_as_leads: d["save_connections_as_leads"], save_connections_paused_reason: d["save_connections_paused_reason"] ?? null } : {}),
   };
 }

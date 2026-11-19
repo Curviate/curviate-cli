@@ -474,7 +474,8 @@ const emailCmd = defineCommand({
     output: [
       "reply: Leads first emailed in the window whose first reply, by email or on LinkedIn, came after that email, so far; an out-of-office reply is never a reply.",
       "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
-      "bounce: bounced over sent. opt-out: Leads who opted out over Leads first emailed.",
+      "bounce: bounced over sent; a bounce rate needs 50 emails sent to mean anything (the dashboard shows none below that). opt-out: Leads who opted out over Leads first emailed.",
+      "A rate is still maturing while more than a third of its emails were sent in the last 7 days (`maturing`): it may still rise, so say so. `low_sample` is true under 30.",
       "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
       "landing: where mail lands, as verdicts, each with a reason when there is nothing to read: warm_up.reason warm_up_off (warm-up is off), weekly_check.reason no_test_inboxes (not available), tests.reason no_test_inboxes or no_test_run (none run yet); a Mailbox's reputation_reason warm_up_off (no score while warm-up is off). Show them as served.",
     ],
