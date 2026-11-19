@@ -184,6 +184,8 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     [["mailbox", "test", "mbx_1", "--subject", "Quick question", "--body-file", "-"], { call: "POST /v1/mailboxes/mbx_1/placement-tests", query: {}, body: { subject: "Quick question", body: "Hi Anna" } }],
     [["mailbox", "tests", "mbx_1", "--limit", "5"], { call: "GET /v1/mailboxes/mbx_1/placement-tests", query: { limit: "5" }, body: undefined }],
     [["mailbox", "tests", "mbx_1", "plt_1"], { call: "GET /v1/mailboxes/mbx_1/placement-tests/plt_1", query: {}, body: undefined }],
+    [["analytics", "export", "--table", "email", "--range", "30d", "-o", join(tmpdir(), "p7-email.csv")], { call: "GET /v1/analytics/export", query: { range: "30d", format: "csv", entity: "email_daily" }, body: undefined }],
+    [["analytics", "export", "--table", "email", "--job", "--range", "30d"], { call: "POST /v1/exports", query: {}, body: { entity: "email_daily", format: "csv", filters: { range: "30d" } } }],
     [["account", "safety", "events", "acc_1", "--budget-row", "profile_views", "--limit", "5"], { call: "GET /v1/acc_1/safety-events", query: { budget_row: "profile_views", limit: "5" }, body: undefined }],
     [["campaign", "placement", "mot_1"], { call: "GET /v1/campaigns/mot_1/placement-checks", query: {}, body: undefined }],
     [["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna Weber:shared", "--mailbox", "max:Max: the second:acc_1", "--mailbox", "eva:Eva", "--yes"], { call: "POST /v1/mailboxes/purchases", query: {}, body: { domain: "acme-mail.example", mailboxes: [
@@ -207,6 +209,8 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
     [["mailbox", "buy", "--domain", "acme-mail.example", "--yes"]], // no Mailbox
     [["mailbox", "test", "mbx_1", "--body-file", "-"]], // no subject
     [["mailbox", "purchase", "list", "--state", "paid"]],
+    [["analytics", "export", "--table", "email,daily", "--job"]],
+    [["analytics", "export", "--table", "email", "--origin", "api", "--job"]],
   ])("%j exits 2 with no request", async (args) => {
     const r = await wire(args, ok, { stdin: "x" });
     expect([r.status, r.sent.length]).toEqual([2, 0]);

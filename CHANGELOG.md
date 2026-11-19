@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.58.0] - 2026-11-18
 
-Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `4c1e6ef64`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
+Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (staging's document, server commit `42ad2358a`); `commands.json` regenerated; `src/schemas/documents.json` re-derived (unchanged). `campaign lint` runs the SDK 0.54.0 validator offline: `attachment_ids` on an email step and warning W23.
 
 ### Placement tests and warm-up states
 
@@ -20,6 +20,10 @@ Requires `@curviate/sdk` 0.54.0 (exact pin). The vendored OpenAPI fixture is re-
 ### Limit hits
 
 - **`account safety events <acc_...> [--budget-row] [--since] [--until]`**: the actions Curviate refused at a safety limit or pause, newest first.
+
+### Email export
+
+- **`analytics export --table email`** (alone, streamed or with `--job`): your Campaign email's daily counts per Mailbox, Account, Campaign, step, variant and receiving provider; no `--origin`.
 
 ### Mailboxes from Curviate
 

@@ -177915,14 +177915,27 @@
             "description": "campaign, unibox (the Unibox), api (any API key or MCP grant), direct (unibox and api). Default: all. Repeat the key, comma-separate or mix; empties ignored."
           },
           {
-            "name": "table",
+            "name": "entity",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "daily,accounts,campaigns,enrollments"
+              "enum": [
+                "analytics",
+                "email_daily"
+              ],
+              "default": "analytics"
             },
-            "description": "daily, accounts, campaigns, enrollments. Several: one ZIP. Repeat the key, comma-separate or mix; empties ignored. Default: all."
+            "description": "analytics: the Analytics tables (table). email_daily: your Campaign email's daily counts per Mailbox, account, Campaign, step, variant and receiving provider (no table; at most 366 days). Default: analytics."
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "entity analytics: daily, accounts, campaigns, enrollments. Several: one ZIP. Repeat the key, comma-separate or mix; empties ignored. Default: all."
           },
           {
             "name": "format",
@@ -178504,9 +178517,10 @@
                       "analytics",
                       "campaign_activity",
                       "account_activity",
-                      "account_metrics"
+                      "account_metrics",
+                      "email_daily"
                     ],
-                    "description": "What to export. analytics: the Analytics tables. campaign_activity: the Campaigns' activity records (sends, acceptances, replies, skips and failures). account_activity: the same plus direct actions (API, CLI, MCP, Unibox). account_metrics: each Account's own daily numbers. The activity and metrics files hold at most 366 days."
+                    "description": "What to export. analytics: the Analytics tables. campaign_activity: the Campaigns' activity records (sends, acceptances, replies, skips and failures). account_activity: the same plus direct actions (API, CLI, MCP, Unibox). account_metrics: each Account's own daily numbers. email_daily: your Campaign email's daily counts per Mailbox, account, Campaign, step, variant and receiving provider. The activity, metrics and email files hold at most 366 days."
                   },
                   "tables": {
                     "type": "array",
