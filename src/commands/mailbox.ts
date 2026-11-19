@@ -53,13 +53,14 @@ type Flags = RootFlags & {
   testId?: string;
   mailbox?: string | string[];
   yes?: boolean;
+  count?: string;
+  "expect-amount"?: string;
 };
 type Body = Record<string, unknown>;
 
 /** The placement test body's own limit is the API's (10,000 characters); this only stops a wrong file early. */
 const TEST_BODY_MAX_BYTES = 64 * 1024;
 const PURCHASE_STATES = ["awaiting_dns", "provisioning", "active", "cancelled"];
-const MAILBOX_PRICE_CENTS = 500;
 
 const STATES = ["connected", "ramping", "paused", "paused_by_bounces", "paused_by_provider", "reconnect_needed"];
 /** The API's cap and signature limits are its own: the CLI sends what it is given and prints the API's 400. */
@@ -186,6 +187,57 @@ export function parseMailboxSpec(raw: string): Body {
 export const BUY_PAST_CAP =
   "This order would take your Team past its cap on Mailboxes from Curviate. Nothing was ordered. Only a Team Owner raises the cap, in the dashboard.";
 
+/** The served price of an order or quote: every figure is the server's, none is made up here. */
+export type ServedPrice = {
+  mailboxes?: number;
+  currency?: string;
+  billing_period?: string;
+  unit_amount?: number;
+  amount?: number;
+  charged?: string;
+  prorated?: boolean;
+  plus_tax?: boolean;
+  orderable?: boolean;
+  not_orderable_reason?: string | null;
+  charge_waits_for?: string | null;
+};
+
+const money = (minor: number, currency: string) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(minor / 100);
+
+/** One plain paragraph for a quote or an order's `price`, worded from the served fields only. */
+export function priceLine(p: ServedPrice): string {
+  const n = p.mailboxes ?? 0;
+  const cur = p.currency ?? "usd";
+  const per = p.billing_period === "annual" ? "a year" : "a month";
+  const head = p.charged === "never"
+    ? `${n} Mailbox${n === 1 ? "" : "es"} from Curviate: nothing is charged for your Team.`
+    : `${n} Mailbox${n === 1 ? "" : "es"} from Curviate: ${money(p.amount ?? 0, cur)} ${per} (${money(p.unit_amount ?? 0, cur)} each)${p.plus_tax ? ", plus tax where it applies" : ""}.`;
+  const when =
+    p.charged === "when_records_found" ? ` Charged the day the records are found at your domain${p.prorated ? ", for the rest of your billing year" : ""}, then each year.`
+    : p.charged === "with_next_invoice" ? ` Added to your next invoice${p.prorated ? ", prorated for the rest of this month" : ""}, then each month.`
+    : "";
+  const waits = p.charge_waits_for === "payment" ? " The charge waits until your Team's open payment is settled."
+    : p.charge_waits_for === "subscription" ? " The charge waits until your Team has a subscription." : "";
+  const closed = p.orderable === false
+    ? ` It cannot be ordered now: ${p.not_orderable_reason === "trial" ? "a Team on a trial cannot order" : p.not_orderable_reason === "sales_paused" ? "orders cannot be placed at the moment" : "orders are closed"}.`
+    : "";
+  return head + when + waits + closed;
+}
+
+async function runQuote(c: Curviate, f: Flags): Promise<void> {
+  const n = /^\d+$/.test(f.count ?? "") ? Number(f.count) : NaN;
+  if (!(n >= 1 && n <= 50)) usage("the count must be a whole number from 1 to 50: how many Mailboxes to price.");
+  if (f.preview) return preview("mailboxes.purchases.quote", { mailboxes: n });
+  try {
+    const q = (await c.mailboxes.purchases.quote(n)) as unknown as ServedPrice;
+    renderSuccess(readableObject(q as never), outputOpts(f), process);
+    process.stderr.write(priceLine(q) + "\n");
+  } catch (err) {
+    await fail(err, f);
+  }
+}
+
 async function runBuy(c: Curviate, f: Flags): Promise<void> {
   const domain = f.domain ?? "";
   if (domain.trim() === "") usage("--domain is required: the domain the Mailboxes send from, one your Team owns.");
@@ -193,12 +245,31 @@ async function runBuy(c: Curviate, f: Flags): Promise<void> {
   if (specs.length === 0) usage('pass at least one --mailbox local:"Name", up to 50.');
   if (specs.length > 50) usage("at most 50 --mailbox in one order.");
   const body = { domain, mailboxes: specs.map(parseMailboxSpec) };
+  const expect = f["expect-amount"] === undefined ? undefined : intFlag("expect-amount", f["expect-amount"], 0);
   if (f.preview) return preview("mailboxes.purchases.create", {}, body);
   const n = specs.length;
-  const monthly = `$${((n * MAILBOX_PRICE_CENTS) / 100).toFixed(2)}`;
-  if (!(await confirmMoney(f, `Order ${n} Mailbox${n === 1 ? "" : "es"} on ${domain} at ${monthly} a month? Nothing is charged until the records are found at your domain.`, "Each Mailbox costs $5 a month."))) return;
+  let agreed = expect;
   try {
-    renderSuccess(readableObject(await c.mailboxes.purchases.create(body as never)), outputOpts(f), process);
+    if (!f.yes) {
+      // A person at a terminal agrees to the server's quote, read now; the order's price is checked against it below.
+      if (!process.stdin.isTTY) usage(`this orders Mailboxes that cost money: pass --yes to confirm (no terminal to ask at). Read the price first with: curviate mailbox quote ${n}`);
+      const q = (await c.mailboxes.purchases.quote(n)) as unknown as ServedPrice;
+      agreed ??= q.amount;
+      if (!(await confirmMoney(f, `Order on ${domain}? ${priceLine(q)}`))) return;
+    }
+    const order = (await c.mailboxes.purchases.create(body as never)) as unknown as Record<string, unknown> & { id: string; price?: ServedPrice };
+    renderSuccess(readableObject(order as never), outputOpts(f), process);
+    if (agreed !== undefined && order.price?.amount !== agreed) {
+      // An order whose price is not the one agreed to is never kept. Awaiting its records it is free to cancel.
+      process.stderr.write(`error [PRICE_CHANGED] This order costs ${order.price ? priceLine(order.price) : "an unstated price"} That is not the ${agreed} (minor units) agreed to, so the order is being cancelled.\n`);
+      try {
+        await c.mailboxes.purchases.cancel(order.id);
+        process.stderr.write(`Cancelled ${order.id}; nothing was charged. Read the price again with: curviate mailbox quote ${n}\n`);
+      } catch (cancelErr) {
+        process.stderr.write(`Cancelling ${order.id} failed: ${(cancelErr as Error).message} Do not order again; read it with: curviate mailbox purchase get ${order.id}\n`);
+      }
+      process.exit(11);
+    }
   } catch (err) {
     const { CurviateError } = await import("@curviate/sdk");
     if (err instanceof CurviateError && err.code === "SPENDING_CAP_REACHED") {
@@ -390,7 +461,7 @@ const getCmd = defineCommand({
   meta: {
     name: "get",
     description:
-      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state, day, reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null while there is not enough to say: gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say). Every role reads.",
+      "One Mailbox: address, state, Sends for and its suggestion, daily cap (and cap_lowered_to when a spam reading lowered it), sent today, bounces over 7 days, signature, which Accounts and Campaigns used it, warm_up (state: off, warming (day N; past its days it stays warming until ready), ready (the warm-up's bar is met; sending does not change) or waiting; day; reason: paused_by_curviate, reconnect_needed, trial, app_password, warm_up_app, allowance, address_check: the address is being confirmed, nothing to do, or address_unconfirmed: check the connection settings, Curviate tries again), reputation (0 to 100, or null: with reputation_reason warm_up_off there is no score because warm-up is off, else gathering, never 0), and landing: where its own warm-up mail lands per receiving provider over 7 days (google, microsoft, other: inbox, partly_spam, spam, or gathering while there is not enough to say; landing.reason warm_up_off: warm-up is off, nothing to read). Every role reads.",
     risk: "read",
     errors: NOT_FOUND,
     seeAlso: ["curviate mailbox list", "curviate mailbox update"],
@@ -488,8 +559,8 @@ const removeCmd = defineCommand({
     name: "remove",
     description:
       "Remove a Mailbox and delete its stored credentials in one step. Changes no seat count. Connect it again to use the address afterwards. " +
-      "A Mailbox from Curviate is an Owner's to remove: it is deleted with its mail, and its $5 a month stops at the end of the billing period. " +
-      "MAILBOX_STATE_CONFLICT (exit 8) \"Too many Mailbox changes are still settling with billing\" changed nothing: try again later, never in a loop.",
+      "A Mailbox from Curviate is an Owner's to remove: it is deleted with its mail, and its charge stops at the end of the billing period. " +
+      "MAILBOX_STATE_CONFLICT (exit 8) \"Too many Mailbox changes are still settling with billing\" changed nothing: the person may try again later; never resend it on your own.",
     risk: "high",
     rules: {
       changes: "The Mailbox and its credentials are deleted; emails due from it are not sent. A Mailbox from Curviate is deleted with its mail; its charge ends at the period's end.",
@@ -663,11 +734,11 @@ const buyCmd = defineCommand({
   meta: {
     name: "buy",
     description:
-      "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, $5 a month each, warm-up included. The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, and tracking, which is optional) are found at your domain; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
+      "Order 1 to 50 Mailboxes from Curviate on one domain your Team owns, warm-up included. The price is your Team's, read from the server: `curviate mailbox quote <count>`, which a terminal prompt also shows; --expect-amount <amount> (the quote's `amount`) cancels the order at once when its `price` differs (exit 11). The order waits in awaiting_dns until the records it lists (mx, spf, dkim, dmarc, verify, and tracking, which is optional) are found at your domain, each added exactly as shown; nothing is charged before, and an order still waiting after 14 days is cancelled. " +
       "Team Owners only. An order through an API key counts under the Team's cap on Mailboxes from Curviate (`curviate billing cap` shows mailbox_cap), which only an Owner raises, in the dashboard: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused (exit 5) and nothing is ordered. Read orders with `curviate mailbox purchase list`.",
     risk: "high",
     rules: {
-      changes: "An order in awaiting_dns; once its records are found, the Mailboxes are created and $5 a month each is charged.",
+      changes: "An order in awaiting_dns; once its records are found, the Mailboxes are created and charged as its `price` says (a yearly Team pays the rest of its year that day).",
       visible_to: "Your Team.",
       budget_rows: [],
       retry: "Never retried. A second order for the same domain while one waits is refused (MAILBOX_PURCHASE_PENDING).",
@@ -681,9 +752,10 @@ const buyCmd = defineCommand({
       MAILBOX_PURCHASE_PENDING: "this domain already has an order waiting for its records.",
       DOMAIN_IN_USE: "the domain already has Mailboxes from Curviate or an order; name another domain.",
       DOMAIN_IS_COMPANY_EMAIL: "the domain your company email runs on; use a separate domain.",
+      INVALID_REQUEST: "among others, a subdomain (mail.acme.com): Mailboxes from Curviate go on a domain of your own, such as acme-mail.com.",
       MAILBOX_SALES_PAUSED: "orders cannot be placed at the moment.",
     },
-    output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, tracking), amount_monthly, expires_at."],
+    output: ["The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, verify, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."],
     seeAlso: ["curviate mailbox purchase list", "curviate domain check"],
     examples: [
       "curviate mailbox buy --domain acme-mail.example --mailbox 'anna:Anna Weber:shared' --yes",
@@ -696,8 +768,27 @@ const buyCmd = defineCommand({
     domain: { type: "string", description: "The domain the Mailboxes send from, one your Team owns and not the one your company email runs on." },
     mailbox: { type: "string", description: 'One Mailbox, repeatable up to 50: local:Name, the part before the @ and the name recipients see; add :acc_... (the Account it sends for) or :shared at the end.' },
     yes: { type: "boolean", description: "Confirm the order without a prompt (needed when no terminal can ask)." },
+    "expect-amount": { type: "string", description: "The quote's `amount` the person agreed to (minor units): an order whose `price.amount` differs is cancelled at once, exit 11." },
   },
   run: online(runBuy),
+});
+
+const quoteCmd = defineCommand({
+  meta: {
+    name: "quote",
+    description:
+      "What a number of Mailboxes from Curviate cost your Team, read now from the price the charge uses: the amount for your Team's billing period (a yearly Team pays the rest of its year the day the records are found), when it is charged, and whether your Team can order now. " +
+      "Show this to the person before `curviate mailbox buy`, never a price of your own. Charges nothing. Owners only.",
+    risk: "read",
+    errors: { INSUFFICIENT_ROLE: "only a Team Owner reads the price of Mailboxes from Curviate." },
+    output: [
+      "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial, sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr.",
+    ],
+    seeAlso: ["curviate mailbox buy", "curviate billing cap"],
+    examples: ["curviate mailbox quote 3", "curviate mailbox quote 3 --json"],
+  },
+  args: { ...readOnly(READ_SINGLE_FLAGS), count: { type: "positional" as const, description: "How many Mailboxes, 1 to 50." } },
+  run: online(runQuote),
 });
 
 const purchaseListCmd = defineCommand({
@@ -720,7 +811,7 @@ const purchaseListCmd = defineCommand({
 const purchaseGetCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One order of Mailboxes from Curviate: its state, the five records to add at your domain (mx, spf, dkim, dmarc, tracking; tracking is optional) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
+    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). Every role reads. One API call.",
     risk: "read",
     errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
     seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],
@@ -795,7 +886,7 @@ const purchaseCmd = defineCommand({
 
 export const mailboxCommand = defineCommand({
   meta: { name: "mailbox", description: DESCRIPTIONS["mailbox"] },
-  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd, discover: discoverCmd, connect: connectCmd, reconnect: reconnectCmd, test: testCmd, tests: testsCmd, buy: buyCmd, purchase: purchaseCmd },
+  subCommands: { list: listCmd, get: getCmd, update: updateCmd, pause: pauseCmd, resume: resumeCmd, remove: removeCmd, discover: discoverCmd, connect: connectCmd, reconnect: reconnectCmd, test: testCmd, tests: testsCmd, quote: quoteCmd, buy: buyCmd, purchase: purchaseCmd },
   async run() {
     const { showHelp } = await import("../lib/examples.js");
     await showHelp(mailboxCommand, ["curviate", "mailbox"]);

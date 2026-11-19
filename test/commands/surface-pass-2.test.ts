@@ -287,3 +287,82 @@ describe("pass 10: settling is answered once; a connect names its seat", () => {
     expect([r.status, r.sent.length]).toEqual([8, 1]);
   });
 });
+
+describe("pass 11: the price of Mailboxes from Curviate is the server's, for this Team, when it is shown", () => {
+  const yearly = { object: "mailbox_quote", mailboxes: 2, currency: "usd", billing_period: "annual", unit_amount: 6000, amount: 12000, amount_monthly: 1000, charged: "when_records_found", prorated: true, plus_tax: true, orderable: true, not_orderable_reason: null, charge_waits_for: null };
+  const buy = ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna:shared", "--mailbox", "ben:Ben:shared", "--yes"];
+  const order = (amount: number) => ({ status: 201, body: { id: "mpu_1", state: "awaiting_dns", price: { ...yearly, amount } } });
+
+  it("quote: one read, the served yearly price worded from its own fields", async () => {
+    const r = await wire(["mailbox", "quote", "2"], () => ({ body: yearly }));
+    expect([r.status, lines(r.sent)]).toEqual([0, [{ call: "GET /v1/mailboxes/purchases/quote", query: { mailboxes: "2" }, body: undefined }]]);
+    expect(r.stderr).toContain("$120.00 a year ($60.00 each), plus tax where it applies. Charged the day the records are found at your domain");
+  });
+
+  it.each([["0"], ["51"], ["two"], ["2.5"]])("quote %s exits 2 with no request", async (n) => {
+    const r = await wire(["mailbox", "quote", n]);
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+  });
+
+  it.each([
+    ["the order's price is the agreed one: kept, one request", 12000, 0, ["POST /v1/mailboxes/purchases"]],
+    ["a different price: cancelled at once, exit 11", 6000, 11, ["POST /v1/mailboxes/purchases", "DELETE /v1/mailboxes/purchases/mpu_1"]],
+  ])("%s", async (_n, served, exit, calls) => {
+    const r = await wire([...buy, "--expect-amount", "12000"], (req) => (req.method === "POST" ? order(served) : { body: { id: "mpu_1", state: "cancelled" } }));
+    expect([r.status, r.sent.map((s) => `${s.method} ${s.path}`)]).toEqual([exit, calls]);
+    if (exit) expect(r.stderr).toContain("Cancelled mpu_1; nothing was charged");
+  });
+
+  it("buy with no terminal and no --yes sends nothing and names the quote", async () => {
+    const r = await wire(buy.filter((a) => a !== "--yes"));
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+    expect(r.stderr).toContain("curviate mailbox quote 2");
+  });
+
+  it("help states no price; billing cap documents mailbox_cap", async () => {
+    const h = await wire(["mailbox", "buy", "--help"]);
+    expect(h.stdout + h.stderr).not.toMatch(/\$\d|\d+ (a|per) month/);
+    const cap = await wire(["billing", "cap", "--help"]);
+    expect(cap.stdout + cap.stderr).toMatch(/mailbox_cap[\s\S]*room/);
+  });
+});
+
+describe("pass 11: files over the JSON route's inline reach go up first and are sent by id", () => {
+  it("two 4 MiB files: two streamed uploads, then one email naming both ids and no inline bytes", async () => {
+    const { truncateSync } = await import("node:fs");
+    const dir = mkdtempSync(join(tmpdir(), "rlu35-"));
+    const [a, b] = [join(dir, "a.pdf"), join(dir, "b.pdf")];
+    for (const p of [a, b]) { writeFileSync(p, "%PDF-1.7"); truncateSync(p, 4 * 1024 * 1024); }
+    let n = 0;
+    const r = await wire(["unibox", "email", "send", "cnv_1", "Hi", "--thread", "thr_1", "--attach", a, "--attach", b], (req) =>
+      req.path === "/v1/campaigns/attachments" ? { status: 201, body: { id: `cat_${++n}` } } : { status: 201, body: { id: "m_1" } });
+    expect(r.status).toBe(0);
+    expect(r.sent.map((s) => [s.method, s.path, s.blob ?? null])).toEqual([
+      ["POST", "/v1/campaigns/attachments", 4 * 1024 * 1024],
+      ["POST", "/v1/campaigns/attachments", 4 * 1024 * 1024],
+      ["POST", "/v1/unibox/conversations/cnv_1/emails", null],
+    ]);
+    expect(r.sent[2]!.body).toEqual({ text: "Hi", thread_id: "thr_1", attachment_ids: ["cat_1", "cat_2"] });
+  });
+});
+
+describe("pass 11: `lead import --filter` help names exactly the keys the served document types per kind", () => {
+  it("people_search, company_people and recruiter_search match the served oneOf", async () => {
+    const { readFileSync } = await import("node:fs");
+    const doc = JSON.parse(readFileSync(join(__dirname, "../fixtures/openapi.json"), "utf8"));
+    const find = (o: unknown): { oneOf: Array<{ title: string; properties: Record<string, unknown> }> } | undefined => {
+      if (!o || typeof o !== "object") return undefined;
+      const p = (o as { properties?: { filters?: unknown } }).properties?.filters;
+      if (p) return p as never;
+      for (const v of Object.values(o)) { const r = find(v); if (r) return r; }
+      return undefined;
+    };
+    const served = Object.fromEntries(find(doc.paths["/v1/leads/imports"].post.requestBody)!.oneOf.map((s) => [s.title, Object.keys(s.properties)]));
+    const h = await wire(["lead", "import", "--help"]);
+    const help = (h.stdout + h.stderr).replace(/\s+/g, " ");
+    for (const kind of ["people_search", "company_people", "recruiter_search"]) {
+      const listed = help.match(new RegExp(`${kind}(?: \\([^)]*\\))?: ([^;.]*)`))![1]!.replace(/\([^)]*\)/g, "").split(",").map((k) => k.trim().split(" ")[0]);
+      expect([kind, listed]).toEqual([kind, served[kind]]);
+    }
+  });
+});

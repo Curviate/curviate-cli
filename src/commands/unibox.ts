@@ -14,11 +14,15 @@ import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readab
 import { intFlag } from "../lib/int-flag.js";
 import { fail, listFlag, outputOpts, rootClient, usage, type RootFlags } from "../lib/root-command.js";
 import { print, table } from "../lib/table.js";
-import { AttachError, readAttachment, toAttachmentPayload } from "../lib/attach.js";
+import { stat } from "node:fs/promises";
+import { basename } from "node:path";
+import { AttachError, openUpload, readAttachment, toAttachmentPayload } from "../lib/attach.js";
 
 /** An email's files: at most 10, 20 MiB in all, refused here before anything is sent. */
 const EMAIL_MAX_FILES = 10;
 const EMAIL_MAX_FILE_BYTES = 20 * 1024 * 1024;
+/** The route reads at most 9 MiB of JSON (about 6.7 MiB of files in base64); above this the files go up first, by id. */
+const EMAIL_INLINE_MAX_BYTES = 6 * 1024 * 1024;
 
 type UniboxFlags = RootFlags & {
   conversationId?: string;
@@ -104,8 +108,13 @@ async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
       const unread = (i: Row) => (i["unread"] ? (i["marked_unread"] ? "marked" : "yes") : "");
       const campaign = (i: Row) => (i["campaign_context"] as Row | null)?.["campaign_name"];
       const label = (i: Row) => (i["reply_label"] as Row | null | undefined)?.["label"];
-      print(table(["ACCOUNT", "CHAT", "WITH", "UNREAD", "LAST", "FROM", "LABEL", "CAMPAIGN", "TAGS"],
-        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), unread(i), i["last_activity_at"], i["last_message_from"], label(i), campaign(i), (i["tags"] as string[] | undefined)?.join(", ")])));
+      const channels = (i: Row) => ((i["channels"] as string[] | undefined) ?? []).join("+");
+      const marks = (i: Row) => Object.entries((i["marks"] as Row | undefined) ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ");
+      // RLU-35: the way on is derived per conversation: `reply` needs its LinkedIn chat, `email` its email channel and no mark against it.
+      const next = (i: Row) => [i["chat_id"] ? "reply" : "", (i["channels"] as string[] | undefined)?.includes("email") && !marks(i) ? "email" : ""].filter(Boolean).join(", ");
+      print(table(["ACCOUNT", "CHAT", "WITH", "CHANNELS", "UNREAD", "LAST", "FROM", "LABEL", "MARKS", "NEXT", "CAMPAIGN", "TAGS", "CONVERSATION"],
+        page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), channels(i), unread(i), i["last_activity_at"], i["last_message_from"], label(i), marks(i), next(i), campaign(i), (i["tags"] as string[] | undefined)?.join(", "), i["conversation_id"]])));
+      if (page.items.length) print("NEXT reply: `curviate unibox reply <ACCOUNT> <CHAT> \"<text>\"`; email: `curviate unibox email send <CONVERSATION> \"<text>\" --thread <thread_id>` (threads: `curviate unibox conversation timeline <CONVERSATION> --channel email`). An email-only conversation has no CHAT and takes email only.");
       if (typeof page["total"] === "number") print(`total: ${page["total"]} chats match`);
     });
   } catch (err) {
@@ -174,26 +183,42 @@ async function runEmailSend(c: Curviate, f: UniboxFlags): Promise<void> {
   if (bcc.length) body["bcc"] = bcc;
   const paths = f.attach === undefined ? [] : ([] as string[]).concat(f.attach);
   if (paths.length > EMAIL_MAX_FILES) usage(`--attach takes at most ${EMAIL_MAX_FILES} files.`);
-  const files: Array<{ path: string; buf: Buffer }> = [];
+  const sizes: number[] = [];
   for (const p of paths) {
     try {
-      files.push({ path: p, buf: await readAttachment(p) });
+      const st = await stat(p);
+      if (!st.isFile()) throw new Error("not a file");
+      sizes.push(st.size);
     } catch (err) {
-      if (err instanceof AttachError) usage(err.message);
-      throw err;
+      usage(`Cannot read attachment "${basename(p)}": ${err instanceof Error ? err.message : "unknown error"}. Pass a valid file path.`);
     }
   }
-  const total = files.reduce((n, x) => n + x.buf.length, 0);
+  const total = sizes.reduce((n, x) => n + x, 0);
   if (total > EMAIL_MAX_FILE_BYTES) usage(`--attach: the files total ${total} bytes, over 20 MiB; nothing was sent. A link usually lands better than a file.`);
-  if (files.length) body["attachments"] = files.map((x) => { const a = toAttachmentPayload(x.path, x.buf); return { filename: a.filename, content_type: a.content_type, content: a.content }; });
-  if (f.preview) return void print(JSON.stringify(buildPreviewOutput({ method: "unibox.sendEmail", args: { conversation_id: id }, body: { ...body, attachments: undefined }, attachments: files.map((x) => ({ name: x.path.split("/").pop()!, buffer: x.buf })) })));
+  const byId = total > EMAIL_INLINE_MAX_BYTES;
+  if (f.preview) {
+    const note = byId ? { attachment_ids: paths.map((p, i) => `<upload ${basename(p)} (${sizes[i]} bytes)>`) } : { attachments: paths.map((p, i) => `${basename(p)} (${sizes[i]} bytes)`) };
+    return void print(JSON.stringify(buildPreviewOutput({ method: "unibox.sendEmail", args: { conversation_id: id }, body: { ...body, ...note } })));
+  }
   try {
+    if (byId) {
+      // Over the JSON route's inline reach: each file goes up streamed from disk (an upload of your Team), the email names them by id.
+      const ids: string[] = [];
+      for (const p of paths) {
+        const file = await openUpload(p, EMAIL_MAX_FILE_BYTES);
+        ids.push(((await c.campaigns.attachments.upload(file.data as never, { filename: basename(p) })) as { id: string }).id);
+      }
+      body["attachment_ids"] = ids;
+    } else if (paths.length) {
+      body["attachments"] = await Promise.all(paths.map(async (p) => { const a = toAttachmentPayload(p, await readAttachment(p)); return { filename: a.filename, content_type: a.content_type, content: a.content }; }));
+    }
     const sent = (await c.unibox.sendEmail(id, body as never)) as unknown as Row;
     for (const w of (sent["warnings"] as Row[] | undefined) ?? []) {
       process.stderr.write(`warning: ${String(w["code"])}: ${((w["addresses"] as string[] | undefined) ?? []).join(", ")} got nothing; everyone else did.\n`);
     }
     renderSuccess(sent, outputOpts(f), process);
   } catch (err) {
+    if (err instanceof AttachError) usage(err.message);
     if ((err as { outcomeUnknown?: boolean }).outcomeUnknown === true) {
       process.stderr.write(`The outcome is unknown: the email may have been sent, and it is kept in the conversation as sent. Do not send it again; read \`curviate unibox conversation timeline ${id} --channel email\`.\n`);
     }
@@ -495,7 +520,8 @@ const emailSendCmd = defineCommand({
     description:
       "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). " +
       "It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. " +
-      "--cc and --bcc (at most 20 addresses together) and --attach (files, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. " +
+      "--cc and --bcc (at most 20 addresses together) and --attach (files read from paths on this machine, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. Up to 6 MiB in all the files go inside the one request; above that each is first uploaded as a file of your Team (`campaign attachment upload`, counted against its daily uploads, kept 30 days) and the email names them by id. " +
+      "Bcc addresses are never shown to the other recipients; do not repeat them where others read. " +
       "A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. " +
       "Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
     risk: "write",
@@ -510,7 +536,8 @@ const emailSendCmd = defineCommand({
       EMAIL_UNAVAILABLE: "email is not available in this conversation; reason names why (no_email_address, email_bounced, no_email, do_not_contact, no_mailbox, group_chat). Nothing is sent.",
       MAILBOX_STATE_CONFLICT: "the Mailbox needs reconnecting, is paused, or has sent its daily limit; the message names the way on.",
       DO_NOT_CONTACT: "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
-      PLATFORM_ERROR: "the provider did not take the email: nothing was sent (exit 7 when a retry may work). With an unknown outcome it may have been sent: exit 1, do not send it again.",
+      PLATFORM_ERROR: "the provider did not take the email: nothing was sent (exit 7 when a retry may work). reason attachment_refused: the files were refused (from a Microsoft sign-in Mailbox, more than about 2.2 MB in all, refused before anything is sent): send a link or smaller files. With an unknown outcome it may have been sent: exit 1, do not send it again.",
+      RESOURCE_NOT_FOUND: "no such conversation, or an uploaded file is gone; nothing was sent.",
       UNSUPPORTED_MEDIA_TYPE: "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent.",
     },
     seeAlso: ["curviate unibox conversation get", "curviate unibox conversation timeline"],
@@ -528,7 +555,7 @@ const emailSendCmd = defineCommand({
     mailbox: { type: "string" as const, description: "New thread only: the Mailbox to send from (mbx_...), one of the conversation's email.mailboxes." },
     cc: { type: "string" as const, description: "Cc addresses, repeatable or a comma list; every recipient sees them." },
     bcc: { type: "string" as const, description: "Bcc addresses, repeatable or a comma list; no other recipient sees them." },
-    attach: { type: "string" as const, description: "A file to send, repeatable: at most 10, 20 MiB in all. From a Microsoft sign-in Mailbox, about 2.2 MB in all go today; more is refused with PLATFORM_ERROR and nothing is sent: send a link or a smaller file." },
+    attach: { type: "string" as const, description: "A file on this machine to send, repeatable: at most 10, 20 MiB in all (never a URL). From a Microsoft sign-in Mailbox, about 2.2 MB in all go; more is refused with PLATFORM_ERROR (reason attachment_refused) and nothing is sent: send a link or a smaller file." },
   },
   run: online(runEmailSend),
 });

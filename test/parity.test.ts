@@ -42,6 +42,7 @@ const PARITY_MANIFEST: Record<string, string> = {
   "mailbox test":     "mailboxes.placementTests.run",
   "mailbox tests":    "mailboxes.placementTests.list",
   "mailbox tests <id> <test_id>": "mailboxes.placementTests.get",
+  "mailbox quote":    "mailboxes.purchases.quote",
   "mailbox buy":      "mailboxes.purchases.create",
   "mailbox purchase list": "mailboxes.purchases.list",
   "mailbox purchase get":  "mailboxes.purchases.get",

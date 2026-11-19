@@ -476,6 +476,7 @@ const emailCmd = defineCommand({
       "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
       "bounce: bounced over sent. opt-out: Leads who opted out over Leads first emailed.",
       "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
+      "landing: where mail lands, as verdicts, each with a reason when there is nothing to read: warm_up.reason warm_up_off (warm-up is off), weekly_check.reason no_test_inboxes (not available), tests.reason no_test_inboxes or no_test_run (none run yet); a Mailbox's reputation_reason warm_up_off (no score while warm-up is off). Show them as served.",
     ],
     seeAlso: ["curviate analytics get", "curviate mailbox list"],
     examples: ["curviate analytics email --range 30d", "curviate analytics email --campaigns mot_YOUR_CAMPAIGN_ID --include weeks --json", "curviate analytics email --include mailboxes,domains --forecast"],
