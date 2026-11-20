@@ -36,7 +36,7 @@ import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, SEARCH_PAGE_LIMIT, SEARCH_PAGE_NOTE, WRITE_FLAGS, READ_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
@@ -845,6 +845,7 @@ const salesNavSearchPeopleCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core sales-nav search people --keywords \"head of data\"",
@@ -853,6 +854,7 @@ const salesNavSearchPeopleCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
@@ -887,6 +889,7 @@ const salesNavSearchCompaniesCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core sales-nav search companies --keywords fintech",
@@ -894,6 +897,7 @@ const salesNavSearchCompaniesCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
@@ -963,6 +967,7 @@ const salesNavSearchCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core sales-nav search \"https://www.linkedin.com/sales/search/people?query=(keywords%3Aai)\"",
@@ -970,6 +975,7 @@ const salesNavSearchCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     url: {
       type: "positional",
       required: false,

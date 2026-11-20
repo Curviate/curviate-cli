@@ -240,6 +240,19 @@ export function pageDelayFromFlags(flags: { "page-delay"?: string }): number | u
   return pageDelayFrom(flags["page-delay"]);
 }
 
+/** How often `--all` waits out a search pause for one page before it stops. */
+const MAX_GAP_WAITS = 3;
+
+/**
+ * Seconds to wait when `err` refused a search page inside the Account's random pause between pages (`budget: gap`,
+ * at most a minute and a bit); undefined for every other error, which ends the stream.
+ */
+export function searchGapSeconds(err: unknown): number | undefined {
+  if (!(err instanceof CurviateError) || err.code !== "BUDGET_EXHAUSTED" || err.searchBudget !== "gap") return undefined;
+  const s = err.retryAfterSeconds;
+  return s !== undefined && s >= 0 && s <= 90 ? Math.max(1, Math.ceil(s)) : undefined;
+}
+
 /** Real timer sleep, the default injected into `streamAll`. */
 const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -304,7 +317,23 @@ export async function* streamAll<P extends Record<string, unknown>>(
         ? ({ ...params, cursor } as P)
         : params;
 
-    const page = readablePage(await fn(pageParams));
+    let page: PageResponse & { items: unknown[] };
+    for (let waits = 0; ; waits++) {
+      try {
+        page = readablePage(await fn(pageParams));
+        break;
+      } catch (err) {
+        // A search page landing inside the Account's random pause between pages (#3701): wait it out, at most
+        // a few times, and ask for the same page again. Any other refusal ends the stream, with the cursor to resume.
+        const wait = searchGapSeconds(err);
+        if (wait === undefined || waits >= MAX_GAP_WAITS) {
+          if (opts.out && cursor) opts.out.stderr.write(`Stopped after ${pageCount} page(s). Resume later with --cursor ${cursor}\n`);
+          throw err;
+        }
+        if (opts.out) opts.out.stderr.write(`Search pause: the next page in ${wait} s.\n`);
+        await sleep(wait * 1000);
+      }
+    }
     pageCount++;
 
     const items = page.items;

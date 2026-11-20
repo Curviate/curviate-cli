@@ -116,6 +116,20 @@ export const GLOBAL_FLAGS = {
  * `{ cursor?: string; limit?: number }` — genuinely paginated, just without
  * `--all`.
  */
+/**
+ * `--limit` on a command that reads LinkedIn search result pages. Search is paced per Account in pages: one call reads
+ * at most one page, so the help says so where an agent picks the number.
+ */
+/** The RULES line every search page command carries. */
+export const SEARCH_PAGE_NOTE =
+  "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit.";
+
+export const SEARCH_PAGE_LIMIT = {
+  type: "string" as const,
+  description:
+    "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget.",
+};
+
 export const NON_STREAM_FLAGS = {
   "api-key": GLOBAL_FLAGS["api-key"],
   profile: GLOBAL_FLAGS.profile,

@@ -270,6 +270,7 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
     [{ id: "mpu_1", state: "provisioning", reason: null }, "being set up", "Do not order again"],
     [{ id: "mpu_1", state: "cancelled", reason: "host_failed" }, "the charge was undone in full", "Nothing to retry"],
     [{ id: "mpu_1", state: "cancelled", reason: "subscription_ended", charge_unknown: true }, "We are checking whether this order was charged.", "If it was, the charge is given back in full."],
+    [{ id: "mpu_1", state: "cancelled", reason: "currency", charge_unknown: false }, "billed in another currency than Mailboxes from Curviate (US dollars)", "Nothing was charged. Contact support"],
   ])("%j", async (order, a, b) => {
     const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: order }));
     expect([r.status, r.sent.length]).toEqual([0, 1]);

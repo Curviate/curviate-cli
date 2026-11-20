@@ -29,7 +29,7 @@
 import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { DESCRIPTIONS } from "./descriptions.js";
-import { GLOBAL_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, SEARCH_PAGE_LIMIT, SEARCH_PAGE_NOTE, readOnly } from "../lib/global-flags.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient } from "../lib/client.js";
 import { renderSuccess, renderError, renderUnexpectedError, writeNdjsonItem } from "../lib/output.js";
@@ -894,6 +894,7 @@ const searchPeopleCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search people --keywords \"AI engineer\"",
@@ -903,6 +904,7 @@ const searchPeopleCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -943,6 +945,7 @@ const searchCompaniesCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search companies --keywords \"developer tools\"",
@@ -951,6 +954,7 @@ const searchCompaniesCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     industry: { type: "string", description: "Industry ids (comma-separated)." },
@@ -989,6 +993,7 @@ const searchPostsCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search posts --keywords \"agent infrastructure\"",
@@ -997,6 +1002,7 @@ const searchPostsCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     "sort-by": { type: "string", description: "Sort order (e.g. relevance, date)." },
@@ -1037,6 +1043,7 @@ const searchJobsCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search jobs --keywords \"AI engineer\"",
@@ -1045,6 +1052,7 @@ const searchJobsCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Full-text keyword search." },
     ...FILTER_FLAGS,
     // On jobs, --location maps to the geo region filter (not a location array, different API shape for jobs vs people)
@@ -1140,6 +1148,7 @@ const searchGroupsCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search groups \"gtm engineering\"",
@@ -1147,6 +1156,7 @@ const searchGroupsCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     query: { type: "positional", description: "Search terms (multi-word supported, e.g. 'gtm engineering')." },
   },
   async run({ args }) {
@@ -1258,6 +1268,7 @@ export const searchCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core search \"https://www.linkedin.com/search/results/people/?keywords=ai%20engineer\"",
@@ -1265,6 +1276,7 @@ export const searchCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     url: {
       type: "positional",
       required: false,

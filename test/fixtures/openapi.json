@@ -466,6 +466,19 @@
             "nullable": true,
             "description": "Present on BUDGET_EXHAUSTED: the instant the refusal lifts, as an absolute instant rather than a duration, so it stays true however long you hold it. It is the window roll on a ceiling refusal and the next window open on an activity-window one. It is null in the two cases where no clock frees the account: the pending_invites gauge, whose backlog falls when invitations are accepted or withdrawn, and an InMail credit exhaustion (row inmail, hint.parameter inmail_credits), which LinkedIn regrants on a schedule this product cannot read."
           },
+          "budget": {
+            "type": "string",
+            "enum": [
+              "gap",
+              "hour",
+              "day",
+              "lines",
+              "month",
+              "active_hours",
+              "commercial_use"
+            ],
+            "description": "Present on BUDGET_EXHAUSTED for row search only: which search budget refused. gap: the random pause between two search pages of one account (15 to 60 seconds on a free account), not a setting: retry after retry_after seconds. hour, day: search pages in the last 60 minutes or 24 hours; lines: search result lines in the last 24 hours; month: classic search pages in LinkedIn's month (from the 1st, 00:00 Pacific). hour, day and month are the account's own settings (hint.parameter search_pacing.pages_per_hour and so on, on PATCH /v1/{account_id}/safety-policy or update_safety_policy in MCP), from 1 to a maximum. active_hours: outside the account's active hours. commercial_use: LinkedIn showed this account its monthly search limit, so classic search stops until LinkedIn's month starts again; not a setting. retry_after (seconds) and reset_at (the instant) say when a retry can land. Nothing reached LinkedIn."
+          },
           "hint": {
             "type": "object",
             "description": "Present on BUDGET_EXHAUSTED: the exact setting to change, as a field rather than as prose. Limits are always enforced: to send more, raise the limit. parameter is addressable on PATCH /v1/{account_id}/safety-policy (update_safety_policy in MCP), so an agent can decide between waiting until reset_at, escalating to a human, and raising the limit, without parsing the message. The one exception is inmail_credits: not a policy field, LinkedIn's own InMail balance. Wait for LinkedIn to regrant credits; a reply to an InMail refunds its credit.",
@@ -509,7 +522,7 @@
           },
           "retry_after": {
             "type": "integer",
-            "description": "Present alongside row: whole seconds until that row is usable again. This response carries no Retry-After header and no delay retry_hint, deliberately: a paused row can be paused for an hour, and a client that sleeps that inside the call hangs. Do not retry this row before the wait elapses; switch to other work instead. Seconds, not milliseconds."
+            "description": "Present alongside row: whole seconds until that row is usable again. This response carries no Retry-After header and no delay retry_hint, deliberately: a paused row can be paused for an hour, and a client that sleeps that inside the call hangs. Do not retry this row before the wait elapses; switch to other work instead. Seconds, not milliseconds. Also present on a BUDGET_EXHAUSTED for row search: whole seconds until reset_at, when a retry can land."
           },
           "errors": {
             "type": "array",
@@ -105676,6 +105689,254 @@
                         }
                       }
                     },
+                    "search_pacing": {
+                      "type": "object",
+                      "description": "How fast this account reads LinkedIn search result pages. One LinkedIn result page is one counted page, on every search surface (people, companies, posts, jobs, a pasted search URL, Sales Navigator, Recruiter, imports); a call that asks for more than one page gets one page and the `cursor`. Ask for a full page (`limit` at the page size: 10 classic, 25 jobs, Sales Navigator and Recruiter) and page by `cursor`: a `limit` below the page size costs a whole page each call, because the next call asks LinkedIn for the same page again. Pages are read only inside the account's active hours, at least a random 15 to 60 seconds apart on a free account (10 to 45 Premium Business, 8 to 30 Sales Navigator and Recruiter), shared by every surface; a call inside that pause is held up to 20 seconds, else refused with BUDGET_EXHAUSTED, `budget: gap`. `plan` picks the numbers: `classic_free` (free, Premium Career, or not yet detected), `classic_business`, `sales_navigator`, `recruiter`. It is what Curviate detected on LinkedIn; a pinned `limit_profile` can lower it, never raise it. Pages a day and an hour are counted per search surface (classic, Sales Navigator, Recruiter), so a plan change moves the limits, never the count. Set `search_pacing.pages_per_day`, `pages_per_hour` and (classic plans) `pages_per_month` with PATCH /v1/{account_id}/safety-policy, from 1 to `maximum`; null goes back to the default; any other key is refused with 400 naming it (the keys of this object sent back are accepted and ignored). `maximum` is this account's own plan's; classic search on a Sales Navigator or Recruiter account is held to the same settings within the `classic_business` maximums, and to that plan's pages a month.",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "classic_free",
+                            "classic_business",
+                            "sales_navigator",
+                            "recruiter"
+                          ],
+                          "description": "The set of numbers this account's own search surface is held to."
+                        },
+                        "pages_per_day": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Search pages in the last 24 hours (rolling)."
+                        },
+                        "pages_per_hour": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Search pages in the last 60 minutes (rolling)."
+                        },
+                        "pages_per_month": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Classic search pages in LinkedIn's month, which starts on the 1st at 00:00 Pacific time. Null on Sales Navigator and Recruiter."
+                        },
+                        "lines_per_day": {
+                          "type": "object",
+                          "properties": {
+                            "effective": {
+                              "type": "integer"
+                            },
+                            "used": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "effective",
+                            "used"
+                          ],
+                          "description": "Search result lines in the last 24 hours. Not a setting: it follows `pages_per_day` (about one page's lines per page)."
+                        },
+                        "min_gap_seconds": {
+                          "type": "integer",
+                          "description": "The shortest random pause between two pages. Not a setting."
+                        },
+                        "max_gap_seconds": {
+                          "type": "integer",
+                          "description": "The longest random pause between two pages. Not a setting."
+                        },
+                        "month_resets_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "description": "When LinkedIn's month starts again (the 1st, 00:00 Pacific). Null without a monthly budget."
+                        },
+                        "next_page_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "description": "The end of the current pause, or null when a page can be read now."
+                        },
+                        "stopped": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "type": "string",
+                              "enum": [
+                                "commercial_use"
+                              ]
+                            },
+                            "until": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "description": "LinkedIn showed this account its monthly search limit: classic search stops until LinkedIn's month starts again. Null otherwise."
+                        },
+                        "why": {
+                          "type": "string",
+                          "description": "One plain sentence on why the defaults are low."
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "pages_per_day",
+                        "pages_per_hour",
+                        "pages_per_month",
+                        "lines_per_day",
+                        "min_gap_seconds",
+                        "max_gap_seconds",
+                        "month_resets_at",
+                        "next_page_at",
+                        "stopped",
+                        "why"
+                      ]
+                    },
                     "auto_withdraw": {
                       "type": "boolean",
                       "description": "Whether Curviate withdraws this account's old Campaign-sent invitations on its own (default true). Past 400 pending invitations, those over 14 days old go oldest first, at most the larger of 25 and the day's invitation allowance a day, one at a time inside the account's working hours, each after a check that it is still pending. Invitations sent by hand or through the API are never withdrawn, and a withdrawn person is never invited again by a Campaign. It runs while invitations are stopped at 650 pending. Set it with PATCH /v1/{account_id}/safety-policy and `auto_withdraw`; a change is recorded in the account's ledger."
@@ -107283,6 +107544,254 @@
                           "description": "The ramp day, counted in the account's sending days since the ramp began, from 1; the day of the recovery ramp while that supplies `factor`. Null when no ramp applies. `factor` is that day's percentage over 100, and `week` is null."
                         }
                       }
+                    },
+                    "search_pacing": {
+                      "type": "object",
+                      "description": "How fast this account reads LinkedIn search result pages. One LinkedIn result page is one counted page, on every search surface (people, companies, posts, jobs, a pasted search URL, Sales Navigator, Recruiter, imports); a call that asks for more than one page gets one page and the `cursor`. Ask for a full page (`limit` at the page size: 10 classic, 25 jobs, Sales Navigator and Recruiter) and page by `cursor`: a `limit` below the page size costs a whole page each call, because the next call asks LinkedIn for the same page again. Pages are read only inside the account's active hours, at least a random 15 to 60 seconds apart on a free account (10 to 45 Premium Business, 8 to 30 Sales Navigator and Recruiter), shared by every surface; a call inside that pause is held up to 20 seconds, else refused with BUDGET_EXHAUSTED, `budget: gap`. `plan` picks the numbers: `classic_free` (free, Premium Career, or not yet detected), `classic_business`, `sales_navigator`, `recruiter`. It is what Curviate detected on LinkedIn; a pinned `limit_profile` can lower it, never raise it. Pages a day and an hour are counted per search surface (classic, Sales Navigator, Recruiter), so a plan change moves the limits, never the count. Set `search_pacing.pages_per_day`, `pages_per_hour` and (classic plans) `pages_per_month` with PATCH /v1/{account_id}/safety-policy, from 1 to `maximum`; null goes back to the default; any other key is refused with 400 naming it (the keys of this object sent back are accepted and ignored). `maximum` is this account's own plan's; classic search on a Sales Navigator or Recruiter account is held to the same settings within the `classic_business` maximums, and to that plan's pages a month.",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "classic_free",
+                            "classic_business",
+                            "sales_navigator",
+                            "recruiter"
+                          ],
+                          "description": "The set of numbers this account's own search surface is held to."
+                        },
+                        "pages_per_day": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Search pages in the last 24 hours (rolling)."
+                        },
+                        "pages_per_hour": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Search pages in the last 60 minutes (rolling)."
+                        },
+                        "pages_per_month": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "The value in force before warm-up: this Account's own setting, else the default."
+                            },
+                            "effective": {
+                              "type": "integer",
+                              "description": "`value` with the warm-up factor applied: what a page is held to now."
+                            },
+                            "default": {
+                              "type": "integer",
+                              "description": "Curviate's default for this Account's plan."
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "The highest value a setting may take on this plan. A write above it is refused with 400 INVALID_REQUEST naming it. Pages an hour may go up to the plan's daily maximum."
+                            },
+                            "used": {
+                              "type": "integer",
+                              "description": "Search pages read in the window: the last 24 hours, the last 60 minutes, or LinkedIn's month (from the 1st, 00:00 Pacific)."
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "account",
+                                "default",
+                                "maximum"
+                              ],
+                              "description": "`account`: this Account's own setting; `default`: none set; `maximum`: this Account's setting (`saved`) is above what its plan allows now (it was saved under another plan), so the maximum is in force."
+                            },
+                            "saved": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ],
+                              "description": "This Account's own stored setting, or null."
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "effective",
+                            "default",
+                            "maximum",
+                            "used",
+                            "source",
+                            "saved"
+                          ],
+                          "description": "Classic search pages in LinkedIn's month, which starts on the 1st at 00:00 Pacific time. Null on Sales Navigator and Recruiter."
+                        },
+                        "lines_per_day": {
+                          "type": "object",
+                          "properties": {
+                            "effective": {
+                              "type": "integer"
+                            },
+                            "used": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "effective",
+                            "used"
+                          ],
+                          "description": "Search result lines in the last 24 hours. Not a setting: it follows `pages_per_day` (about one page's lines per page)."
+                        },
+                        "min_gap_seconds": {
+                          "type": "integer",
+                          "description": "The shortest random pause between two pages. Not a setting."
+                        },
+                        "max_gap_seconds": {
+                          "type": "integer",
+                          "description": "The longest random pause between two pages. Not a setting."
+                        },
+                        "month_resets_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "description": "When LinkedIn's month starts again (the 1st, 00:00 Pacific). Null without a monthly budget."
+                        },
+                        "next_page_at": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "description": "The end of the current pause, or null when a page can be read now."
+                        },
+                        "stopped": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "type": "string",
+                              "enum": [
+                                "commercial_use"
+                              ]
+                            },
+                            "until": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "description": "LinkedIn showed this account its monthly search limit: classic search stops until LinkedIn's month starts again. Null otherwise."
+                        },
+                        "why": {
+                          "type": "string",
+                          "description": "One plain sentence on why the defaults are low."
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "pages_per_day",
+                        "pages_per_hour",
+                        "pages_per_month",
+                        "lines_per_day",
+                        "min_gap_seconds",
+                        "max_gap_seconds",
+                        "month_resets_at",
+                        "next_page_at",
+                        "stopped",
+                        "why"
+                      ]
                     },
                     "auto_withdraw": {
                       "type": "boolean",
@@ -108991,6 +109500,51 @@
                       }
                     },
                     "description": "The account's warm-up. `enabled`, `preset`, `start`, `step` and `every` are settable; the other keys (`day`, `factor`, `state`, `week`, `steps`, `triggers`, `dormant`) are derived on every read, accepted and ignored, so the read's object can be sent back unchanged."
+                  },
+                  "search_pacing": {
+                    "type": "object",
+                    "properties": {
+                      "pages_per_day": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        ],
+                        "description": "Search pages in the last 24 hours, 1 to the plan's maximum (`search_pacing.pages_per_day.maximum` on the read). Null: the default.",
+                        "nullable": true
+                      },
+                      "pages_per_hour": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        ],
+                        "description": "Search pages in the last 60 minutes, 1 to the plan's maximum (up to the plan's daily maximum). Null: the default.",
+                        "nullable": true
+                      },
+                      "pages_per_month": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        ],
+                        "description": "Classic plans only: classic search pages in LinkedIn's month (from the 1st, 00:00 Pacific), 1 to the plan's maximum. Null: the default.",
+                        "nullable": true
+                      }
+                    },
+                    "description": "This account's own search budgets (one LinkedIn result page = one page). Any subset; null clears a key back to the default; a value above the plan's maximum is refused with 400 INVALID_REQUEST naming the maximum, never lowered for you. The read's other keys (`plan`, `why` ...) and its budget objects (`{value, default, maximum, used ...}`) are accepted and ignored, so the read's object round-trips; any other key is refused with 400 naming it. A change is recorded in the account's ledger."
                   },
                   "auto_withdraw": {
                     "type": "boolean",
@@ -120194,10 +120748,11 @@
                       ],
                       "enum": [
                         "trial",
+                        "currency",
                         "sales_paused",
                         null
                       ],
-                      "description": "trial: available once your Team pays (a Team on a trial or without a paid plan, or with a payment past due); sales_paused: Mailboxes from Curviate cannot be ordered at the moment."
+                      "description": "trial: available once your Team pays (a Team on a trial or without a paid plan, or with a payment past due); currency: your subscription is billed in another currency than Mailboxes from Curviate (US dollars): contact support to move it to the current price, then order; sales_paused: Mailboxes from Curviate cannot be ordered at the moment."
                     },
                     "charge_waits_for": {
                       "type": [
@@ -120634,7 +121189,7 @@
             }
           },
           "400": {
-            "description": "INVALID_REQUEST: a malformed domain or address part, more than 50 Mailboxes, an address named twice. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "INVALID_REQUEST: a malformed domain or address part, more than 50 Mailboxes, an address named twice, or a subscription billed in another currency than US dollars (contact support to move it to the current price). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -120800,7 +121355,7 @@
             }
           }
         },
-        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, warm-up included, at the price `GET /v1/mailboxes/purchases/quote` gives your Team (the answer's `price` is the same object). The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only. An order through an API key counts under the team's cap on Mailboxes from Curviate: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused 403 SPENDING_CAP_REACHED and nothing is ordered. A Team without a paid plan (on a trial, or with a payment past due) cannot order; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
+        "description": "Orders 1 to 50 Mailboxes on one domain your Team owns, warm-up included, at the price `GET /v1/mailboxes/purchases/quote` gives your Team (the answer's `price` is the same object). The order waits in `awaiting_dns` until the records it shows are found at your domain; nothing is charged before. Owners only. An order through an API key counts under the team's cap on Mailboxes from Curviate: from 80% of it the order carries a SPENDING_CAP_NEAR notice, past it the order is refused 403 SPENDING_CAP_REACHED and nothing is ordered. A Team without a paid plan (on a trial, or with a payment past due) cannot order; nor a Team whose subscription is billed in another currency than US dollars (400 INVALID_REQUEST); a subscription on a previous price orders as it is; the domain your company email runs on is refused; a domain already ordered by your Team and still waiting answers `409 MAILBOX_PURCHASE_PENDING`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -131495,7 +132050,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -131880,7 +132435,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -133683,7 +134238,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                            "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                             "properties": {
                               "kind": {
                                 "type": "string"
@@ -134202,7 +134757,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -134712,7 +135267,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -135267,7 +135822,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -135822,7 +136377,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours) or budget (the Account's search lines for today are spent, or Campaign work went first), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search lines for today are spent, or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
                       "properties": {
                         "kind": {
                           "type": "string"

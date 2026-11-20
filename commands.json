@@ -1463,7 +1463,7 @@
         "account",
         "safety"
       ],
-      "description": "Read or change one Account's safety policy (limits per budget row, Active hours, the Activity level), read its limit hits (events), or with --team your Team's email defaults.",
+      "description": "Read or change one Account's safety policy (limits per budget row, Active hours, the Activity level, search pages), read its limit hits (events), or with --team your Team's email defaults.",
       "usageOnly": true,
       "args": [],
       "globals": [],
@@ -1476,7 +1476,7 @@
         "safety",
         "get"
       ],
-      "description": "With --team, the Team's own policy: its defaults per limit profile and budget row and `email` (default_daily_cap, opt_out_scope and the three opt-out texts in force, the shipped default when none is set). Otherwise one Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing, auto_withdraw and the Activity level (activity_level, and activity_level_effective with activity_level_reason when it runs lower). A read: no LinkedIn call.",
+      "description": "With --team, the Team's own policy: its defaults per limit profile and budget row and `email` (default_daily_cap, opt_out_scope and the three opt-out texts in force, the shipped default when none is set). Otherwise one Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing, auto_withdraw, the Activity level (activity_level, and activity_level_effective with activity_level_reason when it runs lower) and search_pacing: the search pages read in the last 24 hours, the last hour and LinkedIn's month against each limit, with its default and maximum (also printed in plain lines on stderr). A read: no LinkedIn call.",
       "usageOnly": false,
       "args": [
         {
@@ -1505,6 +1505,7 @@
       "examples": [
         "curviate account safety get acc_YOUR_ACCOUNT_ID",
         "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up",
+        "curviate account safety get acc_YOUR_ACCOUNT_ID --fields search_pacing",
         "curviate account safety get --team"
       ],
       "requires": [],
@@ -1520,7 +1521,7 @@
         "safety",
         "update"
       ],
-      "description": "With --team, change the Team's email defaults instead, with the --email-* flags: the daily cap a new Mailbox gets (--email-default-cap, at most 50), what an opt-out covers (--email-opt-out-scope everything|email_only) and the three opt-out texts every email step carries (--email-opt-out-text up to 200 characters, --email-opt-out-link-text up to 100, --email-opt-out-link-word up to 30; one plain line, no variables; \"\" restores the shipped default). Prints the Team policy. Otherwise change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Campaigns and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Campaigns aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. Prints the policy.",
+      "description": "With --team, change the Team's email defaults instead, with the --email-* flags: the daily cap a new Mailbox gets (--email-default-cap, at most 50), what an opt-out covers (--email-opt-out-scope everything|email_only) and the three opt-out texts every email step carries (--email-opt-out-text up to 200 characters, --email-opt-out-link-text up to 100, --email-opt-out-link-word up to 30; one plain line, no variables; \"\" restores the shipped default). Prints the Team policy. Otherwise change one Account's safety policy from a JSON document: `rows`, for example {\"rows\":[{\"budget_row\":\"profile_views\",\"ceiling\":40}]}, `active_hours`, for example {\"active_hours\":{\"days\":[\"mon\",\"tue\"],\"start\":\"09:00\",\"end\":\"17:00\"}}, `auto_withdraw` (true or false: Curviate withdraws its own invitations older than 14 days once more than 400 are pending) and `activity_level`. --activity-level normal|increased sets the Activity level alone, or beside --file: how close the Account's daily targets sit to its limits. normal (the default) aims about midway between the green figure and the limit; increased works close to the limit, never past it, and raises the chance LinkedIn notices the activity. It runs as normal, and the setting stays, while warm-up is on or the Account's health is not healthy; the printed policy's activity_level_effective and activity_level_reason say which level is in force. Active hours hold Campaigns and other live writes, never a direct message (send, new chat, edit, delete, reaction, read mark). A row's `green` is its target, what Campaigns aim at; the ceiling is the most it may do. Fields you leave out stay as they are; null clears an override. --search-pages-per-day, --search-pages-per-hour and --search-pages-per-month set the Account's own search budgets (search_pacing), alone or beside --file: a whole number from 1 to the maximum `curviate account safety get` shows (pages an hour up to the daily maximum; a month on classic search only), or default. Above the maximum the API refuses it (exit 2) and names the maximum; nothing is lowered for you. The random pause between search pages is not a setting. Prints the policy.",
       "usageOnly": false,
       "args": [
         {
@@ -1554,6 +1555,21 @@
           "description": "With --team: the opt-out link's word, up to 30 characters, for example Abmelden. \"\" restores the shipped default."
         },
         {
+          "name": "search-pages-per-day",
+          "type": "string",
+          "description": "The Account's search pages a day (the last 24 hours): a whole number from 1 to the maximum `curviate account safety get` shows, or default. Above the maximum the API refuses it and names the maximum."
+        },
+        {
+          "name": "search-pages-per-hour",
+          "type": "string",
+          "description": "The Account's search pages an hour (the last 60 minutes): 1 to the maximum, which is the daily maximum, or default."
+        },
+        {
+          "name": "search-pages-per-month",
+          "type": "string",
+          "description": "The Account's classic search pages in LinkedIn's month (from the 1st, 00:00 Pacific time): 1 to the maximum, or default. Sales Navigator and Recruiter have no monthly budget."
+        },
+        {
           "name": "accountId",
           "type": "positional",
           "required": false,
@@ -1585,10 +1601,12 @@
       "examples": [
         "curviate account safety update acc_YOUR_ACCOUNT_ID --file policy.json",
         "curviate account safety update acc_YOUR_ACCOUNT_ID --activity-level increased",
+        "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-hour 12",
+        "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-day default",
         "curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden"
       ],
       "requires": [
-        "an Account id with --file or --activity-level, or both (the flag wins over the document's activity_level); or --team with at least one --email-* flag."
+        "an Account id with --file, --activity-level or a --search-pages-* flag, or several (a flag wins over the document's own key); or --team with at least one --email-* flag."
       ],
       "risk": "write",
       "rules": {
@@ -5380,7 +5398,7 @@
         "imports",
         "get"
       ],
-      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now: active_hours, budget or pushback, with `until`) and `estimate`. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
+      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now, with `until`, when it resumes on its own: active_hours, outside the Account's Active hours; budget, the Account's search limit is reached, and it resumes when the limit frees; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now, so the import reads again when that lifts, at the latest at `until`) and `estimate`. Nothing to retry: it resumes by itself. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
       "usageOnly": false,
       "args": [
         {
@@ -7499,7 +7517,7 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
+        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; currency: the subscription is billed in another currency than US dollars, contact support; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
       ],
       "errors": {
         "INSUFFICIENT_ROLE": "only a Team Owner reads the price of Mailboxes from Curviate."
@@ -7646,7 +7664,7 @@
         "purchase",
         "get"
       ],
-      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, host_failed: setting up failed and the charge was undone in full). charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
+      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, subscription_ended, payment_failed, spending_cap_reached, currency: the subscription is billed in another currency than US dollars, nothing was charged, contact support; host_failed: setting up failed and the charge was undone in full). charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
       "usageOnly": false,
       "args": [
         {
@@ -14526,6 +14544,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
+        {
           "name": "url",
           "type": "positional",
           "required": false,
@@ -14541,7 +14564,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -14557,6 +14579,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -14569,6 +14594,11 @@
       "description": "Search members with structured filters.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -14646,7 +14676,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -14664,6 +14693,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -14676,6 +14708,11 @@
       "description": "Search companies.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -14723,7 +14760,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -14740,6 +14776,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -14752,6 +14791,11 @@
       "description": "Search posts. Each result's text can repeat fragments around links, mentions and hashtags; use `curviate core post get <id>` for the clean body.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -14834,7 +14878,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -14851,6 +14894,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -14863,6 +14909,11 @@
       "description": "Search jobs.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -14980,7 +15031,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -14997,6 +15047,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -15056,6 +15109,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
+        {
           "name": "query",
           "type": "positional",
           "description": "Search terms (multi-word supported, e.g. 'gtm engineering')."
@@ -15070,7 +15128,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -15086,6 +15143,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -17415,6 +17475,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
+        {
           "name": "url",
           "type": "positional",
           "required": false,
@@ -17430,7 +17495,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -17446,6 +17510,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -17459,6 +17526,11 @@
       "description": "Search Sales Navigator member profiles.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -17506,7 +17578,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -17523,6 +17594,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -17536,6 +17610,11 @@
       "description": "Search Sales Navigator companies.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -17563,7 +17642,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -17579,6 +17657,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -18135,6 +18216,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
+        {
           "name": "url",
           "type": "positional",
           "required": false,
@@ -18150,7 +18236,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -18166,6 +18251,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -18179,6 +18267,11 @@
       "description": "Search Recruiter member profiles.",
       "usageOnly": false,
       "args": [
+        {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
         {
           "name": "keywords",
           "type": "string",
@@ -18221,7 +18314,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -18238,6 +18330,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
@@ -18898,6 +18993,11 @@
       "usageOnly": false,
       "args": [
         {
+          "name": "limit",
+          "type": "string",
+          "description": "Results per call, at most one LinkedIn page (10 on classic search, 25 on jobs, Sales Navigator and Recruiter); above it you get one page and a cursor. Ask for a full page and follow the cursor (--cursor or --all): a smaller limit still costs a whole page of the Account's search budget."
+        },
+        {
           "name": "projectId",
           "type": "positional",
           "description": "Recruiter project ID."
@@ -18935,7 +19035,6 @@
         "timeout",
         "json",
         "fields",
-        "limit",
         "cursor",
         "all",
         "max-pages",
@@ -18952,6 +19051,9 @@
       "rules": {
         "budget_rows": [
           "search"
+        ],
+        "notes": [
+          "Search is paced per Account: one LinkedIn page per call, a random pause between pages, pages an hour, a day and (classic) a LinkedIn month. A refusal exits 13 and names its budget and the seconds to wait; `curviate account safety get <account_id>` shows the pages used and each limit."
         ]
       }
     },
