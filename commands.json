@@ -5363,7 +5363,7 @@
         "imports",
         "list"
       ],
-      "description": "List your Team's imports, newest first: status, counts and failure.",
+      "description": "List your Team's imports, newest first: status, counts and failure; an import from a LinkedIn source also its `progress` line without --json (the wait, when its next page is read, how long is left), and `next_page_at`, `waiting`, `estimate` as `lead imports get` describes.",
       "usageOnly": false,
       "args": [],
       "globals": [
@@ -5395,7 +5395,7 @@
         "imports",
         "get"
       ],
-      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now, with `until`, when it resumes on its own: active_hours, outside the Account's Active hours; budget, the Account's search limit is reached, and it resumes when the limit frees; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now, so the import reads again when that lifts, at the latest at `until`) and `estimate`. Nothing to retry: it resumes by itself. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
+      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure. An import from a LinkedIn source also carries `next_page_at` (when its next page is read), `waiting` (why no page is read now, with `until`: active_hours, outside the Account's Active hours; budget, a search limit of the Account is reached, named by `budget`: hour, day, lines or month; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now; halt, a safety pause; account_unavailable, the Account needs reconnecting; import_ahead, queued behind `import_id`, another import of the same Account) and `estimate` (`seconds_min`, `seconds_max`: how long it still runs; `working_days_*` are deprecated). Without --json, `progress` says it in one line, for example \"Daily search limit reached. Next page tomorrow at 09:00. About 2 to 3 days left\". Nothing to retry and no need to poll: it resumes by itself; look again at `next_page_at`. Only a reconnect needs you, and a search limit you may raise with `curviate account safety update`. `counts.updated`: Leads the import filled at least one field on. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
       "usageOnly": false,
       "args": [
         {

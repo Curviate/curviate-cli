@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.64.0] - 2026-11-20
+
+Requires `@curviate/sdk` 0.59.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command, flag or exit code.
+
+- **An import from a LinkedIn source says where it stands, in the dashboard's words.** `lead import --source`, `lead imports get` and `lead imports list` print a `progress` line after `status`: the wait with the time of the next page (`Next page in 2 minutes`, `Hourly search limit reached. Next page at 14:05`, `Daily search limit reached. Next page tomorrow at 09:00`, `Monthly search limit reached`, `Outside the Account's Active hours`, `Paused: LinkedIn slowed this search down`, `Starts after the import ahead of it (imp_...). First page in 3 minutes`, `Resumes once the Account is reconnected`), then how long is left (`About 8 to 11 minutes left`, from `estimate.seconds_min` and `seconds_max`: minutes under 90, hours under 36, then days; never a range with equal ends); a finished import says how long it took (`Done in 12 minutes: reached its maximum`). Times are local. With `--json` (or piped output) stdout is the API's object unchanged, and `lead imports get` writes the line to stderr.
+- **The estimate's working days are no longer printed** (deprecated by the API; still in `--json`).
+- `lead imports get` help: `next_page_at`, `waiting.budget` (hour, day, lines, month), `waiting.kind` `import_ahead` with `import_id`, `halt`, `account_unavailable`, `estimate` in seconds, and `counts.updated` (Leads the import filled at least one field on). No need to poll: look again at `next_page_at`.
+
 ## [0.63.0] - 2026-11-20
 
 Requires `@curviate/sdk` 0.58.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. New flags, no new exit code: a search refusal is `BUDGET_EXHAUSTED`, exit 13; a search paused after LinkedIn server errors is `PLATFORM_ERROR`, exit 7.

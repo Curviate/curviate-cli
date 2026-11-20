@@ -132050,7 +132050,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -132060,21 +132060,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
@@ -132345,7 +132376,7 @@
             }
           },
           "202": {
-            "description": "More rows than that, or a source: queued and processed in the background. A source is read page by page from its Account, inside that Account's limits and Active hours, after its Campaign work and at a human pace: expect days, not minutes (estimate). Poll GET /v1/leads/imports/{id}.",
+            "description": "More rows than that, or a source: queued and processed in the background. A source is read page by page from its Account, inside that Account's limits and Active hours, after its Campaign work and at a human pace: minutes for a short search, days for a long one (estimate, next_page_at). Poll GET /v1/leads/imports/{id}.",
             "content": {
               "application/json": {
                 "schema": {
@@ -132435,7 +132466,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -132445,21 +132476,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
@@ -132733,9 +132795,12 @@
                         "max": 1000
                       },
                       "waiting": null,
+                      "next_page_at": "2026-11-20T13:30:04Z",
                       "estimate": {
-                        "working_days_min": 4,
-                        "working_days_max": 5
+                        "seconds_min": 1095840,
+                        "seconds_max": 1693600,
+                        "working_days_min": 10,
+                        "working_days_max": 15
                       },
                       "source_total": null,
                       "finish_reason": null,
@@ -134238,7 +134303,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                            "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                             "properties": {
                               "kind": {
                                 "type": "string"
@@ -134248,21 +134313,52 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "budget": {
+                                "type": "string",
+                                "enum": [
+                                  "hour",
+                                  "day",
+                                  "lines",
+                                  "month"
+                                ],
+                                "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                              },
+                              "import_id": {
+                                "type": "string",
+                                "description": "With kind import_ahead: the import just ahead of this one on its Account."
                               }
                             }
+                          },
+                          "next_page_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                           },
                           "estimate": {
                             "type": [
                               "object",
                               "null"
                             ],
-                            "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                            "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                             "properties": {
-                              "working_days_min": {
+                              "seconds_min": {
                                 "type": "integer"
                               },
-                              "working_days_max": {
+                              "seconds_max": {
                                 "type": "integer"
+                              },
+                              "working_days_min": {
+                                "type": "integer",
+                                "deprecated": true,
+                                "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                              },
+                              "working_days_max": {
+                                "type": "integer",
+                                "deprecated": true,
+                                "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                               }
                             }
                           },
@@ -134757,7 +134853,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -134767,21 +134863,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
@@ -135267,7 +135394,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -135277,21 +135404,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
@@ -135822,7 +135980,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -135832,21 +135990,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
@@ -136377,7 +136566,7 @@
                         "object",
                         "null"
                       ],
-                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (the Account's search limit is reached: its search pages for the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down) or search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), with until the next opening. Null while reading or between paced pages.",
+                      "description": "Why no page is being read now: active_hours (outside the Account's Active hours), budget (one of the Account's search limits is reached, named by budget: its search pages in an hour, the last 24 hours or LinkedIn's month, or its result lines; or Campaign work went first), pushback (LinkedIn slowed this search down), search_limited (LinkedIn shows this Account only a few search results for now; read again when that lifts, at the latest at until), halt (a safety pause), account_unavailable (the Account needs reconnecting; until null) or import_ahead (queued behind import_id, another import of the same Account; until is when this one's first page is expected), with until the next opening. Null while reading or between paced pages (next_page_at says when).",
                       "properties": {
                         "kind": {
                           "type": "string"
@@ -136387,21 +136576,52 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "budget": {
+                          "type": "string",
+                          "enum": [
+                            "hour",
+                            "day",
+                            "lines",
+                            "month"
+                          ],
+                          "description": "With kind budget: the search limit reached, search pages an hour, a day, result lines a day (or the day's Allowance, Campaign work first) or LinkedIn's month."
+                        },
+                        "import_id": {
+                          "type": "string",
+                          "description": "With kind import_ahead: the import just ahead of this one on its Account."
                         }
                       }
+                    },
+                    "next_page_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "When the next page of a LinkedIn source is read: after the pause between pages, or when the wait in waiting ends; queued behind another import of the Account, when its first page is expected. Null while paused, waiting for the Account to be reconnected, and on row, CSV and finished imports."
                     },
                     "estimate": {
                       "type": [
                         "object",
                         "null"
                       ],
-                      "description": "A range of working days left, from the Account's limits and the conservative search pace; never a time. Null when finished.",
+                      "description": "How long the import still runs, in seconds: at the usual pace and at the slow end, from this Account's search limits and own settings, its Active hours and the pages left, after the imports ahead of it on the Account; never a clock time, and never 0 before it finishes. Null when finished, and while waiting for the Account to be reconnected. A finished import took finished_at minus started_at.",
                       "properties": {
-                        "working_days_min": {
+                        "seconds_min": {
                           "type": "integer"
                         },
-                        "working_days_max": {
+                        "seconds_max": {
                           "type": "integer"
+                        },
+                        "working_days_min": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_min in the Account's Active-hours days, at least 1. Read seconds_min; removed in a later version."
+                        },
+                        "working_days_max": {
+                          "type": "integer",
+                          "deprecated": true,
+                          "description": "Deprecated: seconds_max in the Account's Active-hours days, at least 1. Read seconds_max; removed in a later version."
                         }
                       }
                     },
