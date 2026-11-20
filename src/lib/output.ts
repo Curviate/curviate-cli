@@ -446,6 +446,7 @@ export function searchBudgetWords(budget: string): string {
     case "lines": return "search results in the last 24 hours (they follow search pages a day)";
     case "month": return "search pages this LinkedIn month (it starts again on the 1st at 00:00 Pacific time)";
     case "active_hours": return "outside the Account's Active hours";
+    case "warm_up": return "warm-up holds this Account's search at 0 pages for now (not a search setting)";
     case "commercial_use": return "LinkedIn showed this Account its monthly search limit; classic search waits for LinkedIn's next month (not a setting)";
     default: return budget;
   }

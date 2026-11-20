@@ -219,10 +219,11 @@ describe("pass 6: placement tests, placement checks, Mailboxes from Curviate, th
   it.each([
     ["past the Team's cap on Mailboxes from Curviate: the plain line, exit 5, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 403, "SPENDING_CAP_REACHED", 5, "past its cap on Mailboxes from Curviate"],
     ["orders paused: exit 1, one request", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 409, "MAILBOX_SALES_PAUSED", 1, "cannot be ordered at the moment"],
+    ["no room for this many: exit 1, one request, never retried", ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna", "--yes"], 409, "MAILBOX_NO_ROOM", 1, "Order fewer, or order again later."],
     ["the monthly allowance is used: exit 5, one request, never retried", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 429, "PLACEMENT_TEST_ALLOWANCE_EXHAUSTED", 5, "placement tests"],
     ["tests cannot run now: exit 1, one request", ["mailbox", "test", "mbx_1", "--subject", "s", "--body-file", "-"], 503, "PLACEMENT_TESTS_UNAVAILABLE", 1, "cannot run"],
   ])("%s", async (_n, args, status, code, exit, says) => {
-    const message = code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "SPENDING_CAP_REACHED" ? "Past the cap." : "This Team has used its 10 placement tests for this month.";
+    const message = code === "MAILBOX_NO_ROOM" ? "Curviate has no room for this many new Mailboxes at the moment and is adding more. Nothing was ordered or charged. Order fewer, or order again later." : code === "MAILBOX_SALES_PAUSED" ? "Mailboxes from Curviate cannot be ordered at the moment." : code === "PLACEMENT_TESTS_UNAVAILABLE" ? "Placement tests cannot run right now." : code === "SPENDING_CAP_REACHED" ? "Past the cap." : "This Team has used its 10 placement tests for this month.";
     const r = await wire(args, () => ({ status, body: { code, message, user_fixable: true, retry_likely_to_succeed: false } }), { stdin: "b" });
     expect([r.status, r.sent.length]).toEqual([exit, 1]);
     expect(r.stderr).toContain(says);
@@ -271,6 +272,14 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
     [{ id: "mpu_1", state: "cancelled", reason: "host_failed" }, "the charge was undone in full", "Nothing to retry"],
     [{ id: "mpu_1", state: "cancelled", reason: "subscription_ended", charge_unknown: true }, "We are checking whether this order was charged.", "If it was, the charge is given back in full."],
     [{ id: "mpu_1", state: "cancelled", reason: "currency", charge_unknown: false }, "billed in another currency than Mailboxes from Curviate (US dollars)", "Nothing was charged. Contact support"],
+    // Sold 13: what the order waits for, and the three new ends, in the dashboard's words
+    [{ id: "mpu_1", state: "awaiting_dns", waiting_for: "records", expires_at: "2026-12-03T12:00:00.000Z" }, "Add each record where your domain's DNS is managed.", "not all found by December 3, the order ends with nothing charged"],
+    [{ id: "mpu_1", state: "awaiting_dns", waiting_for: "payment", expires_at: "2026-12-03T12:00:00.000Z" }, "update the payment method in Billing (app.curviate.com/settings/billing) and the order continues by itself", "still outstanding on December 3"],
+    [{ id: "mpu_1", state: "awaiting_dns", waiting_for: "curviate", expires_at: "2026-12-03T12:00:00.000Z" }, "waits on Curviate's side and continues by itself; there is nothing to do on yours", "by December 3"],
+    [{ id: "mpu_1", state: "awaiting_dns", waiting_for: "charge" }, "the order is being charged", "this can take a few minutes"],
+    [{ id: "mpu_1", state: "cancelled", reason: "payment_outstanding" }, "payment stayed outstanding for 14 days", "Update the payment method in Billing"],
+    [{ id: "mpu_1", state: "cancelled", reason: "held_by_curviate" }, "Curviate could not create the Mailboxes within 14 days", "You can order again."],
+    [{ id: "mpu_1", state: "cancelled", reason: "domain_taken" }, "for this domain was confirmed first", "Name another domain."],
   ])("%j", async (order, a, b) => {
     const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: order }));
     expect([r.status, r.sent.length]).toEqual([0, 1]);
@@ -291,7 +300,7 @@ describe("pass 10: settling is answered once; a connect names its seat", () => {
 });
 
 describe("pass 11: the price of Mailboxes from Curviate is the server's, for this Team, when it is shown", () => {
-  const yearly = { object: "mailbox_quote", mailboxes: 2, currency: "usd", billing_period: "annual", unit_amount: 6000, amount: 12000, amount_monthly: 1000, charged: "when_records_found", prorated: true, plus_tax: true, orderable: true, not_orderable_reason: null, charge_waits_for: null };
+  const yearly = { object: "mailbox_quote", mailboxes: 2, currency: "usd", billing_period: "annual", unit_amount: 6000, amount: 12000, amount_monthly: 1000, charged: "when_records_found", prorated: true, plus_tax: true, orderable: true, not_orderable_reason: null, charge_waits_for: null }; // served always null since Sold 13, never printed
   const buy = ["mailbox", "buy", "--domain", "acme-mail.example", "--mailbox", "anna:Anna:shared", "--mailbox", "ben:Ben:shared", "--yes"];
   const order = (amount: number) => ({ status: 201, body: { id: "mpu_1", state: "awaiting_dns", price: { ...yearly, amount } } });
 
@@ -299,6 +308,15 @@ describe("pass 11: the price of Mailboxes from Curviate is the server's, for thi
     const r = await wire(["mailbox", "quote", "2"], () => ({ body: yearly }));
     expect([r.status, lines(r.sent)]).toEqual([0, [{ call: "GET /v1/mailboxes/purchases/quote", query: { mailboxes: "2" }, body: undefined }]]);
     expect(r.stderr).toContain("$120.00 a year ($60.00 each), plus tax where it applies. Charged the day the records are found at your domain");
+  });
+
+  it.each([
+    ["payment", "Your Team has a payment outstanding. Update the payment method in Billing (app.curviate.com/settings/billing), then order."],
+    ["capacity", "Curviate has no room for this many new Mailboxes at the moment and is adding more. Order fewer, or order again later."],
+    ["trial", "It cannot be ordered now: available once your Team pays"],
+  ])("quote not orderable for %s says what the person can do", async (why, says) => {
+    const r = await wire(["mailbox", "quote", "2"], () => ({ body: { ...yearly, orderable: false, not_orderable_reason: why } }));
+    expect(r.stderr).toContain(says);
   });
 
   it.each([["0"], ["51"], ["two"], ["2.5"]])("quote %s exits 2 with no request", async (n) => {
