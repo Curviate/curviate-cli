@@ -119,7 +119,7 @@ const getCmd = defineCommand({
     description: "With --team, the Team's own policy: its defaults per limit profile and budget row and `email` (default_daily_cap, opt_out_scope and the three opt-out texts in force, the shipped default when none is set). Otherwise one Account's safety policy: every budget row with its ceiling, effective_ceiling and (strict rows) target and effective_target, Active hours, warm-up, pacing, auto_withdraw, the Activity level (activity_level, and activity_level_effective with activity_level_reason when it runs lower) and search_pacing: the search pages read in the last 24 hours, the last hour and LinkedIn's month against each limit, with its default and maximum (also printed in plain lines on stderr). A read: no LinkedIn call.",
     risk: "read",
     seeAlso: ["curviate account safety update", "curviate account get"],
-    examples: ["curviate account safety get acc_YOUR_ACCOUNT_ID", "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up", "curviate account safety get acc_YOUR_ACCOUNT_ID --fields search_pacing", "curviate account safety get --team"],
+    examples: ["curviate account safety get acc_YOUR_ACCOUNT_ID", "curviate account safety get acc_YOUR_ACCOUNT_ID --fields search_pacing", "curviate account safety get --team"],
   },
   args: { ...readOnly(READ_SINGLE_FLAGS), team: TEAM, accountId: ACCOUNT },
   async run({ args }) {
@@ -215,9 +215,7 @@ const updateCmd = defineCommand({
     seeAlso: ["curviate account safety get", "curviate account warm-up"],
     examples: [
       "curviate account safety update acc_YOUR_ACCOUNT_ID --file policy.json",
-      "curviate account safety update acc_YOUR_ACCOUNT_ID --activity-level increased",
       "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-hour 12",
-      "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-day default",
       "curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden",
     ],
     requires: ["an Account id with --file, --activity-level or a --search-pages-* flag, or several (a flag wins over the document's own key); or --team with at least one --email-* flag."],

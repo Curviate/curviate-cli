@@ -1504,7 +1504,6 @@
       ],
       "examples": [
         "curviate account safety get acc_YOUR_ACCOUNT_ID",
-        "curviate account safety get acc_YOUR_ACCOUNT_ID --fields active_hours,warm_up",
         "curviate account safety get acc_YOUR_ACCOUNT_ID --fields search_pacing",
         "curviate account safety get --team"
       ],
@@ -1600,9 +1599,7 @@
       ],
       "examples": [
         "curviate account safety update acc_YOUR_ACCOUNT_ID --file policy.json",
-        "curviate account safety update acc_YOUR_ACCOUNT_ID --activity-level increased",
         "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-hour 12",
-        "curviate account safety update acc_YOUR_ACCOUNT_ID --search-pages-per-day default",
         "curviate account safety update --team --email-default-cap 40 --email-opt-out-link-word Abmelden"
       ],
       "requires": [

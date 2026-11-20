@@ -323,7 +323,7 @@ export async function* streamAll<P extends Record<string, unknown>>(
         page = readablePage(await fn(pageParams));
         break;
       } catch (err) {
-        // A search page landing inside the Account's random pause between pages (#3701): wait it out, at most
+        // A search page landing inside the Account's random pause between pages: wait it out, at most
         // a few times, and ask for the same page again. Any other refusal ends the stream, with the cursor to resume.
         const wait = searchGapSeconds(err);
         if (wait === undefined || waits >= MAX_GAP_WAITS) {

@@ -497,7 +497,7 @@ export function renderError(
           safety.safetyReason === "activity_window"
             ? "outside its activity window"
             : "at its ceiling";
-        // A search refusal names WHICH page budget refused and when a retry lands (#3701): say both in words.
+        // A search refusal names WHICH page budget refused and when a retry lands: say both in words.
         const search = safety.searchBudget !== undefined ? searchBudgetWords(safety.searchBudget) : undefined;
         msg += search ? `\nSearch budget: ${search}` : `\nSafety budget: ${safety.budgetRow} is ${why}`;
         if (search && safety.retryAfterSeconds !== undefined) {
