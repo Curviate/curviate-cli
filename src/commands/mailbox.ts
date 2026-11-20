@@ -204,7 +204,7 @@ export type ServedPrice = {
 const money = (minor: number, currency: string) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(minor / 100);
 
-// The dashboard's words (api/055 As built, Sold 13), so a person reads the same line in both.
+// The dashboard's words, so a person reads the same line in both.
 const BILLING = "app.curviate.com/settings/billing";
 const PAYMENT_OUTSTANDING = `Your Team has a payment outstanding. Update the payment method in Billing (${BILLING}), then order.`;
 const NO_ROOM = "Curviate has no room for this many new Mailboxes at the moment and is adding more. Order fewer, or order again later.";
