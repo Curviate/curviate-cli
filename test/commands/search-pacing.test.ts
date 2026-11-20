@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { CurviateError } from "@curviate/sdk";
 import { renderError } from "../../src/lib/output.js";
 import { lines, wire, type Answer } from "../helpers/wire.js";
+import { importStatusLine, whenText } from "../../src/commands/contact-import.js";
 
 const refusal = (budget: string, retry_after: number, parameter: string) => ({
   status: 429,
@@ -119,16 +120,50 @@ describe("an owner setting the search budgets", () => {
   });
 });
 
-describe("an import from a LinkedIn source says why it waits and when it resumes", () => {
+describe("an import from a LinkedIn source says its wait, the next page and how long is left, in the dashboard's words", () => {
+  const NOW = Date.parse("2026-11-20T10:00:00.000Z");
+  const at = (min: number) => new Date(NOW + min * 60_000).toISOString();
+  const src = (o: Record<string, unknown>) => ({ object: "lead_import", id: "imp_1", format: "source", status: "running", waiting: null, next_page_at: null, estimate: null, counts: { found: 40 }, ...o });
+  const est = (a: number, b: number) => ({ seconds_min: a, seconds_max: b, working_days_min: 1, working_days_max: 1 });
   it.each([
-    [{ kind: "budget", until: "2026-11-21T09:00:00.000Z" }, "Search limit reached for this Account. Resumes 2026-11-21T09:00:00.000Z."],
-    [{ kind: "search_limited", until: "2026-12-01T12:00:00.000Z" }, "LinkedIn shows this Account only a few search results for now. Resumes when that lifts, at the latest 2026-12-01T12:00:00.000Z."],
-    [{ kind: "pushback", until: null }, "Paused: LinkedIn slowed this search down. Resumes on its own."],
-    [{ kind: "active_hours", until: "2026-11-21T07:00:00.000Z" }, "Waiting for the Account's Active hours. Resumes 2026-11-21T07:00:00.000Z."],
-  ])("%j", async (waiting, note) => {
-    const r = await wire(["lead", "imports", "get", "imp_1"], () => ({ body: { object: "lead_import", id: "imp_1", status: "running", waiting } }));
-    expect([r.status, r.sent.length]).toEqual([0, 1]);
-    expect(r.stderr).toContain(note);
+    [{ next_page_at: at(2), estimate: est(480, 640) }, "Next page in 2 minutes. About 8 to 11 minutes left"],
+    [{ next_page_at: at(0.5), estimate: est(30, 50) }, "Next page in under a minute. Less than a minute left"],
+    [{ waiting: { kind: "budget", budget: "hour", until: at(40) }, next_page_at: at(40), estimate: est(7200, 7200) }, "Hourly search limit reached. Next page in 40 minutes. About 2 hours left"],
+    [{ waiting: { kind: "budget", budget: "day", until: at(60) }, next_page_at: at(60) }, "Daily search limit reached. Next page in 60 minutes"],
+    [{ waiting: { kind: "budget", budget: "lines" }, next_page_at: at(30) }, "Daily search limit reached. Next page in 30 minutes"],
+    [{ waiting: { kind: "budget", budget: "month" }, estimate: est(5 * 86_400, 12 * 86_400) }, "Monthly search limit reached. About 5 to 12 days left"],
+    [{ waiting: { kind: "active_hours" }, next_page_at: at(20), estimate: est(3600 * 20, 3600 * 30) }, "Outside the Account's Active hours. Next page in 20 minutes. About 20 to 30 hours left"],
+    [{ waiting: { kind: "pushback" }, next_page_at: at(10) }, "Paused: LinkedIn slowed this search down. Next page in 10 minutes"],
+    [{ waiting: { kind: "search_limited", until: at(5) } }, "LinkedIn shows this Account only a few search results for now. Resumes when that lifts, at the latest in 5 minutes"],
+    [{ waiting: { kind: "halt", until: at(15) } }, "Held by a safety pause. Resumes in 15 minutes"],
+    [{ waiting: { kind: "account_unavailable", until: null } }, "Resumes once the Account is reconnected"],
+    [{ status: "queued", waiting: { kind: "import_ahead", import_id: "imp_0", until: at(3) }, next_page_at: at(3), estimate: est(600, 900) }, "Starts after the import ahead of it (imp_0). First page in 3 minutes. About 10 to 15 minutes left"],
+    [{ status: "paused" }, "Paused. Nothing is read until you resume it"],
+    [{ status: "stopped" }, "Stopped. The 40 found stay in the list"],
+    [{ status: "completed", finish_reason: "max_reached", started_at: at(-12), finished_at: at(0) }, "Done in 12 minutes: reached its maximum"],
+    [{ status: "completed", finish_reason: "no_new_leads", started_at: at(-60 * 30), finished_at: at(0) }, "Done in 30 hours: three pages in a row brought nobody new"],
+    [{ status: "completed", finish_reason: "source_exhausted" }, "Done: read every result"],
+    [{ format: "csv", status: "completed" }, null],
+  ])("%j", (o, line) => {
+    expect(importStatusLine(src(o), NOW)).toBe(line);
+  });
+
+  it("a time later today, tomorrow or later is a clock time", () => {
+    expect(whenText(at(120), NOW)).toMatch(/^(at|tomorrow at) \d\d:\d\d$/);
+    expect(whenText(at(60 * 24 * 4), NOW)).toMatch(/^on \w{3} \d{1,2} \w{3} at \d\d:\d\d$/);
+  });
+
+  it("get and list print the line and the estimate in seconds only; --json passes the API's fields through unchanged", async () => {
+    const imp = src({ waiting: { kind: "budget", budget: "day" }, estimate: est(90_000, 180_000) });
+    const was = process.stdout.isTTY;
+    process.stdout.isTTY = true; // a person at a terminal; piped output is JSON
+    const get = await wire(["lead", "imports", "get", "imp_1"], () => ({ body: imp }));
+    expect([get.status, get.stdout.includes("progress: Daily search limit reached. About 25 hours to 2 days left"), get.stdout.includes("working_days")]).toEqual([0, true, false]);
+    const list = await wire(["lead", "imports", "list"], () => ({ body: { object: "list", items: [imp, { ...imp, id: "imp_2", status: "paused" }], cursor: null } }));
+    expect([list.status, list.stdout.match(/^progress: .*$/gm), list.stdout.includes("working_days")]).toEqual([0, ["progress: Daily search limit reached. About 25 hours to 2 days left", "progress: Paused. Nothing is read until you resume it"], false]);
+    process.stdout.isTTY = was;
+    const json = await wire(["lead", "imports", "get", "imp_1", "--json"], () => ({ body: imp }));
+    expect([json.status, JSON.parse(json.stdout), json.stderr.includes("Daily search limit reached")]).toEqual([0, imp, true]);
   });
 });
 

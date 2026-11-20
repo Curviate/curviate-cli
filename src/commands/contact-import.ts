@@ -12,7 +12,7 @@ import { defineCommand } from "citty";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { Curviate, CurviateError } from "@curviate/sdk";
 import { GLOBAL_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, readOnly } from "../lib/global-flags.js";
-import { renderSuccess, writeNdjsonItem } from "../lib/output.js";
+import { isJsonMode, renderSuccess, writeNdjsonItem } from "../lib/output.js";
 import { readFileFlag } from "../lib/document.js";
 import { isStdinToken } from "../lib/stdin.js";
 import { streamAll, pageDelayFromFlags, readCursorFlag, readMaxPagesFlag, readableObject, readablePage, rejectPaginationModifiersWithoutAll } from "../lib/paginate.js";
@@ -301,7 +301,7 @@ async function runSourceImport(c: Curviate, f: ImportFlags): Promise<void> {
   if (f.preview) return preview("leads.imports.create", {}, body);
   try {
     const imp = await c.leads.imports.create(body as never);
-    renderSuccess(readableObject(imp), outputOpts(f), process);
+    renderSuccess(readableObject(imp), importOpts(f, importHuman), process);
     if (!outputOpts(f).json) process.stderr.write(`Follow it with \`curviate lead imports get ${String((imp as Body)["id"])}\`; pause, resume or stop it with \`curviate lead imports pause|resume|stop\`.\n`);
   } catch (err) {
     await fail(err, f);
@@ -479,7 +479,7 @@ const importCmd = defineCommand({
 const ID = { type: "positional" as const, description: "Import id (imp_...)." };
 
 const importsList = defineCommand({
-  meta: { name: "list", description: "List your Team's imports, newest first: status, counts and failure.", risk: "read", examples: ["curviate lead imports list"] },
+  meta: { name: "list", description: "List your Team's imports, newest first: status, counts and failure; an import from a LinkedIn source also its `progress` line without --json (the wait, when its next page is read, how long is left), and `next_page_at`, `waiting`, `estimate` as `lead imports get` describes.", risk: "read", examples: ["curviate lead imports list"] },
   args: { ...readOnly(GLOBAL_FLAGS) },
   run: online(async (c, f) => {
     rejectPaginationModifiersWithoutAll(f, process);
@@ -492,7 +492,7 @@ const importsList = defineCommand({
         const next = (p: Body) => c.leads.imports.list(p as never) as Promise<{ items?: unknown[]; cursor?: string | null }>;
         for await (const item of streamAll(next, params, { maxPages: readMaxPagesFlag(f, process), out: process, pageDelayMs: pageDelayFromFlags(f) })) writeNdjsonItem(process, item, f.fields);
       } else {
-        renderSuccess(readablePage(await c.leads.imports.list(params as never)), outputOpts(f), process);
+        renderSuccess(readablePage(await c.leads.imports.list(params as never)), importOpts(f, importsHuman), process);
       }
     } catch (err) {
       await fail(err, f);
@@ -500,25 +500,119 @@ const importsList = defineCommand({
   }),
 });
 
-/** Why an import from a LinkedIn source reads no page now, and when it resumes, in the dashboard's words; null when it is not waiting. */
-export function importWaitingNote(imp: unknown): string | null {
-  const w = (imp as { waiting?: { kind?: unknown; until?: unknown } | null } | null)?.waiting;
-  if (!w || typeof w !== "object") return null;
-  const at = typeof w.until === "string" ? w.until : null;
-  switch (w.kind) {
-    case "active_hours": return `Waiting for the Account's Active hours. Resumes ${at ?? "when they open"}.`;
-    case "budget": return `Search limit reached for this Account. Resumes ${at ?? "when the limit frees"}.`;
-    case "pushback": return `Paused: LinkedIn slowed this search down. Resumes on its own${at ? `, ${at}` : ""}.`;
-    case "search_limited": return `LinkedIn shows this Account only a few search results for now. Resumes when that lifts${at ? `, at the latest ${at}` : ""}.`;
-    default: return `Waiting (${String(w.kind)})${at ? ` until ${at}` : ""}. It resumes on its own.`;
+type ImportView = {
+  status?: unknown; format?: unknown; next_page_at?: unknown; started_at?: unknown; finished_at?: unknown; finish_reason?: unknown;
+  counts?: { found?: unknown } | null; failure?: { message?: unknown } | null;
+  waiting?: { kind?: unknown; until?: unknown; budget?: unknown; import_id?: unknown } | null;
+  estimate?: { seconds_min?: unknown; seconds_max?: unknown } | null;
+};
+
+// The dashboard's units and wording (minutes under 90, hours under 36, then days; en-GB numbers and clock), local time.
+const UNITS: ReadonlyArray<readonly [string, number, number]> = [["minute", 60, 90 * 60], ["hour", 3600, 36 * 3600], ["day", 86_400, Infinity]];
+const unitOf = (s: number) => UNITS.find(([, , below]) => s < below)!;
+const plural = (n: number, unit: string) => `${n.toLocaleString("en-GB")} ${unit}${n === 1 ? "" : "s"}`;
+const amount = (s: number, size: number) => Math.max(1, Math.round(s / size));
+const HM = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+const WD = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const dayKey = (t: number) => new Date(t).toDateString();
+
+/** A duration in the unit that fits: "12 minutes", "2 hours", "3 days". */
+export function durationText(seconds: number): string {
+  const [unit, size] = unitOf(seconds);
+  return plural(amount(seconds, size), unit);
+}
+
+/** The estimate in words: "About 8 to 11 minutes", "About 2 hours", "Less than a minute"; never a range with equal ends. */
+export function estimateText(min: number, max: number): string {
+  if (max < 60) return "Less than a minute";
+  const [ua, sa] = unitOf(min), [ub, sb] = unitOf(max);
+  const a = amount(min, sa), b = amount(max, sb);
+  if (ua !== ub) return `About ${plural(a, ua)} to ${plural(b, ub)}`;
+  return a === b ? `About ${plural(a, ua)}` : `About ${a.toLocaleString("en-GB")} to ${plural(b, ub)}`;
+}
+
+/** When, relative to `now`: "in under a minute", "in 4 minutes", "at 14:05", "tomorrow at 09:00", "on Mon 24 Nov at 09:00". */
+export function whenText(iso: string, now: number): string {
+  const at = Date.parse(iso);
+  if (Number.isNaN(at)) return iso;
+  const ms = at - now;
+  if (ms < 60_000) return "in under a minute";
+  if (ms < 90 * 60_000) return `in ${durationText(ms / 1000)}`;
+  if (dayKey(at) === dayKey(now)) return `at ${HM.format(at)}`;
+  if (dayKey(at) === dayKey(now + 86_400_000)) return `tomorrow at ${HM.format(at)}`;
+  return `on ${WD.format(at)} at ${HM.format(at)}`;
+}
+
+const LIMIT: Record<string, string> = { hour: "Hourly search limit reached", month: "Monthly search limit reached" };
+
+/**
+ * An import from a LinkedIn source in one line, in the dashboard's words: the wait with the time of the next page, how
+ * long is left (from `estimate.seconds_*`), how long a finished one took. Null for row and CSV imports.
+ */
+export function importStatusLine(imp: unknown, now = Date.now()): string | null {
+  const im = (imp ?? {}) as ImportView;
+  if (im.format !== "source") return null;
+  const w = im.waiting && typeof im.waiting === "object" ? im.waiting : null;
+  const iso = (v: unknown) => (typeof v === "string" ? v : null);
+  const nextAt = iso(im.next_page_at), until = iso(w?.until);
+  const next = nextAt ? `Next page ${whenText(nextAt, now)}` : null;
+  const e = im.estimate;
+  const left = e && typeof e.seconds_min === "number" && typeof e.seconds_max === "number" && e.seconds_max > 0 ? `${estimateText(e.seconds_min, e.seconds_max)} left` : null;
+  const join = (...parts: (string | null)[]) => parts.filter(Boolean).join(". ");
+  const started = iso(im.started_at), finished = iso(im.finished_at);
+  const took = started && finished ? ` in ${durationText(Math.max(1, (Date.parse(finished) - Date.parse(started)) / 1000))}` : "";
+  switch (im.status) {
+    case "queued":
+      if (w?.kind === "import_ahead") return join(`Starts after the import ahead of it${typeof w.import_id === "string" ? ` (${w.import_id})` : ""}`, nextAt ? `First page ${whenText(nextAt, now)}` : null, left);
+      return join("Starts in a moment", left);
+    case "running":
+      if (!w) return join(next, left) || "Reading";
+      switch (w.kind) {
+        case "account_unavailable": return "Resumes once the Account is reconnected";
+        case "active_hours": return join("Outside the Account's Active hours", next, left);
+        case "budget": return join(LIMIT[String(w.budget)] ?? "Daily search limit reached", next, left);
+        case "pushback": return join("Paused: LinkedIn slowed this search down", next, left);
+        case "search_limited": return join(`LinkedIn shows this Account only a few search results for now. Resumes when that lifts${until ? `, at the latest ${whenText(until, now)}` : ""}`, left);
+        case "halt": return join("Held by a safety pause", until ? `Resumes ${whenText(until, now)}` : null, left);
+        default: return join(`Waiting (${String(w.kind)})`, next ?? (until ? `Resumes ${whenText(until, now)}` : null), left);
+      }
+    case "paused": return "Paused. Nothing is read until you resume it";
+    case "stopped": return `Stopped. The ${typeof im.counts?.found === "number" ? im.counts.found.toLocaleString("en-GB") : "people"} found stay in the list`;
+    case "completed":
+      return im.finish_reason === "max_reached" ? `Done${took}: reached its maximum` : im.finish_reason === "no_new_leads" ? `Done${took}: three pages in a row brought nobody new` : `Done${took}: read every result`;
+    case "failed": return typeof im.failure?.message === "string" ? im.failure.message : "Failed";
+    default: return null;
   }
 }
+
+/** Human output of an import: `progress` (the line above) after `status`, and the estimate in seconds only (the deprecated working days dropped). */
+function importHuman(imp: unknown): unknown {
+  if (!imp || typeof imp !== "object" || Array.isArray(imp)) return imp;
+  const line = importStatusLine(imp);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(imp)) {
+    if (k === "estimate" && v && typeof v === "object") {
+      out[k] = Object.fromEntries(Object.entries(v).filter(([key]) => !key.startsWith("working_days_")));
+    } else out[k] = v;
+    if (k === "status" && line) out["progress"] = line;
+  }
+  return out;
+}
+const importsHuman = (page: unknown): unknown => {
+  const p = page as { items?: unknown[] };
+  return Array.isArray(p?.items) ? { ...p, items: p.items.map(importHuman) } : page;
+};
+/** Output options for an import: the human view above, unless --json (which passes the API's fields through unchanged). */
+const importOpts = (f: Parameters<typeof outputOpts>[0], slim: (d: unknown) => unknown) => {
+  const o = outputOpts(f);
+  return isJsonMode(o) ? o : { ...o, slim };
+};
 
 const importsGet = defineCommand({
   meta: {
     name: "get",
     description:
-      "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now, with `until`, when it resumes on its own: active_hours, outside the Account's Active hours; budget, the Account's search limit is reached, and it resumes when the limit frees; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now, so the import reads again when that lifts, at the latest at `until`) and `estimate`. Nothing to retry: it resumes by itself. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
+      "One import: its status, counts, the columns it mapped or ignored, and its failure. An import from a LinkedIn source also carries `next_page_at` (when its next page is read), `waiting` (why no page is read now, with `until`: active_hours, outside the Account's Active hours; budget, a search limit of the Account is reached, named by `budget`: hour, day, lines or month; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now; halt, a safety pause; account_unavailable, the Account needs reconnecting; import_ahead, queued behind `import_id`, another import of the same Account) and `estimate` (`seconds_min`, `seconds_max`: how long it still runs; `working_days_*` are deprecated). Without --json, `progress` says it in one line, for example \"Daily search limit reached. Next page tomorrow at 09:00. About 2 to 3 days left\". Nothing to retry and no need to poll: it resumes by itself; look again at `next_page_at`. Only a reconnect needs you, and a search limit you may raise with `curviate account safety update`. `counts.updated`: Leads the import filled at least one field on. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
       "Import records are kept for a limited time.",
     risk: "read",
     examples: ["curviate lead imports get imp_YOUR_IMPORT_ID", "curviate lead imports get imp_YOUR_IMPORT_ID --outcome skipped"],
@@ -533,9 +627,9 @@ const importsGet = defineCommand({
     try {
       if (f.outcome === undefined) {
         const imp = readableObject(await c.leads.imports.get(id));
-        renderSuccess(imp, outputOpts(f), process);
-        const note = importWaitingNote(imp);
-        if (note) process.stderr.write(note + "\n");
+        renderSuccess(imp, importOpts(f, importHuman), process);
+        const line = importStatusLine(imp);
+        if (line && isJsonMode(outputOpts(f))) process.stderr.write(line + "\n");
         return;
       }
       rejectPaginationModifiersWithoutAll(f, process);
