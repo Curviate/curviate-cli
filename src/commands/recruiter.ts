@@ -35,7 +35,7 @@ import { requireAccount } from "../lib/account-arg.js";
 import { defineCommand } from "citty";
 import { AS_ACCOUNT, BUDGET, TARGET } from "../lib/help-errors.js";
 import { DESCRIPTIONS } from "./descriptions.js";
-import { GLOBAL_FLAGS, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
+import { GLOBAL_FLAGS, SEARCH_PAGE_LIMIT, SEARCH_PAGE_NOTE, WRITE_FLAGS, READ_SINGLE_FLAGS, WRITE_SINGLE_FLAGS, NON_STREAM_FLAGS, readOnly } from "../lib/global-flags.js";
 import { resolveIdentifier, resolveJobIdentifier } from "../lib/identifier.js";
 import { resolveEffectiveConfig } from "../lib/resolve.js";
 import { createClient, downloadBinary } from "../lib/client.js";
@@ -1521,6 +1521,7 @@ const recruiterSearchPeopleCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core recruiter search people --keywords \"staff engineer\"",
@@ -1529,6 +1530,7 @@ const recruiterSearchPeopleCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     keywords: { type: "string", description: "Keyword search string." },
     filters: { type: "string", stdinArg: true, description: "Filter body as a JSON object (escape hatch for the full filter surface); '-' reads JSON from stdin." },
     "filters-file": { type: "string", stdinArg: true, description: "The filter body as a JSON file: a path, or - to read it from stdin." },
@@ -1616,6 +1618,7 @@ const recruiterSearchCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core recruiter search \"https://www.linkedin.com/talent/search?searchContextId=YOUR_SEARCH\"",
@@ -1623,6 +1626,7 @@ const recruiterSearchCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     url: {
       type: "positional",
       required: false,
@@ -2372,6 +2376,7 @@ const recruiterTalentSearchCommand = defineCommand({
     risk: "read",
     rules: {
       budget_rows: ["search"],
+      notes: [SEARCH_PAGE_NOTE],
     },
     examples: [
       "curviate core recruiter talent-search PROJECT_ID --channel-id CHANNEL_ID",
@@ -2380,6 +2385,7 @@ const recruiterTalentSearchCommand = defineCommand({
   },
   args: {
     ...readOnly(GLOBAL_FLAGS),
+    limit: SEARCH_PAGE_LIMIT,
     projectId: { type: "positional", description: "Recruiter project ID." },
     "channel-id": { type: "string", description: "The project's RECRUITER_SEARCH talent-pool channel ID (required).", required: true },
     keywords: { type: "string", description: "Free-text keyword search." },

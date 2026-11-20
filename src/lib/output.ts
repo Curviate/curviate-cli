@@ -437,6 +437,20 @@ function renderHuman(data: unknown): string {
   return String(data);
 }
 
+/** A search refusal's `budget` in plain words; an unknown name as sent. */
+export function searchBudgetWords(budget: string): string {
+  switch (budget) {
+    case "gap": return "the random pause between two search pages of this Account (not a setting)";
+    case "hour": return "search pages in the last hour";
+    case "day": return "search pages in the last 24 hours";
+    case "lines": return "search results in the last 24 hours (they follow search pages a day)";
+    case "month": return "search pages this LinkedIn month (it starts again on the 1st at 00:00 Pacific time)";
+    case "active_hours": return "outside the Account's Active hours";
+    case "commercial_use": return "LinkedIn showed this Account its monthly search limit; classic search waits for LinkedIn's next month (not a setting)";
+    default: return budget;
+  }
+}
+
 export interface ErrorOutputOptions {
   json: boolean;
   isTTY: boolean;
@@ -483,7 +497,12 @@ export function renderError(
           safety.safetyReason === "activity_window"
             ? "outside its activity window"
             : "at its ceiling";
-        msg += `\nSafety budget: ${safety.budgetRow} is ${why}`;
+        // A search refusal names WHICH page budget refused and when a retry lands: say both in words.
+        const search = safety.searchBudget !== undefined ? searchBudgetWords(safety.searchBudget) : undefined;
+        msg += search ? `\nSearch budget: ${search}` : `\nSafety budget: ${safety.budgetRow} is ${why}`;
+        if (search && safety.retryAfterSeconds !== undefined) {
+          msg += `\nRetry in ${safety.retryAfterSeconds} s${safety.resetAt ? ` (${safety.resetAt})` : ""}`;
+        }
         // `resetAt` is null-bearing, and null has TWO causes, not one: the
         // invitation backlog and an InMail credit exhaustion. Saying "the
         // backlog clears" on a spent credit pool sends the operator to look at
@@ -498,11 +517,13 @@ export function renderError(
                 ? "when the backlog clears"
                 : "on its own";
           msg += `\nNo reset instant: this frees ${frees}, not on a schedule`;
-        } else if (safety.resetAt) {
+        } else if (safety.resetAt && !(search && safety.retryAfterSeconds !== undefined)) {
           msg += `\nResets at: ${safety.resetAt}`;
         }
-        if (safety.safetyHint?.parameter) {
+        if (safety.safetyHint?.parameter && safety.safetyHint.parameter !== "none") {
+          const flag = /^search_pacing\.pages_per_(day|hour|month)$/.exec(safety.safetyHint.parameter)?.[1];
           msg += `\nChange: ${safety.safetyHint.parameter}`;
+          if (flag) msg += ` (curviate account safety update <account> --search-pages-per-${flag} N; \`curviate account safety get <account>\` shows the maximum)`;
         }
         if (safety.safetyHint?.message) {
           msg += `\n${safety.safetyHint.message}`;
@@ -512,7 +533,8 @@ export function renderError(
         // the recovery is to switch work rather than back off across the board.
         // Truthiness, not an undefined check: a zero-second pause is not one.
         const wait = safety.retryAfterSeconds ? ` for ${safety.retryAfterSeconds}s` : "";
-        msg += `\nPaused budget row: ${safety.budgetRow}${wait} (other rows on this account still work)`;
+        const cause = errJson.code === "PLATFORM_ERROR" ? ", after LinkedIn server errors; retry then" : "";
+        msg += `\nPaused budget row: ${safety.budgetRow}${wait}${cause} (other rows on this account still work)`;
       }
     }
     // A location change that landed elsewhere: say where the account is now,

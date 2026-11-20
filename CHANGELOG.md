@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.63.0] - 2026-11-20
+
+Requires `@curviate/sdk` 0.58.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. New flags, no new exit code: a search refusal is `BUDGET_EXHAUSTED`, exit 13; a search paused after LinkedIn server errors is `PLATFORM_ERROR`, exit 7.
+
+- **Search budgets.** `account safety get` shows `search_pacing` and prints it in plain lines on stderr: the search pages read in the last 24 hours, the last hour and LinkedIn's month against each limit, with its default and maximum, a saved value held to the maximum, when LinkedIn's month starts again, and the random pause between pages. `account safety update <account> --search-pages-per-day N`, `--search-pages-per-hour N`, `--search-pages-per-month N` set them (`default` goes back to the default), alone or beside `--file`; above the maximum the API refuses it, exit 2, naming the maximum.
+- **Search is paced per Account, one LinkedIn page a call.** Every search page command's `--limit` help and RULES say so: ask for a full page (10 classic, 25 jobs, Sales Navigator and Recruiter) and follow the cursor.
+- **A search refusal in plain words.** At a terminal, a `BUDGET_EXHAUSTED` on a search names its budget (`Search budget: the random pause between two search pages ...`), `Retry in N s (instant)`, and for the Account's own settings the flag that raises it. `--json` carries `searchBudget` and `retryAfterSeconds` on the error envelope. A `PLATFORM_ERROR` naming a row says the row is paused after LinkedIn server errors.
+- **`--all` waits out the pause between search pages**: a page refused with `budget: gap` is asked again after the wait it names (up to three times, each at most 90 seconds), with `Search pause: the next page in N s.` on stderr. Any other refusal ends the stream after the pages already written, with `Stopped after N page(s). Resume later with --cursor <c>` on stderr.
+- **Mailboxes from Curviate**: `mailbox quote` says why a Team billed in another currency cannot order (contact support); an order ended `cancelled` with reason `currency` says nothing was charged and to contact support; `mailbox purchase get --help` lists every cancel reason.
+- **Imports from a LinkedIn source**: `lead imports get` prints why the import waits and when it resumes (`active_hours`, `budget`, `pushback`, `search_limited`) on stderr; its help says the same.
+
 ## [0.62.0] - 2026-11-20
 
 Requires `@curviate/sdk` 0.57.0 (exact pin). The vendored OpenAPI fixture is re-copied from the SDK's (production's document, server commit `c17f1b853`); its hash is recomputed. No command, flag, exit code or output change: the SDK release is docs only (the plan, never a Tier).

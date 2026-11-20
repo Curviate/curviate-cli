@@ -500,11 +500,25 @@ const importsList = defineCommand({
   }),
 });
 
+/** Why an import from a LinkedIn source reads no page now, and when it resumes, in the dashboard's words; null when it is not waiting. */
+export function importWaitingNote(imp: unknown): string | null {
+  const w = (imp as { waiting?: { kind?: unknown; until?: unknown } | null } | null)?.waiting;
+  if (!w || typeof w !== "object") return null;
+  const at = typeof w.until === "string" ? w.until : null;
+  switch (w.kind) {
+    case "active_hours": return `Waiting for the Account's Active hours. Resumes ${at ?? "when they open"}.`;
+    case "budget": return `Search limit reached for this Account. Resumes ${at ?? "when the limit frees"}.`;
+    case "pushback": return `Paused: LinkedIn slowed this search down. Resumes on its own${at ? `, ${at}` : ""}.`;
+    case "search_limited": return `LinkedIn shows this Account only a few search results for now. Resumes when that lifts${at ? `, at the latest ${at}` : ""}.`;
+    default: return `Waiting (${String(w.kind)})${at ? ` until ${at}` : ""}. It resumes on its own.`;
+  }
+}
+
 const importsGet = defineCommand({
   meta: {
     name: "get",
     description:
-      "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now: active_hours, budget or pushback, with `until`) and `estimate`. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
+      "One import: its status, counts, the columns it mapped or ignored, and its failure; an import from a LinkedIn source also carries `waiting` (why no page is read now, with `until`, when it resumes on its own: active_hours, outside the Account's Active hours; budget, the Account's search limit is reached, and it resumes when the limit frees; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now, so the import reads again when that lifts, at the latest at `until`) and `estimate`. Nothing to retry: it resumes by itself. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. " +
       "Import records are kept for a limited time.",
     risk: "read",
     examples: ["curviate lead imports get imp_YOUR_IMPORT_ID", "curviate lead imports get imp_YOUR_IMPORT_ID --outcome skipped"],
@@ -517,7 +531,13 @@ const importsGet = defineCommand({
   run: online(async (c, f: ContactFlags & { outcome?: string }) => {
     const id = String(f.id ?? "");
     try {
-      if (f.outcome === undefined) return renderSuccess(readableObject(await c.leads.imports.get(id)), outputOpts(f), process);
+      if (f.outcome === undefined) {
+        const imp = readableObject(await c.leads.imports.get(id));
+        renderSuccess(imp, outputOpts(f), process);
+        const note = importWaitingNote(imp);
+        if (note) process.stderr.write(note + "\n");
+        return;
+      }
       rejectPaginationModifiersWithoutAll(f, process);
       const params: Body = { outcome: listFlag("outcome", f.outcome).join(",") };
       if (f.limit !== undefined) params["limit"] = intFlag("limit", f.limit, 1, 100);
