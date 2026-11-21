@@ -32,6 +32,7 @@ describe("an agent searching", () => {
     ["gap", 40, "none", "Search budget: the random pause between two search pages of this Account (not a setting)", "Retry in 40 s (2026-11-20T10:00:40.000Z)"],
     ["hour", 1800, "search_pacing.pages_per_hour", "Search budget: search pages in the last hour", "--search-pages-per-hour N"],
     ["month", 86400, "search_pacing.pages_per_month", "Search budget: search pages this LinkedIn month", "--search-pages-per-month N"],
+    ["warm_up", 86400, "none", "Search budget: warm-up holds this Account's search at 0 pages for now", "Retry in 86400 s"],
   ])("a %s refusal, read by a person at a terminal, says the wait in words", (b, s, parameter, a, c) => {
     const body = refusal(b, s, parameter).body;
     const err = new CurviateError({ code: "BUDGET_EXHAUSTED", message: body.message, httpStatus: 429, userFixable: true, retryLikelyToSucceed: false, budgetRow: "search", searchBudget: b, retryAfterSeconds: s, resetAt: body.reset_at, safetyReason: "ceiling", safetyHint: body.hint, blocked: true });
@@ -132,6 +133,7 @@ describe("an import from a LinkedIn source says its wait, the next page and how 
     [{ waiting: { kind: "budget", budget: "day", until: at(60) }, next_page_at: at(60) }, "Daily search limit reached. Next page in 60 minutes"],
     [{ waiting: { kind: "budget", budget: "lines" }, next_page_at: at(30) }, "Daily search limit reached. Next page in 30 minutes"],
     [{ waiting: { kind: "budget", budget: "month" }, estimate: est(5 * 86_400, 12 * 86_400) }, "Monthly search limit reached. About 5 to 12 days left"],
+    [{ waiting: { kind: "budget", budget: "warm_up" }, next_page_at: at(60) }, "Warm-up holds this Account's search at 0 pages for now. Next page in 60 minutes"],
     [{ waiting: { kind: "active_hours" }, next_page_at: at(20), estimate: est(3600 * 20, 3600 * 30) }, "Outside the Account's Active hours. Next page in 20 minutes. About 20 to 30 hours left"],
     [{ waiting: { kind: "pushback" }, next_page_at: at(10) }, "Paused: LinkedIn slowed this search down. Next page in 10 minutes"],
     [{ waiting: { kind: "search_limited", until: at(5) } }, "LinkedIn shows this Account only a few search results for now. Resumes when that lifts, at the latest in 5 minutes"],

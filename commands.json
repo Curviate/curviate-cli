@@ -5395,7 +5395,7 @@
         "imports",
         "get"
       ],
-      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure. An import from a LinkedIn source also carries `next_page_at` (when its next page is read), `waiting` (why no page is read now, with `until`: active_hours, outside the Account's Active hours; budget, a search limit of the Account is reached, named by `budget`: hour, day, lines or month; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now; halt, a safety pause; account_unavailable, the Account needs reconnecting; import_ahead, queued behind `import_id`, another import of the same Account) and `estimate` (`seconds_min`, `seconds_max`: how long it still runs; `working_days_*` are deprecated). Without --json, `progress` says it in one line, for example \"Daily search limit reached. Next page tomorrow at 09:00. About 2 to 3 days left\". Nothing to retry and no need to poll: it resumes by itself; look again at `next_page_at`. Only a reconnect needs you, and a search limit you may raise with `curviate account safety update`. `counts.updated`: Leads the import filled at least one field on. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
+      "description": "One import: its status, counts, the columns it mapped or ignored, and its failure. An import from a LinkedIn source also carries `next_page_at` (when its next page is read), `waiting` (why no page is read now, with `until`: active_hours, outside the Account's Active hours; budget, a search limit of the Account is reached, named by `budget`: hour, day, lines, month, or warm_up when warm-up holds the Account's search at 0 pages; while an import runs it and the Account's plain searches each are sure of half the hour's and the day's pages; pushback, LinkedIn slowed this search down; search_limited, LinkedIn shows this Account only a few search results for now; halt, a safety pause; account_unavailable, the Account needs reconnecting; import_ahead, queued behind `import_id`, another import of the same Account) and `estimate` (`seconds_min`, `seconds_max`: how long it still runs; `working_days_*` are deprecated). Without --json, `progress` says it in one line, for example \"Daily search limit reached. Next page tomorrow at 09:00. About 2 to 3 days left\". Nothing to retry and no need to poll: it resumes by itself; look again at `next_page_at`. Only a reconnect needs you, and a search limit you may raise with `curviate account safety update`. `counts.updated`: Leads the import filled at least one field on. With --outcome, its rows instead: one per row of the file with what happened (created, updated, unchanged, skipped), the reason and the field. Import records are kept for a limited time.",
       "usageOnly": false,
       "args": [
         {
@@ -7514,7 +7514,7 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan or a payment past due; currency: the subscription is billed in another currency than US dollars, contact support; sales_paused), `charge_waits_for` (payment, subscription). The same in one sentence on stderr."
+        "`mailboxes`, `currency`, `billing_period` (monthly or annual), `unit_amount` and `amount` (minor units, before tax), `amount_monthly`, `charged` (with_next_invoice, when_records_found or never), `prorated`, `plus_tax`, `orderable`, `not_orderable_reason` (trial: no paid plan, buy a seat first; payment: a payment outstanding, update the payment method in Billing, then order; currency: the subscription is billed in another currency than US dollars, contact support; sales_paused; capacity: Curviate has no room for this many new Mailboxes now, order fewer or later). The same in one sentence on stderr."
       ],
       "errors": {
         "INSUFFICIENT_ROLE": "only a Team Owner reads the price of Mailboxes from Curviate."
@@ -7583,17 +7583,18 @@
         "blast_radius": "One domain's mail: the MX record it asks for routes the domain's mail to the new Mailboxes."
       },
       "output": [
-        "The order: id, domain, state (awaiting_dns), mailboxes[], records[] (mx, spf, dkim, dmarc, verify, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at."
+        "The order: id, domain, state (awaiting_dns), waiting_for (records), mailboxes[], records[] (mx, spf, dkim, dmarc, verify, tracking), price (as `curviate mailbox quote`), amount_monthly (the monthly equivalent), expires_at. What to do next, in one line on stderr."
       ],
       "errors": {
         "SPENDING_CAP_REACHED": "the order would pass the Team's cap on Mailboxes from Curviate; only an Owner raises it, in the dashboard. Nothing was ordered.",
         "INSUFFICIENT_ROLE": "only a Team Owner orders.",
-        "MAILBOX_PURCHASE_TRIAL": "a Team without a paid plan cannot order: on a trial, after a trial that ended without a purchase, never subscribed, or with a payment past due. Buy a seat or update the payment method, then order. Nothing was charged.",
+        "MAILBOX_PURCHASE_TRIAL": "a Team without a paid plan cannot order: on a trial, after a trial that ended without a purchase, or never subscribed (buy a seat, then order); or a Team with a payment outstanding (update the payment method in Billing, then order). Nothing was charged.",
         "MAILBOX_PURCHASE_PENDING": "this domain already has an order waiting for its records.",
-        "DOMAIN_IN_USE": "the domain already has Mailboxes from Curviate or an order; name another domain.",
+        "DOMAIN_IN_USE": "the domain already has Mailboxes from Curviate or a confirmed order, of your Team or another; name another domain.",
         "DOMAIN_IS_COMPANY_EMAIL": "the domain your company email runs on; use a separate domain.",
         "INVALID_REQUEST": "among others, a subdomain (mail.acme.com): Mailboxes from Curviate go on a domain of your own, such as acme-mail.com.",
-        "MAILBOX_SALES_PAUSED": "orders cannot be placed at the moment."
+        "MAILBOX_SALES_PAUSED": "orders cannot be placed at the moment.",
+        "MAILBOX_NO_ROOM": "Curviate has no room for this many new Mailboxes at the moment (exit 1, as orders paused). Order fewer, or order again later; never in a loop. Nothing was ordered or charged."
       },
       "seeAlso": [
         "curviate mailbox purchase list",
@@ -7661,7 +7662,7 @@
         "purchase",
         "get"
       ],
-      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits for the records; provisioning means charged and being set up; active is done; cancelled carries its reason (requested, expired, subscription_ended, payment_failed, spending_cap_reached, currency: the subscription is billed in another currency than US dollars, nothing was charged, contact support; host_failed: setting up failed and the charge was undone in full). charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
+      "description": "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits, and waiting_for says for what: records (add them before expires_at), payment (the records are found; the charge waits for your Team's outstanding payment: update the payment method in Billing and it continues by itself), curviate (the records are found; it waits on Curviate's side, nothing to do) or charge (being charged, read it again in a few minutes). cancelled carries its reason (requested, expired: the records were not found in 14 days, subscription_ended, payment_failed, spending_cap_reached, currency: the subscription is billed in another currency than US dollars, nothing was charged, contact support; payment_outstanding: the records were found but the payment stayed outstanding for 14 days, nothing charged, update the payment method then order again; held_by_curviate: the records were found but Curviate could not create the Mailboxes in 14 days, nothing charged, order again; domain_taken: another order for this domain was confirmed first, nothing charged; host_failed: setting up failed and the charge was undone in full). What to do next, in one line on stderr. charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
       "usageOnly": false,
       "args": [
         {
@@ -14745,7 +14746,7 @@
         {
           "name": "headcount",
           "type": "string",
-          "description": "company size, comma-separated: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000, 10001+ (10001+ not yet supported)"
+          "description": "company size, comma-separated: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000 (10001+ is not accepted: leave it out)"
         }
       ],
       "globals": [

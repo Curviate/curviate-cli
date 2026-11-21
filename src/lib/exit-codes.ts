@@ -346,7 +346,8 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   PLACEMENT_TESTS_UNAVAILABLE: 1,
   // Mailboxes from Curviate: a missing order is 4; a domain refused as named never succeeds as sent (2); an order
   // already waiting on the domain is a state (8); a Team without a paid plan cannot order (11, billing); orders paused is "not
-  // available" (1).
+  // available" (1), and so is no room for this many new Mailboxes (1: it was the pause's code until Sold 13; never 7, an
+  // order is not retried on a timer, the person orders fewer or later).
   MAILBOX_PURCHASE_NOT_FOUND: 4,
   DOMAIN_IN_USE: 2,
   DOMAIN_IS_COMPANY_EMAIL: 2,
@@ -354,6 +355,7 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   MAILBOX_PURCHASE_STATE_CONFLICT: 8,
   MAILBOX_PURCHASE_TRIAL: 11,
   MAILBOX_SALES_PAUSED: 1,
+  MAILBOX_NO_ROOM: 1,
   // Seat calls: only an Owner raises the spending cap or cancels in the dashboard (5, someone else acts first).
   SPENDING_CAP_REACHED: 5,
   CANCEL_IN_DASHBOARD: 5,
