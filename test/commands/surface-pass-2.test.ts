@@ -292,6 +292,38 @@ describe("pass 9: an order being set up or reversed reads as such, never as a cu
   });
 });
 
+describe("pass 18: the previous mail provider line and each row's advice, as served", () => {
+  const PREV = "Some senders can keep delivering to your previous mail provider until about ";
+  const PREV_END = ". Nothing is lost on our side; check your old mailbox until then.";
+  const NS = "Your domain's name servers did not answer Curviate's last check. It checks again at the next one.";
+  const base = { id: "mpu_1", state: "awaiting_dns", waiting_for: "curviate", expires_at: "2026-12-03T12:00:00.000Z" };
+  it.each([
+    ["ahead: the last line", { ...base, previous_provider_until: "2099-01-01T12:00:00.000Z" }, true],
+    ["ahead, active", { ...base, state: "active", waiting_for: null, previous_provider_until: "2099-01-01T12:00:00.000Z" }, true],
+    ["passed", { ...base, previous_provider_until: "2020-01-01T12:00:00.000Z" }, false],
+    ["null", { ...base, previous_provider_until: null }, false],
+    ["ahead but cancelled", { ...base, state: "cancelled", reason: "requested", waiting_for: null, previous_provider_until: "2099-01-01T12:00:00.000Z" }, false],
+  ])("%s", async (_n, order, shown) => {
+    const r = await wire(["mailbox", "purchase", "get", "mpu_1"], () => ({ body: order }));
+    expect([r.status, r.sent.length]).toEqual([0, 1]);
+    const last = r.stderr.trimEnd().split("\n").at(-1) ?? "";
+    expect([last.startsWith(PREV) && last.endsWith(PREV_END), r.stderr.includes(PREV)]).toEqual([shown, shown]);
+  });
+  it("the boundary is now, injected: until == now is not ahead", async () => {
+    const { purchaseNote } = await import("../../src/commands/mailbox.js");
+    const t = Date.parse("2026-11-21T10:00:00.000Z");
+    const o = { state: "active", previous_provider_until: "2026-11-21T10:00:00.000Z" };
+    expect([purchaseNote(o, t), purchaseNote(o, t - 1)?.startsWith(PREV)]).toEqual([null, true]);
+  });
+  it("a row's advice is printed as served, before the order's note; --json passes every field through", async () => {
+    const order = { ...base, waiting_for: "records", previous_provider_until: null, records: [{ check: "mx", required: true, found: false, entries: [], advice: NS }, { check: "spf", required: true, found: true, entries: [] }] };
+    const r = await wire(["mailbox", "purchase", "check", "mpu_1"], () => ({ body: order }));
+    expect(r.stderr.split("\n").slice(0, 2)).toEqual([`mx: ${NS}`, expect.stringContaining("Add each record where your domain's DNS is managed.")]);
+    const j = await wire(["mailbox", "purchase", "get", "mpu_1", "--json"], () => ({ body: { ...order, previous_provider_until: "2099-01-01T12:00:00.000Z" } }));
+    expect(JSON.parse(j.stdout)).toMatchObject({ previous_provider_until: "2099-01-01T12:00:00.000Z", records: [{ advice: NS }, { found: true }] });
+  });
+});
+
 describe("pass 10: settling is answered once; a connect names its seat", () => {
   it("mailbox remove on a 409 still settling exits 8 after one request", async () => {
     const r = await wire(["mailbox", "remove", "mbx_1"], () => ({ status: 409, body: { code: "MAILBOX_STATE_CONFLICT", message: "Too many Mailbox changes are still settling with billing. Nothing was changed; try again later.", user_fixable: true, retry_likely_to_succeed: false } }));

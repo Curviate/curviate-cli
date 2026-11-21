@@ -290,7 +290,24 @@ async function runBuy(c: Curviate, f: Flags): Promise<void> {
  * (the order reads `provisioning` meanwhile, then `cancelled` with reason `host_failed`, refunded in full): never a
  * retry, never a new order on our say.
  */
-export function purchaseNote(order: { state?: unknown; reason?: unknown; id?: unknown; charge_unknown?: unknown; waiting_for?: unknown; expires_at?: unknown }): string | null {
+type OrderRead = { state?: unknown; reason?: unknown; id?: unknown; charge_unknown?: unknown; waiting_for?: unknown; expires_at?: unknown; records?: unknown; previous_provider_until?: unknown };
+
+/**
+ * Sold 14: each record row's served `advice` (another MX, two SPF or DMARC, the name servers did not answer), then the
+ * order's note, then, while ahead and the order not ended, the previous mail provider line as the dashboard's final words.
+ */
+export function purchaseNote(order: OrderRead, now = Date.now()): string | null {
+  const rows = Array.isArray(order.records) ? (order.records as Array<{ check?: unknown; advice?: unknown }>) : [];
+  const advice = rows.filter((r) => typeof r?.advice === "string" && r.advice !== "").map((r) => `${String(r.check)}: ${String(r.advice)}`);
+  const until = typeof order.previous_provider_until === "string" ? Date.parse(order.previous_provider_until) : NaN;
+  const previous = order.state !== "cancelled" && until > now
+    ? `Some senders can keep delivering to your previous mail provider until about ${new Date(until).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}. Nothing is lost on our side; check your old mailbox until then.`
+    : null;
+  const lines = [...advice, orderNote(order), previous].filter((l): l is string => l !== null);
+  return lines.length ? lines.join("\n") : null;
+}
+
+function orderNote(order: OrderRead): string | null {
   if (order.charge_unknown === true) return "We are checking whether this order was charged. If it was, the charge is given back in full.";
   const by = typeof order.expires_at === "string" && !Number.isNaN(Date.parse(order.expires_at))
     ? new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" }).format(new Date(order.expires_at)) : "its end date";
@@ -830,7 +847,7 @@ const purchaseListCmd = defineCommand({
 const purchaseGetCmd = defineCommand({
   meta: {
     name: "get",
-    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found, and its Mailboxes once active. awaiting_dns waits, and waiting_for says for what: records (add them before expires_at), payment (the records are found; the charge waits for your Team's outstanding payment: update the payment method in Billing and it continues by itself), curviate (the records are found; it waits on Curviate's side, nothing to do) or charge (being charged, read it again in a few minutes). cancelled carries its reason (requested, expired: the records were not found in 14 days, subscription_ended, payment_failed, spending_cap_reached, currency: the subscription is billed in another currency than US dollars, nothing was charged, contact support; payment_outstanding: the records were found but the payment stayed outstanding for 14 days, nothing charged, update the payment method then order again; held_by_curviate: the records were found but Curviate could not create the Mailboxes in 14 days, nothing charged, order again; domain_taken: another order for this domain was confirmed first, nothing charged; host_failed: setting up failed and the charge was undone in full). What to do next, in one line on stderr. charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. Every role reads. One API call.",
+    description: "One order of Mailboxes from Curviate: its state, the six records to add at your domain exactly as shown (mx, spf, dkim, dmarc, verify, tracking; tracking is optional; the mx row also holds a CNAME that confirms the domain is yours, verify a TXT record that confirms the order is yours) and which are found (found is only what the last check saw in DNS, asked at your domain's own name servers; a row not found can carry advice, printed on stderr as served; that the name servers did not answer is not a failure, the next check asks again), and its Mailboxes once active. awaiting_dns waits, and waiting_for says for what: records (add them before expires_at), payment (the records are found; the charge waits for your Team's outstanding payment: update the payment method in Billing and it continues by itself), curviate (the records are found; it waits on Curviate's side, nothing to do) or charge (being charged, read it again in a few minutes). cancelled carries its reason (requested, expired: the records were not found in 14 days, subscription_ended, payment_failed, spending_cap_reached, currency: the subscription is billed in another currency than US dollars, nothing was charged, contact support; payment_outstanding: the records were found but the payment stayed outstanding for 14 days, nothing charged, update the payment method then order again; held_by_curviate: the records were found but Curviate could not create the Mailboxes in 14 days, nothing charged, order again; domain_taken: another order for this domain was confirmed first, nothing charged; host_failed: setting up failed and the charge was undone in full). What to do next, in one line on stderr. charge_unknown is true while Curviate cannot tell whether the order's charge was made: it is being checked, and a charge that was made is given back in full; do not order again. previous_provider_until, while ahead and the order not cancelled: until about when some senders can keep delivering to your previous mail provider, the last line on stderr (check the old mailbox until then). Every role reads. One API call.",
     risk: "read",
     errors: { MAILBOX_PURCHASE_NOT_FOUND: "no order of your Team has this id (another Team's id answers the same)." },
     seeAlso: ["curviate mailbox purchase list", "curviate mailbox list"],

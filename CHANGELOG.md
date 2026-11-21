@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.66.0] - 2026-11-21
+
+Requires `@curviate/sdk` 0.61.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command, flag or exit code.
+
+- **An order says until when the previous mail provider may still get mail, in the dashboard's words.** `mailbox buy`, `mailbox purchase get` and `mailbox purchase check`: while the order's `previous_provider_until` is ahead and the order is not cancelled, the last line on stderr is "Some senders can keep delivering to your previous mail provider until about Nov 21, 3:20 AM UTC. Nothing is lost on our side; check your old mailbox until then." (local time, with its zone).
+- **Each record row's `advice` is printed as served**, one line per row on stderr before the order's note (`mx: Your domain's name servers did not answer Curviate's last check. It checks again at the next one.`). That the name servers did not answer is not a failure: the next check asks again.
+- `--json` passes every field through unchanged (`previous_provider_until`, each row's `advice`).
+- Help: `mailbox purchase get` says a row's `found` is only what the last check saw in DNS, names the advice and `previous_provider_until`.
+
 ## [0.65.0] - 2026-11-21
 
 Requires `@curviate/sdk` 0.60.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command or flag; one error code mapped to an existing exit.
