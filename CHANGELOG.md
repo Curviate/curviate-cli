@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.65.0] - 2026-11-21
+
+Requires `@curviate/sdk` 0.60.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command or flag; one error code mapped to an existing exit.
+
+- **An order of Mailboxes from Curviate says what it waits for, in the dashboard's words.** `mailbox buy`, `mailbox purchase get` and `mailbox purchase check` print one line on stderr from `waiting_for`: `records` ("Add each record where your domain's DNS is managed... If they are not all found by December 3, the order ends with nothing charged."), `payment` (update the payment method in Billing, app.curviate.com/settings/billing, and the order continues by itself), `curviate` (nothing to do on yours), `charge` (being charged, a few minutes). An order that ended `payment_outstanding`, `held_by_curviate` or `domain_taken` says why and what the person can do (update the payment method, order again, name another domain). Nothing was charged on any of them.
+- **The quote says what to do when an order cannot be placed**: `payment` (a payment outstanding: update the payment method in Billing, then order) and `capacity` (Curviate has no room for this many new Mailboxes at the moment: order fewer, or later). `charge_waits_for` (always null now) is no longer printed.
+- **`MAILBOX_NO_ROOM`** exits `1`, as `MAILBOX_SALES_PAUSED`: nothing was ordered or charged; order fewer or later, never on a timer.
+- **Search**: a refusal with budget `warm_up` reads "warm-up holds this Account's search at 0 pages for now (not a search setting)"; an import waiting on it reads "Warm-up holds this Account's search at 0 pages for now". `lead imports get` help names `warm_up` and the import's half share of the Account's search pages.
+- Help: `mailbox buy` errors (`MAILBOX_PURCHASE_TRIAL` for a payment outstanding, `DOMAIN_IN_USE` for another Team's domain, `MAILBOX_NO_ROOM`), `mailbox purchase get` (`waiting_for`, every end reason), `mailbox quote` output; `core search companies --headcount`: 10001+ is not accepted.
+
 ## [0.64.0] - 2026-11-20
 
 Requires `@curviate/sdk` 0.59.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command, flag or exit code.
