@@ -445,6 +445,32 @@ describe("pass 19: email only", () => {
     expect([r.status, r.sent.length]).toEqual([2, 0]);
   });
 
+  it("the docs guide's four commands (Email only), as written there, send one request each", async () => {
+    // The guide's Campaign file, byte for byte.
+    const file = `{
+  "name": "Q4 email",
+  "lead_list_ids": ["cl_123"],
+  "shared_mailbox_ids": ["mbx_123"],
+  "sequence": {
+    "on_reply": "end",
+    "steps": [
+      { "id": "email_1", "do": "email.send", "with": { "subject": "Quick question", "text": "Hi {{first_name|there}}, ..." }, "next": "end" }
+    ]
+  }
+}`;
+    const answer = () => ({ body: { object: "campaign", id: "mot_123", status: "draft", list_ids: ["cl_123"] } });
+    const runs = [
+      await wire(["lead", "create", "--email", "ana@acme.example", "--first-name", "Ana", "--list-name", "Q4 email", "--json"], answer),
+      await wire(["campaign", "create", "--timezone", "Europe/Berlin", "--file", "-"], answer, { stdin: file }),
+      await wire(["campaign", "check", "mot_123"], answer),
+      await wire(["campaign", "start", "mot_123"], answer),
+    ];
+    expect(runs.map((r) => [r.status, ...lines(r.sent).map((l) => l.call)])).toEqual([
+      [0, "POST /v1/leads"], [0, "POST /v1/campaigns"], [0, "POST /v1/campaigns/mot_123/check"], [0, "POST /v1/campaigns/mot_123/start"],
+    ]);
+    expect(runs[1]!.sent[0]!.body).toEqual({ ...JSON.parse(file), schedule: { timezone: "Europe/Berlin" } });
+  });
+
   it("do-not-contact import sums updated beside created, unchanged and skipped", async () => {
     const p = join(mkdtempSync(join(tmpdir(), "dnc-")), "d.json");
     writeFileSync(p, JSON.stringify([{ linkedin_url: "https://www.linkedin.com/in/ana/" }, { linkedin_url: "https://www.linkedin.com/in/bo/" }]));
