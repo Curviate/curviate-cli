@@ -8,7 +8,7 @@ a new command or flag is a minor; a breaking command/flag/exit-code change is a 
 
 ## [0.68.0] - 2026-11-22
 
-Requires `@curviate/sdk` 0.63.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed; the lockfile follows the publish). No new flag, `commands.json` unchanged.
+Requires `@curviate/sdk` 0.63.0 (exact pin, published; the vendored fixture is re-copied from the SDK's at production debbe2ec and its hash recomputed; the lockfile resolves 0.63.0 from npm). No new flag, `commands.json` unchanged.
 
 - **`team invites create` and `resend`**: an invite whose email did not go out (the API answers `201` and `email_sent: false`; the invite exists and its link works) exits 0 as before and now prints one stderr line per such invite: `email not sent: the invite to <email> exists but its email did not go out. Send it again with `curviate team invites resend <invite_id>`.` stdout carries `email_sent` on each invite, and `team invites list` too.
 - The "no LinkedIn account is connected" message says "Connect an Account" (it said "Connect account").
