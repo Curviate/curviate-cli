@@ -49,6 +49,14 @@ type Rec = Record<string, unknown>;
 
 const show = (result: unknown, f: TeamFlags) => renderSuccess(result, outputOpts(f), process);
 
+/** A `201` for an invite whose email did not go out still has its link: say so on stderr (stdout carries `email_sent: false`), exit 0. */
+export function unsentNote(r: unknown): void {
+  const o = r as { items?: Rec[] } & Rec;
+  for (const i of o.items ?? [o]) {
+    if (i["email_sent"] === false) process.stderr.write(`email not sent: the invite to ${String(i["email"])} exists but its email did not go out. Send it again with \`curviate team invites resend ${String(i["invite_id"])}\`.\n`);
+  }
+}
+
 /** One SDK call, or its `--preview` render for a write. */
 const call = (method: string, args: (f: TeamFlags) => Rec, body: (f: TeamFlags) => unknown, run: (c: Curviate, f: TeamFlags) => Promise<unknown>) =>
   async ({ args: raw }: { args: unknown }): Promise<void> => {
@@ -312,7 +320,11 @@ const invitesCmd = defineCommand({
         examples: ["curviate team invites create dana@example.com", "curviate team invites create dana@example.com,lee@example.com --role manager"],
       },
       args: { ...WRITE_SINGLE_FLAGS, emails: { type: "positional", description: "Email addresses, comma-separated." }, role: { type: "string", description: "owner, manager or member (default)." } },
-      run: call("teams.createInvites", () => ({}), (f) => inviteBody(f), (c, f) => c.teams.createInvites(inviteBody(f) as never)),
+      run: call("teams.createInvites", () => ({}), (f) => inviteBody(f), async (c, f) => {
+        const r = await c.teams.createInvites(inviteBody(f) as never);
+        unsentNote(r);
+        return r;
+      }),
     }),
     list: defineCommand({
       meta: { name: "list", description: "The Team's invites, newest first; never the invite link. Owners and Managers.", risk: "read", examples: ["curviate team invites list", "curviate team invites list --status pending"] },
@@ -335,7 +347,11 @@ const invitesCmd = defineCommand({
         examples: ["curviate team invites resend inv_01HZY3K8Q2"],
       },
       args: { ...WRITE_SINGLE_FLAGS, id: INVITE },
-      run: call("teams.resendInvite", (f) => ({ invite_id: f.id }), () => undefined, (c, f) => c.teams.resendInvite(nonEmpty("<invite_id>", f.id))),
+      run: call("teams.resendInvite", (f) => ({ invite_id: f.id }), () => undefined, async (c, f) => {
+        const r = await c.teams.resendInvite(nonEmpty("<invite_id>", f.id));
+        unsentNote(r);
+        return r;
+      }),
     }),
     revoke: defineCommand({
       meta: {

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.68.0] - 2026-11-22
+
+Requires `@curviate/sdk` 0.63.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed; the lockfile follows the publish). No new flag, `commands.json` unchanged.
+
+- **`team invites create` and `resend`**: an invite whose email did not go out (the API answers `201` and `email_sent: false`; the invite exists and its link works) exits 0 as before and now prints one stderr line per such invite: `email not sent: the invite to <email> exists but its email did not go out. Send it again with `curviate team invites resend <invite_id>`.` stdout carries `email_sent` on each invite, and `team invites list` too.
+- The "no LinkedIn account is connected" message says "Connect an Account" (it said "Connect account").
+
 ## [0.67.0] - 2026-11-22
 
 Requires `@curviate/sdk` 0.62.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. New flags, two error codes mapped to an existing exit; one local refusal removed.

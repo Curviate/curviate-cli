@@ -1,7 +1,7 @@
 {
-  "sdkVersion": "0.62.0",
-  "sha256": "082b4606c8fa02f61f08ee1b6df244618c4ec004762a75ab877a3afd4ca36716",
-  "vendoredAt": "2026-11-22T02:02:18.053Z",
+  "sdkVersion": "0.63.0",
+  "sha256": "0b640500b555da1c5f4673d91b10ce5d8084a4a1a75ec46824f6ef488135a85d",
+  "vendoredAt": "2026-11-22T10:56:35.000Z",
   "sourceFile": "packages/sdk/fixtures/openapi.json",
   "sourceServerGitSha": "693ca688984fc9dc284ef3d0a05394a811dfe248",
   "note": "Copied so flag-field-guard.test.ts runs on a standalone clone (qa BLOCKER: the sibling-repo path reds gate 4 on a fresh `git clone`). scripts/check-fixture-pin.mjs fails loudly if sdkVersion here stops matching the exact @curviate/sdk pin in package.json, OR if sha256 here stops matching sha256(sdkVersion + openapi.json's actual bytes) (see fixtureHash in scripts/check-fixture-pin.mjs) — the hash is salted with sdkVersion so bumping the version label alone, without re-copying the file, also invalidates the recorded hash. Refresh by re-copying packages/sdk/fixtures/openapi.json from a sibling checkout at the new pinned version, then recompute and update BOTH sdkVersion and sha256 below (`node -e \"const{createHash}=require('node:crypto');const{readFileSync}=require('node:fs');const v=require('./test/fixtures/VENDORED_FROM.json').sdkVersion;console.log(createHash('sha256').update(v).update('\\n').update(readFileSync('test/fixtures/openapi.json')).digest('hex'))\"` after updating sdkVersion in this file). Updating sdkVersion without recomputing sha256 (or vice versa) will fail the guard. Do not hand-edit openapi.json itself."
