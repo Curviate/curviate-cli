@@ -409,6 +409,10 @@ async function runEmail(c: Curviate, f: AnalyticsFlags): Promise<void> {
     print(`sent ${String(body["sent"] ?? "-")} · reply ${rate(body["reply"], "replied", "first_emailed")} · open ${body["open"] == null ? "not tracked" : rate(body["open"], "opened", "tracked")} · bounce ${rate(body["bounce"], "bounced", "sent")} · opt-out ${rate(body["opt_out"], "opted_out", "first_emailed")}`);
     if (today) print(`today: ${String(today["sent"])} sent of a ${String(today["cap"])} daily cap`);
     if (body["tracking"] !== "set_up") print(`open tracking: ${String(body["tracking"])} (set it up on the Mailboxes for an open rate over every email)`);
+    const oneClick = ((body["opt_outs"] as Row | undefined)?.["one_click"] as Row | undefined) ?? undefined;
+    if (typeof oneClick?.["live"] === "number" && typeof oneClick["mailboxes"] === "number" && oneClick["mailboxes"] > 0) {
+      print(`one-click unsubscribe: live on ${oneClick["live"]} of ${oneClick["mailboxes"]} Mailboxes${oneClick["live"] < oneClick["mailboxes"] ? " (the others send the unsubscribe link only: publish each sending domain's signing record, `curviate domain check <domain> --now`)" : ""}`);
+    }
     for (const m of (body["mailboxes"] as Row[] | undefined) ?? []) print(`mailbox ${String(m["address"])}: ${String(m["state"])}, sent ${String(m["sent"] ?? 0)}, cap ${String(m["cap_lowered_to"] ?? m["daily_cap"])}`);
     for (const d of (body["domains"] as Row[] | undefined) ?? []) {
       const checks = (d["checks"] as Row | undefined) ?? {};
@@ -475,6 +479,7 @@ const emailCmd = defineCommand({
       "reply: Leads first emailed in the window whose first reply, by email or on LinkedIn, came after that email, so far; an out-of-office reply is never a reply.",
       "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
       "bounce: bounced over sent; a bounce rate needs 50 emails sent to mean anything (the dashboard shows none below that). opt-out: Leads who opted out over Leads first emailed.",
+      "opt_outs.one_click: { live, mailboxes }: of the Mailboxes in scope, how many send the mail app's one-click unsubscribe now (Curviate signs their mail and the domain's signing and tracking records are found); the others send the unsubscribe link only. The compact view prints it as one line.",
       "A rate is still maturing while more than a third of its emails were sent in the last 7 days (`maturing`): it may still rise, so say so. `low_sample` is true under 30.",
       "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
       "landing: where mail lands, as verdicts, each with a reason when there is nothing to read: warm_up.reason warm_up_off (warm-up is off), weekly_check.reason no_test_inboxes (not available), tests.reason no_test_inboxes or no_test_run (none run yet); a Mailbox's reputation_reason warm_up_off (no score while warm-up is off). Show them as served.",

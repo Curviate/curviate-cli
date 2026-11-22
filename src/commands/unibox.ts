@@ -114,7 +114,7 @@ async function runList(c: Curviate, f: UniboxFlags): Promise<void> {
       const next = (i: Row) => [i["chat_id"] ? "reply" : "", (i["channels"] as string[] | undefined)?.includes("email") && !marks(i) ? "email" : ""].filter(Boolean).join(", ");
       print(table(["ACCOUNT", "CHAT", "WITH", "CHANNELS", "UNREAD", "LAST", "FROM", "LABEL", "MARKS", "NEXT", "CAMPAIGN", "TAGS", "CONVERSATION"],
         page.items.map((i) => [i["account_id"], i["chat_id"], chatWith(i), channels(i), unread(i), i["last_activity_at"], i["last_message_from"], label(i), marks(i), next(i), campaign(i), (i["tags"] as string[] | undefined)?.join(", "), i["conversation_id"]])));
-      if (page.items.length) print("NEXT reply: `curviate unibox reply <ACCOUNT> <CHAT> \"<text>\"`; email: `curviate unibox email send <CONVERSATION> \"<text>\" --thread <thread_id>` (threads: `curviate unibox conversation timeline <CONVERSATION> --channel email`). An email-only conversation has no CHAT and takes email only.");
+      if (page.items.length) print("NEXT reply: `curviate unibox reply <ACCOUNT> <CHAT> \"<text>\"`; email: `curviate unibox email send <CONVERSATION> \"<text>\" --thread <thread_id>` (threads: `curviate unibox conversation timeline <CONVERSATION> --channel email`). An email-only conversation has no CHAT and takes email only; a Team conversation (an email-only Campaign's) has no ACCOUNT either.");
       if (typeof page["total"] === "number") print(`total: ${page["total"]} chats match`);
     });
   } catch (err) {
@@ -414,7 +414,8 @@ const listCmd = defineCommand({
     name: "list",
     description:
       "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. " +
-      "An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only.",
+      "An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only. " +
+      "The email of an email-only Campaign (no sending Account) is a Team conversation, ACCOUNT and CHAT empty, listed only without --accounts: read, mark and email it by its conversation id alone. Its Owners, Managers and the Campaign's creator see it.",
     risk: "read",
     output: ["A table of Account, chat, person, unread (`marked` when made unread without a newer message), last activity, Reply label, Campaign and tags; with --total the count of matching chats. --json (or piped) prints the API page."],
     examples: ["curviate unibox list --unread", "curviate unibox list --reply-label interested,unsure", "curviate unibox list --person con_YOUR_LEAD_ID --campaign none --total"],
@@ -520,6 +521,7 @@ const emailSendCmd = defineCommand({
     description:
       "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). " +
       "It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. " +
+      "In a Team conversation (an email-only Campaign's, no Account) a reply goes from its thread's shared Mailbox; a new thread there is an Owner's or a Manager's. " +
       "--cc and --bcc (at most 20 addresses together) and --attach (files read from paths on this machine, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. Up to 6 MiB in all the files go inside the one request; above that each is first uploaded as a file of your Team (`campaign attachment upload`, counted against its daily uploads, kept 30 days) and the email names them by id. " +
       "Bcc addresses are never shown to the other recipients; do not repeat them where others read. " +
       "A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. " +
@@ -538,6 +540,7 @@ const emailSendCmd = defineCommand({
       DO_NOT_CONTACT: "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
       PLATFORM_ERROR: "the provider did not take the email: nothing was sent (exit 7 when a retry may work). reason attachment_refused: the files were refused (from a Microsoft sign-in Mailbox, more than about 2.2 MB in all, refused before anything is sent): send a link or smaller files. With an unknown outcome it may have been sent: exit 1, do not send it again.",
       RESOURCE_NOT_FOUND: "no such conversation, or an uploaded file is gone; nothing was sent.",
+      INSUFFICIENT_ROLE: "your role cannot send from this conversation's Account; in a Team conversation, a new thread (--subject) is an Owner's or a Manager's: reply in your Campaign's thread (--thread). Nothing was sent.",
       UNSUPPORTED_MEDIA_TYPE: "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent.",
     },
     seeAlso: ["curviate unibox conversation get", "curviate unibox conversation timeline"],

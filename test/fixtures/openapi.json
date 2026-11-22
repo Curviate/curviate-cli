@@ -42031,16 +42031,22 @@
                             "description": "Response type discriminator."
                           },
                           "account_id": {
-                            "type": "string",
-                            "description": "The account the chat belongs to."
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The account the chat belongs to. Null on a conversation of an email-only Campaign, which is on no account."
                           },
                           "account_status": {
-                            "type": "string",
-                            "description": "That account's connection status. A chat stays listed while its account needs a reconnect."
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "That account's connection status. A chat stays listed while its account needs a reconnect. Null with no account."
                           },
                           "conversation_id": {
                             "type": "string",
-                            "description": "The conversation: one person on one account, across LinkedIn and email. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
+                            "description": "The conversation: one person on one account, across LinkedIn and email; for an email-only Campaign, one person's email with your team. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
                           },
                           "channels": {
                             "type": "array",
@@ -42967,7 +42973,7 @@
             }
           }
         },
-        "description": "Lists the stored chats you may read on your team's accounts, newest first; no LinkedIn call, no limit. Without full-inbox sync an account shows only Campaign chats. A disconnected account's chats stay, read-only. Messages: GET /v1/{account_id}/chats/{chat_id}/messages.",
+        "description": "Lists the stored chats you may read on your team's accounts, newest first; no LinkedIn call, no limit. Without full-inbox sync an account shows only Campaign chats. A disconnected account's chats stay, read-only. Messages: GET /v1/{account_id}/chats/{chat_id}/messages. With account_ids omitted, the conversations of email-only Campaigns are listed too (account_id null): Owners and Managers see them all, a Member those of the Campaigns they created.",
         "x-order": 3
       }
     },
@@ -43038,16 +43044,22 @@
                       "description": "Response type discriminator."
                     },
                     "account_id": {
-                      "type": "string",
-                      "description": "The account the chat belongs to."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account the chat belongs to. Null on a conversation of an email-only Campaign, which is on no account."
                     },
                     "account_status": {
-                      "type": "string",
-                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect. Null with no account."
                     },
                     "conversation_id": {
                       "type": "string",
-                      "description": "The conversation: one person on one account, across LinkedIn and email. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
+                      "description": "The conversation: one person on one account, across LinkedIn and email; for an email-only Campaign, one person's email with your team. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
                     },
                     "channels": {
                       "type": "array",
@@ -46386,16 +46398,22 @@
                       "description": "Response type discriminator."
                     },
                     "account_id": {
-                      "type": "string",
-                      "description": "The account the chat belongs to."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account the chat belongs to. Null on a conversation of an email-only Campaign, which is on no account."
                     },
                     "account_status": {
-                      "type": "string",
-                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect. Null with no account."
                     },
                     "conversation_id": {
                       "type": "string",
-                      "description": "The conversation: one person on one account, across LinkedIn and email. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
+                      "description": "The conversation: one person on one account, across LinkedIn and email; for an email-only Campaign, one person's email with your team. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
                     },
                     "channels": {
                       "type": "array",
@@ -47264,7 +47282,7 @@
             }
           }
         },
-        "description": "Returns one conversation, one person on one account across LinkedIn and email, as the list serves it. From what Curviate has stored: no LinkedIn call, no mailbox read. Read its messages, both channels in one timeline, with GET /v1/unibox/conversations/{conversation_id}/messages.",
+        "description": "Returns one conversation, one person on one account across LinkedIn and email (or, for an email-only Campaign, one person's email with your team), as the list serves it. From what Curviate has stored: no LinkedIn call, no mailbox read. Read its messages, both channels in one timeline, with GET /v1/unibox/conversations/{conversation_id}/messages.",
         "x-order": 11
       },
       "patch": {
@@ -47324,16 +47342,22 @@
                       "description": "Response type discriminator."
                     },
                     "account_id": {
-                      "type": "string",
-                      "description": "The account the chat belongs to."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The account the chat belongs to. Null on a conversation of an email-only Campaign, which is on no account."
                     },
                     "account_status": {
-                      "type": "string",
-                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect."
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "That account's connection status. A chat stays listed while its account needs a reconnect. Null with no account."
                     },
                     "conversation_id": {
                       "type": "string",
-                      "description": "The conversation: one person on one account, across LinkedIn and email. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
+                      "description": "The conversation: one person on one account, across LinkedIn and email; for an email-only Campaign, one person's email with your team. Stable for that pair. Read it with GET /v1/unibox/conversations/{conversation_id}."
                     },
                     "channels": {
                       "type": "array",
@@ -49095,7 +49119,7 @@
             }
           },
           "403": {
-            "description": "INSUFFICIENT_ROLE, ACCOUNT_NOT_SHARED: you can read this conversation but not send from its account. TIER_REQUIRED: the team has no subscription (Unibox needs a subscription). The error carries feature, required_tier and current_tier, plus upgrade_url for a team Owner. Not fixed by retrying.",
+            "description": "INSUFFICIENT_ROLE, ACCOUNT_NOT_SHARED: you can read this conversation but not send from its account (in an email-only Campaign's conversation: a new thread, and you are not an Owner or a Manager). TIER_REQUIRED: the team has no subscription (Unibox needs a subscription). The error carries feature, required_tier and current_tier, plus upgrade_url for a team Owner. Not fixed by retrying.",
             "content": {
               "application/json": {
                 "schema": {
@@ -49275,7 +49299,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Sends one plain-text email to the conversation's Lead, at once: a reply in one of its threads (thread_id), or a new thread (subject, and mailbox_id when more than one Mailbox can send). A reply goes from its thread's Mailbox with Re: and the thread's first subject, threaded under its last email. It goes to the Lead's one address; no signature, no opt-out line is added. It counts against the Mailbox's daily limit, as a Campaign email does, and ends the Lead's open Enrollments on this account as a reply would, by each Campaign's reply scope. Read first whether email is available, and from which Mailboxes, on GET /v1/unibox/conversations/{conversation_id} (email). Every refusal comes before anything reaches a Mailbox. Needs a subscription.",
+        "description": "Sends one plain-text email to the conversation's Lead, at once: a reply in one of its threads (thread_id), or a new thread (subject, and mailbox_id when more than one Mailbox can send). A reply goes from its thread's Mailbox with Re: and the thread's first subject, threaded under its last email. It goes to the Lead's one address; no signature, no opt-out line is added. It counts against the Mailbox's daily limit, as a Campaign email does, and ends the Lead's open Enrollments on this account as a reply would, by each Campaign's reply scope. In a conversation of an email-only Campaign (account_id null) it goes from its Campaign's shared Mailboxes: the Member who created the Campaign replies in its threads, an Owner or a Manager also starts a new thread; it ends the Lead's open Enrollments of those Campaigns as a reply would. Read first whether email is available, and from which Mailboxes, on GET /v1/unibox/conversations/{conversation_id} (email). Every refusal comes before anything reaches a Mailbox. Needs a subscription.",
         "requestBody": {
           "required": true,
           "content": {
@@ -94128,6 +94152,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -94188,6 +94213,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -94735,6 +94761,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -94795,6 +94822,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -116476,7 +116504,7 @@
             }
           }
         },
-        "description": "Invites up to 20 people by email, each with a role (member by default), and emails each a link valid for 7 days. All or nothing: if any row fails, nothing is created or sent, and the error names the row. The invitee accepts in the dashboard, signed in with the invited email. Owners invite any role, Managers invite Members.",
+        "description": "Invites up to 20 people by email, each with a role (member by default). Each invite is created and its email, with a link valid for 7 days, is sent when it can be; an invite whose email did not go out is sent again with resend. All or nothing: if any row fails, nothing is created or sent, and the error names the row. The invitee accepts in the dashboard, signed in with the invited email. Owners invite any role, Managers invite Members.",
         "requestBody": {
           "required": true,
           "content": {
@@ -121011,9 +121039,75 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours; the dkim row ends with one TXT record, Curviate's own signing key for your domain (about 410 characters: add it exactly as shown; a DNS host that splits it into several strings is fine); and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "mx",
+                              "spf",
+                              "dkim",
+                              "dmarc",
+                              "verify",
+                              "tracking"
+                            ],
+                            "description": "Which record this row is."
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "False only for `tracking`."
+                          },
+                          "entries": {
+                            "type": "array",
+                            "description": "The DNS records to add at your domain's DNS host for this row.",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "description": "The host name to add the record at."
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "MX",
+                                    "TXT",
+                                    "CNAME"
+                                  ]
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "description": "The record's value, exactly as shown."
+                                },
+                                "priority": {
+                                  "type": "integer",
+                                  "description": "MX records only; absent on the others."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "value"
+                              ]
+                            }
+                          },
+                          "found": {
+                            "type": "boolean",
+                            "description": "Whether this row's records were found at your domain's DNS host at the last check."
+                          },
+                          "advice": {
+                            "type": "string",
+                            "description": "Present only when the row is not found for a reason you can fix (another MX record, two SPF or DMARC records, or servers that could not be reached); absent otherwise, never null."
+                          }
+                        },
+                        "required": [
+                          "check",
+                          "required",
+                          "entries",
+                          "found"
+                        ]
                       }
                     },
                     "advice": {
@@ -121632,9 +121726,75 @@
                           },
                           "records": {
                             "type": "array",
-                            "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
+                            "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours; the dkim row ends with one TXT record, Curviate's own signing key for your domain (about 410 characters: add it exactly as shown; a DNS host that splits it into several strings is fine); and `verify` is one TXT record that confirms this order is yours.",
                             "items": {
-                              "type": "object"
+                              "type": "object",
+                              "properties": {
+                                "check": {
+                                  "type": "string",
+                                  "enum": [
+                                    "mx",
+                                    "spf",
+                                    "dkim",
+                                    "dmarc",
+                                    "verify",
+                                    "tracking"
+                                  ],
+                                  "description": "Which record this row is."
+                                },
+                                "required": {
+                                  "type": "boolean",
+                                  "description": "False only for `tracking`."
+                                },
+                                "entries": {
+                                  "type": "array",
+                                  "description": "The DNS records to add at your domain's DNS host for this row.",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string",
+                                        "description": "The host name to add the record at."
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "MX",
+                                          "TXT",
+                                          "CNAME"
+                                        ]
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "description": "The record's value, exactly as shown."
+                                      },
+                                      "priority": {
+                                        "type": "integer",
+                                        "description": "MX records only; absent on the others."
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "type",
+                                      "value"
+                                    ]
+                                  }
+                                },
+                                "found": {
+                                  "type": "boolean",
+                                  "description": "Whether this row's records were found at your domain's DNS host at the last check."
+                                },
+                                "advice": {
+                                  "type": "string",
+                                  "description": "Present only when the row is not found for a reason you can fix (another MX record, two SPF or DMARC records, or servers that could not be reached); absent otherwise, never null."
+                                }
+                              },
+                              "required": [
+                                "check",
+                                "required",
+                                "entries",
+                                "found"
+                              ]
                             }
                           },
                           "advice": {
@@ -121979,9 +122139,75 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours; the dkim row ends with one TXT record, Curviate's own signing key for your domain (about 410 characters: add it exactly as shown; a DNS host that splits it into several strings is fine); and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "mx",
+                              "spf",
+                              "dkim",
+                              "dmarc",
+                              "verify",
+                              "tracking"
+                            ],
+                            "description": "Which record this row is."
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "False only for `tracking`."
+                          },
+                          "entries": {
+                            "type": "array",
+                            "description": "The DNS records to add at your domain's DNS host for this row.",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "description": "The host name to add the record at."
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "MX",
+                                    "TXT",
+                                    "CNAME"
+                                  ]
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "description": "The record's value, exactly as shown."
+                                },
+                                "priority": {
+                                  "type": "integer",
+                                  "description": "MX records only; absent on the others."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "value"
+                              ]
+                            }
+                          },
+                          "found": {
+                            "type": "boolean",
+                            "description": "Whether this row's records were found at your domain's DNS host at the last check."
+                          },
+                          "advice": {
+                            "type": "string",
+                            "description": "Present only when the row is not found for a reason you can fix (another MX record, two SPF or DMARC records, or servers that could not be reached); absent otherwise, never null."
+                          }
+                        },
+                        "required": [
+                          "check",
+                          "required",
+                          "entries",
+                          "found"
+                        ]
                       }
                     },
                     "advice": {
@@ -122389,9 +122615,75 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours; the dkim row ends with one TXT record, Curviate's own signing key for your domain (about 410 characters: add it exactly as shown; a DNS host that splits it into several strings is fine); and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "mx",
+                              "spf",
+                              "dkim",
+                              "dmarc",
+                              "verify",
+                              "tracking"
+                            ],
+                            "description": "Which record this row is."
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "False only for `tracking`."
+                          },
+                          "entries": {
+                            "type": "array",
+                            "description": "The DNS records to add at your domain's DNS host for this row.",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "description": "The host name to add the record at."
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "MX",
+                                    "TXT",
+                                    "CNAME"
+                                  ]
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "description": "The record's value, exactly as shown."
+                                },
+                                "priority": {
+                                  "type": "integer",
+                                  "description": "MX records only; absent on the others."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "value"
+                              ]
+                            }
+                          },
+                          "found": {
+                            "type": "boolean",
+                            "description": "Whether this row's records were found at your domain's DNS host at the last check."
+                          },
+                          "advice": {
+                            "type": "string",
+                            "description": "Present only when the row is not found for a reason you can fix (another MX record, two SPF or DMARC records, or servers that could not be reached); absent otherwise, never null."
+                          }
+                        },
+                        "required": [
+                          "check",
+                          "required",
+                          "entries",
+                          "found"
+                        ]
                       }
                     },
                     "advice": {
@@ -122755,9 +123047,75 @@
                     },
                     "records": {
                       "type": "array",
-                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours, and `verify` is one TXT record that confirms this order is yours.",
+                      "description": "Six rows in order: mx, spf, dkim, dmarc, verify, tracking. Add each entry at your domain's DNS host exactly as shown; `tracking` is not required. The mx row also holds one CNAME that confirms the domain is yours; the dkim row ends with one TXT record, Curviate's own signing key for your domain (about 410 characters: add it exactly as shown; a DNS host that splits it into several strings is fine); and `verify` is one TXT record that confirms this order is yours.",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "mx",
+                              "spf",
+                              "dkim",
+                              "dmarc",
+                              "verify",
+                              "tracking"
+                            ],
+                            "description": "Which record this row is."
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "False only for `tracking`."
+                          },
+                          "entries": {
+                            "type": "array",
+                            "description": "The DNS records to add at your domain's DNS host for this row.",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "description": "The host name to add the record at."
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "MX",
+                                    "TXT",
+                                    "CNAME"
+                                  ]
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "description": "The record's value, exactly as shown."
+                                },
+                                "priority": {
+                                  "type": "integer",
+                                  "description": "MX records only; absent on the others."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "value"
+                              ]
+                            }
+                          },
+                          "found": {
+                            "type": "boolean",
+                            "description": "Whether this row's records were found at your domain's DNS host at the last check."
+                          },
+                          "advice": {
+                            "type": "string",
+                            "description": "Present only when the row is not found for a reason you can fix (another MX record, two SPF or DMARC records, or servers that could not be reached); absent otherwise, never null."
+                          }
+                        },
+                        "required": [
+                          "check",
+                          "required",
+                          "entries",
+                          "found"
+                        ]
                       }
                     },
                     "advice": {
@@ -127807,6 +128165,15 @@
                             "fail",
                             "unknown"
                           ]
+                        },
+                        "signing": {
+                          "type": "string",
+                          "enum": [
+                            "pass",
+                            "fail",
+                            "unknown"
+                          ],
+                          "description": "Optional. The signing record (signing_record) is published. With it, Curviate signs the domain's email from Mailboxes from Curviate and Google Mailboxes connected with an app password, and those emails offer the mail app's one-click unsubscribe."
                         }
                       },
                       "required": [
@@ -127814,7 +128181,8 @@
                         "spf",
                         "dkim",
                         "dmarc",
-                        "tracking"
+                        "tracking",
+                        "signing"
                       ],
                       "description": "`unknown` means the check cannot verify: a lookup failed, or no DKIM key was found at any selector known for your mail host. It never means a failure."
                     },
@@ -127840,6 +128208,32 @@
                         "value"
                       ],
                       "description": "The CNAME record to add at your DNS host so the tracking check passes."
+                    },
+                    "signing_record": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "TXT"
+                          ]
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "description": "The TXT record to add at your DNS host so the signing check passes: Curviate's own signing key for this domain and team, about 410 characters. Add the value exactly as shown and no other record at this name; a DNS host that splits it into several strings is fine. Null for a domain with no Mailbox from Curviate, no Google Mailbox connected with an app password and no Mailbox order."
                     },
                     "blocklists": {
                       "type": "array",
@@ -127868,6 +128262,7 @@
                     "name",
                     "checks",
                     "tracking_record",
+                    "signing_record",
                     "blocklists",
                     "dkim_selector",
                     "checked_at"
@@ -127883,12 +128278,18 @@
                         "spf": "pass",
                         "dkim": "unknown",
                         "dmarc": "fail",
-                        "tracking": "fail"
+                        "tracking": "fail",
+                        "signing": "fail"
                       },
                       "tracking_record": {
                         "name": "track.acme.example",
                         "type": "CNAME",
                         "value": "mz.curviate.com"
+                      },
+                      "signing_record": {
+                        "name": "kq3mx7pa2vb._domainkey.acme.example",
+                        "type": "TXT",
+                        "value": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
                       },
                       "blocklists": [],
                       "dkim_selector": null,
@@ -128113,6 +128514,15 @@
                             "fail",
                             "unknown"
                           ]
+                        },
+                        "signing": {
+                          "type": "string",
+                          "enum": [
+                            "pass",
+                            "fail",
+                            "unknown"
+                          ],
+                          "description": "Optional. The signing record (signing_record) is published. With it, Curviate signs the domain's email from Mailboxes from Curviate and Google Mailboxes connected with an app password, and those emails offer the mail app's one-click unsubscribe."
                         }
                       },
                       "required": [
@@ -128120,7 +128530,8 @@
                         "spf",
                         "dkim",
                         "dmarc",
-                        "tracking"
+                        "tracking",
+                        "signing"
                       ],
                       "description": "`unknown` means the check cannot verify: a lookup failed, or no DKIM key was found at any selector known for your mail host. It never means a failure."
                     },
@@ -128146,6 +128557,32 @@
                         "value"
                       ],
                       "description": "The CNAME record to add at your DNS host so the tracking check passes."
+                    },
+                    "signing_record": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "TXT"
+                          ]
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "description": "The TXT record to add at your DNS host so the signing check passes: Curviate's own signing key for this domain and team, about 410 characters. Add the value exactly as shown and no other record at this name; a DNS host that splits it into several strings is fine. Null for a domain with no Mailbox from Curviate, no Google Mailbox connected with an app password and no Mailbox order."
                     },
                     "blocklists": {
                       "type": "array",
@@ -128174,6 +128611,7 @@
                     "name",
                     "checks",
                     "tracking_record",
+                    "signing_record",
                     "blocklists",
                     "dkim_selector",
                     "checked_at"
@@ -128189,12 +128627,18 @@
                         "spf": "pass",
                         "dkim": "unknown",
                         "dmarc": "fail",
-                        "tracking": "fail"
+                        "tracking": "fail",
+                        "signing": "fail"
                       },
                       "tracking_record": {
                         "name": "track.acme.example",
                         "type": "CNAME",
                         "value": "mz.curviate.com"
+                      },
+                      "signing_record": {
+                        "name": "kq3mx7pa2vb._domainkey.acme.example",
+                        "type": "TXT",
+                        "value": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
                       },
                       "blocklists": [],
                       "dkim_selector": null,
@@ -128379,7 +128823,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                     },
                     "public_identifier": {
                       "type": [
@@ -128555,10 +128999,11 @@
                         "type": "string",
                         "enum": [
                           "tenant",
-                          "linkedin"
+                          "linkedin",
+                          "cleared"
                         ]
                       },
-                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                     },
                     "tags": {
                       "type": "array",
@@ -128704,7 +129149,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                     },
                     "public_identifier": {
                       "type": [
@@ -128880,10 +129325,11 @@
                         "type": "string",
                         "enum": [
                           "tenant",
-                          "linkedin"
+                          "linkedin",
+                          "cleared"
                         ]
                       },
-                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                     },
                     "tags": {
                       "type": "array",
@@ -129059,7 +129505,7 @@
             }
           },
           "400": {
-            "description": "Invalid input: a URL that is not a LinkedIn profile or Sales Navigator lead (message starts linkedin_url:), a field over its length, extra over its caps, a bad Tag name. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "Invalid input: neither linkedin_url nor email, a URL that is not a LinkedIn profile or Sales Navigator lead (message starts linkedin_url:), an email that is not one bare address, an email alone that several Leads hold (send the linkedin_url too), a field over its length, extra over its caps, a bad Tag name. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -129229,7 +129675,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Upserts the Lead for one person, keyed on LinkedIn identity: any spelling of the same profile URL updates the same Lead. An empty or null value never erases a stored one; tags and list_id/list_name only add. 201 when created, 200 otherwise, with outcome. Needs a subscription.",
+        "description": "Upserts the Lead for one person, keyed on LinkedIn identity: any spelling of the same profile URL updates the same Lead. Without linkedin_url, email is required and keys the Lead: any spelling of the same mailbox (letter case, a +tag, dots in a Gmail address) updates the same Lead among those without a LinkedIn URL. An empty or null value never erases a stored one; tags and list_id/list_name only add. 201 when created, 200 otherwise, with outcome. Needs a subscription.",
         "requestBody": {
           "required": true,
           "content": {
@@ -129241,7 +129687,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 500,
-                    "description": "The person's LinkedIn profile or Sales Navigator lead URL. Any spelling of one person resolves to one Lead."
+                    "description": "The person's LinkedIn profile or Sales Navigator lead URL. Any spelling of one person resolves to one Lead. Optional with email: a Lead without a LinkedIn URL is known by its email address."
                   },
                   "full_name": {
                     "type": "string",
@@ -129319,9 +129765,6 @@
                     "description": "A Lead list to add the Lead to, by name; created if none matches (any casing)."
                   }
                 },
-                "required": [
-                  "linkedin_url"
-                ],
                 "additionalProperties": false
               },
               "examples": {
@@ -129329,6 +129772,13 @@
                   "summary": "Just the URL",
                   "value": {
                     "linkedin_url": "https://www.linkedin.com/in/jane-doe/"
+                  }
+                },
+                "byEmail": {
+                  "summary": "By email address, no LinkedIn URL",
+                  "value": {
+                    "email": "jane.doe@example.com",
+                    "full_name": "Jane Doe"
                   }
                 },
                 "full": {
@@ -129615,7 +130065,7 @@
                               "string",
                               "null"
                             ],
-                            "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                            "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                           },
                           "public_identifier": {
                             "type": [
@@ -129791,10 +130241,11 @@
                               "type": "string",
                               "enum": [
                                 "tenant",
-                                "linkedin"
+                                "linkedin",
+                                "cleared"
                               ]
                             },
-                            "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                            "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                           },
                           "tags": {
                             "type": "array",
@@ -130363,7 +130814,7 @@
                           "string",
                           "null"
                         ],
-                        "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                        "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                       },
                       "public_identifier": {
                         "type": [
@@ -130539,10 +130990,11 @@
                           "type": "string",
                           "enum": [
                             "tenant",
-                            "linkedin"
+                            "linkedin",
+                            "cleared"
                           ]
                         },
-                        "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                        "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                       },
                       "tags": {
                         "type": "array",
@@ -131744,7 +132196,7 @@
         ],
         "responses": {
           "200": {
-            "description": "What happened to each Lead. from_store: filled now from data Curviate already holds. queued: a live profile visit waits in the account's paced queue. skipped lists every other Lead with its reason (already_queued, queue_full, not_stored, not_found). A visit's result lands on the Lead's enrichment (done, or failed with failure_code profile_not_found, expired, account_unavailable, platform_error or tier_required).",
+            "description": "What happened to each Lead. from_store: filled now from data Curviate already holds. queued: a live profile visit waits in the account's paced queue. skipped lists every other Lead with its reason (already_queued, queue_full, not_stored, not_found, no_linkedin_url: a Lead known by its email address alone, never visited). A visit's result lands on the Lead's enrichment (done, or failed with failure_code profile_not_found, expired, account_unavailable, platform_error or tier_required).",
             "content": {
               "application/json": {
                 "schema": {
@@ -131783,6 +132235,9 @@
                         },
                         "not_found": {
                           "type": "integer"
+                        },
+                        "no_linkedin_url": {
+                          "type": "integer"
                         }
                       },
                       "required": [
@@ -131791,7 +132246,8 @@
                         "already_queued",
                         "queue_full",
                         "not_stored",
-                        "not_found"
+                        "not_found",
+                        "no_linkedin_url"
                       ]
                     },
                     "skipped": {
@@ -131808,7 +132264,8 @@
                               "already_queued",
                               "queue_full",
                               "not_stored",
-                              "not_found"
+                              "not_found",
+                              "no_linkedin_url"
                             ]
                           }
                         },
@@ -131837,7 +132294,8 @@
                         "already_queued": 0,
                         "queue_full": 0,
                         "not_stored": 0,
-                        "not_found": 1
+                        "not_found": 1,
+                        "no_linkedin_url": 0
                       },
                       "skipped": [
                         {
@@ -132446,6 +132904,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -132459,6 +132918,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -132873,6 +133333,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -132886,6 +133347,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -133239,7 +133701,7 @@
                       "type": "object",
                       "additionalProperties": {}
                     },
-                    "description": "The rows: objects with linkedin_url (required), the standard fields, extra and tags. Send rows or csv, not both."
+                    "description": "The rows: objects with linkedin_url or email (at least one), the other standard fields, extra and tags. Send rows or csv, not both."
                   },
                   "csv": {
                     "type": "string",
@@ -134721,6 +135183,7 @@
                                   ],
                                   "enum": [
                                     "missing_linkedin_url",
+                                    "missing_linkedin_url_or_email",
                                     "invalid_linkedin_url",
                                     "invalid_tag",
                                     "field_too_long",
@@ -134734,6 +135197,7 @@
                                     "malformed_row",
                                     "lead_limit_reached",
                                     "lead_deleted",
+                                    "email_on_several_leads",
                                     "do_not_contact",
                                     "profile_hidden",
                                     "not_a_person",
@@ -135282,6 +135746,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -135295,6 +135760,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -135834,6 +136300,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -135847,6 +136314,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -136431,6 +136899,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -136444,6 +136913,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -137028,6 +137498,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -137041,6 +137512,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -137401,6 +137873,7 @@
                             ],
                             "enum": [
                               "missing_linkedin_url",
+                              "missing_linkedin_url_or_email",
                               "invalid_linkedin_url",
                               "invalid_tag",
                               "field_too_long",
@@ -137414,6 +137887,7 @@
                               "malformed_row",
                               "lead_limit_reached",
                               "lead_deleted",
+                              "email_on_several_leads",
                               "do_not_contact",
                               "profile_hidden",
                               "not_a_person",
@@ -137665,7 +138139,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                     },
                     "public_identifier": {
                       "type": [
@@ -137841,10 +138315,11 @@
                         "type": "string",
                         "enum": [
                           "tenant",
-                          "linkedin"
+                          "linkedin",
+                          "cleared"
                         ]
                       },
-                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                     },
                     "tags": {
                       "type": "array",
@@ -138174,7 +138649,7 @@
                         "string",
                         "null"
                       ],
-                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person."
+                      "description": "`https://www.linkedin.com/in/<public_identifier>/` once the profile slug is known, else the URL path you supplied. Null when the only known path names a vanity URL now held by another person, and for a Lead saved by email address alone."
                     },
                     "public_identifier": {
                       "type": [
@@ -138350,10 +138825,11 @@
                         "type": "string",
                         "enum": [
                           "tenant",
-                          "linkedin"
+                          "linkedin",
+                          "cleared"
                         ]
                       },
-                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data."
+                      "description": "Per non-empty standard field: tenant (you supplied it) or linkedin (Curviate filled it). A tenant value is never overwritten by LinkedIn data. A field you cleared with PATCH reads cleared: LinkedIn data never fills it; PATCH sources: {<field>: null} lets it fill again."
                     },
                     "tags": {
                       "type": "array",
@@ -138520,7 +138996,7 @@
             }
           },
           "400": {
-            "description": "Invalid input. \"\" is refused (use null to clear); linkedin_url cannot change (delete and create again). TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "Invalid input. \"\" is refused (use null to clear); linkedin_url cannot change once a Lead has one (delete and create again); a Lead known by its email address alone cannot clear it, nor take an address another such Lead holds. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -138680,7 +139156,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Partial update: an omitted field is left as is, null clears it (Curviate may fill it again from LinkedIn). In extra, null removes that key. linkedin_url cannot change. Needs a subscription.",
+        "description": "Partial update: an omitted field is left as is, null clears it and LinkedIn data never fills it again (sources reads cleared); sources: {<field>: null} lets LinkedIn fill it again. In extra, null removes that key. linkedin_url cannot change; a Lead saved by email address alone takes one here, and when another Lead already has that profile the two become one (that Lead, which this call returns). Such a Lead's email cannot be cleared. Needs a subscription.",
         "requestBody": {
           "required": true,
           "content": {
@@ -138688,6 +139164,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "linkedin_url": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "Only for a Lead without a LinkedIn URL (known by its email address): gives it this profile. A Lead already saved for that profile absorbs it (its id then answers 404 with merged_into)."
+                  },
                   "full_name": {
                     "type": "string",
                     "description": "Full name, up to 200 characters.",
@@ -138742,6 +139224,43 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "Keys to set; a key set to null is removed, keys left out are untouched."
+                  },
+                  "sources": {
+                    "type": "object",
+                    "properties": {
+                      "full_name": {
+                        "type": "null"
+                      },
+                      "first_name": {
+                        "type": "null"
+                      },
+                      "last_name": {
+                        "type": "null"
+                      },
+                      "headline": {
+                        "type": "null"
+                      },
+                      "job_title": {
+                        "type": "null"
+                      },
+                      "company": {
+                        "type": "null"
+                      },
+                      "email": {
+                        "type": "null"
+                      },
+                      "location": {
+                        "type": "null"
+                      },
+                      "about": {
+                        "type": "null"
+                      },
+                      "language": {
+                        "type": "null"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "A field you cleared reads `sources.<field>: \"cleared\"` and LinkedIn data never fills it. Send `{\"<field>\": null}` here to let LinkedIn fill it again; a field holding a value keeps its source."
                   }
                 },
                 "additionalProperties": false
@@ -138751,6 +139270,14 @@
                   "summary": "Clear a field",
                   "value": {
                     "headline": null
+                  }
+                },
+                "refill": {
+                  "summary": "Let LinkedIn fill a cleared field again",
+                  "value": {
+                    "sources": {
+                      "headline": null
+                    }
                   }
                 },
                 "extra": {
@@ -141462,7 +141989,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Already on the list: the existing entry, unchanged.",
+            "description": "Already on the list: the existing entry, raised to everything when this add asks for everything and the entry stopped email only; else unchanged.",
             "content": {
               "application/json": {
                 "schema": {
@@ -141806,7 +142333,7 @@
             }
           },
           "400": {
-            "description": "Neither or both of lead_id and linkedin_url, a URL that is not a LinkedIn profile, or a reason or scope outside the list. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
+            "description": "Not exactly one of lead_id, linkedin_url, company_linkedin_url and email, a URL that is not a LinkedIn profile, an email that is not one bare address, or a reason or scope outside the list. TEAM_REQUIRED: an All-Teams key sent no X-Curviate-Team header (on an account route: with an account id that is not one); GET /v1/teams lists your teams.",
             "content": {
               "application/json": {
                 "schema": {
@@ -141976,7 +142503,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Adds one person by lead_id or linkedin_url, with an optional reason and a scope (everything by default; email_only stops email only and leaves LinkedIn untouched); a URL of someone who is not a Lead yet creates the Lead first, from stored data only. Or a whole company by company_linkedin_url (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url shows it): nobody who works there is enrolled, contacted or imported. 201 when added; a person or company already on the list answers 200 with its entry. Any team member may add. For many people, POST /v1/do-not-contact/import takes a file. Needs a subscription.",
+        "description": "Adds one person by lead_id, linkedin_url or email, with an optional reason and a scope (everything by default; email_only stops email only and leaves LinkedIn untouched); a URL of someone who is not a Lead yet creates the Lead first, from stored data only. By email: every Lead holding that mailbox, under any spelling (letter case, a +tag, dots in a Gmail address), is listed with the entry's scope: everything stops email and LinkedIn for each, email_only stops email only. No Lead is created. Or a whole company by company_linkedin_url (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url shows it): nobody who works there is enrolled, contacted or imported. 201 when added; a person or company already on the list answers 200 with its entry. Any team member may add. For many people, POST /v1/do-not-contact/import takes a file. Needs a subscription.",
         "requestBody": {
           "required": true,
           "content": {
@@ -142000,6 +142527,11 @@
                     "minLength": 1,
                     "maxLength": 500,
                     "description": "A company instead of a person: its LinkedIn URL with the numeric id (a Lead's company_linkedin_url). Nobody who works there is contacted or imported."
+                  },
+                  "email": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "An email address instead: every Lead holding that mailbox, under any spelling, is listed with this scope (everything stops email and LinkedIn for each). No Lead is created. The entry keeps no address in clear."
                   },
                   "reason": {
                     "type": "string",
@@ -142038,6 +142570,13 @@
                   "value": {
                     "linkedin_url": "https://www.linkedin.com/in/jane-doe/",
                     "reason": "existing_customer"
+                  }
+                },
+                "byEmail": {
+                  "summary": "By email address",
+                  "value": {
+                    "email": "jane.doe@example.com",
+                    "reason": "asked_to_stop"
                   }
                 },
                 "emailOnly": {
@@ -142409,6 +142948,9 @@
                         "created": {
                           "type": "integer"
                         },
+                        "updated": {
+                          "type": "integer"
+                        },
                         "unchanged": {
                           "type": "integer"
                         },
@@ -142432,10 +142974,11 @@
                             "type": "string",
                             "enum": [
                               "created",
+                              "updated",
                               "unchanged",
                               "skipped"
                             ],
-                            "description": "created: put on the list. unchanged: already on the list. skipped: see skip_reason."
+                            "description": "created: put on the list. updated: already on the list for email only, raised to everything by this row. unchanged: already on the list, at this scope or a stronger one. skipped: see skip_reason."
                           },
                           "entry_id": {
                             "type": [
@@ -142493,6 +143036,7 @@
                       "total_rows": 3,
                       "counts": {
                         "created": 1,
+                        "updated": 0,
                         "unchanged": 1,
                         "skipped": 1
                       },
@@ -142679,7 +143223,7 @@
           }
         ],
         "x-curviate-tier": "automate",
-        "description": "Adds the people of a file to the do-not-contact list: rows of linkedin_url and an optional reason and scope (everything or email_only; another scope skips the row as invalid_scope), as JSON rows or CSV text, up to 10000 rows. Each row works as POST /v1/do-not-contact: a URL of someone who is not a Lead yet creates the Lead from stored data, and a person already on the list is reported unchanged (their entry and reason stay). The answer is the per-row report. A bad URL or reason skips its row and the others apply; a bad structure refuses the file. A do-not-contact export re-imports as it is. Any team member may import. Needs a subscription.",
+        "description": "Adds the people of a file to the do-not-contact list: rows of linkedin_url and an optional reason and scope (everything or email_only; another scope skips the row as invalid_scope), as JSON rows or CSV text, up to 10000 rows. Each row works as POST /v1/do-not-contact: a URL of someone who is not a Lead yet creates the Lead from stored data, and a person already on the list is reported unchanged (their entry and reason stay), or updated when the row asks for everything and their entry stopped email only (it is raised; a scope never goes down). The answer is the per-row report. A bad URL or reason skips its row and the others apply; a bad structure refuses the file. A do-not-contact export re-imports as it is. Any team member may import. Needs a subscription.",
         "x-curviate-limits": {
           "rows": 10000,
           "body_bytes": 9437184
@@ -150011,7 +150555,7 @@
                       "timezone": {
                         "type": "string",
                         "maxLength": 64,
-                        "description": "Retired: days and hours are read in each sending account's own time zone. Accepted with warning W13 until 2027-01-25, never stored or returned.",
+                        "description": "An IANA time zone, like Europe/Berlin. Required to start a Campaign with no sending account (an email-only Sequence sent from shared Mailboxes): its days, hours and business-day waits are read in this zone. With sending accounts it is not read: days and hours are read in each sending account's own time zone. null clears it.",
                         "nullable": true
                       },
                       "days": {
@@ -153311,7 +153855,7 @@
                       "timezone": {
                         "type": "string",
                         "maxLength": 64,
-                        "description": "Retired: days and hours are read in each sending account's own time zone. Accepted with warning W13 until 2027-01-25, never stored or returned.",
+                        "description": "An IANA time zone, like Europe/Berlin. Required to start a Campaign with no sending account (an email-only Sequence sent from shared Mailboxes): its days, hours and business-day waits are read in this zone. With sending accounts it is not read: days and hours are read in each sending account's own time zone. null clears it.",
                         "nullable": true
                       },
                       "days": {
@@ -160548,6 +161092,7 @@
                   "field_missing",
                   "attachment_missing",
                   "channel_replied",
+                  "same_mailbox",
                   "platform_rejected",
                   "recipient_unreachable",
                   "platform_error",
@@ -161532,6 +162077,7 @@
                               "field_missing",
                               "attachment_missing",
                               "channel_replied",
+                              "same_mailbox",
                               "platform_rejected",
                               "recipient_unreachable",
                               "platform_error",
@@ -166479,6 +167025,7 @@
                             "field_missing",
                             "attachment_missing",
                             "channel_replied",
+                            "same_mailbox",
                             "platform_rejected",
                             "recipient_unreachable",
                             "platform_error",
@@ -167349,6 +167896,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -167409,6 +167957,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -168050,6 +168599,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -168110,6 +168660,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -168623,6 +169174,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -168683,6 +169235,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -169195,6 +169748,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -169255,6 +169809,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -170989,6 +171544,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -171049,6 +171605,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -171586,6 +172143,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -171646,6 +172204,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -172484,6 +173043,7 @@
                                         "field_missing",
                                         "attachment_missing",
                                         "channel_replied",
+                                        "same_mailbox",
                                         "platform_rejected",
                                         "recipient_unreachable",
                                         "platform_error",
@@ -172544,6 +173104,7 @@
                                         "field_missing",
                                         "attachment_missing",
                                         "channel_replied",
+                                        "same_mailbox",
                                         "platform_rejected",
                                         "recipient_unreachable",
                                         "platform_error",
@@ -172950,6 +173511,7 @@
                                           "field_missing",
                                           "attachment_missing",
                                           "channel_replied",
+                                          "same_mailbox",
                                           "platform_rejected",
                                           "recipient_unreachable",
                                           "platform_error",
@@ -173010,6 +173572,7 @@
                                           "field_missing",
                                           "attachment_missing",
                                           "channel_replied",
+                                          "same_mailbox",
                                           "platform_rejected",
                                           "recipient_unreachable",
                                           "platform_error",
@@ -173877,6 +174440,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -173937,6 +174501,7 @@
                                     "field_missing",
                                     "attachment_missing",
                                     "channel_replied",
+                                    "same_mailbox",
                                     "platform_rejected",
                                     "recipient_unreachable",
                                     "platform_error",
@@ -174449,6 +175014,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -174509,6 +175075,7 @@
                                   "field_missing",
                                   "attachment_missing",
                                   "channel_replied",
+                                  "same_mailbox",
                                   "platform_rejected",
                                   "recipient_unreachable",
                                   "platform_error",
@@ -176456,6 +177023,7 @@
                               "field_missing",
                               "attachment_missing",
                               "channel_replied",
+                              "same_mailbox",
                               "platform_rejected",
                               "recipient_unreachable",
                               "platform_error",
@@ -177324,11 +177892,11 @@
                       "properties": {
                         "human": {
                           "type": "integer",
-                          "description": "Emails whose first open was a person's."
+                          "description": "Emails a person opened."
                         },
                         "machine": {
                           "type": "integer",
-                          "description": "Emails first opened by a scanner or a security gateway (at delivery, or a known scanner network)."
+                          "description": "Emails opened only by a scanner, a security gateway or a mail app on its own (at delivery, or a known scanner network)."
                         }
                       },
                       "required": [
@@ -177389,14 +177957,20 @@
                         },
                         "one_click": {
                           "type": "object",
+                          "description": "Where one-click unsubscribe is on. A Mailbox not counted in live sends the unsubscribe link only.",
                           "properties": {
-                            "pending_test": {
-                              "type": "boolean",
-                              "description": "True while one-click unsubscribe is not yet confirmed working; one_click then stays 0."
+                            "live": {
+                              "type": "integer",
+                              "description": "Of mailboxes, those whose emails with the unsubscribe link also carry the mail app's one-click unsubscribe now: Curviate signs their mail and the domain's signing and tracking records are found."
+                            },
+                            "mailboxes": {
+                              "type": "integer",
+                              "description": "Mailboxes in scope."
                             }
                           },
                           "required": [
-                            "pending_test"
+                            "live",
+                            "mailboxes"
                           ]
                         }
                       },

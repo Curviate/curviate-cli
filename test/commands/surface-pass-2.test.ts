@@ -418,3 +418,59 @@ describe("pass 11: `lead import --filter` help names exactly the keys the served
     }
   });
 });
+
+describe("pass 19: email only", () => {
+  it.each([
+    [["lead", "create", "--email", "ana@acme.example", "--first-name", "Ana", "--list-name", "Q4 email"], { call: "POST /v1/leads", query: {}, body: { email: "ana@acme.example", first_name: "Ana", list_name: "Q4 email" } }],
+    [["lead", "create", "--linkedin-url", "https://www.linkedin.com/in/ana/", "--email", "ana@acme.example"], { call: "POST /v1/leads", query: {}, body: { linkedin_url: "https://www.linkedin.com/in/ana/", email: "ana@acme.example" } }],
+    [["lead", "update", "con_1", "--allow-fill", "job-title,company"], { call: "PATCH /v1/leads/con_1", query: {}, body: { sources: { job_title: null, company: null } } }],
+    [["lead", "update", "con_1", "--linkedin-url", "https://www.linkedin.com/in/ana/"], { call: "PATCH /v1/leads/con_1", query: {}, body: { linkedin_url: "https://www.linkedin.com/in/ana/" } }],
+    [["do-not-contact", "add", "--email", "bo@acme.example", "--scope", "email_only"], { call: "POST /v1/do-not-contact", query: {}, body: { email: "bo@acme.example", scope: "email_only" } }],
+    [["campaign", "update", "mot_1", "--timezone", "Europe/Berlin"], { call: "PATCH /v1/campaigns/mot_1", query: {}, body: { schedule: { timezone: "Europe/Berlin" } } }],
+    [["unibox", "conversation", "mark", "cnv_team_1", "--read"], { call: "PATCH /v1/unibox/conversations/cnv_team_1", query: {}, body: { read: true } }],
+  ])("%j", async (args, expected) => {
+    const r = await wire(args, ok);
+    expect([r.status, lines(r.sent)]).toEqual([0, [expected]]);
+  });
+
+  it.each([
+    [["lead", "create", "--first-name", "Ana"]], // neither --linkedin-url nor --email
+    [["lead", "create", "--linkedin-url", " ", "--email", "ana@acme.example"]],
+    [["lead", "update", "con_1", "--clear", "job-title", "--allow-fill", "job-title"]],
+    [["lead", "update", "con_1", "--allow-fill", "nope"]],
+    [["do-not-contact", "add", "--email", "bo@acme.example", "--lead", "con_1"]], // exactly one
+    [["campaign", "update", "mot_1", "--timezone", ""]],
+  ])("%j exits 2 with no request", async (args) => {
+    const r = await wire(args);
+    expect([r.status, r.sent.length]).toEqual([2, 0]);
+  });
+
+  it("do-not-contact import sums updated beside created, unchanged and skipped", async () => {
+    const p = join(mkdtempSync(join(tmpdir(), "dnc-")), "d.json");
+    writeFileSync(p, JSON.stringify([{ linkedin_url: "https://www.linkedin.com/in/ana/" }, { linkedin_url: "https://www.linkedin.com/in/bo/" }]));
+    const r = await wire(["do-not-contact", "import", "--file", p, "--json"], () => ({ body: { object: "do_not_contact_import", counts: { created: 0, updated: 1, unchanged: 1, skipped: 0 }, report: [] } }));
+    expect([r.status, JSON.parse(r.stdout).counts]).toEqual([0, { created: 0, updated: 1, unchanged: 1, skipped: 0 }]);
+  });
+
+  it("domain check names the signing record until it passes; a pass or no record says nothing", async () => {
+    const rec = { name: "kq3mx7pa2vb._domainkey.acme.example", type: "TXT", value: "v=DKIM1; k=rsa; p=x" };
+    const run = (checks: object, signing_record: object | null) => wire(["domain", "check", "acme.example"], () => ({ body: { object: "domain", name: "acme.example", checks, signing_record } }));
+    const missing = await run({ mx: "pass", signing: "fail" }, rec);
+    expect([missing.status, missing.stderr]).toEqual([0, expect.stringContaining(`signing: add the TXT record signing_record at ${rec.name}`)]);
+    expect((await run({ mx: "pass", signing: "pass" }, rec)).stderr).not.toContain("signing:");
+    expect((await run({ mx: "pass", signing: "unknown" }, null)).stderr).not.toContain("signing:");
+  });
+
+  it("analytics email prints one-click live of mailboxes in the compact view", async () => {
+    const tty = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    try {
+      const body = (live: number) => ({ sent: 3, tracking: "set_up", opt_outs: { one_click: { live, mailboxes: 2 } } });
+      const part = await wire(["analytics", "email"], () => ({ body: body(1) }));
+      expect(part.stdout).toContain("one-click unsubscribe: live on 1 of 2 Mailboxes (the others send the unsubscribe link only");
+      expect((await wire(["analytics", "email"], () => ({ body: body(2) }))).stdout).toContain("one-click unsubscribe: live on 2 of 2 Mailboxes\n");
+    } finally {
+      if (tty) Object.defineProperty(process.stdout, "isTTY", tty); else delete (process.stdout as { isTTY?: boolean }).isTTY;
+    }
+  });
+});
