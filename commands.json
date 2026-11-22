@@ -1899,7 +1899,7 @@
         "campaign",
         "create"
       ],
-      "description": "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
+      "description": "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. Email only: a Campaign with no account_ids sends an email-only Sequence from its shared_mailbox_ids, its days, hours and business-day waits read in --timezone (schedule.timezone, required to start it). It belongs to its creator: another Member cannot change or see it (Owners and Managers can). settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -1908,6 +1908,11 @@
           "stdinArg": true,
           "required": true,
           "description": "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "schedule.timezone: an IANA time zone, like Europe/Berlin. Required to start a Campaign with no account_ids (email only); with sending Accounts it is not read (each Account's own zone is)."
         }
       ],
       "globals": [
@@ -1925,7 +1930,8 @@
       ],
       "examples": [
         "curviate campaign create --file campaign.json",
-        "curviate campaign create --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
+        "curviate campaign create --file email-campaign.json --timezone Europe/Berlin",
+        "curviate campaign create --timezone Europe/Berlin --file - <<'EOF'\n{\n  \"name\": \"Q4 email\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"shared_mailbox_ids\": [\"mbx_YOUR_MAILBOX_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"email_1\", \"do\": \"email.send\", \"with\": { \"subject\": \"Quick question\", \"text\": \"Hi {{lead.first_name|there}}, ...\" }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
       ],
       "requires": [],
       "risk": "write",
@@ -1938,7 +1944,7 @@
       },
       "errors": {
         "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
         "TIER_REQUIRED": "Campaigns need a subscription."
       },
@@ -1954,7 +1960,7 @@
         "campaign",
         "update"
       ],
-      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). --one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs a subscription.",
+      "description": "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). --one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. --timezone sets schedule.timezone, with or without --file. A Campaign started with no account_ids cannot take accounts later (CAMPAIGN_STATUS_CONFLICT: create a new one). Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -1972,6 +1978,11 @@
           "name": "one-lead-per-company",
           "type": "boolean",
           "description": "Enroll at most one Lead per company (settings.one_lead_per_company); --no-one-lead-per-company turns it off."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "description": "schedule.timezone: an IANA time zone, like Europe/Berlin. Required to start a Campaign with no account_ids (email only); with sending Accounts it is not read (each Account's own zone is)."
         },
         {
           "name": "if-revision",
@@ -1994,7 +2005,7 @@
       ],
       "examples": [
         "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
-        "curviate campaign update mot_YOUR_CAMPAIGN_ID --one-lead-per-company",
+        "curviate campaign update mot_YOUR_CAMPAIGN_ID --timezone America/New_York",
         "curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n{\n  \"name\": \"Q4 webinar follow-up\",\n  \"lead_list_ids\": [\"cl_YOUR_LIST_ID\"],\n  \"account_ids\": [\"acc_YOUR_ACCOUNT_ID\"],\n  \"sequence\": {\n    \"on_reply\": \"end\",\n    \"steps\": [\n      { \"id\": \"invite\", \"do\": \"invite.send\", \"with\": { \"note\": null }, \"next\": \"end\" }\n    ]\n  }\n}\nEOF"
       ],
       "requires": [],
@@ -2010,7 +2021,7 @@
         "SEQUENCE_INVALID": "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them.",
         "SEQUENCE_CONFLICT": "with --if-revision: someone saved the Sequence since that revision; the message names the newer revision and who saved it.",
         "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, cannot change.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2066,9 +2077,9 @@
         "blast_radius": "Every Lead of its Lead lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`)."
       },
       "errors": {
-        "CAMPAIGN_NOT_STARTABLE": "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address); each is listed.",
+        "CAMPAIGN_NOT_STARTABLE": "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address; with no account_ids a shared Mailbox that can send and schedule.timezone); each is listed.",
         "CAMPAIGN_STATUS_CONFLICT": "only a draft starts.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
         "TIER_REQUIRED": "Campaigns need a subscription."
       },
@@ -2119,7 +2130,7 @@
       },
       "errors": {
         "CAMPAIGN_STATUS_CONFLICT": "only an active or scheduled Campaign pauses.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2175,7 +2186,7 @@
       "errors": {
         "CAMPAIGN_NOT_STARTABLE": "a gap stops it; each is listed.",
         "CAMPAIGN_STATUS_CONFLICT": "only a paused Campaign resumes.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you.",
         "TIER_REQUIRED": "Campaigns need a subscription."
       },
@@ -2226,7 +2237,7 @@
       },
       "errors": {
         "CAMPAIGN_STATUS_CONFLICT": "already archived.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2277,7 +2288,7 @@
       "errors": {
         "RESOURCE_NOT_FOUND": "no Campaign with this id.",
         "CAMPAIGN_STATUS_CONFLICT": "only a draft is deleted; archive the others.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2473,7 +2484,7 @@
       },
       "errors": {
         "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, takes no Leads.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2528,7 +2539,7 @@
       },
       "errors": {
         "CAMPAIGN_STATUS_CONFLICT": "an archived Campaign, or one past its end, takes no Leads.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2666,7 +2677,7 @@
         "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
         "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
         "TIER_REQUIRED": "Voice clips need a subscription.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -2770,7 +2781,7 @@
         "PAYLOAD_TOO_LARGE": "the file is over 20 MiB.",
         "RATE_LIMIT_TENANT": "100 uploads in the last 24 hours; Retry-After is the wait.",
         "TIER_REQUIRED": "Campaign attachments need a subscription.",
-        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign.",
+        "INSUFFICIENT_ROLE": "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
         "ACCOUNT_NOT_SHARED": "a sending Account is not shared with you."
       },
       "seeAlso": [
@@ -3612,14 +3623,13 @@
         "lead",
         "create"
       ],
-      "description": "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs a subscription.",
+      "description": "Add a Lead from a LinkedIn profile URL or an email address, or update the one it already is (any spelling of the URL is the same person). With --email and no --linkedin-url the Lead is known by its email address: any spelling of the mailbox (letter case, a +tag, dots in a Gmail address) is the same Lead, it is never enriched from LinkedIn, and an email-only Campaign can reach it. Nothing is sent to LinkedIn or to the person. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
           "name": "linkedin-url",
           "type": "string",
-          "required": true,
-          "description": "The person's LinkedIn profile URL, in any spelling."
+          "description": "The person's LinkedIn profile URL, in any spelling. Optional with --email."
         },
         {
           "name": "full-name",
@@ -3696,7 +3706,8 @@
         "beta"
       ],
       "examples": [
-        "curviate lead create --linkedin-url https://www.linkedin.com/in/jane-doe --tag hot --list cl_YOUR_LIST_ID"
+        "curviate lead create --linkedin-url https://www.linkedin.com/in/jane-doe --tag hot --list cl_YOUR_LIST_ID",
+        "curviate lead create --email jane@example.com --first-name Jane --list-name \"Q4 email\""
       ],
       "requires": [],
       "risk": "write",
@@ -3708,7 +3719,8 @@
         "undo": "`curviate lead delete <id>`; an update is undone by updating again."
       },
       "errors": {
-        "LEAD_LIMIT_REACHED": "the Team is at its Lead, Tag or list-membership cap."
+        "LEAD_LIMIT_REACHED": "the Team is at its Lead, Tag or list-membership cap.",
+        "INVALID_REQUEST": "a bad value; or, by --email alone, several LinkedIn Leads hold that address (send --linkedin-url too)."
       }
     },
     {
@@ -3716,7 +3728,7 @@
         "lead",
         "update"
       ],
-      "description": "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs a subscription.",
+      "description": "Change a Lead's fields. A field you do not name is left as it is; --clear empties one, and LinkedIn data never fills it again (its source reads cleared) until --allow-fill lets it. --linkedin-url gives a Lead known by email alone its profile; when another Lead already has that profile the two become one (that Lead is returned). Tags and lists have their own commands. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -3770,9 +3782,19 @@
           "description": "The Lead's about."
         },
         {
+          "name": "linkedin-url",
+          "type": "string",
+          "description": "Only for a Lead known by email address alone: its LinkedIn profile URL."
+        },
+        {
           "name": "clear",
           "type": "string",
-          "description": "Comma list of fields to empty: full-name, first-name, last-name, headline, job-title, company, email, location, about."
+          "description": "Comma list of fields to empty and keep empty: full-name, first-name, last-name, headline, job-title, company, email, location, about."
+        },
+        {
+          "name": "allow-fill",
+          "type": "string",
+          "description": "Comma list of fields you cleared that LinkedIn data may fill again."
         }
       ],
       "globals": [
@@ -3790,7 +3812,8 @@
       ],
       "examples": [
         "curviate lead update con_YOUR_LEAD_ID --email jane@example.com",
-        "curviate lead update con_YOUR_LEAD_ID --clear email"
+        "curviate lead update con_YOUR_LEAD_ID --clear email",
+        "curviate lead update con_YOUR_LEAD_ID --allow-fill job-title"
       ],
       "requires": [],
       "risk": "write",
@@ -3940,7 +3963,7 @@
         "lead",
         "import"
       ],
-      "description": "Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs a subscription.",
+      "description": "Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above 10000 rows or 9 MiB is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. Each row names the person by linkedin_url, or by email alone (a Lead known by its email address; a CSV with an email column and no LinkedIn URL column imports). Only the file's structure is checked here; the server skips bad rows and reports why (missing_linkedin_url_or_email: neither; email_on_several_leads: several LinkedIn Leads hold that address). Re-importing merges: a Lead already there is updated or left as it is. If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to 60 s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -4286,7 +4309,7 @@
         "blast_radius": "Up to 1000 Leads per request, from one Account; a --list is every Lead in it."
       },
       "output": [
-        "`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found) and `skipped` with a reason each."
+        "`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found, no_linkedin_url: a Lead known by email alone, never visited) and `skipped` with a reason each."
       ],
       "errors": {
         "ACCOUNT_NOT_FOUND": "the Account is not in your Team."
@@ -6545,18 +6568,23 @@
         "do-not-contact",
         "add"
       ],
-      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). One person per call; for many, `do-not-contact import`. Any member may add. Needs a subscription.",
+      "description": "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or by --email: every Lead of the Team at that address, under any spelling (letter case, a +tag, dots in a Gmail address), and any Lead saved there later; no Lead is created. Or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). A scope only goes up: adding everything raises an email_only entry, email_only never lowers everything. One person per call; for many, `do-not-contact import`. Any member may add. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
           "name": "lead",
           "type": "string",
-          "description": "The Lead (con_...). Not with --linkedin-url."
+          "description": "The Lead (con_...). Not with --linkedin-url or --email."
         },
         {
           "name": "linkedin-url",
           "type": "string",
-          "description": "The person's LinkedIn profile URL, in any spelling. Not with --lead."
+          "description": "The person's LinkedIn profile URL, in any spelling. Not with --lead or --email."
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "description": "An email address: every Lead of the Team at that mailbox is listed with this scope. No Lead is created, and the entry keeps no address in clear."
         },
         {
           "name": "company",
@@ -6589,7 +6617,7 @@
       ],
       "examples": [
         "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
-        "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only",
+        "curviate do-not-contact add --email jane@example.com --scope email_only",
         "curviate do-not-contact add --company https://www.linkedin.com/company/1234567/"
       ],
       "requires": [],
@@ -6598,7 +6626,7 @@
         "changes": "The person joins the list; Campaigns skip them and writes toward them are refused.",
         "visible_to": "Your Team.",
         "budget_rows": [],
-        "retry": "Safe: a person already on the list answers with their existing entry.",
+        "retry": "Safe: a person already on the list answers with their existing entry (raised to everything when this add asks for it).",
         "undo": "`curviate do-not-contact remove <id>` (Owners and Managers)."
       },
       "errors": {
@@ -6762,7 +6790,7 @@
         "do-not-contact",
         "import"
       ],
-      "description": "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. A file over 10,000 rows is sent in several requests. Any member may import. Needs a subscription.",
+      "description": "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason, or updated when the row asks for everything and their entry stopped email only (a scope never goes down). A bad URL or reason skips its row and the server says why. A file over 10,000 rows is sent in several requests. Any member may import. Needs a subscription.",
       "usageOnly": false,
       "args": [
         {
@@ -6810,7 +6838,7 @@
         "undo": "`curviate do-not-contact remove <id>` per person (Owners and Managers)."
       },
       "output": [
-        "One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."
+        "One report: `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."
       ],
       "errors": {
         "TIER_REQUIRED": "your Team needs a subscription for Do-not-contact writes.",
@@ -7802,7 +7830,7 @@
         "domain",
         "check"
       ],
-      "description": "A sending domain's checks as last run (daily): mx, spf, dkim, dmarc and tracking, each pass, fail or unknown (a failed lookup, or a DKIM selector not known yet, is never a fail), with the tracking record to add, any blocklists and the DKIM selector found. --now runs them now: DNS lookups only, nothing is sent and no Mailbox is contacted. It takes any domain your Team names, before its first Mailbox there too, so the records can be set up first. A check warns and never stops sending.",
+      "description": "A sending domain's checks as last run (daily): mx, spf, dkim, dmarc and tracking, each pass, fail or unknown (a failed lookup, or a DKIM selector not known yet, is never a fail), with the tracking record to add, any blocklists and the DKIM selector found. --now runs them now: DNS lookups only, nothing is sent and no Mailbox is contacted. It takes any domain your Team names, before its first Mailbox there too, so the records can be set up first. A check warns and never stops sending. signing (optional, never a fail) is whether signing_record is published: one TXT record with Curviate's own signing key for this domain and Team. With it, Curviate signs the domain's email and those emails offer the mail app's one-click unsubscribe; until it passes, stderr names the record to add.",
       "usageOnly": false,
       "args": [
         {
@@ -7835,7 +7863,8 @@
       "requires": [],
       "risk": "read",
       "output": [
-        "The domain with its checks. Without --now the answer is the last daily run; with --now, the run just made."
+        "The domain with its checks. Without --now the answer is the last daily run; with --now, the run just made.",
+        "signing_record: { name, type: TXT, value } (about 410 characters: add it exactly as shown and no other record at that name; a DNS host that splits it into several strings is fine), or null for a domain with no Mailbox Curviate signs for and no Mailbox order."
       ],
       "errors": {
         "DOMAIN_NOT_FOUND": "without --now: your Team has no Mailbox on this domain and never checked it (another Team's domain answers the same); a public email provider's domain always."
@@ -7860,7 +7889,7 @@
         "unibox",
         "list"
       ],
-      "description": "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only.",
+      "description": "List the chats of every Account you may operate, newest activity first. Served from Curviate's store: no LinkedIn call, no budget. An Account without full-inbox sync shows only its Campaign chats; a disconnected Account's chats are listed read-only. The email of an email-only Campaign (no sending Account) is a Team conversation, ACCOUNT and CHAT empty, listed only without --accounts: read, mark and email it by its conversation id alone. Its Owners, Managers and the Campaign's creator see it.",
       "usageOnly": false,
       "args": [
         {
@@ -8237,7 +8266,7 @@
         "email",
         "send"
       ],
-      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. --cc and --bcc (at most 20 addresses together) and --attach (files read from paths on this machine, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. Up to 6 MiB in all the files go inside the one request; above that each is first uploaded as a file of your Team (`campaign attachment upload`, counted against its daily uploads, kept 30 days) and the email names them by id. Bcc addresses are never shown to the other recipients; do not repeat them where others read. A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
+      "description": "Send one plain-text email to the conversation's Lead, at once: a reply in one of its threads (--thread, a thread_id from `conversation timeline`), or a new thread (--subject, and --mailbox when more than one Mailbox can send). It goes to the Lead's one address with no signature and no opt-out line, counts against the Mailbox's daily limit, and ends the Lead's open Enrollments on this Account as a reply would. In a Team conversation (an email-only Campaign's, no Account) a reply goes from its thread's shared Mailbox; a new thread there is an Owner's or a Manager's. --cc and --bcc (at most 20 addresses together) and --attach (files read from paths on this machine, at most 10, 20 MiB in all, refused here before anything is sent) ride along; a link usually lands better than a file. Up to 6 MiB in all the files go inside the one request; above that each is first uploaded as a file of your Team (`campaign attachment upload`, counted against its daily uploads, kept 30 days) and the email names them by id. Bcc addresses are never shown to the other recipients; do not repeat them where others read. A Cc or Bcc address the receiving server refused while it took the Lead's is a recipients_refused warning on stderr: those got nothing, everyone else did. Check first with `conversation get` that email is available. One request: a retry after a timeout can send twice, so read the timeline before you send again. An unknown outcome (the provider stopped answering after it had the whole email) exits 1, never 7: do not send it again.",
       "usageOnly": false,
       "args": [
         {
@@ -8313,6 +8342,7 @@
         "DO_NOT_CONTACT": "a Cc or Bcc address is a Lead on your Do-not-contact list or opted out of email; nothing was sent.",
         "PLATFORM_ERROR": "the provider did not take the email: nothing was sent (exit 7 when a retry may work). reason attachment_refused: the files were refused (from a Microsoft sign-in Mailbox, more than about 2.2 MB in all, refused before anything is sent): send a link or smaller files. With an unknown outcome it may have been sent: exit 1, do not send it again.",
         "RESOURCE_NOT_FOUND": "no such conversation, or an uploaded file is gone; nothing was sent.",
+        "INSUFFICIENT_ROLE": "your role cannot send from this conversation's Account; in a Team conversation, a new thread (--subject) is an Owner's or a Manager's: reply in your Campaign's thread (--thread). Nothing was sent.",
         "UNSUPPORTED_MEDIA_TYPE": "an attachment is an executable, a script or a macro-enabled Office file; nothing was sent."
       },
       "seeAlso": [
@@ -9285,6 +9315,7 @@
         "reply: Leads first emailed in the window whose first reply, by email or on LinkedIn, came after that email, so far; an out-of-office reply is never a reply.",
         "open: opened over tracked emails; null when no Mailbox in scope tracks opens (`tracking`).",
         "bounce: bounced over sent; a bounce rate needs 50 emails sent to mean anything (the dashboard shows none below that). opt-out: Leads who opted out over Leads first emailed.",
+        "opt_outs.one_click: { live, mailboxes }: of the Mailboxes in scope, how many send the mail app's one-click unsubscribe now (Curviate signs their mail and the domain's signing and tracking records are found); the others send the unsubscribe link only. The compact view prints it as one line.",
         "A rate is still maturing while more than a third of its emails were sent in the last 7 days (`maturing`): it may still rise, so say so. `low_sample` is true under 30.",
         "--include weeks adds the reply rate by week of first email. A compact line by default; --json (or piped) prints the API body.",
         "landing: where mail lands, as verdicts, each with a reason when there is nothing to read: warm_up.reason warm_up_off (warm-up is off), weekly_check.reason no_test_inboxes (not available), tests.reason no_test_inboxes or no_test_run (none run yet); a Mailbox's reputation_reason warm_up_off (no score while warm-up is off). Show them as served."

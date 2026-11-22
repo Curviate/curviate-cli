@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
+## [0.67.0] - 2026-11-22
+
+Requires `@curviate/sdk` 0.62.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. New flags, two error codes mapped to an existing exit; one local refusal removed.
+
+- **Email only, from the terminal.** `lead create --email <address>` without `--linkedin-url` saves a Lead known by its email address (any spelling of the mailbox is the same Lead; never enriched from LinkedIn); `--linkedin-url` is optional with `--email`, and one of the two is required (exit 2, nothing sent). `do-not-contact add --email <address>` lists every Lead of the Team at that mailbox with the entry's scope; no Lead is created. `campaign create|update --timezone <IANA zone>` sets `schedule.timezone`, required to start a Campaign with no `account_ids` (email only, sent from its `shared_mailbox_ids`); `campaign update --timezone` works without `--file`.
+- **`schedule.timezone` in a Campaign file is sent** (it was refused locally as retired). With sending Accounts the server does not read it.
+- **`lead update --allow-fill <field,...>`** lets LinkedIn data fill a field you cleared again (sends `sources: {<field>: null}`); `--clear` now says a cleared field stays cleared. `lead update --linkedin-url` gives a Lead known by email alone its profile (merging into a Lead that already has it).
+- **`domain check`** prints one stderr line naming the `signing_record` to publish while `checks.signing` does not pass. **`analytics email`** prints `one-click unsubscribe: live on N of M Mailboxes` in the compact view (`opt_outs.one_click`, which replaces `pending_test`).
+- **`do-not-contact import`** sums `counts.updated` (an `email_only` entry raised to `everything`; a scope never goes down).
+- **Unibox**: a Team conversation (the email of an email-only Campaign, no Account) lists with ACCOUNT and CHAT empty and is read, marked and emailed by its conversation id alone; help says a new thread there is an Owner's or a Manager's.
+- **Exit codes**: `BILLING_NOT_AVAILABLE` (403, billing is not available for this Team) and `TEAM_MEMBERSHIP_LOCKED` (403, this Team's membership is fixed) exit **2**: no retry or role changes them. Before, both decoded to `INTERNAL` (exit 1).
+- Help: `lead import` names email rows and the skip reasons `missing_linkedin_url_or_email` and `email_on_several_leads`; `lead enrich` names `no_linkedin_url`; `campaign start` names the email-only gaps; a Campaign with no Accounts is its creator's (`INSUFFICIENT_ROLE` for another Member).
+
 ## [0.66.0] - 2026-11-21
 
 Requires `@curviate/sdk` 0.61.0 (exact pin; the vendored fixture is re-copied from the SDK's and its hash recomputed). `commands.json` regenerated. No new command, flag or exit code.

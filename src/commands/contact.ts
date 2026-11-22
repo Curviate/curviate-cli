@@ -38,6 +38,8 @@ export type ContactFlags = RootFlags &
     output?: string;
     fields?: string;
     clear?: string;
+    "allow-fill"?: string;
+    "linkedin-url"?: string;
     "list-name"?: string;
     account?: string;
     mode?: string;
@@ -133,9 +135,10 @@ function fieldsBody(f: ContactFlags): Body {
 }
 
 async function runCreate(c: Curviate, f: ContactFlags): Promise<void> {
-  const url = (f as { "linkedin-url"?: string })["linkedin-url"];
-  if (url === undefined || url.trim() === "") usage("--linkedin-url is required: the person's LinkedIn profile URL, in any spelling.");
-  const body: Body = { linkedin_url: url, ...fieldsBody(f) };
+  const url = f["linkedin-url"];
+  if (url !== undefined && url.trim() === "") usage("--linkedin-url was given an empty value.");
+  const body: Body = { ...(url !== undefined ? { linkedin_url: url } : {}), ...fieldsBody(f) };
+  if (url === undefined && body["email"] === undefined) usage("name the person: --linkedin-url (their LinkedIn profile URL, in any spelling) or --email (a Lead known by email address alone), or both.");
   const tags = listFlag("tag", f.tag);
   if (tags.length) body["tags"] = tags;
   const list = (f as { list?: string }).list;
@@ -152,12 +155,23 @@ async function runCreate(c: Curviate, f: ContactFlags): Promise<void> {
 
 async function runUpdate(c: Curviate, f: ContactFlags): Promise<void> {
   const body = fieldsBody(f);
+  const url = f["linkedin-url"];
+  if (url !== undefined) {
+    if (url.trim() === "") usage("--linkedin-url was given an empty value.");
+    body["linkedin_url"] = url;
+  }
   for (const flag of listFlag("clear", f.clear)) {
     if (!(FIELDS as readonly string[]).includes(flag)) usage(`--clear takes field names: ${FIELDS.join(", ")}.`);
     if (key(flag) in body) usage(`--${flag} and --clear ${flag} contradict each other.`);
     body[key(flag)] = null;
   }
-  if (Object.keys(body).length === 0) usage(`name what to change: ${FIELDS.map((x) => `--${x}`).join(", ")}, or --clear <field>.`);
+  const fill = listFlag("allow-fill", f["allow-fill"]);
+  for (const flag of fill) {
+    if (!(FIELDS as readonly string[]).includes(flag)) usage(`--allow-fill takes field names: ${FIELDS.join(", ")}.`);
+    if (body[key(flag)] === null) usage(`--clear ${flag} and --allow-fill ${flag} contradict each other.`);
+  }
+  if (fill.length) body["sources"] = Object.fromEntries(fill.map((flag) => [key(flag), null]));
+  if (Object.keys(body).length === 0) usage(`name what to change: ${FIELDS.map((x) => `--${x}`).join(", ")}, --linkedin-url, --clear <field> or --allow-fill <field>.`);
   const id = String(f.id ?? "");
   if (f.preview) return preview("leads.update", { id }, body);
   try {
@@ -302,15 +316,21 @@ const writeRules = (changes: string, undo: string, retry = "Safe: the same call 
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Add a Lead from a LinkedIn profile URL, or update the one it already is (any spelling of the URL is the same person). Nothing is sent to LinkedIn or to the person. Needs a subscription.",
+    description:
+      "Add a Lead from a LinkedIn profile URL or an email address, or update the one it already is (any spelling of the URL is the same person). " +
+      "With --email and no --linkedin-url the Lead is known by its email address: any spelling of the mailbox (letter case, a +tag, dots in a Gmail address) is the same Lead, it is never enriched from LinkedIn, and an email-only Campaign can reach it. " +
+      "Nothing is sent to LinkedIn or to the person. Needs a subscription.",
     risk: "write",
     rules: writeRules("Creates the Lead, or updates it and reports `outcome: updated` or `unchanged`.", "`curviate lead delete <id>`; an update is undone by updating again."),
-    errors: { LEAD_LIMIT_REACHED: "the Team is at its Lead, Tag or list-membership cap." },
-    examples: ["curviate lead create --linkedin-url https://www.linkedin.com/in/jane-doe --tag hot --list cl_YOUR_LIST_ID"],
+    errors: {
+      LEAD_LIMIT_REACHED: "the Team is at its Lead, Tag or list-membership cap.",
+      INVALID_REQUEST: "a bad value; or, by --email alone, several LinkedIn Leads hold that address (send --linkedin-url too).",
+    },
+    examples: ["curviate lead create --linkedin-url https://www.linkedin.com/in/jane-doe --tag hot --list cl_YOUR_LIST_ID", "curviate lead create --email jane@example.com --first-name Jane --list-name \"Q4 email\""],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    "linkedin-url": { type: "string", required: true, description: "The person's LinkedIn profile URL, in any spelling." },
+    "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Optional with --email." },
     ...FIELD_ARGS,
     tag: { type: "string", description: "A Tag to add (up to 64 characters); repeatable." },
     list: { type: "string", description: "Add to this Lead list (cl_...)." },
@@ -322,17 +342,21 @@ const createCmd = defineCommand({
 const updateCmd = defineCommand({
   meta: {
     name: "update",
-    description: "Change a Lead's fields. A field you do not name is left as it is; --clear empties one. Tags and lists have their own commands. Needs a subscription.",
+    description:
+      "Change a Lead's fields. A field you do not name is left as it is; --clear empties one, and LinkedIn data never fills it again (its source reads cleared) until --allow-fill lets it. " +
+      "--linkedin-url gives a Lead known by email alone its profile; when another Lead already has that profile the two become one (that Lead is returned). Tags and lists have their own commands. Needs a subscription.",
     risk: "write",
     rules: writeRules("The named fields change.", "Update again with the old values."),
     errors: { RESOURCE_NOT_FOUND: "no Lead has this id." },
-    examples: ["curviate lead update con_YOUR_LEAD_ID --email jane@example.com", "curviate lead update con_YOUR_LEAD_ID --clear email"],
+    examples: ["curviate lead update con_YOUR_LEAD_ID --email jane@example.com", "curviate lead update con_YOUR_LEAD_ID --clear email", "curviate lead update con_YOUR_LEAD_ID --allow-fill job-title"],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     id: ID,
     ...FIELD_ARGS,
-    clear: { type: "string", description: `Comma list of fields to empty: ${FIELDS.join(", ")}.` },
+    "linkedin-url": { type: "string", description: "Only for a Lead known by email address alone: its LinkedIn profile URL." },
+    clear: { type: "string", description: `Comma list of fields to empty and keep empty: ${FIELDS.join(", ")}.` },
+    "allow-fill": { type: "string", description: "Comma list of fields you cleared that LinkedIn data may fill again." },
   },
   run: online(runUpdate),
 });
@@ -382,7 +406,7 @@ const enrichCmd = defineCommand({
       blast_radius: `Up to ${BULK_MAX_IDS} Leads per request, from one Account; a --list is every Lead in it.`,
     },
     errors: { ACCOUNT_NOT_FOUND: "the Account is not in your Team." },
-    output: ["`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found) and `skipped` with a reason each."],
+    output: ["`counts` (from_store, queued, already_queued, queue_full, not_stored, not_found, no_linkedin_url: a Lead known by email alone, never visited) and `skipped` with a reason each."],
     seeAlso: SEE,
     examples: ["curviate lead enrich con_A con_B --mode cache_only", "curviate lead enrich --list cl_YOUR_LIST_ID --account acc_YOUR_ACCOUNT_ID"],
   },

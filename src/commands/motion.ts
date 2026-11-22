@@ -60,6 +60,7 @@ type CampaignFlags = RootFlags & {
   "max-pages"?: string;
   "page-delay"?: string;
   "skip-missing-email"?: boolean;
+  timezone?: string;
 };
 
 type Body = Record<string, unknown>;
@@ -192,8 +193,16 @@ async function runGet(c: Curviate, f: CampaignFlags): Promise<void> {
   }
 }
 
+/** `--timezone`: `schedule.timezone`, over the file's. */
+function withTimezone(body: Body, f: CampaignFlags): void {
+  if (f.timezone === undefined) return;
+  if (f.timezone.trim() === "") usage("--timezone was given an empty value: an IANA time zone, like Europe/Berlin.");
+  body["schedule"] = { ...((body["schedule"] as Body | undefined) ?? {}), timezone: f.timezone };
+}
+
 async function runCreate(c: Curviate, f: CampaignFlags): Promise<void> {
   const { body, text } = await readCampaignFile(f, "campaign create");
+  withTimezone(body, f);
   if (f.preview) return preview("campaigns.create", {}, body);
   try {
     renderSuccess(await c.campaigns.create(body as never), outputOpts(f), process);
@@ -205,8 +214,9 @@ async function runCreate(c: Curviate, f: CampaignFlags): Promise<void> {
 
 async function runUpdate(c: Curviate, f: CampaignFlags): Promise<void> {
   const olpc = (f as { "one-lead-per-company"?: boolean })["one-lead-per-company"];
-  if (f.file === undefined && olpc === undefined) usage("pass --file <campaign.json>, --one-lead-per-company or --no-one-lead-per-company.");
+  if (f.file === undefined && olpc === undefined && f.timezone === undefined) usage("pass --file <campaign.json>, --timezone, --one-lead-per-company or --no-one-lead-per-company.");
   const { body, text } = f.file === undefined ? { body: {} as Body, text: "" } : await readCampaignFile(f, "campaign update");
+  withTimezone(body, f);
   if (olpc !== undefined) body["settings"] = { ...((body["settings"] as Body | undefined) ?? {}), one_lead_per_company: olpc };
   // The precondition is sent only when asked for, never read from the file.
   if ("if_sequence_revision" in body) {
@@ -415,7 +425,7 @@ const ID = { type: "positional" as const, description: "Campaign id (mot_...)." 
 const FILE_DESC = "The Campaign file: a path, or - to read it from stdin. `curviate campaign get` output is accepted as is.";
 const SEQUENCE_ERRORS = { SEQUENCE_INVALID: "the Sequence breaks a rule; every error is listed, one line each, as `curviate campaign lint` prints them." };
 const ROLE_ERRORS = {
-  INSUFFICIENT_ROLE: "your role cannot send from a sending Account of this Campaign.",
+  INSUFFICIENT_ROLE: "your role cannot send from a sending Account of this Campaign, or the Campaign has no account_ids and is its creator's (and the Owners' and Managers').",
   ACCOUNT_NOT_SHARED: "a sending Account is not shared with you.",
 };
 const SEE_LIFECYCLE = ["curviate campaign get", "curviate enrollment list"];
@@ -454,6 +464,11 @@ const getCmd = defineCommand({
   run: online(runGet),
 });
 
+const TIMEZONE_ARG = {
+  type: "string" as const,
+  description: "schedule.timezone: an IANA time zone, like Europe/Berlin. Required to start a Campaign with no account_ids (email only); with sending Accounts it is not read (each Account's own zone is).",
+};
+
 const CAMPAIGN_DOC = `{
   "name": "Q4 webinar follow-up",
   "lead_list_ids": ["cl_YOUR_LIST_ID"],
@@ -466,10 +481,29 @@ const CAMPAIGN_DOC = `{
   }
 }`;
 
+const EMAIL_ONLY_DOC = `{
+  "name": "Q4 email",
+  "lead_list_ids": ["cl_YOUR_LIST_ID"],
+  "shared_mailbox_ids": ["mbx_YOUR_MAILBOX_ID"],
+  "sequence": {
+    "on_reply": "end",
+    "steps": [
+      { "id": "email_1", "do": "email.send", "with": { "subject": "Quick question", "text": "Hi {{lead.first_name|there}}, ..." }, "next": "end" }
+    ]
+  }
+}`;
+
+const EMAIL_ONLY =
+  "Email only: a Campaign with no account_ids sends an email-only Sequence from its shared_mailbox_ids, its days, hours and business-day waits read in --timezone (schedule.timezone, required to start it). " +
+  "It belongs to its creator: another Member cannot change or see it (Owners and Managers can). ";
+
 const createCmd = defineCommand({
   meta: {
     name: "create",
-    description: "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
+    description:
+      "Create a Campaign from a Campaign file, always as a draft: nothing runs until `curviate campaign start`. The file is checked before anything is sent, its Sequence as `curviate campaign lint` checks it. " +
+      EMAIL_ONLY +
+      "settings.priority (normal or prioritized) sets the Campaign's weight in each Account's budgets: 1 or 1.5, on every budget; every Campaign with work due still progresses and no limit is passed. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Creates a draft Campaign. No Lead is enrolled and nothing reaches LinkedIn until it is started.",
@@ -483,12 +517,14 @@ const createCmd = defineCommand({
     document: "campaign create",
     examples: [
       "curviate campaign create --file campaign.json",
-      `curviate campaign create --file - <<'EOF'\n${CAMPAIGN_DOC}\nEOF`,
+      "curviate campaign create --file email-campaign.json --timezone Europe/Berlin",
+      `curviate campaign create --timezone Europe/Berlin --file - <<'EOF'\n${EMAIL_ONLY_DOC}\nEOF`,
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
     file: { type: "string", stdinArg: true, required: true, description: FILE_DESC },
+    timezone: TIMEZONE_ARG,
   },
   run: online(runCreate),
 });
@@ -500,7 +536,8 @@ const updateCmd = defineCommand({
       "Change a Campaign from a Campaign file: objects (schedule, settings) merge by key, arrays and the Sequence replace whole, null clears. " +
       "settings.priority (normal or prioritized) weighs the Campaign 1 or 1.5 in each Account's budgets, on every budget (every Campaign with work due still progresses, and no limit is passed); settings.new_enrollments_per_account_per_day and settings.assign even are retired (accepted and ignored until 2027-01-28, with a notice). " +
       "--one-lead-per-company enrolls at most one Lead per company (a Lead whose company already has one in the Campaign is skipped, same_company, naming the Lead kept; one with no known company never is); --no-one-lead-per-company turns it off; either works with or without --file. " +
-      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. Needs a subscription.",
+      "After start, a structural Sequence change makes a new version; running Enrollments keep theirs. With --if-revision the save is refused when someone saved the Sequence since. " +
+      "--timezone sets schedule.timezone, with or without --file. A Campaign started with no account_ids cannot take accounts later (CAMPAIGN_STATUS_CONFLICT: create a new one). Needs a subscription.",
     risk: "write",
     rules: {
       changes: "Changes the Campaign. A running Campaign picks the change up at each Enrollment's next Step.",
@@ -519,7 +556,7 @@ const updateCmd = defineCommand({
     document: "campaign update",
     examples: [
       "curviate campaign update mot_YOUR_CAMPAIGN_ID --file campaign.json --if-revision 3",
-      "curviate campaign update mot_YOUR_CAMPAIGN_ID --one-lead-per-company",
+      "curviate campaign update mot_YOUR_CAMPAIGN_ID --timezone America/New_York",
       `curviate campaign update mot_YOUR_CAMPAIGN_ID --file - <<'EOF'\n${CAMPAIGN_DOC}\nEOF`,
     ],
   },
@@ -528,6 +565,7 @@ const updateCmd = defineCommand({
     id: ID,
     file: { type: "string", stdinArg: true, description: FILE_DESC },
     "one-lead-per-company": { type: "boolean", description: "Enroll at most one Lead per company (settings.one_lead_per_company); --no-one-lead-per-company turns it off." },
+    timezone: TIMEZONE_ARG,
     "if-revision": { type: "string", description: "The sequence_revision you read (`curviate campaign get`). The save is refused with SEQUENCE_CONFLICT when the stored Sequence moved past it. Omitted: the last save wins." },
   },
   run: online(runUpdate),
@@ -565,7 +603,7 @@ const startCmd = lifecycleCmd("start", {
     blast_radius: "Every Lead of its Lead lists, from every sending Account, each Step spending that Account's budgets (`curviate account get <account_id>`).",
   },
   errors: {
-    CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address); each is listed.",
+    CAMPAIGN_NOT_STARTABLE: "a gap stops it (Lead list, sending Account, Sequence, with an email step the Lead check and Leads without an address; with no account_ids a shared Mailbox that can send and schedule.timezone); each is listed.",
     CAMPAIGN_STATUS_CONFLICT: "only a draft starts.",
     ...ROLE_ERRORS,
     TIER_REQUIRED: "Campaigns need a subscription.",

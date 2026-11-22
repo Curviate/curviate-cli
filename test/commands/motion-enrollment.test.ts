@@ -56,20 +56,21 @@ it("campaign list --sort outside updated|activity exits 2 with no request", asyn
   expect([r.status, r.sent.length]).toEqual([2, 0]);
 });
 
-describe("campaign create: schedule.timezone is retired", () => {
-  it("is refused locally, nothing sent; the same file without it is sent", async () => {
+describe("campaign create: schedule.timezone (email only) is sent, from the file or --timezone", () => {
+  it("the file's zone, --timezone over it, and an empty --timezone refused with nothing sent", async () => {
     const file = (schedule: object) => {
       const p = join(mkdtempSync(join(tmpdir(), "campaign-")), "m.json");
       writeFileSync(p, JSON.stringify({ name: "M", schedule }));
       return p;
     };
     const hours = { days: ["mon"], hours: { start: "09:00", end: "17:00" } };
-    const send = (schedule: object) => wire(["campaign", "create", "--file", file(schedule)], () => ({ body: { object: "campaign", id: "mot_1" } }));
-    const bad = await send({ ...hours, timezone: "Europe/Berlin" });
-    expect([bad.status, bad.sent]).toEqual([2, []]);
-    expect(bad.stderr + bad.stdout).toContain("timezone");
-    const ok = await send(hours);
-    expect([ok.status, lines(ok.sent).map((l) => l.call)]).toEqual([0, ["POST /v1/campaigns"]]);
+    const send = (schedule: object, ...flags: string[]) => wire(["campaign", "create", "--file", file(schedule), ...flags], () => ({ body: { object: "campaign", id: "mot_1" } }));
+    const inFile = await send({ ...hours, timezone: "Europe/Berlin" });
+    expect([inFile.status, lines(inFile.sent)]).toEqual([0, [{ call: "POST /v1/campaigns", query: {}, body: { name: "M", schedule: { ...hours, timezone: "Europe/Berlin" } } }]]);
+    const flag = await send({ ...hours, timezone: "Europe/Berlin" }, "--timezone", "America/New_York");
+    expect(lines(flag.sent)[0]!.body).toEqual({ name: "M", schedule: { ...hours, timezone: "America/New_York" } });
+    const empty = await send(hours, "--timezone", " ");
+    expect([empty.status, empty.sent]).toEqual([2, []]);
   });
 });
 

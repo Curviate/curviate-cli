@@ -22,6 +22,7 @@ type Flags = RootFlags & {
   id?: string;
   lead?: string;
   "linkedin-url"?: string;
+  email?: string;
   company?: string;
   reason?: string;
   scope?: string;
@@ -91,10 +92,11 @@ async function runGet(c: Curviate, f: Flags): Promise<void> {
 }
 
 async function runAdd(c: Curviate, f: Flags): Promise<void> {
-  const named = [f.lead, f["linkedin-url"], f.company].filter((v) => v !== undefined).length;
-  if (named !== 1) usage("name exactly one of --lead (con_...), --linkedin-url (a person) or --company (a company's LinkedIn URL).");
-  for (const [flag, v] of [["lead", f.lead], ["linkedin-url", f["linkedin-url"]], ["company", f.company]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
-  const body: Body = f.lead !== undefined ? { lead_id: f.lead } : f.company !== undefined ? { company_linkedin_url: f.company } : { linkedin_url: f["linkedin-url"] };
+  const named = [f.lead, f["linkedin-url"], f.email, f.company].filter((v) => v !== undefined).length;
+  if (named !== 1) usage("name exactly one of --lead (con_...), --linkedin-url (a person), --email (every Lead at that address) or --company (a company's LinkedIn URL).");
+  for (const [flag, v] of [["lead", f.lead], ["linkedin-url", f["linkedin-url"]], ["email", f.email], ["company", f.company]] as const) if (v !== undefined && v.trim() === "") usage(`--${flag} was given an empty value.`);
+  const body: Body =
+    f.lead !== undefined ? { lead_id: f.lead } : f.company !== undefined ? { company_linkedin_url: f.company } : f.email !== undefined ? { email: f.email } : { linkedin_url: f["linkedin-url"] };
   const why = reason(f, false);
   if (why) body["reason"] = why;
   const what = scope(f);
@@ -160,7 +162,7 @@ async function runExport(c: Curviate, f: Flags): Promise<void> {
 
 type Reported = { row: number; outcome: string; skip_reason?: string | null; field?: string | null };
 type Imported = { counts?: Record<string, number>; report?: Reported[] };
-const COUNTS = ["created", "unchanged", "skipped"];
+const COUNTS = ["created", "updated", "unchanged", "skipped"];
 
 async function runImport(c: Curviate, f: Flags): Promise<void> {
   const file = f.file;
@@ -263,29 +265,31 @@ const addCmd = defineCommand({
   meta: {
     name: "add",
     description:
-      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. " +
-      "No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). " +
+      "Put one person on the list, by Lead id or LinkedIn URL (a URL of someone who is not a Lead yet creates the Lead from stored data), or by --email: every Lead of the Team at that address, under any spelling (letter case, a +tag, dots in a Gmail address), and any Lead saved there later; no Lead is created. " +
+      "Or a whole company with --company (its LinkedIn URL with the numeric id, as a Lead's company_linkedin_url): nobody who works there is contacted or imported. " +
+      "No Campaign contacts them afterwards and writes toward them are refused; with --scope email_only only email stops (No email). A scope only goes up: adding everything raises an email_only entry, email_only never lowers everything. " +
       "One person per call; for many, `do-not-contact import`. Any member may add. Needs a subscription.",
     risk: "write",
     rules: {
       changes: "The person joins the list; Campaigns skip them and writes toward them are refused.",
       visible_to: "Your Team.",
       budget_rows: [],
-      retry: "Safe: a person already on the list answers with their existing entry.",
+      retry: "Safe: a person already on the list answers with their existing entry (raised to everything when this add asks for it).",
       undo: "`curviate do-not-contact remove <id>` (Owners and Managers).",
     },
     errors: { TIER_REQUIRED: "your Team needs a subscription for Do-not-contact writes.", RESOURCE_NOT_FOUND: "no Lead has this id." },
     seeAlso: ["curviate do-not-contact list", "curviate do-not-contact import"],
     examples: [
       "curviate do-not-contact add --lead con_YOUR_LEAD_ID --reason asked_to_stop",
-      "curviate do-not-contact add --lead con_YOUR_LEAD_ID --scope email_only",
+      "curviate do-not-contact add --email jane@example.com --scope email_only",
       "curviate do-not-contact add --company https://www.linkedin.com/company/1234567/",
     ],
   },
   args: {
     ...WRITE_SINGLE_FLAGS,
-    lead: { type: "string", description: "The Lead (con_...). Not with --linkedin-url." },
-    "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --lead." },
+    lead: { type: "string", description: "The Lead (con_...). Not with --linkedin-url or --email." },
+    "linkedin-url": { type: "string", description: "The person's LinkedIn profile URL, in any spelling. Not with --lead or --email." },
+    email: { type: "string", description: "An email address: every Lead of the Team at that mailbox is listed with this scope. No Lead is created, and the entry keeps no address in clear." },
     company: { type: "string", description: "A company instead of a person: its LinkedIn URL with the numeric id (linkedin.com/company/<id>/). Nobody who works there is contacted or imported." },
     reason: REASON_ARG,
     scope: SCOPE_ARG,
@@ -363,7 +367,7 @@ const importCmd = defineCommand({
     name: "import",
     description:
       "Put the people of a CSV, JSON or NDJSON file on the list: a linkedin_url per row and an optional reason (a do-not-contact export works as it is). Each row works as `add`: " +
-      "someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason. A bad URL or reason skips its row and the server says why. " +
+      "someone who is not a Lead yet becomes one from stored data, and a person already listed is reported unchanged and keeps their reason, or updated when the row asks for everything and their entry stopped email only (a scope never goes down). A bad URL or reason skips its row and the server says why. " +
       "A file over 10,000 rows is sent in several requests. Any member may import. Needs a subscription.",
     risk: "write",
     rules: {
@@ -374,7 +378,7 @@ const importCmd = defineCommand({
       undo: "`curviate do-not-contact remove <id>` per person (Owners and Managers).",
     },
     errors: { TIER_REQUIRED: "your Team needs a subscription for Do-not-contact writes.", LEAD_LIMIT_REACHED: "the Team is at its Lead cap; rows that would add a Lead past it are skipped." },
-    output: ["One report: `total_rows`, summed `counts` (created, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."],
+    output: ["One report: `total_rows`, summed `counts` (created, updated, unchanged, skipped) and `skipped` rows with their number in the file, a reason and the field."],
     seeAlso: ["curviate do-not-contact export", "curviate do-not-contact list"],
     examples: ["curviate do-not-contact import --file do-not-contact.csv", "curviate do-not-contact import --file - --format ndjson"],
   },

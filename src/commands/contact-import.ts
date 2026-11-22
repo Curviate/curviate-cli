@@ -409,7 +409,8 @@ const importCmd = defineCommand({
     description:
       `Import Leads from a CSV, JSON (an array of objects) or NDJSON file. The format comes from the extension; with --file - pass --format. A file above ${IMPORT_MAX_ROWS} rows or ${(IMPORT_MAX_BODY_BYTES / 1048576).toFixed(0)} MiB ` +
       "is split into several imports, run one after the other (a CSV's header is repeated), each awaited unless --async (or --no-wait); the first refused or failed import stops the run. " +
-      "Only the file's structure is checked here; the server skips bad rows and reports why. Re-importing merges: a Lead already there is updated or left as it is. " +
+      "Each row names the person by linkedin_url, or by email alone (a Lead known by its email address; a CSV with an email column and no LinkedIn URL column imports). " +
+      "Only the file's structure is checked here; the server skips bad rows and reports why (missing_linkedin_url_or_email: neither; email_on_several_leads: several LinkedIn Leads hold that address). Re-importing merges: a Lead already there is updated or left as it is. " +
       `If the request times out or the connection drops, the CLI looks up the Team's newest imports, again every 2 s for up to 30 s while none shows, and reports the one this request made (id and status; it waits on a running one); it says nothing was imported only when none appeared. A busy-Team 429 (RATE_LIMIT_TENANT) waits the advertised Retry-After (up to ${RETRY_AFTER_BOUND_S} s) and sends that import again, naming the import holding the Team's write lock when the API names one; a longer wait fails. Needs a subscription.`,
     risk: "write",
     rules: {

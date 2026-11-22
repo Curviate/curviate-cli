@@ -271,6 +271,9 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   // state the caller has to resolve, not an argument to correct.
   ADMIN_BYPASS: 2,
   INVALID_CANCELLATION_SOURCE: 2,
+  // A 403 for a Team billing is not available to (checkout and the portal): like `ADMIN_BYPASS`, the
+  // operation does not apply to this Team at all; nothing was charged and no retry or role changes it.
+  BILLING_NOT_AVAILABLE: 2,
 
   // Billing (11). Tenant standing, seat and subscription state, and the
   // free-trial limits. Every one is user_fixable and none clears on an
@@ -320,6 +323,8 @@ export const EXIT_CODE_MAP: Partial<Record<ErrorCode, number>> & {
   INVITE_ALREADY_PENDING: 2,
   INVITE_NOT_PENDING: 2,
   INVITE_LIMIT_REACHED: 2,
+  // 403: this Team's membership is fixed (no other Team, no new member). No role or retry lifts it.
+  TEAM_MEMBERSHIP_LOCKED: 2,
   // 8: the request's state forbids it (connection state), not a usage error: the same input works on a pending one.
   CONNECT_REQUEST_NOT_PENDING: 8,
   CONNECT_REQUEST_IN_USE: 8,
