@@ -137,6 +137,18 @@ describe("team commands: the request each sends", () => {
     expect(JSON.parse(r.stdout)).toMatchObject({ team_id: "tnt_a" });
   });
 
+  it("an invite whose email did not go out: exit 0, email_sent false on stdout, stderr names the resend; one that went out is silent", async () => {
+    const inv = (email: string, email_sent: boolean) => ({ object: "team_invite", invite_id: `tinv_${email[0]}`, email, role: "member", status: "pending", email_sent });
+    sink.reply = { status: 201, body: { object: "team_invite_list", cursor: null, items: [inv("a@x.test", true), inv("b@x.test", false)] } };
+    const r = await sink.run(["team", "invites", "create", "a@x.test,b@x.test", "--json", "--team", "tnt_a"]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(JSON.parse(r.stdout).items.map((i: { email_sent: boolean }) => i.email_sent)).toEqual([true, false]);
+    expect(r.stderr).toBe("email not sent: the invite to b@x.test exists but its email did not go out. Send it again with `curviate team invites resend tinv_b`.\n");
+    sink.reply = { body: inv("b@x.test", true) };
+    const ok = await sink.run(["team", "invites", "resend", "tinv_b", "--json", "--team", "tnt_a"]);
+    expect([ok.status, ok.stderr]).toEqual([0, ""]);
+  });
+
   it("a refusal keeps its exit class: SEAT_LENT exits 11 with its message", async () => {
     sink.reply = { status: 409, body: { code: "SEAT_LENT", message: "That seat is lent to another of your Teams.", user_fixable: true, retry_likely_to_succeed: false } };
     const r = await sink.run(["team", "seats", "lend", "--to", "tnt_b"]);
