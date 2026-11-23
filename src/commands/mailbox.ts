@@ -708,15 +708,15 @@ const testCmd = defineCommand({
   meta: {
     name: "test",
     description:
-      "Run a placement test: your exact subject and body go from this Mailbox to 12 test inboxes, 3 at each of Google Workspace, Microsoft 365, Gmail and Outlook.com, and each copy's landing is read; results within an hour (`curviate mailbox tests <id> <test_id>`). " +
-      "The 12 copies count against the Mailbox's daily cap, so it needs room for 12 today. Each test draws one from the Team's allowance: 10 per paid seat a month, pooled across the Team (a trial has none). " +
+      "Run a placement test: your exact subject and body go from this Mailbox, one copy to each of Curviate's test inboxes at Google and Microsoft, and each copy's landing is read; results within an hour (`curviate mailbox tests <id> <test_id>`). " +
+      "copies says how many it sends; they count against the Mailbox's daily cap, so it needs room for them today. Each test draws one from the Team's allowance: 10 per paid seat a month, pooled across the Team (a trial has none). " +
       "Owners and Managers test any Mailbox; a Member only the ones they connected. One API call, never retried.",
     risk: "write",
     rules: {
-      changes: "12 emails leave the Mailbox today, under its daily cap; the Team's allowance goes down by one.",
+      changes: "One email per test inbox leaves the Mailbox today (copies), under its daily cap; the Team's allowance goes down by one.",
       visible_to: "Your Team; the copies go to test inboxes only.",
       budget_rows: [],
-      retry: "Not safe: a second run is a second test, 12 more emails and one more from the allowance. Read `mailbox tests` first.",
+      retry: "Not safe: a second run is a second test, as many emails again and one more from the allowance. Read `mailbox tests` first.",
       undo: "None: the copies are sent.",
       blast_radius: "One Mailbox's daily cap and one test of the Team's month.",
     },
@@ -725,9 +725,9 @@ const testCmd = defineCommand({
       PLACEMENT_TEST_ALLOWANCE_EXHAUSTED: "this month's tests are used, or the Team has no paid seat yet; the message says when it resets. Nothing was sent. Waiting minutes does not help: a paid seat or the new month does.",
       PLACEMENT_TESTS_UNAVAILABLE: "placement tests cannot run right now. Nothing was sent, nothing drawn.",
       MAILBOX_STATE_CONFLICT: "the Mailbox cannot send now (paused, reconnect needed). Nothing was sent.",
-      INVALID_REQUEST: "the Mailbox has no room for 12 more emails today, or the subject or body is empty, too long or malformed. Nothing was sent.",
+      INVALID_REQUEST: "the Mailbox has no room today for the test's copies (the message names how many), or the subject or body is empty, too long or malformed. Nothing was sent.",
     },
-    output: ["The test: id, status (running), verdicts per provider (null while running), allowance { used, total, resets_at }."],
+    output: ["The test: id, status (running), copies (how many it sends), verdicts per provider (null while running, and for a provider it sent no copy to), allowance { used, total, resets_at }."],
     seeAlso: ["curviate mailbox tests", "curviate campaign placement"],
     examples: [
       "curviate mailbox test mbx_YOUR_MAILBOX_ID --subject \"Quick question\" --body-file body.txt",
@@ -748,10 +748,10 @@ const testsCmd = defineCommand({
   meta: {
     name: "tests",
     description:
-      "This Mailbox's placement tests, newest first, with the Team's allowance { used, total, resets_at }; with a test id, that one test. A test is running or complete, with a verdict per provider: inbox (all 3 copies in the inbox), partly_spam or spam (none in the inbox). Every role reads. One API call.",
+      "This Mailbox's placement tests, newest first, with the Team's allowance { used, total, resets_at }; with a test id, that one test. A test is running or complete, with its copies and a verdict per provider it sent to: inbox (every copy there in the inbox), partly_spam or spam (none in the inbox); null for a provider it sent no copy to. Every role reads. One API call.",
     risk: "read",
     errors: NOT_FOUND,
-    output: ["items[] (id, status, created_at, completed_at, verdicts), cursor, allowance; or one test."],
+    output: ["items[] (id, status, copies, created_at, completed_at, verdicts), cursor, allowance; or one test."],
     seeAlso: ["curviate mailbox test"],
     examples: ["curviate mailbox tests mbx_YOUR_MAILBOX_ID", "curviate mailbox tests mbx_YOUR_MAILBOX_ID plt_YOUR_TEST_ID"],
   },
