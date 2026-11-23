@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 a new command or flag is a minor; a breaking command/flag/exit-code change is a major (before 1.0.0, a minor); a fix is a patch.
 
-## [Unreleased]
+## [0.69.0] - 2026-11-23
+
+Requires `@curviate/sdk` 0.64.0 (exact pin, published; the vendored fixture is re-copied from the SDK's at production 4b7db651 and its hash recomputed; the lockfile resolves 0.64.0 from npm).
 
 - **`mailbox test` and `mailbox tests`**: a placement test sends one copy to each of Curviate's test inboxes at Google and Microsoft (no longer a fixed 12, 3 at each of four providers). The help, rules and errors say so without a count; the output carries `copies` (how many the test sends, the number counted against the Mailbox's daily cap), and a provider the test sent no copy to has verdict `null`. `commands.json` regenerated.
 
